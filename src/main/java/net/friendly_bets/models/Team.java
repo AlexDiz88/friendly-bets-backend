@@ -12,24 +12,20 @@ import java.time.LocalDateTime;
 @Builder
 @Setter
 @Getter
-@Document(collection = "accounts")
-public class User {
-
-    public enum Role {
-        USER, MODERATOR, ADMIN
-    }
+@Document(collection = "teams")
+public class Team {
 
     @MongoId
     @Field(name = "_id")
     private String id;
     @Field(name = "created_at")
     private LocalDateTime createdAt;
-    @Field(name = "email")
-    private String email;
-    @Field(name = "hash_password")
-    private String hashPassword;
-    @Field(name = "role")
-    private Role role;
-    @Field(name = "username")
-    private String username;
+    @Field(name = "full_title_ru")
+    private String fullTitleRu;
+    @Field(name = "full_title_en")
+    private String fullTitleEn;
+    @Field(name = "short_title_ru")
+    private String shortTitleRu;
+    @Field(name = "short_title_en")
+    private String shortTitleEn;
 }

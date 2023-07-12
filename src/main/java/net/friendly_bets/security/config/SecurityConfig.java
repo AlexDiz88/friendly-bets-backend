@@ -1,10 +1,10 @@
 package net.friendly_bets.security.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import net.friendly_bets.dto.StandardResponseDto;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import net.friendly_bets.dto.StandardResponseDto;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.http.MediaType;

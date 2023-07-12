@@ -1,10 +1,10 @@
 package net.friendly_bets.services.impl;
 
+import lombok.RequiredArgsConstructor;
 import net.friendly_bets.dto.UserDto;
 import net.friendly_bets.models.User;
 import net.friendly_bets.repositories.UsersRepository;
 import net.friendly_bets.services.UsersService;
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 @RequiredArgsConstructor

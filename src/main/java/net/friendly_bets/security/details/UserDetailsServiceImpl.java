@@ -1,10 +1,10 @@
 package net.friendly_bets.security.details;
 
-import net.friendly_bets.models.User;
-import net.friendly_bets.repositories.UsersRepository;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import net.friendly_bets.models.User;
+import net.friendly_bets.repositories.UsersRepository;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
