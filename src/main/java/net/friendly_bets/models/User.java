@@ -22,14 +22,22 @@ public class User {
     @MongoId
     @Field(name = "_id")
     private String id;
+
     @Field(name = "created_at")
     private LocalDateTime createdAt;
+
     @Field(name = "email")
     private String email;
+
     @Field(name = "hash_password")
     private String hashPassword;
+
     @Field(name = "role")
     private Role role;
+
     @Field(name = "username")
     private String username;
+
+    @Field(name = "avatar")
+    private String avatar;
 }

@@ -18,14 +18,19 @@ public class Team {
     @MongoId
     @Field(name = "_id")
     private String id;
+
     @Field(name = "created_at")
     private LocalDateTime createdAt;
+
     @Field(name = "full_title_ru")
     private String fullTitleRu;
-    @Field(name = "full_title_en")
-    private String fullTitleEn;
+
     @Field(name = "short_title_ru")
     private String shortTitleRu;
+
+    @Field(name = "full_title_en")
+    private String fullTitleEn;
+
     @Field(name = "short_title_en")
     private String shortTitleEn;
 }

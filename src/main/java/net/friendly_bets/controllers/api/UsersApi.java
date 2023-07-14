@@ -11,15 +11,11 @@ import io.swagger.v3.oas.annotations.tags.Tags;
 import net.friendly_bets.dto.UserDto;
 import net.friendly_bets.security.details.AuthenticatedUser;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
 
 @Tags(value = {
         @Tag(name = "Users")
 })
-@RequestMapping("/api/users")
+
 public interface UsersApi {
 
     @Operation(summary = "Получение своего профиля", description = "Доступно только аутентифицированному пользователю")
@@ -37,9 +33,6 @@ public interface UsersApi {
                     }
             )
     })
-    @PreAuthorize("isAuthenticated()")
-    @GetMapping("/my/profile")
-    ResponseEntity<UserDto> getProfile(@Parameter(hidden = true)
-                                       @AuthenticationPrincipal AuthenticatedUser currentUser);
+    ResponseEntity<UserDto> getProfile(@Parameter(hidden = true) AuthenticatedUser currentUser);
 
 }

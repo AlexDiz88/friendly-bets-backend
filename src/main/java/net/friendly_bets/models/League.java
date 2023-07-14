@@ -19,10 +19,16 @@ public class League {
     @MongoId
     @Field(name = "_id")
     private String id;
+
     @Field(name = "created_at")
     private LocalDateTime createdAt;
-    @Field(name = "title")
-    private String title;
+
+    @Field(name = "league_name")
+    private String name;
+
+    @Field(name = "display_name")
+    private String displayName;
+
     @Field(name = "teams")
     private List<Team> teams;
 }

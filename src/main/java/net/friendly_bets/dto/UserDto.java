@@ -25,6 +25,9 @@ public class UserDto {
     private String role;
     @Schema(description = "имя пользователя", example = "example_name")
     private String username;
+    @Schema(description = "аватар пользователя", example = "avatar.jpeg")
+    private String avatar;
+
 
     public static UserDto from(User user) {
         return UserDto.builder()
@@ -32,6 +35,7 @@ public class UserDto {
                 .email(user.getEmail())
                 .role(user.getRole().toString())
                 .username(user.getUsername())
+                .avatar(user.getAvatar())
                 .build();
     }
 
