@@ -11,8 +11,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@Setter
-@Getter
+@Data
 @Document(collection = "leagues")
 public class League {
 
@@ -26,8 +25,11 @@ public class League {
     @Field(name = "league_name")
     private String name;
 
-    @Field(name = "display_name")
-    private String displayName;
+    @Field(name = "display_name_ru")
+    private String displayNameRu;
+
+    @Field(name = "display_name_en")
+    private String displayNameEn;
 
     @Field(name = "teams")
     private List<Team> teams;

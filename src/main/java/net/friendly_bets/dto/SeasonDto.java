@@ -6,6 +6,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import net.friendly_bets.models.Bet;
+import net.friendly_bets.models.League;
 import net.friendly_bets.models.Season;
 import net.friendly_bets.models.User;
 
@@ -35,7 +36,7 @@ public class SeasonDto {
     private List<User> players;
 
     @Schema(description = "список футбольных лиг, на которые принимаются ставки", example = "[АПЛ, Бундеслига]")
-    private List<String> leagues;
+    private List<League> leagues;
 
     @Schema(description = "список сделанных ставок на этот сезон", example = "[]")
     private List<Bet> bets;

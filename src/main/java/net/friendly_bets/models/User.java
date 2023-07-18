@@ -10,8 +10,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@Setter
-@Getter
+@Data
 @Document(collection = "accounts")
 public class User {
 

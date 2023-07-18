@@ -10,8 +10,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@Setter
-@Getter
+@Data
 @Document(collection = "bets")
 public class Bet {
     public enum BetStatus {

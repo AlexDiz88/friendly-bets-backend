@@ -2,9 +2,7 @@ package net.friendly_bets.controllers;
 
 import lombok.RequiredArgsConstructor;
 import net.friendly_bets.controllers.api.SeasonsApi;
-import net.friendly_bets.dto.NewSeasonDto;
-import net.friendly_bets.dto.SeasonDto;
-import net.friendly_bets.dto.SeasonsPage;
+import net.friendly_bets.dto.*;
 import net.friendly_bets.security.details.AuthenticatedUser;
 import net.friendly_bets.services.SeasonsService;
 import org.springframework.http.ResponseEntity;
@@ -39,11 +37,12 @@ public class SeasonsController implements SeasonsApi {
 
     @Override
     @PreAuthorize("hasAuthority('ADMIN')")
-    @PatchMapping("/{title}")
+    @PatchMapping("/{id}")
     public ResponseEntity<SeasonDto> changeSeasonStatus(@AuthenticationPrincipal AuthenticatedUser currentUser,
-                                                        @PathVariable("title") String title,
+                                                        @PathVariable("id") String id,
                                                         @RequestBody String status) {
-        return ResponseEntity.ok(seasonsService.changeSeasonStatus(title, status));
+        return ResponseEntity
+                .ok(seasonsService.changeSeasonStatus(id, status));
     }
 
     @Override
@@ -58,11 +57,47 @@ public class SeasonsController implements SeasonsApi {
     @PreAuthorize("isAuthenticated()")
     @GetMapping("/active")
     public ResponseEntity<SeasonDto> getActiveSeason(AuthenticatedUser currentUser) {
-        SeasonDto activeSeason = seasonsService.getActiveSeason();
-        if (activeSeason == null) {
-            return ResponseEntity.notFound().build();
-        }
-        return ResponseEntity.ok(activeSeason);
+        return ResponseEntity
+                .ok(seasonsService.getActiveSeason());
 
     }
+
+    @Override
+    @PreAuthorize("isAuthenticated()")
+    @GetMapping("/scheduled")
+    public ResponseEntity<SeasonDto> getScheduledSeason(AuthenticatedUser currentUser) {
+        return ResponseEntity
+                .ok(seasonsService.getScheduledSeason());
+    }
+
+    @Override
+    @PreAuthorize("isAuthenticated()")
+    @PutMapping("/registration/{season-id}")
+    public ResponseEntity<SeasonDto> registrationInSeason(@AuthenticationPrincipal AuthenticatedUser currentUser,
+                                                        @PathVariable("season-id") String seasonId) {
+        String userId = currentUser.getUser().getId();
+        return ResponseEntity
+                .ok(seasonsService.registrationInSeason(userId, seasonId));
+    }
+
+    @Override
+    @PreAuthorize("isAuthenticated()")
+    @GetMapping("/{season-id}/leagues")
+    public ResponseEntity<LeaguesPage> getLeaguesBySeason(@AuthenticationPrincipal AuthenticatedUser currentUser,
+                                                          @PathVariable("season-id") String seasonId) {
+        return ResponseEntity
+                .ok(seasonsService.getLeaguesBySeason(seasonId));
+    }
+
+    @Override
+    @PreAuthorize("hasAuthority('ADMIN')")
+    @PostMapping("/{season-id}/leagues")
+    public ResponseEntity<LeagueDto> addLeagueToSeason(@AuthenticationPrincipal AuthenticatedUser currentUser,
+                                                       @PathVariable("season-id") String seasonId,
+                                                       @RequestBody NewLeagueDto newLeague) {
+        return ResponseEntity.status(201)
+                .body(seasonsService.addLeagueToSeason(seasonId, newLeague));
+    }
+
+
 }

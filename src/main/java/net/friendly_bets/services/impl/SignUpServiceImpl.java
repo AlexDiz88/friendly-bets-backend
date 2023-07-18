@@ -11,6 +11,8 @@ import net.friendly_bets.services.SignUpService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
+
 import static net.friendly_bets.dto.UserDto.from;
 
 @RequiredArgsConstructor
@@ -34,6 +36,7 @@ public class SignUpServiceImpl implements SignUpService {
         // TODO change min password length and add pass difficulty check
 
         User user = User.builder()
+                .createdAt(LocalDateTime.now())
                 .email(newUser.getEmail())
                 .hashPassword(passwordEncoder.encode(newUser.getPassword()))
                 .role(User.Role.USER)

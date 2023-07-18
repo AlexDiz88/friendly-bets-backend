@@ -1,14 +1,15 @@
 package net.friendly_bets.services.impl;
 
 import lombok.RequiredArgsConstructor;
-import net.friendly_bets.dto.NewSeasonDto;
-import net.friendly_bets.dto.SeasonDto;
-import net.friendly_bets.dto.SeasonsPage;
+import net.friendly_bets.dto.*;
 import net.friendly_bets.exceptions.BadDataException;
 import net.friendly_bets.exceptions.ConflictException;
 import net.friendly_bets.exceptions.NotFoundException;
+import net.friendly_bets.models.League;
 import net.friendly_bets.models.Season;
+import net.friendly_bets.models.User;
 import net.friendly_bets.repositories.SeasonsRepository;
+import net.friendly_bets.repositories.UsersRepository;
 import net.friendly_bets.services.SeasonsService;
 import org.springframework.stereotype.Service;
 
@@ -23,6 +24,7 @@ import java.util.Optional;
 public class SeasonsServiceImpl implements SeasonsService {
 
     private final SeasonsRepository seasonsRepository;
+    private final UsersRepository usersRepository;
 
     @Override
     public SeasonsPage getAll() {
@@ -63,17 +65,16 @@ public class SeasonsServiceImpl implements SeasonsService {
     // ------------------------------------------------------------------------------------------------------ //
 
     @Override
-    public SeasonDto changeSeasonStatus(String title, String status) {
+    public SeasonDto changeSeasonStatus(String id, String status) {
         status = status.substring(1, status.length() - 1);
         try {
             Season.Status.valueOf(status);
         } catch (IllegalArgumentException e) {
             throw new IllegalArgumentException("Недопустимый статус: " + status);
         }
-        Season season = seasonsRepository.findByTitleEquals(title);
-        if (season == null) {
-            throw new NotFoundException("Сезон с таким именем не найден");
-        }
+        Season season = seasonsRepository.findById(id).orElseThrow(
+                ()-> new NotFoundException("Сезон с таким ID не найден")
+        );
         if (season.getStatus().toString().equals(status)) {
             throw new ConflictException("Сезон уже имеет этот статус");
         }
@@ -100,29 +101,90 @@ public class SeasonsServiceImpl implements SeasonsService {
 
     // ------------------------------------------------------------------------------------------------------ //
 
-    @Override
+            @Override
     public SeasonDto getActiveSeason() {
-        List<Season> seasonList = seasonsRepository.findAll();
-
-        Optional<Season> activeSeason = seasonList.stream()
-                .filter(season -> season.getStatus() == Season.Status.ACTIVE)
-                .findFirst();
-
-        if (activeSeason.isEmpty()) {
-        return null;
+        Optional<Season> seasonByStatus = seasonsRepository.findSeasonByStatus(Season.Status.ACTIVE);
+        if (seasonByStatus.isEmpty()) {
+            return new SeasonDto();
         }
-        return SeasonDto.from(activeSeason.get());
+        Season season = seasonByStatus.get();
+        return SeasonDto.from(season);
     }
 
-//    @Override
-//    public SeasonDto getActiveSeason() {
-//        Optional<Season> seasonByStatus = seasonsRepository.findSeasonByStatus(Season.Status.ACTIVE);
-//        if (seasonByStatus.isEmpty()) {
-//            return null;
-//        }
-//        Season season = seasonByStatus.get();
-//        return SeasonDto.from(season);
-//    }
+    // ------------------------------------------------------------------------------------------------------ //
+
+    @Override
+    public SeasonDto getScheduledSeason() {
+        Optional<Season> seasonByStatus = seasonsRepository.findSeasonByStatus(Season.Status.SCHEDULED);
+        if (seasonByStatus.isEmpty()) {
+            return new SeasonDto();
+        }
+        Season season = seasonByStatus.get();
+        return SeasonDto.from(season);
+    }
+
+    // ------------------------------------------------------------------------------------------------------ //
+
+    @Override
+    public SeasonDto registrationInSeason(String userId, String seasonId) {
+        Season season = seasonsRepository.findById(seasonId).orElseThrow(
+                ()-> new NotFoundException("Сезон с таким ID на найден")
+        );
+        User user = usersRepository.findById(userId).orElseThrow(
+                ()-> new IllegalArgumentException("Пользователь не найден")
+        );
+        if (user.getRole().equals(User.Role.ADMIN)) {
+            throw new ConflictException("Администратор не имеет права регистрироваться на турнирах");
+        }
+        if (season.getPlayers().stream().anyMatch(player -> player.getId().equals(userId))) {
+            throw new ConflictException("Вы уже зарегистрированы на этом турнире");
+        }
+
+        season.getPlayers().add(user);
+        seasonsRepository.save(season);
+        return SeasonDto.from(season);
+    }
+
+    // ------------------------------------------------------------------------------------------------------ //
+
+    @Override
+    public LeaguesPage getLeaguesBySeason(String seasonId) {
+        Season season = seasonsRepository.findById(seasonId).orElseThrow(
+                ()-> new NotFoundException("Сезон с таким ID на найден")
+        );
+        return LeaguesPage.builder()
+                .leagues(LeagueDto.from(season.getLeagues()))
+                .build();
+    }
+
+    // ------------------------------------------------------------------------------------------------------ //
+
+    @Override
+    public LeagueDto addLeagueToSeason(String seasonId, NewLeagueDto newLeague) {
+        Season season = seasonsRepository.findById(seasonId).orElseThrow(
+                ()-> new NotFoundException("Сезон с таким ID на найден")
+        );
+        if (newLeague == null) {
+            throw new BadDataException("Объект не должен быть пустым");
+        }
+        if (newLeague.getDisplayNameRu().trim().equals("") || newLeague.getDisplayNameEn().trim().equals("")) {
+            throw new BadDataException("Название лиги (RU/EN) не может быть пустым");
+        }
+        League league = League.builder()
+                .createdAt(LocalDateTime.now())
+                .name(newLeague.getDisplayNameRu()+"-"+season.getTitle())
+                .displayNameRu(newLeague.getDisplayNameRu())
+                .displayNameEn(newLeague.getDisplayNameEn())
+                .teams(new ArrayList<>())
+                .build();
+        if (season.getLeagues().stream().anyMatch(l -> l.getName().equals(league.getName()))) {
+            throw new ConflictException("Лига с таким названием уже существует в этом турнире");
+        }
+
+        season.getLeagues().add(league);
+        seasonsRepository.save(season);
+        return LeagueDto.from(league);
+    }
 
     // ------------------------------------------------------------------------------------------------------ //
 }
