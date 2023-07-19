@@ -1,6 +1,10 @@
 package net.friendly_bets.models;
 
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 import org.springframework.data.mongodb.core.mapping.MongoId;
@@ -35,12 +39,15 @@ public class Season {
     @Field(name = "status")
     private Status status;
 
+    @DBRef(lazy = true)
     @Field(name = "players")
     private List<User> players;
 
+    @DBRef(lazy = true)
     @Field(name = "leagues")
     private List<League> leagues;
 
+    @DBRef(lazy = true)
     @Field(name = "bets")
     private List<Bet> bets;
 }

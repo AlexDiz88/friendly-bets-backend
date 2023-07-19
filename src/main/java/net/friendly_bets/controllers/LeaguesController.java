@@ -2,16 +2,14 @@ package net.friendly_bets.controllers;
 
 import lombok.RequiredArgsConstructor;
 import net.friendly_bets.controllers.api.LeaguesApi;
-import net.friendly_bets.controllers.api.SeasonsApi;
-import net.friendly_bets.dto.*;
+import net.friendly_bets.dto.LeagueDto;
+import net.friendly_bets.dto.LeaguesPage;
+import net.friendly_bets.dto.NewLeagueDto;
 import net.friendly_bets.security.details.AuthenticatedUser;
-import net.friendly_bets.services.SeasonsService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequiredArgsConstructor

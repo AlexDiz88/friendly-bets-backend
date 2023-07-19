@@ -1,6 +1,10 @@
 package net.friendly_bets.models;
 
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 import org.springframework.data.mongodb.core.mapping.MongoId;
@@ -24,14 +28,16 @@ public class Bet {
     @Field(name = "created_at")
     private LocalDateTime createdAt;
 
-    @Field(name = "username")
-    private String username;
+    @DBRef(lazy = true)
+    @Field(name = "user")
+    private User user;
 
-    @Field(name = "season_title")
-    private String seasonTitle;
+    @Field(name = "season_id")
+    private String seasonId;
 
-    @Field(name = "league_title")
-    private String leagueTitle;
+    @DBRef(lazy = true)
+    @Field(name = "league")
+    private League league;
 
     @Field(name = "match_day")
     private String matchDay;

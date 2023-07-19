@@ -186,7 +186,7 @@ public interface SeasonsApi {
             @ApiResponse(responseCode = "200", description = "Новая футбольная лига",
                     content = {
                             @Content(mediaType = "application/json",
-                                    schema = @Schema(implementation = LeagueDto.class))
+                                    schema = @Schema(implementation = SeasonDto.class))
                     }
             ),
             @ApiResponse(responseCode = "403", description = "Пользователь не аутентифицирован",
@@ -196,9 +196,31 @@ public interface SeasonsApi {
                     }
             )
     })
-    ResponseEntity<LeagueDto> addLeagueToSeason(@Parameter(hidden = true) AuthenticatedUser currentUser,
+    ResponseEntity<SeasonDto> addLeagueToSeason(@Parameter(hidden = true) AuthenticatedUser currentUser,
                                                   @Parameter(description = "ID сезона") String seasonId,
                                                 @Parameter(description = "новая лига") NewLeagueDto newLeague);
+
+    // ------------------------------------------------------------------------------------------------------ //
+
+    @Operation(summary = "Добавить команду в лигу сезона", description = "Доступно только администратору")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Команда в лиге",
+                    content = {
+                            @Content(mediaType = "application/json",
+                                    schema = @Schema(implementation = SeasonDto.class))
+                    }
+            ),
+            @ApiResponse(responseCode = "403", description = "Пользователь не аутентифицирован",
+                    content = {
+                            @Content(mediaType = "application/json",
+                                    schema = @Schema(ref = "StandardResponseDto"))
+                    }
+            )
+    })
+    ResponseEntity<SeasonDto> addTeamToLeagueInSeason(@Parameter(hidden = true) AuthenticatedUser currentUser,
+                                                @Parameter(description = "ID сезона") String seasonId,
+                                                @Parameter(description = "ID лиги") String leagueId,
+                                                @Parameter(description = "ID команды") String teamId);
 
     // ------------------------------------------------------------------------------------------------------ //
 }

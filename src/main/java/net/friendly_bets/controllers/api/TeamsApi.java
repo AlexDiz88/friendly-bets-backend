@@ -8,24 +8,24 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.tags.Tags;
-import net.friendly_bets.dto.LeagueDto;
-import net.friendly_bets.dto.LeaguesPage;
-import net.friendly_bets.dto.NewLeagueDto;
+import net.friendly_bets.dto.NewTeamDto;
+import net.friendly_bets.dto.TeamDto;
+import net.friendly_bets.dto.TeamsPage;
 import net.friendly_bets.security.details.AuthenticatedUser;
 import org.springframework.http.ResponseEntity;
 
 @Tags(value = {
-        @Tag(name = "Leagues")
+        @Tag(name = "Teams")
 })
 
-public interface LeaguesApi {
+public interface TeamsApi {
 
-    @Operation(summary = "Получение списка всех лиг", description = "Доступно только аутентифицированному пользователю")
+    @Operation(summary = "Получение списка всех команд", description = "Доступно только администратору")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Информация о лигах",
+            @ApiResponse(responseCode = "200", description = "Список команд",
                     content = {
                             @Content(mediaType = "application/json",
-                                    schema = @Schema(implementation = LeaguesPage.class))
+                                    schema = @Schema(implementation = TeamsPage.class))
                     }
             ),
             @ApiResponse(responseCode = "403", description = "Пользователь не аутентифицирован",
@@ -35,16 +35,16 @@ public interface LeaguesApi {
                     }
             )
     })
-    ResponseEntity<LeaguesPage> getLeagues(@Parameter(hidden = true) AuthenticatedUser currentUser);
+    ResponseEntity<TeamsPage> getTeams(@Parameter(hidden = true) AuthenticatedUser currentUser);
 
     // ------------------------------------------------------------------------------------------------------ //
 
-    @Operation(summary = "Добавить новую лигу", description = "Доступно только администратору")
+    @Operation(summary = "Добавить новую команду", description = "Доступно только администратору")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Новая лига",
+            @ApiResponse(responseCode = "200", description = "Новая команда",
                     content = {
                             @Content(mediaType = "application/json",
-                                    schema = @Schema(implementation = LeagueDto.class))
+                                    schema = @Schema(implementation = TeamDto.class))
                     }
             ),
             @ApiResponse(responseCode = "403", description = "Пользователь не аутентифицирован",
@@ -54,8 +54,8 @@ public interface LeaguesApi {
                     }
             )
     })
-    ResponseEntity<LeagueDto> addLeague(@Parameter(hidden = true) AuthenticatedUser currentUser,
-                                        NewLeagueDto newLeague);
+    ResponseEntity<TeamDto> createTeam(@Parameter(hidden = true) AuthenticatedUser currentUser,
+                                        NewTeamDto newTeam);
 
     // ------------------------------------------------------------------------------------------------------ //
 

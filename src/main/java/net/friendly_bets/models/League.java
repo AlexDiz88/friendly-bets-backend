@@ -1,6 +1,10 @@
 package net.friendly_bets.models;
 
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 import org.springframework.data.mongodb.core.mapping.MongoId;
@@ -31,6 +35,7 @@ public class League {
     @Field(name = "display_name_en")
     private String displayNameEn;
 
+    @DBRef(lazy = true)
     @Field(name = "teams")
     private List<Team> teams;
 }

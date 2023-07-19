@@ -1,11 +1,8 @@
 package net.friendly_bets.repositories;
 
-import net.friendly_bets.dto.SeasonDto;
 import net.friendly_bets.models.Season;
 import org.springframework.data.mongodb.repository.MongoRepository;
-import org.springframework.data.mongodb.repository.Query;
 
-import java.util.List;
 import java.util.Optional;
 
 

@@ -19,12 +19,16 @@ public class UserDto {
 
     @Schema(description = "идентификатор пользователя", example = "12-битовый хэш ID")
     private String id;
+
     @Schema(description = "е-мейл пользователя", example = "example@gmail.com")
     private String email;
+
     @Schema(description = "роль пользователя", example = "USER")
     private String role;
+
     @Schema(description = "имя пользователя", example = "example_name")
     private String username;
+
     @Schema(description = "аватар пользователя", example = "avatar.jpeg")
     private String avatar;
 

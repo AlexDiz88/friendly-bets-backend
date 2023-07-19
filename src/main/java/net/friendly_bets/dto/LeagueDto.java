@@ -5,8 +5,8 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import net.friendly_bets.models.*;
-import org.springframework.data.mongodb.core.mapping.Field;
+import net.friendly_bets.models.League;
+import net.friendly_bets.models.Team;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -15,7 +15,7 @@ import java.util.stream.Collectors;
 @NoArgsConstructor
 @Builder
 @Data
-@Schema(description = "Лиги сезона")
+@Schema(description = "Лига сезона")
 public class LeagueDto {
 
     @Schema(description = "идентификатор лиги", example = "12-битовый хэш ID")

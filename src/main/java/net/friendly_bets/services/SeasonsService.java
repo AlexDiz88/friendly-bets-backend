@@ -1,7 +1,6 @@
 package net.friendly_bets.services;
 
 import net.friendly_bets.dto.*;
-import net.friendly_bets.security.details.AuthenticatedUser;
 
 import java.util.List;
 
@@ -23,5 +22,7 @@ public interface SeasonsService {
 
     LeaguesPage getLeaguesBySeason(String seasonId);
 
-    LeagueDto addLeagueToSeason(String seasonId, NewLeagueDto newLeague);
+    SeasonDto addLeagueToSeason(String seasonId, NewLeagueDto newLeague);
+
+    SeasonDto addTeamToLeagueInSeason(String seasonId, String leagueId, String teamId);
 }

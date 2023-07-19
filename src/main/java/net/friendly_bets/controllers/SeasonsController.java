@@ -74,7 +74,7 @@ public class SeasonsController implements SeasonsApi {
     @PreAuthorize("isAuthenticated()")
     @PutMapping("/registration/{season-id}")
     public ResponseEntity<SeasonDto> registrationInSeason(@AuthenticationPrincipal AuthenticatedUser currentUser,
-                                                        @PathVariable("season-id") String seasonId) {
+                                                          @PathVariable("season-id") String seasonId) {
         String userId = currentUser.getUser().getId();
         return ResponseEntity
                 .ok(seasonsService.registrationInSeason(userId, seasonId));
@@ -92,11 +92,22 @@ public class SeasonsController implements SeasonsApi {
     @Override
     @PreAuthorize("hasAuthority('ADMIN')")
     @PostMapping("/{season-id}/leagues")
-    public ResponseEntity<LeagueDto> addLeagueToSeason(@AuthenticationPrincipal AuthenticatedUser currentUser,
+    public ResponseEntity<SeasonDto> addLeagueToSeason(@AuthenticationPrincipal AuthenticatedUser currentUser,
                                                        @PathVariable("season-id") String seasonId,
                                                        @RequestBody NewLeagueDto newLeague) {
         return ResponseEntity.status(201)
                 .body(seasonsService.addLeagueToSeason(seasonId, newLeague));
+    }
+
+    @Override
+    @PreAuthorize("hasAuthority('ADMIN')")
+    @PostMapping("/{season-id}/leagues/{league-id}/teams/{team-id}")
+    public ResponseEntity<SeasonDto> addTeamToLeagueInSeason(@AuthenticationPrincipal AuthenticatedUser currentUser,
+                                                             @PathVariable("season-id") String seasonId,
+                                                             @PathVariable("league-id") String leagueId,
+                                                             @PathVariable("team-id") String teamId) {
+        return ResponseEntity.status(201)
+                .body(seasonsService.addTeamToLeagueInSeason(seasonId, leagueId, teamId));
     }
 
 
