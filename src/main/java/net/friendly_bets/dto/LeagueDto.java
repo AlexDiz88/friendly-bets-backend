@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import net.friendly_bets.models.Bet;
 import net.friendly_bets.models.League;
 import net.friendly_bets.models.Team;
 
@@ -18,7 +19,7 @@ import java.util.stream.Collectors;
 @Schema(description = "Лига сезона")
 public class LeagueDto {
 
-    @Schema(description = "идентификатор лиги", example = "12-битовый хэш ID")
+    @Schema(description = "идентификатор лиги", example = "12-байтовый хэш ID")
     private String id;
 
     @Schema(description = "название лиги (автогенерация)", example = "АПЛ-2223")
@@ -33,6 +34,9 @@ public class LeagueDto {
     @Schema(description = "список команд лиги", example = "[Team1, Team2...]")
     private List<Team> teams;
 
+    @Schema(description = "список сделанных ставок на этот сезон", example = "[]")
+    private List<Bet> bets;
+
 
     public static LeagueDto from(League league) {
         return LeagueDto.builder()
@@ -41,6 +45,7 @@ public class LeagueDto {
                 .displayNameRu(league.getDisplayNameRu())
                 .displayNameEn(league.getDisplayNameEn())
                 .teams(league.getTeams())
+                .bets(league.getBets())
                 .build();
     }
 

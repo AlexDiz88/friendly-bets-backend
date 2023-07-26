@@ -38,8 +38,6 @@ public class SeasonDto {
     @Schema(description = "список футбольных лиг, на которые принимаются ставки", example = "[АПЛ, Бундеслига]")
     private List<League> leagues;
 
-    @Schema(description = "список сделанных ставок на этот сезон", example = "[]")
-    private List<Bet> bets;
 
     public static SeasonDto from(Season season) {
         return SeasonDto.builder()
@@ -49,7 +47,6 @@ public class SeasonDto {
                 .status(season.getStatus().name())
                 .players(season.getPlayers())
                 .leagues(season.getLeagues())
-                .bets(season.getBets())
                 .build();
     }
 

@@ -25,4 +25,6 @@ public interface SeasonsService {
     SeasonDto addLeagueToSeason(String seasonId, NewLeagueDto newLeague);
 
     SeasonDto addTeamToLeagueInSeason(String seasonId, String leagueId, String teamId);
+
+    SeasonDto addBetToLeagueInSeason(String seasonId, String leagueId, NewBetDto newBet);
 }

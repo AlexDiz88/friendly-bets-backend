@@ -46,8 +46,4 @@ public class Season {
     @DBRef(lazy = true)
     @Field(name = "leagues")
     private List<League> leagues;
-
-    @DBRef(lazy = true)
-    @Field(name = "bets")
-    private List<Bet> bets;
 }

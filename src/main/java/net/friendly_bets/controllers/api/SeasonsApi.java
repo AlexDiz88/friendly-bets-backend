@@ -223,4 +223,24 @@ public interface SeasonsApi {
                                                 @Parameter(description = "ID команды") String teamId);
 
     // ------------------------------------------------------------------------------------------------------ //
+
+    @Operation(summary = "Добавить новую ставку в лигу сезона", description = "Доступно только модератору и администратору (до реализации автоматического приёма ставок)")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Новая ставка",
+                    content = {
+                            @Content(mediaType = "application/json",
+                                    schema = @Schema(implementation = SeasonDto.class))
+                    }
+            ),
+            @ApiResponse(responseCode = "403", description = "Пользователь не аутентифицирован",
+                    content = {
+                            @Content(mediaType = "application/json",
+                                    schema = @Schema(ref = "StandardResponseDto"))
+                    }
+            )
+    })
+    ResponseEntity<SeasonDto> addBetToLeagueInSeason(@Parameter(hidden = true) AuthenticatedUser currentUser,
+                                                     @Parameter(description = "ID сезона") String seasonId,
+                                                     @Parameter(description = "ID лиги") String leagueId,
+                                                     @Parameter(description = "новая ставка") NewBetDto newBet);
 }

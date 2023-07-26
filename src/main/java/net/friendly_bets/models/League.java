@@ -38,4 +38,8 @@ public class League {
     @DBRef(lazy = true)
     @Field(name = "teams")
     private List<Team> teams;
+
+    @DBRef(lazy = true)
+    @Field(name = "bets")
+    private List<Bet> bets;
 }

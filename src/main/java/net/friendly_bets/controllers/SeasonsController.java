@@ -110,5 +110,16 @@ public class SeasonsController implements SeasonsApi {
                 .body(seasonsService.addTeamToLeagueInSeason(seasonId, leagueId, teamId));
     }
 
+    @Override
+    @PreAuthorize("isAuthenticated()")
+    @PostMapping("/{season-id}/leagues/{league-id}/bets")
+    public ResponseEntity<SeasonDto> addBetToLeagueInSeason(@AuthenticationPrincipal AuthenticatedUser currentUser,
+                                                            @PathVariable("season-id") String seasonId,
+                                                            @PathVariable("league-id") String leagueId,
+                                                            @RequestBody NewBetDto newBet) {
+        return ResponseEntity.status(201)
+                .body(seasonsService.addBetToLeagueInSeason(seasonId, leagueId, newBet));
+    }
+
 
 }

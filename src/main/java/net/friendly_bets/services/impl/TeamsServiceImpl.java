@@ -27,6 +27,8 @@ public class TeamsServiceImpl implements TeamsService {
                 .build();
     }
 
+    // ------------------------------------------------------------------------------------------------------ //
+
     @Override
     public TeamDto createTeam(NewTeamDto newTeam) {
         if (newTeam == null) {
@@ -57,4 +59,6 @@ public class TeamsServiceImpl implements TeamsService {
         teamsRepository.save(team);
         return TeamDto.from(team);
     }
+
+    // ------------------------------------------------------------------------------------------------------ //
 }

@@ -17,7 +17,7 @@ import java.util.stream.Collectors;
 @Schema(description = "Зарегистрированный пользователь")
 public class UserDto {
 
-    @Schema(description = "идентификатор пользователя", example = "12-битовый хэш ID")
+    @Schema(description = "идентификатор пользователя", example = "12-байтовый хэш ID")
     private String id;
 
     @Schema(description = "е-мейл пользователя", example = "example@gmail.com")

@@ -32,27 +32,22 @@ public class Bet {
     @Field(name = "user")
     private User user;
 
-    @Field(name = "season_id")
-    private String seasonId;
-
-    @DBRef(lazy = true)
-    @Field(name = "league")
-    private League league;
-
     @Field(name = "match_day")
     private String matchDay;
 
     @Field(name = "game_id")
-    private Integer gameId;
+    private String gameId;
 
     @Field(name = "game_date")
     private LocalDateTime gameDate;
 
+    @DBRef(lazy = true)
     @Field(name = "home_team")
-    private String homeTeam;
+    private Team homeTeam;
 
+    @DBRef(lazy = true)
     @Field(name = "away_team")
-    private String awayTeam;
+    private Team awayTeam;
 
     @Field(name = "bet_title")
     private String betTitle;

@@ -5,14 +5,8 @@ import net.friendly_bets.dto.*;
 import net.friendly_bets.exceptions.BadDataException;
 import net.friendly_bets.exceptions.ConflictException;
 import net.friendly_bets.exceptions.NotFoundException;
-import net.friendly_bets.models.League;
-import net.friendly_bets.models.Season;
-import net.friendly_bets.models.Team;
-import net.friendly_bets.models.User;
-import net.friendly_bets.repositories.LeaguesRepository;
-import net.friendly_bets.repositories.SeasonsRepository;
-import net.friendly_bets.repositories.TeamsRepository;
-import net.friendly_bets.repositories.UsersRepository;
+import net.friendly_bets.models.*;
+import net.friendly_bets.repositories.*;
 import net.friendly_bets.services.SeasonsService;
 import org.springframework.stereotype.Service;
 
@@ -30,6 +24,7 @@ public class SeasonsServiceImpl implements SeasonsService {
     private final UsersRepository usersRepository;
     private final LeaguesRepository leaguesRepository;
     private final TeamsRepository teamsRepository;
+    private final BetsRepository betsRepository;
 
     @Override
     public SeasonsPage getAll() {
@@ -63,7 +58,6 @@ public class SeasonsServiceImpl implements SeasonsService {
                 .status(Season.Status.CREATED)
                 .players(new ArrayList<>())
                 .leagues(new ArrayList<>())
-                .bets(new ArrayList<>())
                 .build();
 
         seasonsRepository.save(season);
@@ -190,11 +184,13 @@ public class SeasonsServiceImpl implements SeasonsService {
                 .displayNameRu(newLeague.getDisplayNameRu())
                 .displayNameEn(newLeague.getDisplayNameEn())
                 .teams(new ArrayList<>())
+                .bets(new ArrayList<>())
                 .build();
 
         leaguesRepository.save(league);
         season.getLeagues().add(league);
         seasonsRepository.save(season);
+
         return SeasonDto.from(season);
     }
 
@@ -222,6 +218,100 @@ public class SeasonsServiceImpl implements SeasonsService {
         leagueInSeason.getTeams().add(team);
         leaguesRepository.save(leagueInSeason);
         seasonsRepository.save(season);
+
+        return SeasonDto.from(season);
+    }
+
+    @Override
+    public SeasonDto addBetToLeagueInSeason(String seasonId, String leagueId, NewBetDto newBet) {
+        if (newBet == null) {
+            throw new BadDataException("Объект не должен быть пустым");
+        }
+        if (newBet.getUserId() == null || newBet.getUserId().isBlank()) {
+            throw new BadDataException("Отсутствует user ID");
+        }
+        if (seasonId == null || seasonId.isBlank()) {
+            throw new BadDataException("Отсутствует ID сезона");
+        }
+        if (leagueId == null || leagueId.isBlank()) {
+            throw new BadDataException("Отсутствует ID лиги");
+        }
+        if (newBet.getMatchDay() == null || newBet.getMatchDay().isBlank()) {
+            throw new BadDataException("Игровой тур не указан");
+        }
+        if (newBet.getHomeTeamId() == null || newBet.getHomeTeamId().isBlank()) {
+            throw new BadDataException("Команда хозяев не указана");
+        }
+        if (newBet.getAwayTeamId() == null || newBet.getAwayTeamId().isBlank()) {
+            throw new BadDataException("Команда гостей не указана");
+        }
+        if (newBet.getHomeTeamId().equals(newBet.getAwayTeamId())) {
+            throw new BadDataException("Команда хозяев не может совпадать с командой гостей");
+        }
+        if (newBet.getBetTitle() == null || newBet.getBetTitle().isBlank()) {
+            throw new BadDataException("Ставка не указана");
+        }
+        if (newBet.getBetOdds() == null) {
+            throw new BadDataException("Коэффициент ставки не указан, либо указан неверно");
+        }
+        if (newBet.getBetOdds().isNaN()) {
+            throw new BadDataException("Коэффициент ставки не является числом");
+        }
+        if (newBet.getBetOdds() <= 1) {
+            throw new BadDataException("Коэффициент ставки не может быть меньше чем 1,01");
+        }
+        if (newBet.getBetSize() == null) {
+            throw new BadDataException("Размер ставки не указан");
+        }
+        if (newBet.getBetSize() < 1) {
+            throw new BadDataException("Размер ставки не может быть меньше 1");
+        }
+
+        User user = usersRepository.findById(newBet.getUserId()).orElseThrow(
+                () -> new NotFoundException("Участник с таким ID не найден")
+        );
+        Season season = seasonsRepository.findById(seasonId).orElseThrow(
+                () -> new IllegalArgumentException("Ошибка ID сезона")
+        );
+        League league = leaguesRepository.findById(leagueId).orElseThrow(
+                () -> new IllegalArgumentException("Ошибка ID лиги")
+        );
+        Team homeTeam = teamsRepository.findById(newBet.getHomeTeamId()).orElseThrow(
+                () -> new NotFoundException("Команда хозяев с ID <" + newBet.getHomeTeamId() + "> не найдена")
+        );
+        Team awayTeam = teamsRepository.findById(newBet.getAwayTeamId()).orElseThrow(
+                () -> new NotFoundException("Команда гостей с ID <" + newBet.getAwayTeamId() + "> не найдена")
+        );
+
+        // TODO написать проверку совпадения ставок под лигу, а не из общего репозитория ставок
+        //  (т.к. могут быть совпадения в разных лигах/сезонах)
+        if (betsRepository.existsByUserAndMatchDayAndHomeTeamAndAwayTeamAndBetTitle(
+                user,
+                newBet.getMatchDay(),
+                homeTeam,
+                awayTeam,
+                newBet.getBetTitle())
+        ) {
+            throw new ConflictException("Ставка на этот матч от данного участника уже добавлена");
+        }
+
+        Bet bet = Bet.builder()
+                .createdAt(LocalDateTime.now())
+                .user(user)
+                .matchDay(newBet.getMatchDay())
+                .gameId(newBet.getGameId())
+                .gameDate(newBet.getGameDate())
+                .homeTeam(homeTeam)
+                .awayTeam(awayTeam)
+                .betTitle(newBet.getBetTitle())
+                .betOdds(newBet.getBetOdds())
+                .betSize(newBet.getBetSize())
+                .betStatus(Bet.BetStatus.OPENED)
+                .build();
+
+        betsRepository.save(bet);
+        league.getBets().add(bet);
+        leaguesRepository.save(league);
 
         return SeasonDto.from(season);
     }
