@@ -54,7 +54,6 @@ public class SeasonsController implements SeasonsApi {
     }
 
     @Override
-    @PreAuthorize("isAuthenticated()")
     @GetMapping("/active")
     public ResponseEntity<SeasonDto> getActiveSeason(AuthenticatedUser currentUser) {
         return ResponseEntity
@@ -111,7 +110,7 @@ public class SeasonsController implements SeasonsApi {
     }
 
     @Override
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAuthority('ADMIN') || hasAuthority('MODERATOR')")
     @PostMapping("/{season-id}/leagues/{league-id}/bets")
     public ResponseEntity<SeasonDto> addBetToLeagueInSeason(@AuthenticationPrincipal AuthenticatedUser currentUser,
                                                             @PathVariable("season-id") String seasonId,
@@ -119,6 +118,17 @@ public class SeasonsController implements SeasonsApi {
                                                             @RequestBody NewBetDto newBet) {
         return ResponseEntity.status(201)
                 .body(seasonsService.addBetToLeagueInSeason(seasonId, leagueId, newBet));
+    }
+
+    @Override
+    @PreAuthorize("hasAuthority('ADMIN') || hasAuthority('MODERATOR')")
+    @PostMapping("/{season-id}/leagues/{league-id}/bets/empty")
+    public ResponseEntity<SeasonDto> addEmptyBetToLeagueInSeason(@AuthenticationPrincipal AuthenticatedUser currentUser,
+                                                                 @PathVariable("season-id") String seasonId,
+                                                                 @PathVariable("league-id") String leagueId,
+                                                                 @RequestBody NewEmptyBetDto newEmptyBet) {
+        return ResponseEntity.status(201)
+                .body(seasonsService.addEmptyBetToLeagueInSeason(seasonId, leagueId, newEmptyBet));
     }
 
 

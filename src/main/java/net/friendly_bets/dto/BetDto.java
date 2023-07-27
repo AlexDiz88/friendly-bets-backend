@@ -33,11 +33,11 @@ public class BetDto {
     @Schema(description = "дата и время начала матча", example = "2023-07-18T18:31:33")
     private LocalDateTime gameDate;
 
-    @Schema(description = "название команды хозяев", example = "Арсенал")
-    private String homeTeamTitle;
+    @Schema(description = "команда хозяев", example = "Арсенал")
+    private TeamDto homeTeam;
 
-    @Schema(description = "название команды гостей", example = "Ливерпуль")
-    private String awayTeamTitle;
+    @Schema(description = "команда гостей", example = "Ливерпуль")
+    private TeamDto awayTeam;
 
     @Schema(description = "ставка", example = "П1 + ТМ3,5")
     private String betTitle;
@@ -59,14 +59,25 @@ public class BetDto {
 
 
     public static BetDto from(Bet bet) {
+        if (bet.getBetStatus().equals(Bet.BetStatus.EMPTY)) {
+            return BetDto.builder()
+                    .id(bet.getId())
+                    .username(bet.getUser().getUsername())
+                    .matchDay(bet.getMatchDay())
+                    .betSize(bet.getBetSize())
+                    .gameResult(bet.getGameResult())
+                    .betStatus(bet.getBetStatus().toString())
+                    .balanceChange(bet.getBalanceChange())
+                    .build();
+        }
         return BetDto.builder()
                 .id(bet.getId())
                 .username(bet.getUser().getUsername())
                 .matchDay(bet.getMatchDay())
                 .gameId(bet.getGameId())
                 .gameDate(bet.getGameDate())
-                .homeTeamTitle(bet.getHomeTeam().getFullTitleRu())
-                .awayTeamTitle(bet.getAwayTeam().getFullTitleRu())
+                .homeTeam(TeamDto.from(bet.getHomeTeam()))
+                .awayTeam(TeamDto.from(bet.getAwayTeam()))
                 .betTitle(bet.getBetTitle())
                 .betOdds(bet.getBetOdds())
                 .betSize(bet.getBetSize())

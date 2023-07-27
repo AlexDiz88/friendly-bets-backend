@@ -18,7 +18,7 @@ import java.time.LocalDateTime;
 @Document(collection = "bets")
 public class Bet {
     public enum BetStatus {
-        OPENED, WON, RETURNED, LOST, BLANK
+        OPENED, WON, RETURNED, LOST, EMPTY
     }
 
     @MongoId

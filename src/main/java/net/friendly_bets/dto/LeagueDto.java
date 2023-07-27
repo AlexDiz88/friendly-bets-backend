@@ -32,10 +32,10 @@ public class LeagueDto {
     private String displayNameEn;
 
     @Schema(description = "список команд лиги", example = "[Team1, Team2...]")
-    private List<Team> teams;
+    private List<TeamDto> teams;
 
     @Schema(description = "список сделанных ставок на этот сезон", example = "[]")
-    private List<Bet> bets;
+    private List<BetDto> bets;
 
 
     public static LeagueDto from(League league) {
@@ -44,8 +44,8 @@ public class LeagueDto {
                 .name(league.getName())
                 .displayNameRu(league.getDisplayNameRu())
                 .displayNameEn(league.getDisplayNameEn())
-                .teams(league.getTeams())
-                .bets(league.getBets())
+                .teams(TeamDto.from(league.getTeams()))
+                .bets(BetDto.from(league.getBets()))
                 .build();
     }
 
