@@ -8,6 +8,7 @@ import net.friendly_bets.exceptions.NotFoundException;
 import net.friendly_bets.models.*;
 import net.friendly_bets.repositories.*;
 import net.friendly_bets.services.SeasonsService;
+import net.friendly_bets.utils.GameResultValidator;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -347,4 +348,50 @@ public class SeasonsServiceImpl implements SeasonsService {
     }
 
     // ------------------------------------------------------------------------------------------------------ //
+
+    @Override
+    public SeasonDto betResult(String seasonId, String betId, NewBetResult newBetResult) {
+        if (newBetResult == null) {
+            throw new BadDataException("Объект не должен быть пустым");
+        }
+        if (newBetResult.getBetStatus() == null || newBetResult.getBetStatus().isBlank()) {
+            throw new BadDataException("Статус ставки не может быть пустым");
+        }
+        if (newBetResult.getGameResult() == null || newBetResult.getGameResult().isBlank()) {
+            throw new BadDataException("Счёт матча не может быть пустым");
+        }
+
+        try {
+            Bet.BetStatus.valueOf(newBetResult.getBetStatus());
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Недопустимый статус: " + newBetResult.getBetStatus());
+        }
+        if (!GameResultValidator.isValidGameResult(newBetResult.getGameResult())){
+            throw new BadDataException("Некорректный счёт матча: " + newBetResult.getGameResult());
+        }
+        Season season = seasonsRepository.findById(seasonId).orElseThrow(
+                () -> new IllegalArgumentException("Ошибка ID сезона")
+        );
+        Bet bet = betsRepository.findById(betId).orElseThrow(
+                () -> new IllegalArgumentException("Ошибка ID лиги")
+        );
+        Bet.BetStatus status = Bet.BetStatus.valueOf(newBetResult.getBetStatus());
+        if (status.equals(Bet.BetStatus.WON)) {
+            bet.setBalanceChange(bet.getBetOdds()*bet.getBetSize()-bet.getBetSize());
+        }
+        if (status.equals(Bet.BetStatus.RETURNED)) {
+            bet.setBalanceChange(0.0);
+        }
+        if (status.equals(Bet.BetStatus.LOST)) {
+            bet.setBalanceChange(-Double.valueOf(bet.getBetSize()));
+        }
+
+        bet.setBetStatus(status);
+        bet.setGameResult(newBetResult.getGameResult());
+        betsRepository.save(bet);
+        return SeasonDto.from(season);
+    }
+
+    // ------------------------------------------------------------------------------------------------------ //
+
 }

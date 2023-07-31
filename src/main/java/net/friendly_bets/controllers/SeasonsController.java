@@ -131,5 +131,16 @@ public class SeasonsController implements SeasonsApi {
                 .body(seasonsService.addEmptyBetToLeagueInSeason(seasonId, leagueId, newEmptyBet));
     }
 
+    @Override
+    @PreAuthorize("hasAuthority('ADMIN') || hasAuthority('MODERATOR')")
+    @PostMapping("/{season-id}/bets/{bet-id}")
+    public ResponseEntity<SeasonDto> betResult(@AuthenticationPrincipal AuthenticatedUser currentUser,
+                                               @PathVariable("season-id") String seasonId,
+                                               @PathVariable("bet-id") String betId,
+                                               @RequestBody NewBetResult newBetResult) {
+        return ResponseEntity.status(201)
+                .body(seasonsService.betResult(seasonId, betId, newBetResult));
+    }
+
 
 }
