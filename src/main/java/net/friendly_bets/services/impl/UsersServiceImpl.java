@@ -1,9 +1,14 @@
 package net.friendly_bets.services.impl;
 
 import lombok.RequiredArgsConstructor;
+import net.friendly_bets.dto.PlayerStatsDto;
+import net.friendly_bets.dto.PlayersStatsPage;
 import net.friendly_bets.dto.UserDto;
 import net.friendly_bets.exceptions.BadDataException;
 import net.friendly_bets.exceptions.ConflictException;
+import net.friendly_bets.exceptions.NotFoundException;
+import net.friendly_bets.models.Bet;
+import net.friendly_bets.models.League;
 import net.friendly_bets.models.Season;
 import net.friendly_bets.models.User;
 import net.friendly_bets.repositories.SeasonsRepository;
@@ -11,13 +16,17 @@ import net.friendly_bets.repositories.UsersRepository;
 import net.friendly_bets.services.UsersService;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @RequiredArgsConstructor
 @Service
 public class UsersServiceImpl implements UsersService {
 
     private final UsersRepository usersRepository;
+    private final SeasonsRepository seasonsRepository;
 
     @Override
     public UserDto getProfile(String currentUserId) {
@@ -69,6 +78,78 @@ public class UsersServiceImpl implements UsersService {
         usersRepository.save(user);
 
         return UserDto.from(user);
+    }
+
+    // ------------------------------------------------------------------------------------------------------ //
+
+    @Override
+    public PlayersStatsPage getPlayersStatsBySeason(String seasonId) {
+        Season season = seasonsRepository.findById(seasonId).orElseThrow(
+                () -> new NotFoundException("Сезон с ID <" + seasonId + "> не найден")
+        );
+        List<League> leagues = season.getLeagues();
+        Map<String, PlayerStatsDto> playersStatsMap = new HashMap<>();
+
+        for (League league : leagues) {
+            List<Bet> bets = league.getBets();
+            for (Bet bet : bets) {
+                if (bet.getBetStatus().equals(Bet.BetStatus.OPENED)) {
+                    continue;
+                }
+                String username = bet.getUser().getUsername();
+                Double balanceChange = 0.0;
+                if (bet.getBalanceChange() != null) {
+                balanceChange = bet.getBalanceChange();
+                }
+                Double odds = bet.getBetOdds();
+
+                PlayerStatsDto playerStats = playersStatsMap.getOrDefault(
+                        username,
+                        PlayerStatsDto.builder()
+                                .username(username)
+                                .betCount(0)
+                                .wonBetCount(0)
+                                .returnedBetCount(0)
+                                .lostBetCount(0)
+                                .emptyBetCount(0)
+                                .winRate(0.0)
+                                .averageOdds(0.0)
+                                .averageWonBetOdds(0.0)
+                                .actualBalance(0.0)
+                                .sumOfOdds(0.0)
+                                .sumOfWonOdds(0.0)
+                                .build());
+                playerStats.setActualBalance(playerStats.getActualBalance() + balanceChange);
+                playerStats.setBetCount(playerStats.getBetCount() + 1);
+                playerStats.setSumOfOdds(playerStats.getSumOfOdds() + odds);
+
+                if (bet.getBetStatus().equals(Bet.BetStatus.WON)) {
+                    playerStats.setWonBetCount(playerStats.getWonBetCount() + 1);
+                    playerStats.setSumOfWonOdds(playerStats.getSumOfWonOdds() + odds);
+                }
+                if (bet.getBetStatus().equals(Bet.BetStatus.RETURNED)) {
+                    playerStats.setReturnedBetCount(playerStats.getReturnedBetCount() + 1);
+                }
+                if (bet.getBetStatus().equals(Bet.BetStatus.LOST)) {
+                    playerStats.setLostBetCount(playerStats.getLostBetCount() + 1);
+                }
+                if (bet.getBetStatus().equals(Bet.BetStatus.EMPTY)) {
+                    playerStats.setEmptyBetCount(playerStats.getEmptyBetCount() + 1);
+                }
+
+                playersStatsMap.put(username, playerStats);
+            }
+        }
+
+        for (PlayerStatsDto playerStats : playersStatsMap.values()) {
+            double averageOdds = playerStats.getAverageOdds();
+            playerStats.setAverageOdds(averageOdds);
+            double averageWonOdds = playerStats.getAverageWonOdds();
+            playerStats.setAverageWonBetOdds(averageWonOdds);
+        }
+
+        List<PlayerStatsDto> playerStatsList = new ArrayList<>(playersStatsMap.values());
+        return new PlayersStatsPage(playerStatsList);
     }
 
     // ------------------------------------------------------------------------------------------------------ //

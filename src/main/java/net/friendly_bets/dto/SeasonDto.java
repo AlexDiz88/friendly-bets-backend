@@ -5,10 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import net.friendly_bets.models.Bet;
-import net.friendly_bets.models.League;
 import net.friendly_bets.models.Season;
-import net.friendly_bets.models.User;
 
 import java.util.List;
 import java.util.stream.Collectors;

@@ -4,7 +4,7 @@ import lombok.RequiredArgsConstructor;
 import net.friendly_bets.dto.BetDto;
 import net.friendly_bets.dto.BetsPage;
 import net.friendly_bets.models.Bet;
-import net.friendly_bets.repositories.*;
+import net.friendly_bets.repositories.BetsRepository;
 import net.friendly_bets.services.BetsService;
 import org.springframework.stereotype.Service;
 

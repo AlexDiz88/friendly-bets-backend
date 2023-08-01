@@ -134,12 +134,12 @@ public class SeasonsController implements SeasonsApi {
     @Override
     @PreAuthorize("hasAuthority('ADMIN') || hasAuthority('MODERATOR')")
     @PostMapping("/{season-id}/bets/{bet-id}")
-    public ResponseEntity<SeasonDto> betResult(@AuthenticationPrincipal AuthenticatedUser currentUser,
+    public ResponseEntity<SeasonDto> addBetResult(@AuthenticationPrincipal AuthenticatedUser currentUser,
                                                @PathVariable("season-id") String seasonId,
                                                @PathVariable("bet-id") String betId,
                                                @RequestBody NewBetResult newBetResult) {
         return ResponseEntity.status(201)
-                .body(seasonsService.betResult(seasonId, betId, newBetResult));
+                .body(seasonsService.addBetResult(seasonId, betId, newBetResult));
     }
 
 

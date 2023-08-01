@@ -350,7 +350,7 @@ public class SeasonsServiceImpl implements SeasonsService {
     // ------------------------------------------------------------------------------------------------------ //
 
     @Override
-    public SeasonDto betResult(String seasonId, String betId, NewBetResult newBetResult) {
+    public SeasonDto addBetResult(String seasonId, String betId, NewBetResult newBetResult) {
         if (newBetResult == null) {
             throw new BadDataException("Объект не должен быть пустым");
         }

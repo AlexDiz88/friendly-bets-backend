@@ -283,7 +283,7 @@ public interface SeasonsApi {
                     }
             )
     })
-    ResponseEntity<SeasonDto> betResult(@Parameter(hidden = true) AuthenticatedUser currentUser,
+    ResponseEntity<SeasonDto> addBetResult(@Parameter(hidden = true) AuthenticatedUser currentUser,
                                         @Parameter(description = "ID сезона") String seasonId,
                                         @Parameter(description = "ID ставки") String betId,
                                         @Parameter(description = "результат матча и статус ставки") NewBetResult newBetResult);

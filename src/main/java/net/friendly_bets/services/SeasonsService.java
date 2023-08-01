@@ -30,5 +30,5 @@ public interface SeasonsService {
 
     SeasonDto addEmptyBetToLeagueInSeason(String seasonId, String leagueId, NewEmptyBetDto newEmptyBet);
 
-    SeasonDto betResult(String seasonId, String betId, NewBetResult newBetResult);
+    SeasonDto addBetResult(String seasonId, String betId, NewBetResult newBetResult);
 }

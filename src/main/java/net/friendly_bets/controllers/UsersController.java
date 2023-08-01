@@ -2,6 +2,7 @@ package net.friendly_bets.controllers;
 
 import lombok.RequiredArgsConstructor;
 import net.friendly_bets.controllers.api.UsersApi;
+import net.friendly_bets.dto.PlayersStatsPage;
 import net.friendly_bets.dto.UserDto;
 import net.friendly_bets.security.details.AuthenticatedUser;
 import net.friendly_bets.services.UsersService;
@@ -44,5 +45,13 @@ public class UsersController implements UsersApi {
         String currentUserId = currentUser.getUser().getId();
         return ResponseEntity
                 .ok(usersService.editUsername(currentUserId, newUsername));
+    }
+
+    @Override
+    @GetMapping("/season/{season-id}/stats")
+    public ResponseEntity<PlayersStatsPage> getPlayersStatsBySeason(@AuthenticationPrincipal AuthenticatedUser currentUser,
+                                                                    @PathVariable("season-id") String seasonId) {
+        return ResponseEntity.status(200)
+                .body(usersService.getPlayersStatsBySeason(seasonId));
     }
 }
