@@ -7,8 +7,8 @@ import lombok.NoArgsConstructor;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class NewUserDto {
+public class NewBetResult {
 
-    private String email;
-    private String password;
+    private String gameResult;
+    private String betStatus;
 }

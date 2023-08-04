@@ -197,7 +197,7 @@ public interface SeasonsApi {
             )
     })
     ResponseEntity<SeasonDto> addLeagueToSeason(@Parameter(hidden = true) AuthenticatedUser currentUser,
-                                                  @Parameter(description = "ID сезона") String seasonId,
+                                                @Parameter(description = "ID сезона") String seasonId,
                                                 @Parameter(description = "новая лига") NewLeagueDto newLeague);
 
     // ------------------------------------------------------------------------------------------------------ //
@@ -218,9 +218,9 @@ public interface SeasonsApi {
             )
     })
     ResponseEntity<SeasonDto> addTeamToLeagueInSeason(@Parameter(hidden = true) AuthenticatedUser currentUser,
-                                                @Parameter(description = "ID сезона") String seasonId,
-                                                @Parameter(description = "ID лиги") String leagueId,
-                                                @Parameter(description = "ID команды") String teamId);
+                                                      @Parameter(description = "ID сезона") String seasonId,
+                                                      @Parameter(description = "ID лиги") String leagueId,
+                                                      @Parameter(description = "ID команды") String teamId);
 
     // ------------------------------------------------------------------------------------------------------ //
 
@@ -243,4 +243,50 @@ public interface SeasonsApi {
                                                      @Parameter(description = "ID сезона") String seasonId,
                                                      @Parameter(description = "ID лиги") String leagueId,
                                                      @Parameter(description = "новая ставка") NewBetDto newBet);
+
+    // ------------------------------------------------------------------------------------------------------ //
+
+    @Operation(summary = "Добавить пустую ставку в лигу сезона", description = "Доступно только модератору и администратору (до реализации автоматического приёма ставок)")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Новая пустая ставка",
+                    content = {
+                            @Content(mediaType = "application/json",
+                                    schema = @Schema(implementation = SeasonDto.class))
+                    }
+            ),
+            @ApiResponse(responseCode = "403", description = "Пользователь не аутентифицирован",
+                    content = {
+                            @Content(mediaType = "application/json",
+                                    schema = @Schema(ref = "StandardResponseDto"))
+                    }
+            )
+    })
+    ResponseEntity<SeasonDto> addEmptyBetToLeagueInSeason(@Parameter(hidden = true) AuthenticatedUser currentUser,
+                                                          @Parameter(description = "ID сезона") String seasonId,
+                                                          @Parameter(description = "ID лиги") String leagueId,
+                                                          @Parameter(description = "новая пустая ставка") NewEmptyBetDto newEmptyBet);
+
+    // ------------------------------------------------------------------------------------------------------ //
+
+    @Operation(summary = "Результат ставки (по итогам проверки)", description = "Доступно только модератору и администратору (до реализации автоматического приёма ставок)")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Новая статус и результат ставки",
+                    content = {
+                            @Content(mediaType = "application/json",
+                                    schema = @Schema(implementation = SeasonDto.class))
+                    }
+            ),
+            @ApiResponse(responseCode = "403", description = "Пользователь не аутентифицирован",
+                    content = {
+                            @Content(mediaType = "application/json",
+                                    schema = @Schema(ref = "StandardResponseDto"))
+                    }
+            )
+    })
+    ResponseEntity<SeasonDto> addBetResult(@Parameter(hidden = true) AuthenticatedUser currentUser,
+                                        @Parameter(description = "ID сезона") String seasonId,
+                                        @Parameter(description = "ID ставки") String betId,
+                                        @Parameter(description = "результат матча и статус ставки") NewBetResult newBetResult);
+
+    // ------------------------------------------------------------------------------------------------------ //
 }

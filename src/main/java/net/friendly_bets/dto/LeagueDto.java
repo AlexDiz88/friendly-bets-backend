@@ -5,9 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import net.friendly_bets.models.Bet;
 import net.friendly_bets.models.League;
-import net.friendly_bets.models.Team;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -31,11 +29,17 @@ public class LeagueDto {
     @Schema(description = "отображаемое на сайте название лиги (english)", example = "Bundesliga")
     private String displayNameEn;
 
+    @Schema(description = "сокарщенное имя лиги (русский)", example = "БЛ")
+    private String shortNameRu;
+
+    @Schema(description = "сокарщенное имя лиги (english)", example = "BL")
+    private String shortNameEn;
+
     @Schema(description = "список команд лиги", example = "[Team1, Team2...]")
-    private List<Team> teams;
+    private List<TeamDto> teams;
 
     @Schema(description = "список сделанных ставок на этот сезон", example = "[]")
-    private List<Bet> bets;
+    private List<BetDto> bets;
 
 
     public static LeagueDto from(League league) {
@@ -44,8 +48,10 @@ public class LeagueDto {
                 .name(league.getName())
                 .displayNameRu(league.getDisplayNameRu())
                 .displayNameEn(league.getDisplayNameEn())
-                .teams(league.getTeams())
-                .bets(league.getBets())
+                .shortNameRu(league.getShortNameRu())
+                .shortNameEn(league.getShortNameEn())
+                .teams(TeamDto.from(league.getTeams()))
+                .bets(BetDto.from(league.getBets()))
                 .build();
     }
 

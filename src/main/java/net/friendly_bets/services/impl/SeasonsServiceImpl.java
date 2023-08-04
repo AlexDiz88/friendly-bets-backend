@@ -8,6 +8,7 @@ import net.friendly_bets.exceptions.NotFoundException;
 import net.friendly_bets.models.*;
 import net.friendly_bets.repositories.*;
 import net.friendly_bets.services.SeasonsService;
+import net.friendly_bets.utils.GameResultValidator;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -175,6 +176,9 @@ public class SeasonsServiceImpl implements SeasonsService {
         if (newLeague.getDisplayNameRu().trim().equals("") || newLeague.getDisplayNameEn().trim().equals("")) {
             throw new BadDataException("Название лиги (RU/EN) не может быть пустым");
         }
+        if (newLeague.getShortNameRu().trim().equals("") || newLeague.getShortNameEn().trim().equals("")) {
+            throw new BadDataException("Сокращенное имя лиги (RU/EN) не может быть пустым");
+        }
         if (season.getLeagues().stream().anyMatch(l -> l.getDisplayNameRu().equals(newLeague.getDisplayNameRu()))) {
             throw new ConflictException("Лига с таким названием уже существует в этом турнире");
         }
@@ -183,6 +187,8 @@ public class SeasonsServiceImpl implements SeasonsService {
                 .name(newLeague.getDisplayNameRu() + "-" + season.getTitle())
                 .displayNameRu(newLeague.getDisplayNameRu())
                 .displayNameEn(newLeague.getDisplayNameEn())
+                .shortNameRu(newLeague.getShortNameRu())
+                .shortNameEn(newLeague.getShortNameEn())
                 .teams(new ArrayList<>())
                 .bets(new ArrayList<>())
                 .build();
@@ -222,28 +228,15 @@ public class SeasonsServiceImpl implements SeasonsService {
         return SeasonDto.from(season);
     }
 
+    // ------------------------------------------------------------------------------------------------------ //
+
     @Override
     public SeasonDto addBetToLeagueInSeason(String seasonId, String leagueId, NewBetDto newBet) {
         if (newBet == null) {
             throw new BadDataException("Объект не должен быть пустым");
         }
-        if (newBet.getUserId() == null || newBet.getUserId().isBlank()) {
-            throw new BadDataException("Отсутствует user ID");
-        }
-        if (seasonId == null || seasonId.isBlank()) {
-            throw new BadDataException("Отсутствует ID сезона");
-        }
-        if (leagueId == null || leagueId.isBlank()) {
-            throw new BadDataException("Отсутствует ID лиги");
-        }
         if (newBet.getMatchDay() == null || newBet.getMatchDay().isBlank()) {
             throw new BadDataException("Игровой тур не указан");
-        }
-        if (newBet.getHomeTeamId() == null || newBet.getHomeTeamId().isBlank()) {
-            throw new BadDataException("Команда хозяев не указана");
-        }
-        if (newBet.getAwayTeamId() == null || newBet.getAwayTeamId().isBlank()) {
-            throw new BadDataException("Команда гостей не указана");
         }
         if (newBet.getHomeTeamId().equals(newBet.getAwayTeamId())) {
             throw new BadDataException("Команда хозяев не может совпадать с командой гостей");
@@ -317,4 +310,93 @@ public class SeasonsServiceImpl implements SeasonsService {
     }
 
     // ------------------------------------------------------------------------------------------------------ //
+
+    @Override
+    public SeasonDto addEmptyBetToLeagueInSeason(String seasonId, String leagueId, NewEmptyBetDto newEmptyBet) {
+        if (newEmptyBet == null) {
+            throw new BadDataException("Объект не должен быть пустым");
+        }
+        if (newEmptyBet.getMatchDay() == null || newEmptyBet.getMatchDay().isBlank()) {
+            throw new BadDataException("Игровой тур не указан");
+        }
+        if (newEmptyBet.getBetSize() == null) {
+            throw new BadDataException("Размер ставки не указан");
+        }
+        if (newEmptyBet.getBetSize() < 1) {
+            throw new BadDataException("Размер ставки не может быть меньше 1");
+        }
+
+        User user = usersRepository.findById(newEmptyBet.getUserId()).orElseThrow(
+                () -> new NotFoundException("Участник с таким ID не найден")
+        );
+        Season season = seasonsRepository.findById(seasonId).orElseThrow(
+                () -> new IllegalArgumentException("Ошибка ID сезона")
+        );
+        League league = leaguesRepository.findById(leagueId).orElseThrow(
+                () -> new IllegalArgumentException("Ошибка ID лиги")
+        );
+
+        Bet bet = Bet.builder()
+                .createdAt(LocalDateTime.now())
+                .user(user)
+                .matchDay(newEmptyBet.getMatchDay())
+                .betSize(newEmptyBet.getBetSize())
+                .betStatus(Bet.BetStatus.EMPTY)
+                .balanceChange(-Double.valueOf(newEmptyBet.getBetSize()))
+                .build();
+
+        betsRepository.save(bet);
+        league.getBets().add(bet);
+        leaguesRepository.save(league);
+
+        return SeasonDto.from(season);
+    }
+
+    // ------------------------------------------------------------------------------------------------------ //
+
+    @Override
+    public SeasonDto addBetResult(String seasonId, String betId, NewBetResult newBetResult) {
+        if (newBetResult == null) {
+            throw new BadDataException("Объект не должен быть пустым");
+        }
+        if (newBetResult.getBetStatus() == null || newBetResult.getBetStatus().isBlank()) {
+            throw new BadDataException("Статус ставки не может быть пустым");
+        }
+        if (newBetResult.getGameResult() == null || newBetResult.getGameResult().isBlank()) {
+            throw new BadDataException("Счёт матча не может быть пустым");
+        }
+
+        try {
+            Bet.BetStatus.valueOf(newBetResult.getBetStatus());
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Недопустимый статус: " + newBetResult.getBetStatus());
+        }
+        if (!GameResultValidator.isValidGameResult(newBetResult.getGameResult())){
+            throw new BadDataException("Некорректный счёт матча: " + newBetResult.getGameResult());
+        }
+        Season season = seasonsRepository.findById(seasonId).orElseThrow(
+                () -> new IllegalArgumentException("Ошибка ID сезона")
+        );
+        Bet bet = betsRepository.findById(betId).orElseThrow(
+                () -> new IllegalArgumentException("Ошибка ID лиги")
+        );
+        Bet.BetStatus status = Bet.BetStatus.valueOf(newBetResult.getBetStatus());
+        if (status.equals(Bet.BetStatus.WON)) {
+            bet.setBalanceChange(bet.getBetOdds()*bet.getBetSize()-bet.getBetSize());
+        }
+        if (status.equals(Bet.BetStatus.RETURNED)) {
+            bet.setBalanceChange(0.0);
+        }
+        if (status.equals(Bet.BetStatus.LOST)) {
+            bet.setBalanceChange(-Double.valueOf(bet.getBetSize()));
+        }
+
+        bet.setBetStatus(status);
+        bet.setGameResult(newBetResult.getGameResult());
+        betsRepository.save(bet);
+        return SeasonDto.from(season);
+    }
+
+    // ------------------------------------------------------------------------------------------------------ //
+
 }

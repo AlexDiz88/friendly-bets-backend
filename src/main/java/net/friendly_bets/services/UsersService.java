@@ -1,5 +1,6 @@
 package net.friendly_bets.services;
 
+import net.friendly_bets.dto.PlayersStatsPage;
 import net.friendly_bets.dto.UserDto;
 
 public interface UsersService {
@@ -9,5 +10,7 @@ public interface UsersService {
     UserDto editEmail(String currentUserId, String newEmail);
 
     UserDto editUsername(String currentUserId, String newUsername);
+
+    PlayersStatsPage getPlayersStatsBySeason(String seasonId);
 
 }

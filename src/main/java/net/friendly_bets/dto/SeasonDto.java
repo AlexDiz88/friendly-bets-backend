@@ -5,10 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import net.friendly_bets.models.Bet;
-import net.friendly_bets.models.League;
 import net.friendly_bets.models.Season;
-import net.friendly_bets.models.User;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -33,10 +30,10 @@ public class SeasonDto {
     private String status;
 
     @Schema(description = "список игроков, которые участвуют в турнире в этом сезоне", example = "[user1, user2]")
-    private List<User> players;
+    private List<UserDto> players;
 
     @Schema(description = "список футбольных лиг, на которые принимаются ставки", example = "[АПЛ, Бундеслига]")
-    private List<League> leagues;
+    private List<LeagueDto> leagues;
 
 
     public static SeasonDto from(Season season) {
@@ -45,8 +42,8 @@ public class SeasonDto {
                 .title(season.getTitle())
                 .betCountPerMatchDay(season.getBetCountPerMatchDay())
                 .status(season.getStatus().name())
-                .players(season.getPlayers())
-                .leagues(season.getLeagues())
+                .players(UserDto.from(season.getPlayers()))
+                .leagues(LeagueDto.from(season.getLeagues()))
                 .build();
     }
 

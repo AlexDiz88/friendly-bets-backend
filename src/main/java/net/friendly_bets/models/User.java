@@ -31,6 +31,9 @@ public class User {
     @Field(name = "email")
     private String email;
 
+    @Field(name = "email_is_confirmed")
+    private Boolean emailIsConfirmed;
+
     @Field(name = "hash_password")
     private String hashPassword;
 

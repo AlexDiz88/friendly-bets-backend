@@ -2,11 +2,10 @@ package net.friendly_bets.controllers;
 
 import lombok.RequiredArgsConstructor;
 import net.friendly_bets.controllers.api.BetsApi;
-import net.friendly_bets.controllers.api.TeamsApi;
-import net.friendly_bets.dto.*;
+import net.friendly_bets.dto.BetDto;
+import net.friendly_bets.dto.BetsPage;
 import net.friendly_bets.security.details.AuthenticatedUser;
 import net.friendly_bets.services.BetsService;
-import net.friendly_bets.services.TeamsService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
