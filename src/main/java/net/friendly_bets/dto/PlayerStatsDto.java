@@ -40,14 +40,17 @@ public class PlayerStatsDto {
     @Schema(description = "средний коэффициент выигранных ставок (без учёта пустых)", example = "1.98")
     private Double averageWonBetOdds;
 
-    @Schema(description = "текущий баланс игрока (может быть отрицательным)", example = "+73.32")
+    @Schema(description = "текущий баланс игрока (может быть отрицательным)", example = "-73.32")
     private Double actualBalance;
 
     private Double sumOfOdds;
     private Double sumOfWonOdds;
 
     public double getAverageOdds() {
-        return betCount > 0 ? sumOfOdds / betCount : 0.0;
+        if (betCount == 0  || (betCount.equals(emptyBetCount))) {
+            return 0.0;
+        }
+        return sumOfOdds / (betCount - emptyBetCount);
     }
 
     public double getAverageWonOdds() {

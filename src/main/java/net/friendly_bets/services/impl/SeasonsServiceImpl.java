@@ -176,6 +176,9 @@ public class SeasonsServiceImpl implements SeasonsService {
         if (newLeague.getDisplayNameRu().trim().equals("") || newLeague.getDisplayNameEn().trim().equals("")) {
             throw new BadDataException("Название лиги (RU/EN) не может быть пустым");
         }
+        if (newLeague.getShortNameRu().trim().equals("") || newLeague.getShortNameEn().trim().equals("")) {
+            throw new BadDataException("Сокращенное имя лиги (RU/EN) не может быть пустым");
+        }
         if (season.getLeagues().stream().anyMatch(l -> l.getDisplayNameRu().equals(newLeague.getDisplayNameRu()))) {
             throw new ConflictException("Лига с таким названием уже существует в этом турнире");
         }
@@ -184,6 +187,8 @@ public class SeasonsServiceImpl implements SeasonsService {
                 .name(newLeague.getDisplayNameRu() + "-" + season.getTitle())
                 .displayNameRu(newLeague.getDisplayNameRu())
                 .displayNameEn(newLeague.getDisplayNameEn())
+                .shortNameRu(newLeague.getShortNameRu())
+                .shortNameEn(newLeague.getShortNameEn())
                 .teams(new ArrayList<>())
                 .bets(new ArrayList<>())
                 .build();

@@ -21,6 +21,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static net.friendly_bets.utils.FieldsValidator.isValidUsername;
+
 @RequiredArgsConstructor
 @Service
 public class UsersServiceImpl implements UsersService {
@@ -48,7 +50,7 @@ public class UsersServiceImpl implements UsersService {
         if (user.getEmail() != null && user.getEmail().equals(newEmail)) {
             throw new BadDataException("Новый E-mail совпадает со старым");
         }
-        if (usersRepository.existsByEmailEquals(newEmail)) {
+        if (usersRepository.existsByEmail(newEmail)) {
             throw new ConflictException("Пользователь с таким E-mail уже существует");
         }
 
@@ -65,12 +67,18 @@ public class UsersServiceImpl implements UsersService {
         if (newUsername == null || newUsername.trim().length() < 1) {
             throw new BadDataException("Имя не должно быть пустым");
         }
+        if (newUsername.trim().length() < 2) {
+            throw new BadDataException("Длина имени должна быть не менее 2 символов");
+        }
+        if (!isValidUsername(newUsername)) {
+            throw new BadDataException("Имя является некорректным. Имя должно начинаться с буквы. В имени можно использовать только буквы, цифры и пробел, а также символы - и _");
+        }
         User user = usersRepository.findById(currentUserId)
                 .orElseThrow(IllegalArgumentException::new);
         if (user.getUsername() != null && user.getUsername().equals(newUsername)) {
             throw new BadDataException("Новое имя совпадает со старым");
         }
-        if (usersRepository.existsByUsernameEquals(newUsername)) {
+        if (usersRepository.existsByUsername(newUsername)) {
             throw new ConflictException("Пользователь с таким именем уже существует");
         }
 
@@ -96,12 +104,8 @@ public class UsersServiceImpl implements UsersService {
                 if (bet.getBetStatus().equals(Bet.BetStatus.OPENED)) {
                     continue;
                 }
+
                 String username = bet.getUser().getUsername();
-                Double balanceChange = 0.0;
-                if (bet.getBalanceChange() != null) {
-                balanceChange = bet.getBalanceChange();
-                }
-                Double odds = bet.getBetOdds();
 
                 PlayerStatsDto playerStats = playersStatsMap.getOrDefault(
                         username,
@@ -119,6 +123,15 @@ public class UsersServiceImpl implements UsersService {
                                 .sumOfOdds(0.0)
                                 .sumOfWonOdds(0.0)
                                 .build());
+
+                Double balanceChange = 0.0;
+                if (bet.getBalanceChange() != null) {
+                    balanceChange = bet.getBalanceChange();
+                }
+                Double odds = 0.0;
+                if (bet.getBetOdds() != null) {
+                    odds = bet.getBetOdds();
+                }
                 playerStats.setActualBalance(playerStats.getActualBalance() + balanceChange);
                 playerStats.setBetCount(playerStats.getBetCount() + 1);
                 playerStats.setSumOfOdds(playerStats.getSumOfOdds() + odds);
@@ -146,6 +159,12 @@ public class UsersServiceImpl implements UsersService {
             playerStats.setAverageOdds(averageOdds);
             double averageWonOdds = playerStats.getAverageWonOdds();
             playerStats.setAverageWonBetOdds(averageWonOdds);
+            if (playerStats.getBetCount() - playerStats.getReturnedBetCount() - playerStats.getEmptyBetCount() == 0) {
+                playerStats.setWinRate(0.0);
+            } else {
+                double winRate = 100.0 * playerStats.getWonBetCount() / (playerStats.getBetCount() - playerStats.getReturnedBetCount() - playerStats.getEmptyBetCount());
+                playerStats.setWinRate(winRate);
+            }
         }
 
         List<PlayerStatsDto> playerStatsList = new ArrayList<>(playersStatsMap.values());

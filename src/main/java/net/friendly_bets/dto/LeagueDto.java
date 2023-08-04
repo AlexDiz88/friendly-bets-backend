@@ -29,6 +29,12 @@ public class LeagueDto {
     @Schema(description = "отображаемое на сайте название лиги (english)", example = "Bundesliga")
     private String displayNameEn;
 
+    @Schema(description = "сокарщенное имя лиги (русский)", example = "БЛ")
+    private String shortNameRu;
+
+    @Schema(description = "сокарщенное имя лиги (english)", example = "BL")
+    private String shortNameEn;
+
     @Schema(description = "список команд лиги", example = "[Team1, Team2...]")
     private List<TeamDto> teams;
 
@@ -42,6 +48,8 @@ public class LeagueDto {
                 .name(league.getName())
                 .displayNameRu(league.getDisplayNameRu())
                 .displayNameEn(league.getDisplayNameEn())
+                .shortNameRu(league.getShortNameRu())
+                .shortNameEn(league.getShortNameEn())
                 .teams(TeamDto.from(league.getTeams()))
                 .bets(BetDto.from(league.getBets()))
                 .build();

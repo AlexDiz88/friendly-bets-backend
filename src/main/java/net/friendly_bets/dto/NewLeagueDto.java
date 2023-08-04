@@ -11,4 +11,6 @@ public class NewLeagueDto {
 
     private String displayNameRu;
     private String displayNameEn;
+    private String shortNameRu;
+    private String shortNameEn;
 }

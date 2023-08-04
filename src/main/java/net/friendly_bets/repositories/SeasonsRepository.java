@@ -10,7 +10,7 @@ public interface SeasonsRepository extends MongoRepository<Season, String> {
 
     boolean existsByTitle(String title);
 
-    Season findByTitleEquals(String title);
+    Season findByTitle(String title);
 
     Optional<Season> findSeasonByStatus(Season.Status status);
 

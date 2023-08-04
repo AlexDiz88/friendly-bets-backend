@@ -35,6 +35,12 @@ public class League {
     @Field(name = "display_name_en")
     private String displayNameEn;
 
+    @Field(name = "short_name_ru")
+    private String shortNameRu;
+
+    @Field(name = "short_name_en")
+    private String shortNameEn;
+
     @DBRef(lazy = true)
     @Field(name = "teams")
     private List<Team> teams;

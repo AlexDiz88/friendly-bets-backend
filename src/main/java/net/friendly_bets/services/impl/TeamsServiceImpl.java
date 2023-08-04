@@ -43,7 +43,7 @@ public class TeamsServiceImpl implements TeamsService {
         if (newTeam.getCountry() == null || newTeam.getCountry().trim().length() < 1) {
             throw new BadDataException("Название страны команды не может быть пустым");
         }
-        if (teamsRepository.existsByFullTitleRuOrFullTitleEnEquals(newTeam.getFullTitleRu(), newTeam.getFullTitleEn())) {
+        if (teamsRepository.existsByFullTitleRuOrFullTitleEn(newTeam.getFullTitleRu(), newTeam.getFullTitleEn())) {
             throw new ConflictException("Команда с таким названием уже существует");
         }
 
