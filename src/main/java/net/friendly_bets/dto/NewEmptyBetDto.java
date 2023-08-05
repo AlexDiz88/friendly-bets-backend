@@ -9,7 +9,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class NewEmptyBetDto {
 
-    private String userId;
+    private Long userId;
     private String matchDay;
     private Integer betSize;
 }

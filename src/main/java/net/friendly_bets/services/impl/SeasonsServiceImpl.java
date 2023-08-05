@@ -68,7 +68,7 @@ public class SeasonsServiceImpl implements SeasonsService {
     // ------------------------------------------------------------------------------------------------------ //
 
     @Override
-    public SeasonDto changeSeasonStatus(String id, String status) {
+    public SeasonDto changeSeasonStatus(Long id, String status) {
         status = status.substring(1, status.length() - 1);
         try {
             Season.Status.valueOf(status);
@@ -129,7 +129,7 @@ public class SeasonsServiceImpl implements SeasonsService {
     // ------------------------------------------------------------------------------------------------------ //
 
     @Override
-    public SeasonDto registrationInSeason(String userId, String seasonId) {
+    public SeasonDto registrationInSeason(Long userId, Long seasonId) {
         Season season = seasonsRepository.findById(seasonId).orElseThrow(
                 () -> new NotFoundException("Сезон с таким ID не найден")
         );
@@ -154,7 +154,7 @@ public class SeasonsServiceImpl implements SeasonsService {
     // ------------------------------------------------------------------------------------------------------ //
 
     @Override
-    public LeaguesPage getLeaguesBySeason(String seasonId) {
+    public LeaguesPage getLeaguesBySeason(Long seasonId) {
         Season season = seasonsRepository.findById(seasonId).orElseThrow(
                 () -> new NotFoundException("Сезон с таким ID не найден")
         );
@@ -166,7 +166,7 @@ public class SeasonsServiceImpl implements SeasonsService {
     // ------------------------------------------------------------------------------------------------------ //
 
     @Override
-    public SeasonDto addLeagueToSeason(String seasonId, NewLeagueDto newLeague) {
+    public SeasonDto addLeagueToSeason(Long seasonId, NewLeagueDto newLeague) {
         Season season = seasonsRepository.findById(seasonId).orElseThrow(
                 () -> new NotFoundException("Сезон с таким ID не найден")
         );
@@ -203,7 +203,7 @@ public class SeasonsServiceImpl implements SeasonsService {
     // ------------------------------------------------------------------------------------------------------ //
 
     @Override
-    public SeasonDto addTeamToLeagueInSeason(String seasonId, String leagueId, String teamId) {
+    public SeasonDto addTeamToLeagueInSeason(Long seasonId, Long leagueId, Long teamId) {
         Season season = seasonsRepository.findById(seasonId).orElseThrow(
                 () -> new NotFoundException("Сезон с таким ID не найден")
         );
@@ -231,7 +231,7 @@ public class SeasonsServiceImpl implements SeasonsService {
     // ------------------------------------------------------------------------------------------------------ //
 
     @Override
-    public SeasonDto addBetToLeagueInSeason(String seasonId, String leagueId, NewBetDto newBet) {
+    public SeasonDto addBetToLeagueInSeason(Long seasonId, Long leagueId, NewBetDto newBet) {
         if (newBet == null) {
             throw new BadDataException("Объект не должен быть пустым");
         }
@@ -312,7 +312,7 @@ public class SeasonsServiceImpl implements SeasonsService {
     // ------------------------------------------------------------------------------------------------------ //
 
     @Override
-    public SeasonDto addEmptyBetToLeagueInSeason(String seasonId, String leagueId, NewEmptyBetDto newEmptyBet) {
+    public SeasonDto addEmptyBetToLeagueInSeason(Long seasonId, Long leagueId, NewEmptyBetDto newEmptyBet) {
         if (newEmptyBet == null) {
             throw new BadDataException("Объект не должен быть пустым");
         }
@@ -355,7 +355,7 @@ public class SeasonsServiceImpl implements SeasonsService {
     // ------------------------------------------------------------------------------------------------------ //
 
     @Override
-    public SeasonDto addBetResult(String seasonId, String betId, NewBetResult newBetResult) {
+    public SeasonDto addBetResult(Long seasonId, Long betId, NewBetResult newBetResult) {
         if (newBetResult == null) {
             throw new BadDataException("Объект не должен быть пустым");
         }

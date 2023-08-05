@@ -5,12 +5,12 @@ import net.friendly_bets.dto.UserDto;
 
 public interface UsersService {
 
-    UserDto getProfile(String currentUserId);
+    UserDto getProfile(Long currentUserId);
 
-    UserDto editEmail(String currentUserId, String newEmail);
+    UserDto editEmail(Long currentUserId, String newEmail);
 
-    UserDto editUsername(String currentUserId, String newUsername);
+    UserDto editUsername(Long currentUserId, String newUsername);
 
-    PlayersStatsPage getPlayersStatsBySeason(String seasonId);
+    PlayersStatsPage getPlayersStatsBySeason(Long seasonId);
 
 }

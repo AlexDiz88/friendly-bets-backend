@@ -31,7 +31,7 @@ public class UsersServiceImpl implements UsersService {
     private final SeasonsRepository seasonsRepository;
 
     @Override
-    public UserDto getProfile(String currentUserId) {
+    public UserDto getProfile(Long currentUserId) {
         User user = usersRepository.findById(currentUserId)
                 .orElseThrow(IllegalArgumentException::new);
 
@@ -41,7 +41,7 @@ public class UsersServiceImpl implements UsersService {
     // ------------------------------------------------------------------------------------------------------ //
 
     @Override
-    public UserDto editEmail(String currentUserId, String newEmail) {
+    public UserDto editEmail(Long currentUserId, String newEmail) {
         if (newEmail == null || newEmail.trim().length() < 1) {
             throw new BadDataException("Email не должен быть пустым");
         }
@@ -63,7 +63,7 @@ public class UsersServiceImpl implements UsersService {
     // ------------------------------------------------------------------------------------------------------ //
 
     @Override
-    public UserDto editUsername(String currentUserId, String newUsername) {
+    public UserDto editUsername(Long currentUserId, String newUsername) {
         if (newUsername == null || newUsername.trim().length() < 1) {
             throw new BadDataException("Имя не должно быть пустым");
         }
@@ -91,7 +91,7 @@ public class UsersServiceImpl implements UsersService {
     // ------------------------------------------------------------------------------------------------------ //
 
     @Override
-    public PlayersStatsPage getPlayersStatsBySeason(String seasonId) {
+    public PlayersStatsPage getPlayersStatsBySeason(Long seasonId) {
         Season season = seasonsRepository.findById(seasonId).orElseThrow(
                 () -> new NotFoundException("Сезон с ID <" + seasonId + "> не найден")
         );
