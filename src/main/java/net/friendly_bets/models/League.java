@@ -4,11 +4,8 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.springframework.data.mongodb.core.mapping.DBRef;
-import org.springframework.data.mongodb.core.mapping.Document;
-import org.springframework.data.mongodb.core.mapping.Field;
-import org.springframework.data.mongodb.core.mapping.MongoId;
 
+import javax.persistence.*;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -16,36 +13,38 @@ import java.util.List;
 @AllArgsConstructor
 @Builder
 @Data
-@Document(collection = "leagues")
+@Entity
+@Table(name = "leagues")
 public class League {
 
-    @MongoId
-    @Field(name = "_id")
-    private String id;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
-    @Field(name = "created_at")
+    @Column(name = "created_at")
     private LocalDateTime createdAt;
 
-    @Field(name = "league_name")
+    @Column(name = "league_name")
     private String name;
 
-    @Field(name = "display_name_ru")
+    @Column(name = "display_name_ru")
     private String displayNameRu;
 
-    @Field(name = "display_name_en")
+    @Column(name = "display_name_en")
     private String displayNameEn;
 
-    @Field(name = "short_name_ru")
+    @Column(name = "short_name_ru")
     private String shortNameRu;
 
-    @Field(name = "short_name_en")
+    @Column(name = "short_name_en")
     private String shortNameEn;
 
-    @DBRef(lazy = true)
-    @Field(name = "teams")
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(name = "league_team",
+            joinColumns = @JoinColumn(name = "league_id"),
+            inverseJoinColumns = @JoinColumn(name = "team_id"))
     private List<Team> teams;
 
-    @DBRef(lazy = true)
-    @Field(name = "bets")
+    @OneToMany(mappedBy = "league", fetch = FetchType.LAZY)
     private List<Bet> bets;
 }

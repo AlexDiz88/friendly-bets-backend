@@ -11,12 +11,12 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 public class NewBetDto {
 
-    private String userId;
+    private Long userId;
     private String matchDay;
-    private String gameId;
+    private Long gameId;
     private LocalDateTime gameDate;
-    private String homeTeamId;
-    private String awayTeamId;
+    private Long homeTeamId;
+    private Long awayTeamId;
     private String betTitle;
     private Double betOdds;
     private Integer betSize;

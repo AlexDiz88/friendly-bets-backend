@@ -4,11 +4,8 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.springframework.data.mongodb.core.mapping.DBRef;
-import org.springframework.data.mongodb.core.mapping.Document;
-import org.springframework.data.mongodb.core.mapping.Field;
-import org.springframework.data.mongodb.core.mapping.MongoId;
 
+import javax.persistence.*;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -16,34 +13,34 @@ import java.util.List;
 @AllArgsConstructor
 @Builder
 @Data
-@Document(collection = "seasons")
+@Entity
+@Table(name = "seasons")
 public class Season {
 
     public enum Status {
         CREATED, SCHEDULED, ACTIVE, PAUSED, FINISHED
     }
 
-    @MongoId
-    @Field(name = "_id")
-    private String id;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
-    @Field(name = "created_at")
+    @Column(name = "created_at")
     private LocalDateTime createdAt;
 
-    @Field(name = "title")
+    @Column(name = "title")
     private String title;
 
-    @Field(name = "bet_count_per_match_day")
+    @Column(name = "bet_count_per_match_day")
     private Integer betCountPerMatchDay;
 
-    @Field(name = "status")
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status")
     private Status status;
 
-    @DBRef(lazy = true)
-    @Field(name = "players")
+    @ManyToMany(mappedBy = "seasons", fetch = FetchType.LAZY)
     private List<User> players;
 
-    @DBRef(lazy = true)
-    @Field(name = "leagues")
+    @ManyToMany(mappedBy = "seasons", fetch = FetchType.LAZY)
     private List<League> leagues;
 }

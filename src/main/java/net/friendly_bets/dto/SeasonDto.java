@@ -18,7 +18,7 @@ import java.util.stream.Collectors;
 public class SeasonDto {
 
     @Schema(description = "идентификатор сезона", example = "12-битовый хэш ID")
-    private String id;
+    private Long id;
 
     @Schema(description = "название сезона (годы проведения)", example = "2223")
     private String title;

@@ -18,7 +18,7 @@ import java.util.stream.Collectors;
 public class TeamDto {
 
     @Schema(description = "идентификатор команды", example = "12-байтовый хэш ID")
-    private String id;
+    private Long id;
 
     @Schema(description = "название команды (русский)", example = "Арсенал")
     private String fullTitleRu;

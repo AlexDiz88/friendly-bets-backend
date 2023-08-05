@@ -18,7 +18,7 @@ import java.util.stream.Collectors;
 public class LeagueDto {
 
     @Schema(description = "идентификатор лиги", example = "12-байтовый хэш ID")
-    private String id;
+    private Long id;
 
     @Schema(description = "название лиги (автогенерация)", example = "АПЛ-2223")
     private String name;
