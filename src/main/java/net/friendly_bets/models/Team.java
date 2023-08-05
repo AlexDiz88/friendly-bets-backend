@@ -4,36 +4,38 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.springframework.data.mongodb.core.mapping.Document;
-import org.springframework.data.mongodb.core.mapping.Field;
-import org.springframework.data.mongodb.core.mapping.MongoId;
 
+import javax.persistence.*;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 @Data
-@Document(collection = "teams")
+@Entity
+@Table(name = "teams")
 public class Team {
 
-    @MongoId
-    @Field(name = "_id")
-    private String id;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
-    @Field(name = "created_at")
+    @Column(name = "created_at")
     private LocalDateTime createdAt;
 
-    @Field(name = "full_title_ru")
+    @Column(name = "full_title_ru")
     private String fullTitleRu;
 
-    @Field(name = "full_title_en")
+    @Column(name = "full_title_en")
     private String fullTitleEn;
 
-    @Field(name = "country")
+    @Column(name = "country")
     private String country;
 
-    @Field(name = "logo")
+    @Column(name = "logo")
     private String logo;
 
+    @ManyToMany(mappedBy = "teams", fetch = FetchType.LAZY)
+    private List<League> leagues;
 }

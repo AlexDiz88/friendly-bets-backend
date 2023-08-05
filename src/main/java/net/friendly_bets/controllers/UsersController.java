@@ -22,7 +22,7 @@ public class UsersController implements UsersApi {
     @PreAuthorize("isAuthenticated()")
     @GetMapping("/my/profile")
     public ResponseEntity<UserDto> getProfile(@AuthenticationPrincipal AuthenticatedUser currentUser) {
-        String currentUserId = currentUser.getUser().getId();
+        Long currentUserId = currentUser.getUser().getId();
         UserDto profile = usersService.getProfile(currentUserId);
         return ResponseEntity.ok(profile);
     }
@@ -32,7 +32,7 @@ public class UsersController implements UsersApi {
     @PutMapping("/my/profile/email")
     public ResponseEntity<UserDto> editEmail(@AuthenticationPrincipal AuthenticatedUser currentUser,
                                              @RequestBody String newEmail) {
-        String currentUserId = currentUser.getUser().getId();
+        Long currentUserId = currentUser.getUser().getId();
         return ResponseEntity
                 .ok(usersService.editEmail(currentUserId, newEmail));
     }
@@ -42,7 +42,7 @@ public class UsersController implements UsersApi {
     @PutMapping("/my/profile/username")
     public ResponseEntity<UserDto> editUsername(@AuthenticationPrincipal AuthenticatedUser currentUser,
                                                 @RequestBody String newUsername) {
-        String currentUserId = currentUser.getUser().getId();
+        Long currentUserId = currentUser.getUser().getId();
         return ResponseEntity
                 .ok(usersService.editUsername(currentUserId, newUsername));
     }
@@ -50,7 +50,7 @@ public class UsersController implements UsersApi {
     @Override
     @GetMapping("/season/{season-id}/stats")
     public ResponseEntity<PlayersStatsPage> getPlayersStatsBySeason(@AuthenticationPrincipal AuthenticatedUser currentUser,
-                                                                    @PathVariable("season-id") String seasonId) {
+                                                                    @PathVariable("season-id") Long seasonId) {
         return ResponseEntity.status(200)
                 .body(usersService.getPlayersStatsBySeason(seasonId));
     }

@@ -19,7 +19,7 @@ import java.util.stream.Collectors;
 public class BetDto {
 
     @Schema(description = "идентификатор ставки", example = "12-байтовый хэш ID")
-    private String id;
+    private Long id;
 
     @Schema(description = "имя игрока, сделавшего ставку", example = "Player")
     private String username;
@@ -28,7 +28,7 @@ public class BetDto {
     private String matchDay;
 
     @Schema(description = "идентификатор матча (от букмекера)", example = "соответствует системе ID у букмекера")
-    private String gameId;
+    private Long gameId;
 
     @Schema(description = "дата и время начала матча", example = "2023-07-18T18:31:33")
     private LocalDateTime gameDate;

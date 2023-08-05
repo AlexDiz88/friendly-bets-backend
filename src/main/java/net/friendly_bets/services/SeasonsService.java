@@ -10,7 +10,7 @@ public interface SeasonsService {
 
     SeasonDto addSeason(NewSeasonDto newSeason);
 
-    SeasonDto changeSeasonStatus(String id, String status);
+    SeasonDto changeSeasonStatus(Long id, String status);
 
     List<String> getSeasonStatusList();
 
@@ -18,17 +18,17 @@ public interface SeasonsService {
 
     SeasonDto getScheduledSeason();
 
-    SeasonDto registrationInSeason(String userId, String seasonId);
+    SeasonDto registrationInSeason(Long userId, Long seasonId);
 
-    LeaguesPage getLeaguesBySeason(String seasonId);
+    LeaguesPage getLeaguesBySeason(Long seasonId);
 
-    SeasonDto addLeagueToSeason(String seasonId, NewLeagueDto newLeague);
+    SeasonDto addLeagueToSeason(Long seasonId, NewLeagueDto newLeague);
 
-    SeasonDto addTeamToLeagueInSeason(String seasonId, String leagueId, String teamId);
+    SeasonDto addTeamToLeagueInSeason(Long seasonId, Long leagueId, Long teamId);
 
-    SeasonDto addBetToLeagueInSeason(String seasonId, String leagueId, NewBetDto newBet);
+    SeasonDto addBetToLeagueInSeason(Long seasonId, Long leagueId, NewBetDto newBet);
 
-    SeasonDto addEmptyBetToLeagueInSeason(String seasonId, String leagueId, NewEmptyBetDto newEmptyBet);
+    SeasonDto addEmptyBetToLeagueInSeason(Long seasonId, Long leagueId, NewEmptyBetDto newEmptyBet);
 
-    SeasonDto addBetResult(String seasonId, String betId, NewBetResult newBetResult);
+    SeasonDto addBetResult(Long seasonId, Long betId, NewBetResult newBetResult);
 }

@@ -54,7 +54,7 @@ public interface BetsApi {
             )
     })
     ResponseEntity<BetDto> deleteBet(@Parameter(hidden = true) AuthenticatedUser currentUser,
-                                     String betId);
+                                     Long betId);
 
     // ------------------------------------------------------------------------------------------------------ //
 

@@ -55,8 +55,7 @@ public interface SeasonsApi {
             )
     })
     ResponseEntity<SeasonDto> addSeason(@Parameter(hidden = true) AuthenticatedUser currentUser,
-                                        @Parameter(description = "новый сезон")
-                                        NewSeasonDto newSeason);
+                                        @Parameter(description = "новый сезон") NewSeasonDto newSeason);
 
     // ------------------------------------------------------------------------------------------------------ //
 
@@ -75,12 +74,9 @@ public interface SeasonsApi {
                     }
             )
     })
-    ResponseEntity<SeasonDto> changeSeasonStatus(@Parameter(hidden = true)
-                                                 AuthenticatedUser currentUser,
-                                                 @Parameter(description = "ID сезона")
-                                                 String id,
-                                                 @Parameter(description = "статус сезона")
-                                                 String status);
+    ResponseEntity<SeasonDto> changeSeasonStatus(@Parameter(hidden = true) AuthenticatedUser currentUser,
+                                                 @Parameter(description = "ID сезона") Long id,
+                                                 @Parameter(description = "статус сезона") String status);
 
     // ------------------------------------------------------------------------------------------------------ //
 
@@ -157,7 +153,7 @@ public interface SeasonsApi {
             )
     })
     ResponseEntity<SeasonDto> registrationInSeason(@Parameter(hidden = true) AuthenticatedUser currentUser,
-                                                   @Parameter(description = "ID сезона") String seasonId);
+                                                   @Parameter(description = "ID сезона") Long seasonId);
 
     // ------------------------------------------------------------------------------------------------------ //
 
@@ -177,7 +173,7 @@ public interface SeasonsApi {
             )
     })
     ResponseEntity<LeaguesPage> getLeaguesBySeason(@Parameter(hidden = true) AuthenticatedUser currentUser,
-                                                   @Parameter(description = "ID сезона") String seasonId);
+                                                   @Parameter(description = "ID сезона") Long seasonId);
 
     // ------------------------------------------------------------------------------------------------------ //
 
@@ -197,7 +193,7 @@ public interface SeasonsApi {
             )
     })
     ResponseEntity<SeasonDto> addLeagueToSeason(@Parameter(hidden = true) AuthenticatedUser currentUser,
-                                                @Parameter(description = "ID сезона") String seasonId,
+                                                @Parameter(description = "ID сезона") Long seasonId,
                                                 @Parameter(description = "новая лига") NewLeagueDto newLeague);
 
     // ------------------------------------------------------------------------------------------------------ //
@@ -218,9 +214,9 @@ public interface SeasonsApi {
             )
     })
     ResponseEntity<SeasonDto> addTeamToLeagueInSeason(@Parameter(hidden = true) AuthenticatedUser currentUser,
-                                                      @Parameter(description = "ID сезона") String seasonId,
-                                                      @Parameter(description = "ID лиги") String leagueId,
-                                                      @Parameter(description = "ID команды") String teamId);
+                                                      @Parameter(description = "ID сезона") Long seasonId,
+                                                      @Parameter(description = "ID лиги") Long leagueId,
+                                                      @Parameter(description = "ID команды") Long teamId);
 
     // ------------------------------------------------------------------------------------------------------ //
 
@@ -240,8 +236,8 @@ public interface SeasonsApi {
             )
     })
     ResponseEntity<SeasonDto> addBetToLeagueInSeason(@Parameter(hidden = true) AuthenticatedUser currentUser,
-                                                     @Parameter(description = "ID сезона") String seasonId,
-                                                     @Parameter(description = "ID лиги") String leagueId,
+                                                     @Parameter(description = "ID сезона") Long seasonId,
+                                                     @Parameter(description = "ID лиги") Long leagueId,
                                                      @Parameter(description = "новая ставка") NewBetDto newBet);
 
     // ------------------------------------------------------------------------------------------------------ //
@@ -262,8 +258,8 @@ public interface SeasonsApi {
             )
     })
     ResponseEntity<SeasonDto> addEmptyBetToLeagueInSeason(@Parameter(hidden = true) AuthenticatedUser currentUser,
-                                                          @Parameter(description = "ID сезона") String seasonId,
-                                                          @Parameter(description = "ID лиги") String leagueId,
+                                                          @Parameter(description = "ID сезона") Long seasonId,
+                                                          @Parameter(description = "ID лиги") Long leagueId,
                                                           @Parameter(description = "новая пустая ставка") NewEmptyBetDto newEmptyBet);
 
     // ------------------------------------------------------------------------------------------------------ //
@@ -284,9 +280,9 @@ public interface SeasonsApi {
             )
     })
     ResponseEntity<SeasonDto> addBetResult(@Parameter(hidden = true) AuthenticatedUser currentUser,
-                                        @Parameter(description = "ID сезона") String seasonId,
-                                        @Parameter(description = "ID ставки") String betId,
-                                        @Parameter(description = "результат матча и статус ставки") NewBetResult newBetResult);
+                                           @Parameter(description = "ID сезона") Long seasonId,
+                                           @Parameter(description = "ID ставки") Long betId,
+                                           @Parameter(description = "результат матча и статус ставки") NewBetResult newBetResult);
 
     // ------------------------------------------------------------------------------------------------------ //
 }

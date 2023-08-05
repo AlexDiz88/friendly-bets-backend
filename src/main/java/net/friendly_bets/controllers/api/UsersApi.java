@@ -94,6 +94,6 @@ public interface UsersApi {
             )
     })
     ResponseEntity<PlayersStatsPage> getPlayersStatsBySeason(@Parameter(hidden = true) AuthenticatedUser currentUser,
-                                                             @Parameter(description = "ID сезона") String seasonId);
+                                                             @Parameter(description = "ID сезона") Long seasonId);
 
 }

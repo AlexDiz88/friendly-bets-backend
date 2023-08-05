@@ -4,66 +4,70 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.springframework.data.mongodb.core.mapping.DBRef;
-import org.springframework.data.mongodb.core.mapping.Document;
-import org.springframework.data.mongodb.core.mapping.Field;
-import org.springframework.data.mongodb.core.mapping.MongoId;
 
+import javax.persistence.*;
 import java.time.LocalDateTime;
 
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 @Data
-@Document(collection = "bets")
+@Entity
+@Table(name = "bets")
 public class Bet {
+
     public enum BetStatus {
         OPENED, WON, RETURNED, LOST, EMPTY
     }
 
-    @MongoId
-    @Field(name = "_id")
-    private String id;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
-    @Field(name = "created_at")
+    @Column(name = "created_at")
     private LocalDateTime createdAt;
 
-    @DBRef(lazy = true)
-    @Field(name = "user")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", referencedColumnName = "id")
     private User user;
 
-    @Field(name = "match_day")
+    @Column(name = "match_day")
     private String matchDay;
 
-    @Field(name = "game_id")
-    private String gameId;
+    @Column(name = "game_id")
+    private Long gameId;
 
-    @Field(name = "game_date")
+    @Column(name = "game_date")
     private LocalDateTime gameDate;
 
-    @DBRef(lazy = true)
-    @Field(name = "home_team")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "home_team_id")
     private Team homeTeam;
 
-    @DBRef(lazy = true)
-    @Field(name = "away_team")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "away_team_id")
     private Team awayTeam;
 
-    @Field(name = "bet_title")
+    @Column(name = "bet_title")
     private String betTitle;
 
-    @Field(name = "bet_odds")
+    @Column(name = "bet_odds")
     private Double betOdds;
 
-    @Field(name = "bet_size")
+    @Column(name = "bet_size")
     private Integer betSize;
 
-    @Field(name = "game_result")
+    @Column(name = "game_result")
     private String gameResult;
 
-    @Field(name = "bet_status")
+    @Enumerated(EnumType.STRING)
+    @Column(name = "bet_status")
     private BetStatus betStatus;
 
-    @Field(name = "balance_change")
+    @Column(name = "balance_change")
     private Double balanceChange;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "league_id")
+    private League league;
 }

@@ -30,7 +30,7 @@ public class BetsController implements BetsApi {
     @PreAuthorize("hasAuthority('ADMIN')")
     @DeleteMapping("/{bet-id}")
     public ResponseEntity<BetDto> deleteBet(@AuthenticationPrincipal AuthenticatedUser currentUser,
-                                            @PathVariable("bet-id") String betId) {
+                                            @PathVariable("bet-id") Long betId) {
         return null;
     }
 

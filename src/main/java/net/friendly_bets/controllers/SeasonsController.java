@@ -39,7 +39,7 @@ public class SeasonsController implements SeasonsApi {
     @PreAuthorize("hasAuthority('ADMIN')")
     @PatchMapping("/{id}")
     public ResponseEntity<SeasonDto> changeSeasonStatus(@AuthenticationPrincipal AuthenticatedUser currentUser,
-                                                        @PathVariable("id") String id,
+                                                        @PathVariable("id") Long id,
                                                         @RequestBody String status) {
         return ResponseEntity
                 .ok(seasonsService.changeSeasonStatus(id, status));
@@ -73,8 +73,8 @@ public class SeasonsController implements SeasonsApi {
     @PreAuthorize("isAuthenticated()")
     @PutMapping("/registration/{season-id}")
     public ResponseEntity<SeasonDto> registrationInSeason(@AuthenticationPrincipal AuthenticatedUser currentUser,
-                                                          @PathVariable("season-id") String seasonId) {
-        String userId = currentUser.getUser().getId();
+                                                          @PathVariable("season-id") Long seasonId) {
+        Long userId = currentUser.getUser().getId();
         return ResponseEntity
                 .ok(seasonsService.registrationInSeason(userId, seasonId));
     }
@@ -83,7 +83,7 @@ public class SeasonsController implements SeasonsApi {
     @PreAuthorize("isAuthenticated()")
     @GetMapping("/{season-id}/leagues")
     public ResponseEntity<LeaguesPage> getLeaguesBySeason(@AuthenticationPrincipal AuthenticatedUser currentUser,
-                                                          @PathVariable("season-id") String seasonId) {
+                                                          @PathVariable("season-id") Long seasonId) {
         return ResponseEntity
                 .ok(seasonsService.getLeaguesBySeason(seasonId));
     }
@@ -92,7 +92,7 @@ public class SeasonsController implements SeasonsApi {
     @PreAuthorize("hasAuthority('ADMIN')")
     @PostMapping("/{season-id}/leagues")
     public ResponseEntity<SeasonDto> addLeagueToSeason(@AuthenticationPrincipal AuthenticatedUser currentUser,
-                                                       @PathVariable("season-id") String seasonId,
+                                                       @PathVariable("season-id") Long seasonId,
                                                        @RequestBody NewLeagueDto newLeague) {
         return ResponseEntity.status(201)
                 .body(seasonsService.addLeagueToSeason(seasonId, newLeague));
@@ -102,9 +102,9 @@ public class SeasonsController implements SeasonsApi {
     @PreAuthorize("hasAuthority('ADMIN')")
     @PostMapping("/{season-id}/leagues/{league-id}/teams/{team-id}")
     public ResponseEntity<SeasonDto> addTeamToLeagueInSeason(@AuthenticationPrincipal AuthenticatedUser currentUser,
-                                                             @PathVariable("season-id") String seasonId,
-                                                             @PathVariable("league-id") String leagueId,
-                                                             @PathVariable("team-id") String teamId) {
+                                                             @PathVariable("season-id") Long seasonId,
+                                                             @PathVariable("league-id") Long leagueId,
+                                                             @PathVariable("team-id") Long teamId) {
         return ResponseEntity.status(201)
                 .body(seasonsService.addTeamToLeagueInSeason(seasonId, leagueId, teamId));
     }
@@ -113,8 +113,8 @@ public class SeasonsController implements SeasonsApi {
     @PreAuthorize("hasAuthority('ADMIN') || hasAuthority('MODERATOR')")
     @PostMapping("/{season-id}/leagues/{league-id}/bets")
     public ResponseEntity<SeasonDto> addBetToLeagueInSeason(@AuthenticationPrincipal AuthenticatedUser currentUser,
-                                                            @PathVariable("season-id") String seasonId,
-                                                            @PathVariable("league-id") String leagueId,
+                                                            @PathVariable("season-id") Long seasonId,
+                                                            @PathVariable("league-id") Long leagueId,
                                                             @RequestBody NewBetDto newBet) {
         return ResponseEntity.status(201)
                 .body(seasonsService.addBetToLeagueInSeason(seasonId, leagueId, newBet));
@@ -124,8 +124,8 @@ public class SeasonsController implements SeasonsApi {
     @PreAuthorize("hasAuthority('ADMIN') || hasAuthority('MODERATOR')")
     @PostMapping("/{season-id}/leagues/{league-id}/bets/empty")
     public ResponseEntity<SeasonDto> addEmptyBetToLeagueInSeason(@AuthenticationPrincipal AuthenticatedUser currentUser,
-                                                                 @PathVariable("season-id") String seasonId,
-                                                                 @PathVariable("league-id") String leagueId,
+                                                                 @PathVariable("season-id") Long seasonId,
+                                                                 @PathVariable("league-id") Long leagueId,
                                                                  @RequestBody NewEmptyBetDto newEmptyBet) {
         return ResponseEntity.status(201)
                 .body(seasonsService.addEmptyBetToLeagueInSeason(seasonId, leagueId, newEmptyBet));
@@ -135,8 +135,8 @@ public class SeasonsController implements SeasonsApi {
     @PreAuthorize("hasAuthority('ADMIN') || hasAuthority('MODERATOR')")
     @PostMapping("/{season-id}/bets/{bet-id}")
     public ResponseEntity<SeasonDto> addBetResult(@AuthenticationPrincipal AuthenticatedUser currentUser,
-                                               @PathVariable("season-id") String seasonId,
-                                               @PathVariable("bet-id") String betId,
+                                               @PathVariable("season-id") Long seasonId,
+                                               @PathVariable("bet-id") Long betId,
                                                @RequestBody NewBetResult newBetResult) {
         return ResponseEntity.status(201)
                 .body(seasonsService.addBetResult(seasonId, betId, newBetResult));
