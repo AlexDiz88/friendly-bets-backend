@@ -17,7 +17,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 @Tags(value = {
         @Tag(name = "Users")
 })
-@RequestMapping("/api/register")
 public interface SignUpApi {
 
     @Operation(summary = "Регистрация пользователя")
@@ -29,6 +28,5 @@ public interface SignUpApi {
                     }
             )
     })
-    @PostMapping
     ResponseEntity<UserDto> signUp(@RequestBody NewUserDto newUser);
 }
