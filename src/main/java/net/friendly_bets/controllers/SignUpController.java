@@ -6,9 +6,11 @@ import net.friendly_bets.dto.NewUserDto;
 import net.friendly_bets.dto.UserDto;
 import net.friendly_bets.services.SignUpService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.RestController;
 
 @RequiredArgsConstructor
+@CrossOrigin(origins = "*")
 @RestController
 public class SignUpController implements SignUpApi {
 
