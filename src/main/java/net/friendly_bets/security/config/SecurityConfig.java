@@ -36,7 +36,6 @@ public class SecurityConfig {
         httpSecurity.csrf().disable()
                 .headers().frameOptions().disable().and()
                 .authorizeRequests()
-                .antMatchers(("*")).permitAll()
                 .antMatchers("/swagger-ui.html/**").permitAll()
 //                .antMatchers("/api/users/my/profile").permitAll()
                 .and()

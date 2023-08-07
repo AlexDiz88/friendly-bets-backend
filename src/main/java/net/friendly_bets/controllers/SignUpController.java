@@ -1,5 +1,6 @@
 package net.friendly_bets.controllers;
 
+import io.swagger.v3.oas.annotations.servers.Server;
 import lombok.RequiredArgsConstructor;
 import net.friendly_bets.controllers.api.SignUpApi;
 import net.friendly_bets.dto.NewUserDto;
@@ -11,6 +12,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RequiredArgsConstructor
 @CrossOrigin(origins = "*")
+@Server(url = "https://friendly-bets.up.railway.app/")
 @RestController
 public class SignUpController implements SignUpApi {
 
