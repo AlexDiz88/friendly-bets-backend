@@ -13,11 +13,12 @@ import net.friendly_bets.dto.TeamDto;
 import net.friendly_bets.dto.TeamsPage;
 import net.friendly_bets.security.details.AuthenticatedUser;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.CrossOrigin;
 
 @Tags(value = {
         @Tag(name = "Teams")
 })
-
+@CrossOrigin(origins = {"https://friendly-bets.net", "https://www.friendly-bets.net", "http://friendly-bets.net", "http://www.friendly-bets.net", "https://friendly-bets.up.railway.app" })
 public interface TeamsApi {
 
     @Operation(summary = "Получение списка всех команд", description = "Доступно только администратору")

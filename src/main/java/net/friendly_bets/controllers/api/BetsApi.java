@@ -12,11 +12,12 @@ import net.friendly_bets.dto.BetDto;
 import net.friendly_bets.dto.BetsPage;
 import net.friendly_bets.security.details.AuthenticatedUser;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.CrossOrigin;
 
 @Tags(value = {
         @Tag(name = "Bets")
 })
-
+@CrossOrigin(origins = {"https://friendly-bets.net", "https://www.friendly-bets.net", "http://friendly-bets.net", "http://www.friendly-bets.net", "https://friendly-bets.up.railway.app" })
 public interface BetsApi {
 
     @Operation(summary = "Получение списка всех ставок", description = "Доступно только аутентифицированному пользователю")

@@ -10,6 +10,7 @@ import io.swagger.v3.oas.annotations.tags.Tags;
 import net.friendly_bets.dto.NewUserDto;
 import net.friendly_bets.dto.UserDto;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 @Tags(value = {
         @Tag(name = "Users")
 })
+@CrossOrigin(origins = {"https://friendly-bets.net", "https://www.friendly-bets.net", "http://friendly-bets.net", "http://www.friendly-bets.net", "https://friendly-bets.up.railway.app" })
 public interface SignUpApi {
 
     @Operation(summary = "Регистрация пользователя")

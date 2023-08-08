@@ -12,11 +12,12 @@ import net.friendly_bets.dto.PlayersStatsPage;
 import net.friendly_bets.dto.UserDto;
 import net.friendly_bets.security.details.AuthenticatedUser;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.CrossOrigin;
 
 @Tags(value = {
         @Tag(name = "Users")
 })
-
+@CrossOrigin(origins = {"https://friendly-bets.net", "https://www.friendly-bets.net", "http://friendly-bets.net", "http://www.friendly-bets.net", "https://friendly-bets.up.railway.app" })
 public interface UsersApi {
 
     @Operation(summary = "Получение своего профиля", description = "Доступно только аутентифицированному пользователю")

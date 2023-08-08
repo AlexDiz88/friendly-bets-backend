@@ -11,13 +11,14 @@ import io.swagger.v3.oas.annotations.tags.Tags;
 import net.friendly_bets.dto.*;
 import net.friendly_bets.security.details.AuthenticatedUser;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.CrossOrigin;
 
 import java.util.List;
 
 @Tags(value = {
         @Tag(name = "Seasons")
 })
-
+@CrossOrigin(origins = {"https://friendly-bets.net", "https://www.friendly-bets.net", "http://friendly-bets.net", "http://www.friendly-bets.net", "https://friendly-bets.up.railway.app" })
 public interface SeasonsApi {
 
     @Operation(summary = "Получение списка всех сезонов", description = "Доступно только аутентифицированному пользователю")
