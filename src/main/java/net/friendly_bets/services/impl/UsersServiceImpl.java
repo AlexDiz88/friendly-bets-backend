@@ -32,8 +32,10 @@ public class UsersServiceImpl implements UsersService {
 
     @Override
     public UserDto getProfile(String currentUserId) {
+        System.out.println("currentUserId: " + currentUserId);
         User user = usersRepository.findById(currentUserId)
                 .orElseThrow(IllegalArgumentException::new);
+        System.out.println("user: " + user.getUsername());
 
         return UserDto.from(user);
     }

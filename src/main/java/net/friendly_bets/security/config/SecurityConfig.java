@@ -38,11 +38,13 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) throws Exception {
+        httpSecurity
+                .cors().configurationSource(corsConfigurationSource());
+
         httpSecurity.csrf().disable()
                 .headers().frameOptions().disable().and()
                 .authorizeRequests()
                 .antMatchers("/swagger-ui.html/**").permitAll()
-//                .antMatchers("/api/users/my/profile").permitAll()
                 .and()
                 .formLogin()
                 .successHandler((request, response, authentication) -> {
@@ -58,9 +60,6 @@ public class SecurityConfig {
                 .and()
                 .logout().logoutSuccessHandler((request, response, authentication) ->
                         fillResponse(response, 200, "Выход выполнен успешно"));
-
-        httpSecurity
-                .cors().configurationSource(corsConfigurationSource());
 
         return httpSecurity.build();
     }
@@ -90,13 +89,14 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("https://friendly-bets.net", "https://www.friendly-bets.net", "http://friendly-bets.net", "http://www.friendly-bets.net", "https://friendly-bets.up.railway.app"));
+        configuration.setAllowedOrigins(List.of("http://localhost:3000", "https://friendly-bets.net", "https://www.friendly-bets.net", "http://friendly-bets.net", "http://www.friendly-bets.net", "https://friendly-bets.up.railway.app"));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE"));
         configuration.setAllowedHeaders(List.of("*"));
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/login", configuration);
         source.registerCorsConfiguration("/logout", configuration);
+        source.registerCorsConfiguration("/api/register", configuration);
 
         return source;
     }

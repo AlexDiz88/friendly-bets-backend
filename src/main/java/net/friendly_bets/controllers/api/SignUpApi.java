@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 @Tags(value = {
         @Tag(name = "Users")
 })
-@CrossOrigin(origins = {"https://friendly-bets.net", "https://www.friendly-bets.net", "http://friendly-bets.net", "http://www.friendly-bets.net", "https://friendly-bets.up.railway.app" })
+@CrossOrigin(origins = {"*", "http://localhost:3000", "https://friendly-bets.net", "https://www.friendly-bets.net", "http://friendly-bets.net", "http://www.friendly-bets.net", "https://friendly-bets.up.railway.app" })
 public interface SignUpApi {
 
     @Operation(summary = "Регистрация пользователя")

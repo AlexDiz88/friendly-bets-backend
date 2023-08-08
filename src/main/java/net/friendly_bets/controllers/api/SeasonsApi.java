@@ -18,7 +18,7 @@ import java.util.List;
 @Tags(value = {
         @Tag(name = "Seasons")
 })
-@CrossOrigin(origins = {"https://friendly-bets.net", "https://www.friendly-bets.net", "http://friendly-bets.net", "http://www.friendly-bets.net", "https://friendly-bets.up.railway.app" })
+@CrossOrigin(origins = {"http://localhost:3000", "https://friendly-bets.net", "https://www.friendly-bets.net", "http://friendly-bets.net", "http://www.friendly-bets.net", "https://friendly-bets.up.railway.app" })
 public interface SeasonsApi {
 
     @Operation(summary = "Получение списка всех сезонов", description = "Доступно только аутентифицированному пользователю")
