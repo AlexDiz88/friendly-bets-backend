@@ -37,7 +37,7 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) throws Exception {
         httpSecurity
                 .csrf().disable()
-                .cors(Customizer.withDefaults())
+                .cors().disable()
                 .headers().frameOptions().disable().and()
                 .authorizeRequests()
                 .antMatchers("/swagger-ui.html/**").permitAll()
