@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.CrossOrigin;
 @Tags(value = {
         @Tag(name = "Users")
 })
-@CrossOrigin(origins = {"*", "http://localhost:3000", "https://friendly-bets.net", "https://www.friendly-bets.net", "http://friendly-bets.net", "http://www.friendly-bets.net", "https://friendly-bets.up.railway.app" })
+@CrossOrigin(origins = {"*", "http://localhost:3000", "https://friendly-bets.net", "https://www.friendly-bets.net", "http://friendly-bets.net", "http://www.friendly-bets.net", "https://friendly-bets.up.railway.app", "https://alexdiz88.github.io/" })
 public interface UsersApi {
 
     @Operation(summary = "Получение своего профиля", description = "Доступно только аутентифицированному пользователю")
