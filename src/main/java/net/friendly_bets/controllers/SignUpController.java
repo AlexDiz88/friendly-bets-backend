@@ -1,6 +1,5 @@
 package net.friendly_bets.controllers;
 
-import io.swagger.v3.oas.annotations.servers.Server;
 import lombok.RequiredArgsConstructor;
 import net.friendly_bets.controllers.api.SignUpApi;
 import net.friendly_bets.dto.NewUserDto;
