@@ -25,16 +25,6 @@ public class ConfigurationComponents {
     }
 
     @Bean
-    public WebMvcConfigurer corsConfigurer() {
-        return new WebMvcConfigurer() {
-            @Override
-            public void addCorsMappings(CorsRegistry registry) {
-                registry.addMapping("/**").allowedOrigins("*");
-            }
-        };
-    }
-
-    @Bean
     public OpenAPI openApi() {
         ResolvedSchema resolvedSchema = ModelConverters.getInstance()
                 .resolveAsResolvedSchema(
