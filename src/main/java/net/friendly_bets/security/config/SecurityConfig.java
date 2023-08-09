@@ -96,7 +96,8 @@ public class SecurityConfig {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/login", configuration);
         source.registerCorsConfiguration("/logout", configuration);
-        source.registerCorsConfiguration("/**/register", configuration);
+        source.registerCorsConfiguration("/auth/register", configuration);
+        source.registerCorsConfiguration("/api/register", configuration);
 
         return source;
     }

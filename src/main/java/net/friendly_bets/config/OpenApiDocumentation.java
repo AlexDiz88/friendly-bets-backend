@@ -20,7 +20,8 @@ public class OpenApiDocumentation {
         return new Paths()
                 .addPathItem("/login", buildAuthenticationPathItem())
                 .addPathItem("/logout", buildLogoutPathItem())
-                .addPathItem("/auth/register", buildRegistrationPathItem());
+                .addPathItem("/auth/register", buildRegistrationPathItem())
+                .addPathItem("/api/register", buildRegistrationPathItem());
     }
 
     private static PathItem buildLogoutPathItem() {
