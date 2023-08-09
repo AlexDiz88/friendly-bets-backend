@@ -38,13 +38,11 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) throws Exception {
         httpSecurity
-                .cors().configurationSource(corsConfigurationSource())
-                .and()
+                .cors().disable()
                 .csrf().disable()
                 .headers().frameOptions().disable().and()
                 .authorizeRequests()
                 .antMatchers("/swagger-ui.html/**").permitAll()
-//                .antMatchers("/api/users/my/profile").permitAll()
                 .and()
                 .formLogin()
                 .successHandler((request, response, authentication) -> {
@@ -84,23 +82,4 @@ public class SecurityConfig {
             throw new IllegalStateException(e);
         }
     }
-
-    @Bean
-    public CorsConfigurationSource corsConfigurationSource() {
-        CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Arrays.asList(
-                "http://localhost:3000",
-                "https://friendly-bets.net",
-                "https://friendly-bets.up.railway.app"
-        ));
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE"));
-        configuration.setAllowedHeaders(Arrays.asList("*"));
-        configuration.setAllowCredentials(true);
-
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", configuration);
-
-        return source;
-    }
-
 }
