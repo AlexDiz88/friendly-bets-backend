@@ -48,7 +48,7 @@ public class SecurityConfig {
                 .antMatchers("/swagger-ui.html/**").permitAll()
                 .and()
                 .formLogin()
-                .usernameParameter("email")
+//                .usernameParameter("email")
                 .successHandler((request, response, authentication) -> {
                     fillResponse(response, 200, "Успешная авторизация");
                 })
@@ -70,7 +70,8 @@ public class SecurityConfig {
     CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(Arrays.asList("*"));
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "UPDATE"));
+        configuration.setAllowedMethods(Arrays.asList("*"));
+        configuration.addAllowedOriginPattern("*");
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;
