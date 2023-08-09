@@ -17,7 +17,6 @@ import java.util.List;
 @Tags(value = {
         @Tag(name = "Seasons")
 })
-
 public interface SeasonsApi {
 
     @Operation(summary = "Получение списка всех сезонов", description = "Доступно только аутентифицированному пользователю")

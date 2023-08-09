@@ -17,7 +17,6 @@ import org.springframework.http.ResponseEntity;
 @Tags(value = {
         @Tag(name = "Teams")
 })
-
 public interface TeamsApi {
 
     @Operation(summary = "Получение списка всех команд", description = "Доступно только администратору")

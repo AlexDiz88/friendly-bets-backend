@@ -16,7 +16,6 @@ import org.springframework.http.ResponseEntity;
 @Tags(value = {
         @Tag(name = "Users")
 })
-
 public interface UsersApi {
 
     @Operation(summary = "Получение своего профиля", description = "Доступно только аутентифицированному пользователю")

@@ -16,7 +16,6 @@ import org.springframework.http.ResponseEntity;
 @Tags(value = {
         @Tag(name = "Bets")
 })
-
 public interface BetsApi {
 
     @Operation(summary = "Получение списка всех ставок", description = "Доступно только аутентифицированному пользователю")
