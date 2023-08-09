@@ -14,6 +14,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
+import java.util.Arrays;
+
 import static net.friendly_bets.config.OpenApiDocumentation.*;
 
 @Configuration
@@ -31,7 +33,11 @@ public class ConfigurationComponents {
             public void addCorsMappings(CorsRegistry registry) {
                 registry
                         .addMapping("/**")
-                        .allowedOrigins("*")
+                        .allowedOrigins(
+                                "http://localhost:3000",
+                                "https://friendly-bets.net",
+                                "https://friendly-bets.up.railway.app",
+                                "https://friendly-bets-be.up.railway.app")
                         .allowedMethods("GET", "POST", "PUT", "DELETE")
                         .allowedHeaders("*")
                         .allowCredentials(true);
