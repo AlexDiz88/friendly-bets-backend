@@ -29,16 +29,7 @@ public class ConfigurationComponents {
         return new WebMvcConfigurer() {
             @Override
             public void addCorsMappings(CorsRegistry registry) {
-                registry
-                        .addMapping("/**")
-                        .allowedOrigins(
-                                "http://localhost:3000",
-                                "https://friendly-bets.net",
-                                "https://friendly-bets.up.railway.app",
-                                "https://friendly-bets-be.up.railway.app")
-                        .allowedMethods("GET", "POST", "PUT", "DELETE")
-                        .allowedHeaders("*")
-                        .allowCredentials(true);
+                registry.addMapping("/**").allowedOrigins("*");
             }
         };
     }
