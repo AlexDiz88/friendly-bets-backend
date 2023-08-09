@@ -19,7 +19,8 @@ public class OpenApiDocumentation {
     static Paths buildAuthenticationPath() {
         return new Paths()
                 .addPathItem("/login", buildAuthenticationPathItem())
-                .addPathItem("/logout", buildLogoutPathItem());
+                .addPathItem("/logout", buildLogoutPathItem())
+                .addPathItem("/auth/register", buildRegistrationPathItem());
     }
 
     private static PathItem buildLogoutPathItem() {
@@ -55,6 +56,28 @@ public class OpenApiDocumentation {
                                                                         .schema(new Schema<>().$ref("StandardResponseDto")))))));
     }
 
+    private static PathItem buildRegistrationPathItem() {
+        return new PathItem().post(
+                new Operation()
+                        .addTagsItem("Registration")
+                        .requestBody(buildRegistrationRequestBody())
+                        .responses(new ApiResponses()
+                                .addApiResponse("200",
+                                        new ApiResponse()
+                                                .description("Успешная регистрация")
+                                                .content(new Content().addMediaType("application/json",
+                                                        new MediaType().schema(new Schema<>().$ref("StandardResponseDto"))))
+                                )
+                                .addApiResponse("400",
+                                        new ApiResponse()
+                                                .description("Ошибка в данных регистрации")
+                                                .content(new Content().addMediaType("application/json",
+                                                        new MediaType().schema(new Schema<>().$ref("StandardResponseDto"))))
+                                )
+                        )
+        );
+    }
+
     static RequestBody buildAuthenticationRequestBody() {
         return new RequestBody().content(
                 new Content()
@@ -62,6 +85,14 @@ public class OpenApiDocumentation {
                                 new MediaType()
                                         .schema(new Schema<>()
                                                 .$ref("EmailAndPassword"))));
+    }
+
+    static RequestBody buildRegistrationRequestBody() {
+        return new RequestBody().content(
+                new Content()
+                        .addMediaType("application/x-www-form-urlencoded",
+                                new MediaType()
+                                        .schema(new Schema<>().$ref("RegistrationData"))));
     }
 
     static SecurityRequirement buildSecurity() {
