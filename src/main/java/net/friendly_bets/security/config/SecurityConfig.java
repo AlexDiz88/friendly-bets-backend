@@ -34,14 +34,15 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) throws Exception {
         httpSecurity
-                .cors()
-                .and()
+//                .cors()
+//                .and()
                 .csrf().disable()
                 .headers().frameOptions().disable().and()
                 .authorizeRequests()
                 .antMatchers("/swagger-ui.html/**").permitAll()
                 .and()
                 .formLogin()
+                .usernameParameter("email")
                 .successHandler((request, response, authentication) -> {
                     fillResponse(response, 200, "Успешная авторизация");
                 })
