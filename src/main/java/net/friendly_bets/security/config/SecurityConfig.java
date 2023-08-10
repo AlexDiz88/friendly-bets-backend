@@ -24,7 +24,6 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import javax.servlet.http.HttpServletResponse;
 import java.util.Arrays;
 
-import static org.springframework.security.config.Customizer.withDefaults;
 
 @RequiredArgsConstructor
 @EnableWebSecurity
@@ -41,14 +40,14 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) throws Exception {
         httpSecurity
-                .cors(withDefaults())
                 .csrf().disable()
+                .cors().configurationSource(corsConfigurationSource())
+                .and()
                 .headers().frameOptions().disable().and()
                 .authorizeRequests()
                 .antMatchers("/swagger-ui.html/**").permitAll()
                 .and()
                 .formLogin()
-//                .usernameParameter("email")
                 .successHandler((request, response, authentication) -> {
                     fillResponse(response, 200, "Успешная авторизация");
                 })
@@ -67,13 +66,20 @@ public class SecurityConfig {
     }
 
     @Bean
-    CorsConfigurationSource corsConfigurationSource() {
+    public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Arrays.asList("*"));
-        configuration.setAllowedMethods(Arrays.asList("*"));
-        configuration.addAllowedOriginPattern("*");
+        configuration.setAllowedOriginPatterns(Arrays.asList(
+                "http://localhost:3000",
+                "https://friendly-bets.net",
+                "https://www.friendly-bets.net",
+                "https://friendly-bets-9fph3.ondigitalocean.app"));
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        configuration.setAllowedHeaders(Arrays.asList("*"));
+        configuration.setAllowCredentials(true);
+
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
+
         return source;
     }
 
