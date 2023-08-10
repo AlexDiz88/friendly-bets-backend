@@ -41,7 +41,8 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) throws Exception {
         httpSecurity
                 .csrf().disable()
-                .cors(Customizer.withDefaults())
+                .cors().configurationSource(corsConfigurationSource())
+                .and()
                 .headers().frameOptions().disable().and()
                 .authorizeRequests()
                 .antMatchers("/swagger-ui.html/**").permitAll()
@@ -67,7 +68,11 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOriginPatterns(Arrays.asList("*"));
+        configuration.setAllowedOriginPatterns(Arrays.asList(
+                "http://localhost:3000",
+                "https://friendly-bets.net",
+                "https://www.friendly-bets.net",
+                "https://friendly-bets-9fph3.ondigitalocean.app"));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("*"));
         configuration.setAllowCredentials(true);
