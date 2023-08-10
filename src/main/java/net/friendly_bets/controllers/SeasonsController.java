@@ -3,6 +3,7 @@ package net.friendly_bets.controllers;
 import lombok.RequiredArgsConstructor;
 import net.friendly_bets.controllers.api.SeasonsApi;
 import net.friendly_bets.dto.*;
+import net.friendly_bets.models.User;
 import net.friendly_bets.security.details.AuthenticatedUser;
 import net.friendly_bets.services.SeasonsService;
 import org.springframework.http.ResponseEntity;
@@ -116,8 +117,9 @@ public class SeasonsController implements SeasonsApi {
                                                             @PathVariable("season-id") String seasonId,
                                                             @PathVariable("league-id") String leagueId,
                                                             @RequestBody NewBetDto newBet) {
+        String moderatorId = currentUser.getUser().getId();
         return ResponseEntity.status(201)
-                .body(seasonsService.addBetToLeagueInSeason(seasonId, leagueId, newBet));
+                .body(seasonsService.addBetToLeagueInSeason(moderatorId, seasonId, leagueId, newBet));
     }
 
     @Override
@@ -127,8 +129,9 @@ public class SeasonsController implements SeasonsApi {
                                                                  @PathVariable("season-id") String seasonId,
                                                                  @PathVariable("league-id") String leagueId,
                                                                  @RequestBody NewEmptyBetDto newEmptyBet) {
+        String moderatorId = currentUser.getUser().getId();
         return ResponseEntity.status(201)
-                .body(seasonsService.addEmptyBetToLeagueInSeason(seasonId, leagueId, newEmptyBet));
+                .body(seasonsService.addEmptyBetToLeagueInSeason(moderatorId, seasonId, leagueId, newEmptyBet));
     }
 
     @Override
@@ -138,8 +141,9 @@ public class SeasonsController implements SeasonsApi {
                                                @PathVariable("season-id") String seasonId,
                                                @PathVariable("bet-id") String betId,
                                                @RequestBody NewBetResult newBetResult) {
+        String moderatorId = currentUser.getUser().getId();
         return ResponseEntity.status(201)
-                .body(seasonsService.addBetResult(seasonId, betId, newBetResult));
+                .body(seasonsService.addBetResult(moderatorId, seasonId, betId, newBetResult));
     }
 
 

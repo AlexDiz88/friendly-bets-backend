@@ -21,6 +21,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static net.friendly_bets.utils.FieldsValidator.isValidEmail;
 import static net.friendly_bets.utils.FieldsValidator.isValidUsername;
 
 @RequiredArgsConstructor
@@ -44,6 +45,9 @@ public class UsersServiceImpl implements UsersService {
     public UserDto editEmail(String currentUserId, String newEmail) {
         if (newEmail == null || newEmail.trim().length() < 1) {
             throw new BadDataException("Email не должен быть пустым");
+        }
+        if (newEmail.length() < 6 || !isValidEmail(newEmail)) {
+            throw new BadDataException("Введенный e-mail некорректен");
         }
         User user = usersRepository.findById(currentUserId)
                 .orElseThrow(IllegalArgumentException::new);
@@ -79,7 +83,7 @@ public class UsersServiceImpl implements UsersService {
             throw new BadDataException("Новое имя совпадает со старым");
         }
         if (usersRepository.existsByUsername(newUsername)) {
-            throw new ConflictException("Пользователь с таким именем уже существует");
+            throw new ConflictException("Пользователь с таким именем уже существует. Выберите себе другое имя");
         }
 
         user.setUsername(newUsername);

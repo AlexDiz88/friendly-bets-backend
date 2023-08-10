@@ -34,10 +34,13 @@ public class SignUpServiceImpl implements SignUpService {
         if (usersRepository.existsByEmail(newUser.getEmail())) {
             throw new ConflictException("Пользователь с таким e-mail уже существует");
         }
-        if (!isValidPassword(newUser.getPassword())) {
-            throw new BadDataException("Пароль должен быть длиной не менее 8 символов и содержать минимум 1 заглавную букву," +
-                    " 1 цифру и 1 спецсимвол (@,$,%,^,&,=,-,_,#,+)");
+        if (newUser.getPassword().length() < 6){
+            throw new BadDataException("Пароль должен быть длиной не менее 6 символов");
         }
+//        if (!isValidPassword(newUser.getPassword())) {
+//            throw new BadDataException("Пароль должен быть длиной не менее 8 символов и содержать минимум 1 заглавную букву," +
+//                    " 1 цифру и 1 спецсимвол (@,$,%,^,&,=,-,_,#,+)");
+//        }
 
         User user = User.builder()
                 .createdAt(LocalDateTime.now())
