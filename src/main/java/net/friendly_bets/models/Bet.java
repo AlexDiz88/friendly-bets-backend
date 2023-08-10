@@ -29,6 +29,10 @@ public class Bet {
     private LocalDateTime createdAt;
 
     @DBRef(lazy = true)
+    @Field(name = "created_by")
+    private User createdBy;
+
+    @DBRef(lazy = true)
     @Field(name = "user")
     private User user;
 
@@ -57,6 +61,10 @@ public class Bet {
 
     @Field(name = "bet_size")
     private Integer betSize;
+
+    @DBRef(lazy = true)
+    @Field(name = "bet_result_added_by")
+    private User betResultAddedBy;
 
     @Field(name = "game_result")
     private String gameResult;

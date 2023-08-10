@@ -20,7 +20,7 @@ public class FieldsValidator {
     }
 
     public static boolean isValidUsername(String username) {
-        String regex = "^[A-Za-z]+[A-Za-z0-9\\s\\-_]*$";
+        String regex = "^[A-Za-zА-Яа-яЁё]+[A-Za-z0-9А-Яа-яЁё\\s\\-_]*$";
         Pattern pattern = Pattern.compile(regex);
         Matcher matcher = pattern.matcher(username);
         return matcher.matches();

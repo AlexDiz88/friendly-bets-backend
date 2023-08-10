@@ -231,7 +231,7 @@ public class SeasonsServiceImpl implements SeasonsService {
     // ------------------------------------------------------------------------------------------------------ //
 
     @Override
-    public SeasonDto addBetToLeagueInSeason(String seasonId, String leagueId, NewBetDto newBet) {
+    public SeasonDto addBetToLeagueInSeason(String moderatorId, String seasonId, String leagueId, NewBetDto newBet) {
         if (newBet == null) {
             throw new BadDataException("Объект не должен быть пустым");
         }
@@ -260,6 +260,9 @@ public class SeasonsServiceImpl implements SeasonsService {
             throw new BadDataException("Размер ставки не может быть меньше 1");
         }
 
+        User moderator = usersRepository.findById(moderatorId).orElseThrow(
+                () -> new NotFoundException("Модератор с таким ID не найден")
+        );
         User user = usersRepository.findById(newBet.getUserId()).orElseThrow(
                 () -> new NotFoundException("Участник с таким ID не найден")
         );
@@ -290,6 +293,7 @@ public class SeasonsServiceImpl implements SeasonsService {
 
         Bet bet = Bet.builder()
                 .createdAt(LocalDateTime.now())
+                .createdBy(moderator)
                 .user(user)
                 .matchDay(newBet.getMatchDay())
                 .gameId(newBet.getGameId())
@@ -312,7 +316,7 @@ public class SeasonsServiceImpl implements SeasonsService {
     // ------------------------------------------------------------------------------------------------------ //
 
     @Override
-    public SeasonDto addEmptyBetToLeagueInSeason(String seasonId, String leagueId, NewEmptyBetDto newEmptyBet) {
+    public SeasonDto addEmptyBetToLeagueInSeason(String moderatorId, String seasonId, String leagueId, NewEmptyBetDto newEmptyBet) {
         if (newEmptyBet == null) {
             throw new BadDataException("Объект не должен быть пустым");
         }
@@ -326,6 +330,9 @@ public class SeasonsServiceImpl implements SeasonsService {
             throw new BadDataException("Размер ставки не может быть меньше 1");
         }
 
+        User moderator = usersRepository.findById(moderatorId).orElseThrow(
+                () -> new NotFoundException("Модератор с таким ID не найден")
+        );
         User user = usersRepository.findById(newEmptyBet.getUserId()).orElseThrow(
                 () -> new NotFoundException("Участник с таким ID не найден")
         );
@@ -338,6 +345,7 @@ public class SeasonsServiceImpl implements SeasonsService {
 
         Bet bet = Bet.builder()
                 .createdAt(LocalDateTime.now())
+                .createdBy(moderator)
                 .user(user)
                 .matchDay(newEmptyBet.getMatchDay())
                 .betSize(newEmptyBet.getBetSize())
@@ -355,7 +363,7 @@ public class SeasonsServiceImpl implements SeasonsService {
     // ------------------------------------------------------------------------------------------------------ //
 
     @Override
-    public SeasonDto addBetResult(String seasonId, String betId, NewBetResult newBetResult) {
+    public SeasonDto addBetResult(String moderatorId, String seasonId, String betId, NewBetResult newBetResult) {
         if (newBetResult == null) {
             throw new BadDataException("Объект не должен быть пустым");
         }
@@ -374,6 +382,9 @@ public class SeasonsServiceImpl implements SeasonsService {
         if (!GameResultValidator.isValidGameResult(newBetResult.getGameResult())){
             throw new BadDataException("Некорректный счёт матча: " + newBetResult.getGameResult());
         }
+        User moderator = usersRepository.findById(moderatorId).orElseThrow(
+                () -> new NotFoundException("Модератор с таким ID не найден")
+        );
         Season season = seasonsRepository.findById(seasonId).orElseThrow(
                 () -> new IllegalArgumentException("Ошибка ID сезона")
         );
@@ -391,6 +402,7 @@ public class SeasonsServiceImpl implements SeasonsService {
             bet.setBalanceChange(-Double.valueOf(bet.getBetSize()));
         }
 
+        bet.setBetResultAddedBy(moderator);
         bet.setBetStatus(status);
         bet.setGameResult(newBetResult.getGameResult());
         betsRepository.save(bet);
