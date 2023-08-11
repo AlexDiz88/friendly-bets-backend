@@ -51,14 +51,14 @@ public class UsersServiceImpl implements UsersService {
         }
         User user = usersRepository.findById(currentUserId)
                 .orElseThrow(IllegalArgumentException::new);
-        if (user.getEmail() != null && user.getEmail().equals(newEmail)) {
+        if (user.getEmail() != null && user.getEmail().equals(newEmail.toLowerCase())) {
             throw new BadDataException("Новый E-mail совпадает со старым");
         }
-        if (usersRepository.existsByEmail(newEmail)) {
+        if (usersRepository.existsByEmail(newEmail.toLowerCase())) {
             throw new ConflictException("Пользователь с таким E-mail уже существует");
         }
 
-        user.setEmail(newEmail);
+        user.setEmail(newEmail.toLowerCase());
         usersRepository.save(user);
 
         return UserDto.from(user);
