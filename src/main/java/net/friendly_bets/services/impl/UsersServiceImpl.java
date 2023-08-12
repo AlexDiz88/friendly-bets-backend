@@ -1,6 +1,7 @@
 package net.friendly_bets.services.impl;
 
 import lombok.RequiredArgsConstructor;
+import net.friendly_bets.dto.NewPasswordUpdateDto;
 import net.friendly_bets.dto.PlayerStatsDto;
 import net.friendly_bets.dto.PlayersStatsPage;
 import net.friendly_bets.dto.UserDto;
@@ -14,6 +15,7 @@ import net.friendly_bets.models.User;
 import net.friendly_bets.repositories.SeasonsRepository;
 import net.friendly_bets.repositories.UsersRepository;
 import net.friendly_bets.services.UsersService;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -30,6 +32,7 @@ public class UsersServiceImpl implements UsersService {
 
     private final UsersRepository usersRepository;
     private final SeasonsRepository seasonsRepository;
+    private final PasswordEncoder passwordEncoder;
 
     @Override
     public UserDto getProfile(String currentUserId) {
@@ -51,7 +54,7 @@ public class UsersServiceImpl implements UsersService {
         }
         User user = usersRepository.findById(currentUserId)
                 .orElseThrow(IllegalArgumentException::new);
-        if (user.getEmail() != null && user.getEmail().equals(newEmail.toLowerCase())) {
+        if (user.getEmail().equals(newEmail.toLowerCase())) {
             throw new BadDataException("Новый E-mail совпадает со старым");
         }
         if (usersRepository.existsByEmail(newEmail.toLowerCase())) {
@@ -59,6 +62,39 @@ public class UsersServiceImpl implements UsersService {
         }
 
         user.setEmail(newEmail.toLowerCase());
+        usersRepository.save(user);
+
+        return UserDto.from(user);
+    }
+
+    // ------------------------------------------------------------------------------------------------------ //
+
+    @Override
+    public UserDto editPassword(String currentUserId, NewPasswordUpdateDto newPasswordUpdateDto) {
+
+        if (newPasswordUpdateDto.getCurrentPassword() == null || newPasswordUpdateDto.getCurrentPassword().length() < 1) {
+            throw new BadDataException("Введенный текущий пароль не должен быть пустым");
+        }
+        if (newPasswordUpdateDto.getNewPassword() == null || newPasswordUpdateDto.getNewPassword().length() < 1) {
+            throw new BadDataException("Введенный новый пароль не должен быть пустым");
+        }
+        if (newPasswordUpdateDto.getNewPassword().equals(newPasswordUpdateDto.getCurrentPassword())) {
+            throw new BadDataException("Введенные текущий и новый пароль совпадают");
+        }
+        if (newPasswordUpdateDto.getNewPassword().length() < 6) {
+            throw new BadDataException("Новый пароль должен быть длиной не менее 6 символов");
+        }
+
+        User user = usersRepository.findById(currentUserId).orElseThrow(IllegalArgumentException::new);
+
+        if (!passwordEncoder.matches(newPasswordUpdateDto.getCurrentPassword(), user.getHashPassword())) {
+            throw new BadDataException("Введенный текущий пароль указан неверно");
+        }
+        if (passwordEncoder.matches(newPasswordUpdateDto.getNewPassword(), user.getHashPassword())) {
+            throw new BadDataException("Новый пароль совпадает с текущим");
+        }
+
+        user.setHashPassword(passwordEncoder.encode(newPasswordUpdateDto.getNewPassword()));
         usersRepository.save(user);
 
         return UserDto.from(user);

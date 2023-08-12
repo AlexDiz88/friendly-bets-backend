@@ -2,6 +2,7 @@ package net.friendly_bets.controllers;
 
 import lombok.RequiredArgsConstructor;
 import net.friendly_bets.controllers.api.UsersApi;
+import net.friendly_bets.dto.NewPasswordUpdateDto;
 import net.friendly_bets.dto.PlayersStatsPage;
 import net.friendly_bets.dto.UserDto;
 import net.friendly_bets.security.details.AuthenticatedUser;
@@ -35,6 +36,16 @@ public class UsersController implements UsersApi {
         String currentUserId = currentUser.getUser().getId();
         return ResponseEntity
                 .ok(usersService.editEmail(currentUserId, newEmail));
+    }
+
+    @Override
+    @PreAuthorize("isAuthenticated()")
+    @PutMapping("/my/profile/password")
+    public ResponseEntity<UserDto> editPassword(@AuthenticationPrincipal AuthenticatedUser currentUser,
+                                                @RequestBody NewPasswordUpdateDto newPasswordUpdateDto) {
+        String currentUserId = currentUser.getUser().getId();
+        return ResponseEntity
+                .ok(usersService.editPassword(currentUserId, newPasswordUpdateDto));
     }
 
     @Override

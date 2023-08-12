@@ -27,11 +27,11 @@ public class SignUpServiceImpl implements SignUpService {
     @Override
     public UserDto signUp(NewUserDto newUser) {
 
-        if (newUser.getEmail().length() < 6 || !isValidEmail(newUser.getEmail())) {
+        if (newUser.getEmail().length() < 6 || !isValidEmail(newUser.getEmail().toLowerCase())) {
             throw new BadDataException("Введенный e-mail некорректен");
         }
         System.out.println(newUser.getEmail());
-        if (usersRepository.existsByEmail(newUser.getEmail())) {
+        if (usersRepository.existsByEmail(newUser.getEmail().toLowerCase())) {
             throw new ConflictException("Пользователь с таким e-mail уже существует");
         }
         if (newUser.getPassword().length() < 6){

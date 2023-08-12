@@ -74,4 +74,11 @@ public class Bet {
 
     @Field(name = "balance_change")
     private Double balanceChange;
+
+    @Field(name = "updated_at")
+    private LocalDateTime updatedAt;
+
+    @DBRef(lazy = true)
+    @Field(name = "updated_by")
+    private User updatedBy;
 }
