@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.tags.Tags;
+import net.friendly_bets.dto.NewPasswordUpdateDto;
 import net.friendly_bets.dto.PlayersStatsPage;
 import net.friendly_bets.dto.UserDto;
 import net.friendly_bets.security.details.AuthenticatedUser;
@@ -54,6 +55,26 @@ public interface UsersApi {
     })
     ResponseEntity<UserDto> editEmail(@Parameter(hidden = true) AuthenticatedUser currentUser,
                                       @Parameter(description = "новая почта пользователя") String newEmail);
+
+    // ------------------------------------------------------------------------------------------------------ //
+
+    @Operation(summary = "Изменить пароль профиля", description = "Доступно только аутентифицированному пользователю")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Новый пароль профиля",
+                    content = {
+                            @Content(mediaType = "application/json",
+                                    schema = @Schema(implementation = UserDto.class))
+                    }
+            ),
+            @ApiResponse(responseCode = "403", description = "Пользователь не аутентифицирован",
+                    content = {
+                            @Content(mediaType = "application/json",
+                                    schema = @Schema(ref = "StandardResponseDto"))
+                    }
+            )
+    })
+    ResponseEntity<UserDto> editPassword(@Parameter(hidden = true) AuthenticatedUser currentUser,
+                                         @Parameter(description = "текущий и новый пароль пользователя") NewPasswordUpdateDto newPasswordUpdateDto);
 
     // ------------------------------------------------------------------------------------------------------ //
 
