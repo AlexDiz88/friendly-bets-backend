@@ -145,6 +145,4 @@ public class SeasonsController implements SeasonsApi {
         return ResponseEntity.status(201)
                 .body(seasonsService.addBetResult(moderatorId, seasonId, betId, newBetResult));
     }
-
-
 }

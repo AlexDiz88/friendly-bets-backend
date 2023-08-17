@@ -35,6 +35,9 @@ public class LeagueDto {
     @Schema(description = "сокарщенное имя лиги (english)", example = "BL")
     private String shortNameEn;
 
+    @Schema(description = "текущий игровой тур лиги", example = "14")
+    private String currentMatchDay;
+
     @Schema(description = "список команд лиги", example = "[Team1, Team2...]")
     private List<TeamDto> teams;
 
@@ -50,6 +53,7 @@ public class LeagueDto {
                 .displayNameEn(league.getDisplayNameEn())
                 .shortNameRu(league.getShortNameRu())
                 .shortNameEn(league.getShortNameEn())
+                .currentMatchDay(league.getCurrentMatchDay())
                 .teams(TeamDto.from(league.getTeams()))
                 .bets(BetDto.from(league.getBets()))
                 .build();

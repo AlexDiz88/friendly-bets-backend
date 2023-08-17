@@ -69,11 +69,14 @@ public class SeasonsServiceImpl implements SeasonsService {
 
     @Override
     public SeasonDto changeSeasonStatus(String id, String status) {
+        if (status == null) {
+            throw new BadDataException("Статус сезона is null");
+        }
         status = status.substring(1, status.length() - 1);
         try {
             Season.Status.valueOf(status);
         } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("Недопустимый статус: " + status);
+            throw new BadDataException("Недопустимый статус: " + status);
         }
         Season season = seasonsRepository.findById(id).orElseThrow(
                 () -> new NotFoundException("Сезон с таким ID не найден")
@@ -84,7 +87,11 @@ public class SeasonsServiceImpl implements SeasonsService {
         if (season.getStatus().equals(Season.Status.FINISHED)) {
             throw new BadDataException("Сезон завершен и его статус больше нельзя изменить");
         }
-        // TODO исправить отображение ошибки на фронте
+
+        if (status.equals("ACTIVE")) {
+            Optional<Season> currentActiveSeason = seasonsRepository.findSeasonByStatus(Season.Status.ACTIVE);
+            currentActiveSeason.ifPresent(value -> value.setStatus(Season.Status.PAUSED));
+        }
 
         season.setStatus(Season.Status.valueOf(status));
         seasonsRepository.save(season);
@@ -134,7 +141,7 @@ public class SeasonsServiceImpl implements SeasonsService {
                 () -> new NotFoundException("Сезон с таким ID не найден")
         );
         User user = usersRepository.findById(userId).orElseThrow(
-                () -> new IllegalArgumentException("Пользователь не найден")
+                () -> new NotFoundException("Пользователь не найден")
         );
         if (user.getUsername() == null || user.getUsername().isBlank()) {
             throw new BadDataException("Сначала заполните поле 'Имя' в личном кабинете");
@@ -189,6 +196,7 @@ public class SeasonsServiceImpl implements SeasonsService {
                 .displayNameEn(newLeague.getDisplayNameEn())
                 .shortNameRu(newLeague.getShortNameRu())
                 .shortNameEn(newLeague.getShortNameEn())
+                .currentMatchDay("1")
                 .teams(new ArrayList<>())
                 .bets(new ArrayList<>())
                 .build();
@@ -204,6 +212,15 @@ public class SeasonsServiceImpl implements SeasonsService {
 
     @Override
     public SeasonDto addTeamToLeagueInSeason(String seasonId, String leagueId, String teamId) {
+        if (teamId == null || teamId.isBlank()) {
+            throw new BadDataException("Команда не выбрана");
+        }
+        if (leagueId == null || leagueId.isBlank()) {
+            throw new BadDataException("Лига не выбрана");
+        }
+        if (seasonId == null || seasonId.isBlank()) {
+            throw new BadDataException("Сезон не выбран");
+        }
         Season season = seasonsRepository.findById(seasonId).orElseThrow(
                 () -> new NotFoundException("Сезон с таким ID не найден")
         );
@@ -281,13 +298,15 @@ public class SeasonsServiceImpl implements SeasonsService {
 
         // TODO написать проверку совпадения ставок под лигу, а не из общего репозитория ставок
         //  (т.к. могут быть совпадения в разных лигах/сезонах)
-        if (betsRepository.existsByUserAndMatchDayAndHomeTeamAndAwayTeamAndBetTitle(
+        if (betsRepository.existsByUserAndMatchDayAndHomeTeamAndAwayTeamAndBetTitleAndBetOddsAndBetSize(
                 user,
                 newBet.getMatchDay(),
                 homeTeam,
                 awayTeam,
-                newBet.getBetTitle())
-        ) {
+                newBet.getBetTitle(),
+                newBet.getBetOdds(),
+                newBet.getBetSize()
+        )) {
             throw new ConflictException("Ставка на этот матч от данного участника уже добавлена");
         }
 
@@ -308,8 +327,16 @@ public class SeasonsServiceImpl implements SeasonsService {
 
         betsRepository.save(bet);
         league.getBets().add(bet);
-        leaguesRepository.save(league);
+        if (season.getPlayers().size() != 0 && season.getBetCountPerMatchDay() != 0) {
+            System.out.println("Пересчет текущего тура -----------------");
+            System.out.println("Кол-во ставок в лиге: " + league.getBets().size());
+            int totalBets = (int) league.getBets().stream().filter(b -> !b.getBetStatus().equals(Bet.BetStatus.DELETED)).count();
+            int currentMatchDay = totalBets / (season.getPlayers().size() * season.getBetCountPerMatchDay()) + 1;
+            System.out.println("currentMatchDay:" + currentMatchDay);
+            league.setCurrentMatchDay(String.valueOf(currentMatchDay));
+        }
 
+        leaguesRepository.save(league);
         return SeasonDto.from(season);
     }
 
@@ -350,13 +377,23 @@ public class SeasonsServiceImpl implements SeasonsService {
                 .matchDay(newEmptyBet.getMatchDay())
                 .betSize(newEmptyBet.getBetSize())
                 .betStatus(Bet.BetStatus.EMPTY)
+                .betResultAddedAt(LocalDateTime.now())
+                .betResultAddedBy(moderator)
                 .balanceChange(-Double.valueOf(newEmptyBet.getBetSize()))
                 .build();
 
         betsRepository.save(bet);
         league.getBets().add(bet);
-        leaguesRepository.save(league);
+        if (season.getPlayers().size() != 0 && season.getBetCountPerMatchDay() != 0) {
+            System.out.println("Пересчет текущего тура -----------------");
+            System.out.println("Кол-во ставок в лиге: " + league.getBets().size());
+            int totalBets = (int) league.getBets().stream().filter(b -> !b.getBetStatus().equals(Bet.BetStatus.DELETED)).count();
+            int currentMatchDay = totalBets / (season.getPlayers().size() * season.getBetCountPerMatchDay()) + 1;
+            System.out.println("currentMatchDay:" + currentMatchDay);
+            league.setCurrentMatchDay(String.valueOf(currentMatchDay));
+        }
 
+        leaguesRepository.save(league);
         return SeasonDto.from(season);
     }
 
@@ -379,21 +416,28 @@ public class SeasonsServiceImpl implements SeasonsService {
         } catch (IllegalArgumentException e) {
             throw new IllegalArgumentException("Недопустимый статус: " + newBetResult.getBetStatus());
         }
-        if (!GameResultValidator.isValidGameResult(newBetResult.getGameResult())){
+        if (!GameResultValidator.isValidGameResult(newBetResult.getGameResult())) {
             throw new BadDataException("Некорректный счёт матча: " + newBetResult.getGameResult());
         }
+
+        Bet bet = betsRepository.findById(betId).orElseThrow(
+                () -> new IllegalArgumentException("Ошибка ID ставки")
+        );
+        if (!bet.getBetStatus().equals(Bet.BetStatus.OPENED)) {
+            throw new ConflictException("Эта ставка уже обработана другим модератором");
+        }
+
         User moderator = usersRepository.findById(moderatorId).orElseThrow(
                 () -> new NotFoundException("Модератор с таким ID не найден")
         );
         Season season = seasonsRepository.findById(seasonId).orElseThrow(
                 () -> new IllegalArgumentException("Ошибка ID сезона")
         );
-        Bet bet = betsRepository.findById(betId).orElseThrow(
-                () -> new IllegalArgumentException("Ошибка ID лиги")
-        );
+
+
         Bet.BetStatus status = Bet.BetStatus.valueOf(newBetResult.getBetStatus());
         if (status.equals(Bet.BetStatus.WON)) {
-            bet.setBalanceChange(bet.getBetOdds()*bet.getBetSize()-bet.getBetSize());
+            bet.setBalanceChange(bet.getBetOdds() * bet.getBetSize() - bet.getBetSize());
         }
         if (status.equals(Bet.BetStatus.RETURNED)) {
             bet.setBalanceChange(0.0);
@@ -402,13 +446,12 @@ public class SeasonsServiceImpl implements SeasonsService {
             bet.setBalanceChange(-Double.valueOf(bet.getBetSize()));
         }
 
+        bet.setBetResultAddedAt(LocalDateTime.now());
         bet.setBetResultAddedBy(moderator);
         bet.setBetStatus(status);
         bet.setGameResult(newBetResult.getGameResult());
         betsRepository.save(bet);
+
         return SeasonDto.from(season);
     }
-
-    // ------------------------------------------------------------------------------------------------------ //
-
 }
