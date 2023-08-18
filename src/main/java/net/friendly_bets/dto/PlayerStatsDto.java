@@ -13,6 +13,9 @@ import lombok.NoArgsConstructor;
 @Schema(description = "Статистика игрока")
 public class PlayerStatsDto {
 
+    @Schema(description = "фото участника турнира", example = "путь_к_изображению.png")
+    private String avatar;
+
     @Schema(description = "имя участника турнира", example = "Player")
     private String username;
 
