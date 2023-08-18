@@ -8,12 +8,26 @@ import org.springframework.data.mongodb.repository.MongoRepository;
 
 public interface BetsRepository extends MongoRepository<Bet, String> {
 
-    boolean existsByUserAndMatchDayAndHomeTeamAndAwayTeamAndBetTitle(
+    boolean existsByUserAndMatchDayAndHomeTeamAndAwayTeamAndBetTitleAndBetOddsAndBetSize(
             User user,
             String matchDay,
             Team homeTeam,
             Team awayTeam,
-            String betTitle
+            String betTitle,
+            Double betOdds,
+            Integer betSize
+    );
+
+    boolean existsByUserAndMatchDayAndHomeTeamAndAwayTeamAndBetTitleAndBetOddsAndBetSizeAndGameResultAndBetStatus(
+            User user,
+            String matchDay,
+            Team homeTeam,
+            Team awayTeam,
+            String betTitle,
+            Double betOdds,
+            Integer betSize,
+            String gameResult,
+            Bet.BetStatus betStatus
     );
 
 }

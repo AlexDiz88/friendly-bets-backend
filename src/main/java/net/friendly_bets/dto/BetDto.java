@@ -21,8 +21,11 @@ public class BetDto {
     @Schema(description = "идентификатор ставки", example = "12-байтовый хэш ID")
     private String id;
 
-    @Schema(description = "имя игрока, сделавшего ставку", example = "Player")
-    private String username;
+    @Schema(description = "время создания/добавления ставки", example = "2023-08-15T12:00:00")
+    private LocalDateTime createdAt;
+
+    @Schema(description = "игрок, сделавший ставку", example = "{Player}")
+    private UserDto player;
 
     @Schema(description = "игровой тур", example = "14")
     private String matchDay;
@@ -33,10 +36,10 @@ public class BetDto {
     @Schema(description = "дата и время начала матча", example = "2023-07-18T18:31:33")
     private LocalDateTime gameDate;
 
-    @Schema(description = "команда хозяев", example = "Арсенал")
+    @Schema(description = "команда хозяев", example = "{Команда1}")
     private TeamDto homeTeam;
 
-    @Schema(description = "команда гостей", example = "Ливерпуль")
+    @Schema(description = "команда гостей", example = "{Команда2}")
     private TeamDto awayTeam;
 
     @Schema(description = "ставка", example = "П1 + ТМ3,5")
@@ -48,6 +51,9 @@ public class BetDto {
     @Schema(description = "размер ставки", example = "10")
     private Integer betSize;
 
+    @Schema(description = "время добавления результата ставки", example = "2023-08-15T12:00:00")
+    private LocalDateTime betResultAddedAt;
+
     @Schema(description = "счет матча", example = "2:1(1:1)")
     private String gameResult;
 
@@ -57,22 +63,29 @@ public class BetDto {
     @Schema(description = "изменение баланса игрока по результату счёта матча", example = "+21,90")
     private Double balanceChange;
 
+    @Schema(description = "время изменения/редавтирования/аннулирования ставки", example = "2023-08-15T12:00:00")
+    private LocalDateTime updatedAt;
+
 
     public static BetDto from(Bet bet) {
-        if (bet.getBetStatus().equals(Bet.BetStatus.EMPTY)) {
+        if (bet.getBetStatus().equals(Bet.BetStatus.EMPTY) || bet.getBetStatus().equals(Bet.BetStatus.DELETED)) {
             return BetDto.builder()
                     .id(bet.getId())
-                    .username(bet.getUser().getUsername())
+                    .createdAt(bet.getCreatedAt())
+                    .player(UserDto.from(bet.getUser()))
                     .matchDay(bet.getMatchDay())
                     .betSize(bet.getBetSize())
                     .gameResult(bet.getGameResult())
+                    .betResultAddedAt(bet.getBetResultAddedAt())
                     .betStatus(bet.getBetStatus().toString())
                     .balanceChange(bet.getBalanceChange())
+                    .updatedAt(bet.getUpdatedAt())
                     .build();
         }
         return BetDto.builder()
                 .id(bet.getId())
-                .username(bet.getUser().getUsername())
+                .createdAt(bet.getCreatedAt())
+                .player(UserDto.from(bet.getUser()))
                 .matchDay(bet.getMatchDay())
                 .gameId(bet.getGameId())
                 .gameDate(bet.getGameDate())
@@ -81,9 +94,11 @@ public class BetDto {
                 .betTitle(bet.getBetTitle())
                 .betOdds(bet.getBetOdds())
                 .betSize(bet.getBetSize())
+                .betResultAddedAt(bet.getBetResultAddedAt())
                 .gameResult(bet.getGameResult())
                 .betStatus(bet.getBetStatus().toString())
                 .balanceChange(bet.getBalanceChange())
+                .updatedAt(bet.getUpdatedAt())
                 .build();
     }
 

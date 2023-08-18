@@ -35,6 +35,6 @@ public class ConfigurationComponents {
                         .addSchemas("StandardResponseDto", resolvedSchema.schema.description("StandardResponseDto")))
                 .addSecurityItem(buildSecurity())
                 .paths(buildAuthenticationPath())
-                .info(new Info().title("Friendly-Bets API").version("0.1"));
+                .info(new Info().title("Friendly-Bets API").version("1.0"));
     }
 }

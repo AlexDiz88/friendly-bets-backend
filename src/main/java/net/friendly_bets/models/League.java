@@ -41,6 +41,9 @@ public class League {
     @Field(name = "short_name_en")
     private String shortNameEn;
 
+    @Field(name = "current_match_day")
+    private String currentMatchDay;
+
     @DBRef(lazy = true)
     @Field(name = "teams")
     private List<Team> teams;

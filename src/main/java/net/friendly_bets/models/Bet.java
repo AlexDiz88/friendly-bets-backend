@@ -18,7 +18,7 @@ import java.time.LocalDateTime;
 @Document(collection = "bets")
 public class Bet {
     public enum BetStatus {
-        OPENED, WON, RETURNED, LOST, EMPTY
+        OPENED, WON, RETURNED, LOST, EMPTY, DELETED
     }
 
     @MongoId
@@ -61,6 +61,9 @@ public class Bet {
 
     @Field(name = "bet_size")
     private Integer betSize;
+
+    @Field(name = "bet_result_added_at")
+    private LocalDateTime betResultAddedAt;
 
     @DBRef(lazy = true)
     @Field(name = "bet_result_added_by")

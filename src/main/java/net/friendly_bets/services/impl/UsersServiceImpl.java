@@ -141,7 +141,7 @@ public class UsersServiceImpl implements UsersService {
         for (League league : leagues) {
             List<Bet> bets = league.getBets();
             for (Bet bet : bets) {
-                if (bet.getBetStatus().equals(Bet.BetStatus.OPENED)) {
+                if (bet.getBetStatus().equals(Bet.BetStatus.OPENED) || bet.getBetStatus().equals(Bet.BetStatus.DELETED)) {
                     continue;
                 }
 
