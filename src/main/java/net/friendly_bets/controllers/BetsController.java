@@ -35,16 +35,17 @@ public class BetsController implements BetsApi {
                                              @PathVariable("bet-id") String betId,
                                              @RequestBody EditedBetDto editedBet) {
         String moderatorId = currentUser.getUser().getId();
-        return ResponseEntity.status(201)
+        return ResponseEntity.status(200)
                 .body(betsService.editBet(moderatorId, betId, editedBet));
     }
 
     @Override
-    @PreAuthorize("hasAuthority('ADMIN')")
+    @PreAuthorize("hasAuthority('ADMIN') || hasAuthority('MODERATOR')")
     @DeleteMapping("/{bet-id}")
     public ResponseEntity<BetDto> deleteBet(@AuthenticationPrincipal AuthenticatedUser currentUser,
                                             @PathVariable("bet-id") String betId) {
-        return null;
+        String moderatorId = currentUser.getUser().getId();
+        return ResponseEntity.status(200)
+                .body(betsService.deleteBet(moderatorId, betId));
     }
-
 }

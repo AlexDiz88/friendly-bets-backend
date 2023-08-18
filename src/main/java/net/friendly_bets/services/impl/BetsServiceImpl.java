@@ -160,14 +160,27 @@ public class BetsServiceImpl implements BetsService {
         return BetDto.from(bet);
     }
 
+    @Override
+    public BetDto deleteBet(String moderatorId, String betId) {
+        Bet bet = betsRepository.findById(betId).orElseThrow(
+                () -> new NotFoundException("Ставка с таким ID не найдена"));
+
+        User moderator = usersRepository.findById(moderatorId).orElseThrow(
+                () -> new NotFoundException("Модератор с таким ID не найден")
+        );
+
+        if (bet.getBetStatus() != Bet.BetStatus.OPENED && bet.getBetStatus() != Bet.BetStatus.DELETED) {
+            bet.setBalanceChange(0.0);
+        }
+
+        bet.setUpdatedAt(LocalDateTime.now());
+        bet.setUpdatedBy(moderator);
+        bet.setBetStatus(Bet.BetStatus.DELETED);
+
+        betsRepository.save(bet);
+        return BetDto.from(bet);
+    }
+
     // ------------------------------------------------------------------------------------------------------ //
 
-
-//    @Override
-//    public BetDto deleteBet(String betId) {
-//        Bet bet = betsRepository.findById(betId).orElseThrow(
-//                () -> new NotFoundException("Ставка с ID <" + betId + "> не найдена"));
-//        betsRepository.delete(bet);
-//        return BetDto.from(bet);
-//    }
 }

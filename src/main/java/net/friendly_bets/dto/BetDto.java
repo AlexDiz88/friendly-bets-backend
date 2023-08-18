@@ -68,7 +68,7 @@ public class BetDto {
 
 
     public static BetDto from(Bet bet) {
-        if (bet.getBetStatus().equals(Bet.BetStatus.EMPTY)) {
+        if (bet.getBetStatus().equals(Bet.BetStatus.EMPTY) || bet.getBetStatus().equals(Bet.BetStatus.DELETED)) {
             return BetDto.builder()
                     .id(bet.getId())
                     .createdAt(bet.getCreatedAt())

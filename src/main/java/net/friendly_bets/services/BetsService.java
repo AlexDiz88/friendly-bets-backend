@@ -10,4 +10,6 @@ public interface BetsService {
     BetsPage getAllBets();
 
     BetDto editBet(String moderatorId, String betId, EditedBetDto editedBet);
+
+    BetDto deleteBet(String moderatorId, String betId);
 }

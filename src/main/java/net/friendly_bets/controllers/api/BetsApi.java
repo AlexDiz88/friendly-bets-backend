@@ -57,9 +57,9 @@ public interface BetsApi {
 
     // ------------------------------------------------------------------------------------------------------ //
 
-    @Operation(summary = "Удалить ставку", description = "Доступно только администратору")
+    @Operation(summary = "Аннулировать ставку", description = "Доступно только администратору и модератору")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Удаленная ставка",
+            @ApiResponse(responseCode = "200", description = "Аннулированная ставка",
                     content = {
                             @Content(mediaType = "application/json",
                                     schema = @Schema(implementation = BetDto.class))
