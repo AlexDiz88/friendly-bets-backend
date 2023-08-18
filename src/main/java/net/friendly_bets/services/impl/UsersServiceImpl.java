@@ -150,6 +150,7 @@ public class UsersServiceImpl implements UsersService {
                 PlayerStatsDto playerStats = playersStatsMap.getOrDefault(
                         username,
                         PlayerStatsDto.builder()
+                                .avatar(bet.getUser().getAvatar())
                                 .username(username)
                                 .betCount(0)
                                 .wonBetCount(0)
