@@ -15,7 +15,7 @@ public class UpdatedUsernameDto {
     @Schema(description = "новое имя пользователя", example = "BestPlayer777")
     @NotNull(message = "{field.isNull}")
     @NotBlank(message = "{field.isBlank}")
-    @Min(value = 2, message = "{username.isShort}")
+    @Size(min = 2, message = "{username.isShort}")
     @Pattern(regexp = "^[A-Za-zА-Яа-яЁё]+[A-Za-z0-9А-Яа-яЁё\\s\\-_]*$", message = "{username.invalid}")
     private String newUsername;
 }

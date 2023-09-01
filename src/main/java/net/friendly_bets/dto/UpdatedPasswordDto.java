@@ -23,7 +23,7 @@ public class UpdatedPasswordDto {
     @Schema(description = "новый пароль пользователя", example = "My-password9999")
     @NotNull(message = "{field.isNull}")
     @NotBlank(message = "{field.isBlank}")
-    @Min(value = 6, message = "{password.isShort}")
+    @Size(min = 6, message = "{password.isShort}")
 //  @Pattern(regexp = "^(?=.*[A-Z])(?=.*\\d)(?=.*[@#$%^&+=!\\-]).{6,}$", message = "{password.isWeak}")
     private String newPassword;
 }
