@@ -12,6 +12,7 @@ import net.friendly_bets.dto.*;
 import net.friendly_bets.security.details.AuthenticatedUser;
 import org.springframework.http.ResponseEntity;
 
+import javax.validation.Valid;
 import java.util.List;
 
 @Tags(value = {
@@ -55,7 +56,7 @@ public interface SeasonsApi {
     })
     ResponseEntity<SeasonDto> addSeason(@Parameter(hidden = true) AuthenticatedUser currentUser,
                                         @Parameter(description = "новый сезон")
-                                        NewSeasonDto newSeason);
+                                        @Valid NewSeasonDto newSeason);
 
     // ------------------------------------------------------------------------------------------------------ //
 
@@ -197,7 +198,7 @@ public interface SeasonsApi {
     })
     ResponseEntity<SeasonDto> addLeagueToSeason(@Parameter(hidden = true) AuthenticatedUser currentUser,
                                                 @Parameter(description = "ID сезона") String seasonId,
-                                                @Parameter(description = "новая лига") NewLeagueDto newLeague);
+                                                @Parameter(description = "новая лига") @Valid NewLeagueDto newLeague);
 
     // ------------------------------------------------------------------------------------------------------ //
 
@@ -241,7 +242,7 @@ public interface SeasonsApi {
     ResponseEntity<SeasonDto> addBetToLeagueInSeason(@Parameter(hidden = true) AuthenticatedUser currentUser,
                                                      @Parameter(description = "ID сезона") String seasonId,
                                                      @Parameter(description = "ID лиги") String leagueId,
-                                                     @Parameter(description = "новая ставка") NewBetDto newBet);
+                                                     @Parameter(description = "новая ставка") @Valid NewBetDto newBet);
 
     // ------------------------------------------------------------------------------------------------------ //
 
@@ -263,7 +264,7 @@ public interface SeasonsApi {
     ResponseEntity<SeasonDto> addEmptyBetToLeagueInSeason(@Parameter(hidden = true) AuthenticatedUser currentUser,
                                                           @Parameter(description = "ID сезона") String seasonId,
                                                           @Parameter(description = "ID лиги") String leagueId,
-                                                          @Parameter(description = "новая пустая ставка") NewEmptyBetDto newEmptyBet);
+                                                          @Parameter(description = "новая пустая ставка") @Valid NewEmptyBetDto newEmptyBet);
 
     // ------------------------------------------------------------------------------------------------------ //
 
@@ -285,7 +286,7 @@ public interface SeasonsApi {
     ResponseEntity<SeasonDto> addBetResult(@Parameter(hidden = true) AuthenticatedUser currentUser,
                                         @Parameter(description = "ID сезона") String seasonId,
                                         @Parameter(description = "ID ставки") String betId,
-                                        @Parameter(description = "результат матча и статус ставки") NewBetResult newBetResult);
+                                        @Parameter(description = "результат матча и статус ставки") @Valid NewBetResult newBetResult);
 
     // ------------------------------------------------------------------------------------------------------ //
 

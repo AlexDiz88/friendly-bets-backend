@@ -12,6 +12,8 @@ import net.friendly_bets.dto.UserDto;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestBody;
 
+import javax.validation.Valid;
+
 @Tags(value = {
         @Tag(name = "Users")
 })
@@ -26,5 +28,5 @@ public interface SignUpApi {
                     }
             )
     })
-    ResponseEntity<UserDto> signUp(@RequestBody NewUserDto newUser);
+    ResponseEntity<UserDto> signUp(@RequestBody @Valid NewUserDto newUser);
 }

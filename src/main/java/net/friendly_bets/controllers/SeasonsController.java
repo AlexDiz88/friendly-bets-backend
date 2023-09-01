@@ -3,7 +3,6 @@ package net.friendly_bets.controllers;
 import lombok.RequiredArgsConstructor;
 import net.friendly_bets.controllers.api.SeasonsApi;
 import net.friendly_bets.dto.*;
-import net.friendly_bets.models.User;
 import net.friendly_bets.security.details.AuthenticatedUser;
 import net.friendly_bets.services.SeasonsService;
 import org.springframework.http.ResponseEntity;

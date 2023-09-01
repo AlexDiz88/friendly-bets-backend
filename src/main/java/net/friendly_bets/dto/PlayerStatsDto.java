@@ -19,7 +19,10 @@ public class PlayerStatsDto {
     @Schema(description = "имя участника турнира", example = "Player")
     private String username;
 
-    @Schema(description = "количество ставок", example = "10")
+    @Schema(description = "общее количество сделанных ставок", example = "12")
+    private Integer totalBets;
+
+    @Schema(description = "количество обработанных ставок", example = "10")
     private Integer betCount;
 
     @Schema(description = "количество выигранных ставок", example = "10")
@@ -56,8 +59,12 @@ public class PlayerStatsDto {
         return sumOfOdds / (betCount - emptyBetCount);
     }
 
-    public double getAverageWonOdds() {
+    public double getAverageWonBetOdds() {
         return wonBetCount > 0 ? sumOfWonOdds / wonBetCount : 0.0;
+    }
+
+    public double calculateWinRate() {
+        return 100.0 * wonBetCount / (betCount - returnedBetCount - emptyBetCount);
     }
 
 }

@@ -1,7 +1,9 @@
 package net.friendly_bets.exceptions;
 
-public class NotFoundException extends RuntimeException {
-    public NotFoundException(String message) {
-        super(message);
+import org.springframework.http.HttpStatus;
+
+public class NotFoundException extends RestException {
+    public NotFoundException(String entity, String id) {
+        super(HttpStatus.NOT_FOUND, entity + " with id <" + id + "> not found.");
     }
 }

@@ -14,6 +14,8 @@ import net.friendly_bets.dto.TeamsPage;
 import net.friendly_bets.security.details.AuthenticatedUser;
 import org.springframework.http.ResponseEntity;
 
+import javax.validation.Valid;
+
 @Tags(value = {
         @Tag(name = "Teams")
 })
@@ -54,7 +56,7 @@ public interface TeamsApi {
             )
     })
     ResponseEntity<TeamDto> createTeam(@Parameter(hidden = true) AuthenticatedUser currentUser,
-                                        NewTeamDto newTeam);
+                                       @Valid NewTeamDto newTeam);
 
     // ------------------------------------------------------------------------------------------------------ //
 
