@@ -4,7 +4,7 @@ import lombok.RequiredArgsConstructor;
 import net.friendly_bets.dto.NewTeamDto;
 import net.friendly_bets.dto.TeamDto;
 import net.friendly_bets.dto.TeamsPage;
-import net.friendly_bets.exceptions.BadDataException;
+import net.friendly_bets.exceptions.BadRequestException;
 import net.friendly_bets.exceptions.ConflictException;
 import net.friendly_bets.models.Team;
 import net.friendly_bets.repositories.TeamsRepository;
@@ -32,16 +32,16 @@ public class TeamsServiceImpl implements TeamsService {
     @Override
     public TeamDto createTeam(NewTeamDto newTeam) {
         if (newTeam == null) {
-            throw new BadDataException("Объект не должен быть пустым");
+            throw new BadRequestException("Объект не должен быть пустым");
         }
         if (newTeam.getFullTitleRu() == null || newTeam.getFullTitleRu().trim().length() < 1) {
-            throw new BadDataException("Название сезона(RU) не может быть пустым");
+            throw new BadRequestException("Название сезона(RU) не может быть пустым");
         }
         if (newTeam.getFullTitleEn() == null || newTeam.getFullTitleEn().trim().length() < 1) {
-            throw new BadDataException("Название сезона(EN) не может быть пустым");
+            throw new BadRequestException("Название сезона(EN) не может быть пустым");
         }
         if (newTeam.getCountry() == null || newTeam.getCountry().trim().length() < 1) {
-            throw new BadDataException("Название страны команды не может быть пустым");
+            throw new BadRequestException("Название страны команды не может быть пустым");
         }
         if (teamsRepository.existsByFullTitleRuOrFullTitleEn(newTeam.getFullTitleRu(), newTeam.getFullTitleEn())) {
             throw new ConflictException("Команда с таким названием уже существует");

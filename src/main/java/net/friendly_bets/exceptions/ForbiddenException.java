@@ -1,7 +1,9 @@
 package net.friendly_bets.exceptions;
 
-public class ForbiddenException extends RuntimeException {
+import org.springframework.http.HttpStatus;
+
+public class ForbiddenException extends RestException {
     public ForbiddenException(String message) {
-        super(message);
+        super(HttpStatus.FORBIDDEN, message);
     }
 }

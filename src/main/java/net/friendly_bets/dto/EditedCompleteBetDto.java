@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class EditedBetDto {
+public class EditedCompleteBetDto {
 
     @NotNull(message = "{field.isNull}")
     @NotBlank(message = "{field.isBlank}")
@@ -45,4 +45,12 @@ public class EditedBetDto {
     @NotNull(message = "{field.bet.betSizeIsNull}")
     @Min(value = 1, message = "{field.bet.betSizeMinValue}")
     private Integer betSize;
+
+    @NotNull(message = "{field.isNull}")
+    @NotBlank(message = "{field.bet.blankBetGameResult}")
+    private String gameResult;
+
+    @NotNull(message = "{field.isNull}")
+    @NotBlank(message = "{field.bet.blankBetStatus}")
+    private String betStatus;
 }

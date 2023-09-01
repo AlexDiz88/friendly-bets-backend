@@ -4,8 +4,7 @@ import lombok.RequiredArgsConstructor;
 import net.friendly_bets.controllers.api.BetsApi;
 import net.friendly_bets.dto.BetDto;
 import net.friendly_bets.dto.BetsPage;
-import net.friendly_bets.dto.EditedBetDto;
-import net.friendly_bets.dto.SeasonDto;
+import net.friendly_bets.dto.EditedCompleteBetDto;
 import net.friendly_bets.security.details.AuthenticatedUser;
 import net.friendly_bets.services.BetsService;
 import org.springframework.http.ResponseEntity;
@@ -33,7 +32,7 @@ public class BetsController implements BetsApi {
     @PutMapping("/{bet-id}")
     public ResponseEntity<BetDto> editBet(@AuthenticationPrincipal AuthenticatedUser currentUser,
                                              @PathVariable("bet-id") String betId,
-                                             @RequestBody EditedBetDto editedBet) {
+                                             @RequestBody EditedCompleteBetDto editedBet) {
         String moderatorId = currentUser.getUser().getId();
         return ResponseEntity.status(200)
                 .body(betsService.editBet(moderatorId, betId, editedBet));

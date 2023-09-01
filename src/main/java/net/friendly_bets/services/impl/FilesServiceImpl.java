@@ -15,6 +15,8 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
 
+import static net.friendly_bets.utils.GetEntityOrThrow.getTeamOrThrow;
+
 @RequiredArgsConstructor
 @Service
 public class FilesServiceImpl implements FilesService {
@@ -41,8 +43,7 @@ public class FilesServiceImpl implements FilesService {
 
     @Override
     public String saveLogoImage(String teamId, MultipartFile image) {
-        Team team = teamsRepository.findById(teamId).orElseThrow(
-                () -> new NotFoundException("Card <" + teamId + "> not found"));
+        Team team = getTeamOrThrow(teamsRepository, teamId);
         // TODO: проработать путь файла (пробелы, нижние подчеркивания)
         String fileName = team.getFullTitleEn();
         fileName = saveImage(image, fileName, UPLOAD_PATH_LOGO);
