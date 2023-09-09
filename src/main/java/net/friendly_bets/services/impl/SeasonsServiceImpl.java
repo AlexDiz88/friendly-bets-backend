@@ -10,6 +10,7 @@ import net.friendly_bets.repositories.*;
 import net.friendly_bets.services.SeasonsService;
 import net.friendly_bets.utils.BetValuesUtils;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -41,6 +42,7 @@ public class SeasonsServiceImpl implements SeasonsService {
     // ------------------------------------------------------------------------------------------------------ //
 
     @Override
+    @Transactional
     public SeasonDto addSeason(NewSeasonDto newSeason) {
         if (seasonsRepository.existsByTitle(newSeason.getTitle())) {
             throw new BadRequestException("Сезон с таким названием уже существует");
@@ -62,6 +64,7 @@ public class SeasonsServiceImpl implements SeasonsService {
     // ------------------------------------------------------------------------------------------------------ //
 
     @Override
+    @Transactional
     public SeasonDto changeSeasonStatus(String seasonId, String status) {
         if (status == null) {
             throw new BadRequestException("Статус сезона is null");
@@ -100,7 +103,6 @@ public class SeasonsServiceImpl implements SeasonsService {
         return Arrays.stream(Season.Status.values())
                 .map(Enum::toString)
                 .toList();
-
     }
 
     // ------------------------------------------------------------------------------------------------------ //
@@ -130,6 +132,7 @@ public class SeasonsServiceImpl implements SeasonsService {
     // ------------------------------------------------------------------------------------------------------ //
 
     @Override
+    @Transactional
     public SeasonDto registrationInSeason(String userId, String seasonId) {
         Season season = getSeasonOrThrow(seasonsRepository, seasonId);
         User user = getUserOrThrow(usersRepository, seasonId);
@@ -161,6 +164,7 @@ public class SeasonsServiceImpl implements SeasonsService {
     // ------------------------------------------------------------------------------------------------------ //
 
     @Override
+    @Transactional
     public SeasonDto addLeagueToSeason(String seasonId, NewLeagueDto newLeague) {
         Season season = getSeasonOrThrow(seasonsRepository, seasonId);
 
@@ -190,6 +194,7 @@ public class SeasonsServiceImpl implements SeasonsService {
     // ------------------------------------------------------------------------------------------------------ //
 
     @Override
+    @Transactional
     public SeasonDto addTeamToLeagueInSeason(String seasonId, String leagueId, String teamId) {
         if (teamId == null || teamId.isBlank()) {
             throw new BadRequestException("Команда не выбрана");
@@ -223,6 +228,7 @@ public class SeasonsServiceImpl implements SeasonsService {
     // ------------------------------------------------------------------------------------------------------ //
 
     @Override
+    @Transactional
     public SeasonDto addBetToLeagueInSeason(String moderatorId, String seasonId, String leagueId, NewBetDto newBet) {
         checkTeams(newBet.getHomeTeamId(), newBet.getAwayTeamId());
         checkBetOdds(newBet.getBetOdds());
@@ -273,6 +279,7 @@ public class SeasonsServiceImpl implements SeasonsService {
     // ------------------------------------------------------------------------------------------------------ //
 
     @Override
+    @Transactional
     public SeasonDto addEmptyBetToLeagueInSeason(String moderatorId, String seasonId, String leagueId, NewEmptyBetDto newEmptyBet) {
         User moderator = getUserOrThrow(usersRepository, moderatorId);
         User user = getUserOrThrow(usersRepository, newEmptyBet.getUserId());
@@ -301,6 +308,7 @@ public class SeasonsServiceImpl implements SeasonsService {
     // ------------------------------------------------------------------------------------------------------ //
 
     @Override
+    @Transactional
     public SeasonDto addBetResult(String moderatorId, String seasonId, String betId, NewBetResult newBetResult) {
         try {
             Bet.BetStatus.valueOf(newBetResult.getBetStatus());

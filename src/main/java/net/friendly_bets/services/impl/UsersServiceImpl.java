@@ -13,6 +13,7 @@ import net.friendly_bets.repositories.UsersRepository;
 import net.friendly_bets.services.UsersService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -39,6 +40,7 @@ public class UsersServiceImpl implements UsersService {
     // ------------------------------------------------------------------------------------------------------ //
 
     @Override
+    @Transactional
     public UserDto editEmail(String currentUserId, UpdatedEmailDto updatedEmailDto) {
         User user = getUserOrThrow(usersRepository, currentUserId);
         if (user.getEmail().equals(updatedEmailDto.getNewEmail().toLowerCase())) {
@@ -57,6 +59,7 @@ public class UsersServiceImpl implements UsersService {
     // ------------------------------------------------------------------------------------------------------ //
 
     @Override
+    @Transactional
     public UserDto editPassword(String currentUserId, UpdatedPasswordDto updatedPasswordDto) {
         if (updatedPasswordDto.getNewPassword().equals(updatedPasswordDto.getCurrentPassword())) {
             throw new BadRequestException("Введенные текущий и новый пароль совпадают");
@@ -80,6 +83,7 @@ public class UsersServiceImpl implements UsersService {
     // ------------------------------------------------------------------------------------------------------ //
 
     @Override
+    @Transactional
     public UserDto editUsername(String currentUserId, UpdatedUsernameDto updatedUsernameDto) {
         User user = getUserOrThrow(usersRepository, currentUserId);
         if (user.getUsername() != null && user.getUsername().equals(updatedUsernameDto.getNewUsername())) {

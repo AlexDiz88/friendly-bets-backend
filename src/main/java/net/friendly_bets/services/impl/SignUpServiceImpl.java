@@ -9,6 +9,7 @@ import net.friendly_bets.repositories.UsersRepository;
 import net.friendly_bets.services.SignUpService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 
@@ -20,6 +21,7 @@ public class SignUpServiceImpl implements SignUpService {
     private final PasswordEncoder passwordEncoder;
 
     @Override
+    @Transactional
     public UserDto signUp(NewUserDto newUser) {
         if (usersRepository.existsByEmail(newUser.getEmail().toLowerCase())) {
             throw new ConflictException("Пользователь с таким e-mail уже зарегистрирован");

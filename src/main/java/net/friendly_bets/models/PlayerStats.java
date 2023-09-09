@@ -20,6 +20,9 @@ public class PlayerStats {
     @Field(name = "_id")
     private String id;
 
+    private String seasonId;
+    private String leagueId;
+
     @DBRef(lazy = true)
     private User user;
 

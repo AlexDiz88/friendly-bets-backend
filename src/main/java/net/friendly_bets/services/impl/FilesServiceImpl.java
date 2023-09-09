@@ -9,6 +9,7 @@ import net.friendly_bets.repositories.UsersRepository;
 import net.friendly_bets.services.FilesService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
@@ -31,6 +32,7 @@ public class FilesServiceImpl implements FilesService {
     private String UPLOAD_PATH_LOGO;
 
     @Override
+    @Transactional
     public String saveAvatarImage(String currentUserId, MultipartFile image) {
         User user = usersRepository.findById(currentUserId)
                 .orElseThrow(IllegalArgumentException::new);
@@ -42,6 +44,7 @@ public class FilesServiceImpl implements FilesService {
     }
 
     @Override
+    @Transactional
     public String saveLogoImage(String teamId, MultipartFile image) {
         Team team = getTeamOrThrow(teamsRepository, teamId);
         // TODO: проработать путь файла (пробелы, нижние подчеркивания)

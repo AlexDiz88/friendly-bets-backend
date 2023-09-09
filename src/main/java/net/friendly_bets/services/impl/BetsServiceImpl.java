@@ -13,6 +13,7 @@ import net.friendly_bets.repositories.TeamsRepository;
 import net.friendly_bets.repositories.UsersRepository;
 import net.friendly_bets.services.BetsService;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -39,6 +40,7 @@ public class BetsServiceImpl implements BetsService {
     // ------------------------------------------------------------------------------------------------------ //
 
     @Override
+    @Transactional
     public BetDto editBet(String moderatorId, String betId, EditedCompleteBetDto editedBet) {
         checkTeams(editedBet.getHomeTeamId(), editedBet.getAwayTeamId());
         checkBetOdds(editedBet.getBetOdds());
@@ -107,6 +109,7 @@ public class BetsServiceImpl implements BetsService {
     }
 
     @Override
+    @Transactional
     public BetDto deleteBet(String moderatorId, String betId) {
         Bet bet = getBetOrThrow(betsRepository, betId);
         User moderator = getUserOrThrow(usersRepository, moderatorId);

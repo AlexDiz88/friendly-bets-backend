@@ -10,6 +10,7 @@ import net.friendly_bets.models.Team;
 import net.friendly_bets.repositories.TeamsRepository;
 import net.friendly_bets.services.TeamsService;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -30,6 +31,7 @@ public class TeamsServiceImpl implements TeamsService {
     // ------------------------------------------------------------------------------------------------------ //
 
     @Override
+    @Transactional
     public TeamDto createTeam(NewTeamDto newTeam) {
         if (newTeam == null) {
             throw new BadRequestException("Объект не должен быть пустым");
