@@ -9,5 +9,6 @@ import java.util.Optional;
 
 public interface PlayerStatsRepository extends MongoRepository<PlayerStats, String> {
 
+    Optional<PlayerStats> findAllBySeasonIdAndUserId(String seasonId, String userId);
     Optional<PlayerStats> findBySeasonIdAndLeagueIdAndUserId(String seasonId, String leagueId, String userId);
 }

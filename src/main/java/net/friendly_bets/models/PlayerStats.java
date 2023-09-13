@@ -19,13 +19,10 @@ public class PlayerStats {
     @MongoId
     @Field(name = "_id")
     private String id;
-
     private String seasonId;
     private String leagueId;
-
-    @DBRef(lazy = true)
+    @DBRef
     private User user;
-
     private Integer totalBets;
     private Integer betCount;
     private Integer wonBetCount;
