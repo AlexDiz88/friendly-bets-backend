@@ -16,6 +16,8 @@ public interface SeasonsService {
 
     SeasonDto getActiveSeason();
 
+    ActiveSeasonIdDto getActiveSeasonId();
+
     SeasonDto getScheduledSeason();
 
     SeasonDto registrationInSeason(String userId, String seasonId);
@@ -24,11 +26,11 @@ public interface SeasonsService {
 
     SeasonDto addLeagueToSeason(String seasonId, NewLeagueDto newLeague);
 
-    SeasonDto addTeamToLeagueInSeason(String seasonId, String leagueId, String teamId);
+    LeagueDto addTeamToLeagueInSeason(String seasonId, String leagueId, String teamId);
 
-    SeasonDto addBetToLeagueInSeason(String moderatorId, String seasonId, String leagueId, NewBetDto newBet);
+    BetDto addBetToLeagueInSeason(String moderatorId, String seasonId, String leagueId, NewBetDto newBet);
 
-    SeasonDto addEmptyBetToLeagueInSeason(String moderatorId, String seasonId, String leagueId, NewEmptyBetDto newEmptyBet);
+    BetDto addEmptyBetToLeagueInSeason(String moderatorId, String seasonId, String leagueId, NewEmptyBetDto newEmptyBet);
 
-    SeasonDto addBetResult(String moderatorId, String seasonId, String betId, NewBetResult newBetResult);
+    BetDto addBetResult(String moderatorId, String seasonId, String betId, NewBetResult newBetResult);
 }

@@ -10,6 +10,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.tags.Tags;
 import net.friendly_bets.dto.BetDto;
 import net.friendly_bets.dto.BetsPage;
+import net.friendly_bets.dto.DeletedBetDto;
 import net.friendly_bets.dto.EditedCompleteBetDto;
 import net.friendly_bets.security.details.AuthenticatedUser;
 import org.springframework.http.ResponseEntity;
@@ -56,8 +57,8 @@ public interface BetsApi {
             )
     })
     ResponseEntity<BetDto> editBet(@Parameter(hidden = true) AuthenticatedUser currentUser,
-                                      @Parameter(description = "ID ставки") String betId,
-                                      @Valid EditedCompleteBetDto editedBet);
+                                   @Parameter(description = "ID ставки") String betId,
+                                   @Valid EditedCompleteBetDto editedBet);
 
     // ------------------------------------------------------------------------------------------------------ //
 
@@ -77,7 +78,8 @@ public interface BetsApi {
             )
     })
     ResponseEntity<BetDto> deleteBet(@Parameter(hidden = true) AuthenticatedUser currentUser,
-                                     @Parameter(description = "ID ставки") String betId);
+                                     @Parameter(description = "ID ставки") String betId,
+                                     @Valid DeletedBetDto deletedBetMetaData);
 
     // ------------------------------------------------------------------------------------------------------ //
 

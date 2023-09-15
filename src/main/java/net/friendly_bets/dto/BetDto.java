@@ -21,6 +21,12 @@ public class BetDto {
     @Schema(description = "идентификатор ставки", example = "12-байтовый хэш ID")
     private String id;
 
+    @Schema(description = "ID сезона", example = "12-байтовый хэш ID")
+    private String seasonId;
+
+    @Schema(description = "ID лиги", example = "12-байтовый хэш ID")
+    private String leagueId;
+
     @Schema(description = "время создания/добавления ставки", example = "2023-08-15T12:00:00")
     private LocalDateTime createdAt;
 
@@ -67,10 +73,12 @@ public class BetDto {
     private LocalDateTime updatedAt;
 
 
-    public static BetDto from(Bet bet) {
+    public static BetDto from(String seasonId, String leagueId, Bet bet) {
         if (bet.getBetStatus().equals(Bet.BetStatus.EMPTY) || bet.getBetStatus().equals(Bet.BetStatus.DELETED)) {
             return BetDto.builder()
                     .id(bet.getId())
+                    .seasonId(seasonId)
+                    .leagueId(leagueId)
                     .createdAt(bet.getCreatedAt())
                     .player(UserDto.from(bet.getUser()))
                     .matchDay(bet.getMatchDay())
@@ -84,6 +92,8 @@ public class BetDto {
         }
         return BetDto.builder()
                 .id(bet.getId())
+                .seasonId(seasonId)
+                .leagueId(leagueId)
                 .createdAt(bet.getCreatedAt())
                 .player(UserDto.from(bet.getUser()))
                 .matchDay(bet.getMatchDay())
@@ -102,9 +112,9 @@ public class BetDto {
                 .build();
     }
 
-    public static List<BetDto> from(List<Bet> bets) {
+    public static List<BetDto> from(String seasonId, String leagueId, List<Bet> bets) {
         return bets.stream()
-                .map(BetDto::from)
+                .map((bet) -> BetDto.from(seasonId, leagueId, bet))
                 .collect(Collectors.toList());
     }
 }

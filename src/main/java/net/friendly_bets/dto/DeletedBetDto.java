@@ -7,22 +7,19 @@ import lombok.NoArgsConstructor;
 
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.NotNull;
-import javax.validation.constraints.Size;
 
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class UpdatedPasswordDto {
+public class DeletedBetDto {
 
     @Schema(description = "текущий пароль пользователя", example = "My-password1234")
-    @NotNull(message = "{field.isNull}")
-    @NotBlank(message = "{field.isBlank}")
-    private String currentPassword;
+    @NotNull(message = "{field.seasonId.isNull}")
+    @NotBlank(message = "{field.seasonId.isBlank}")
+    private String seasonId;
 
     @Schema(description = "новый пароль пользователя", example = "My-password9999")
-    @NotNull(message = "{field.isNull}")
-    @NotBlank(message = "{field.isBlank}")
-    @Size(min = 6, message = "{password.isShort}")
-//  @Pattern(regexp = "^(?=.*[A-Z])(?=.*\\d)(?=.*[@#$%^&+=!\\-]).{6,}$", message = "{password.isWeak}")
-    private String newPassword;
+    @NotNull(message = "{field.leagueId.isNull}")
+    @NotBlank(message = "{field.leagueId.isBlank}")
+    private String leagueId;
 }

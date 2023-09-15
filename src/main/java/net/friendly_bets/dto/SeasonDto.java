@@ -43,7 +43,7 @@ public class SeasonDto {
                 .betCountPerMatchDay(season.getBetCountPerMatchDay())
                 .status(season.getStatus().name())
                 .players(UserDto.from(season.getPlayers()))
-                .leagues(LeagueDto.from(season.getLeagues()))
+                .leagues(LeagueDto.from(season.getId(), season.getLeagues()))
                 .build();
     }
 

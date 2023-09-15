@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import net.friendly_bets.controllers.api.BetsApi;
 import net.friendly_bets.dto.BetDto;
 import net.friendly_bets.dto.BetsPage;
+import net.friendly_bets.dto.DeletedBetDto;
 import net.friendly_bets.dto.EditedCompleteBetDto;
 import net.friendly_bets.security.details.AuthenticatedUser;
 import net.friendly_bets.services.BetsService;
@@ -31,8 +32,8 @@ public class BetsController implements BetsApi {
     @PreAuthorize("hasAuthority('ADMIN') || hasAuthority('MODERATOR')")
     @PutMapping("/{bet-id}")
     public ResponseEntity<BetDto> editBet(@AuthenticationPrincipal AuthenticatedUser currentUser,
-                                             @PathVariable("bet-id") String betId,
-                                             @RequestBody EditedCompleteBetDto editedBet) {
+                                          @PathVariable("bet-id") String betId,
+                                          @RequestBody EditedCompleteBetDto editedBet) {
         String moderatorId = currentUser.getUser().getId();
         return ResponseEntity.status(200)
                 .body(betsService.editBet(moderatorId, betId, editedBet));
@@ -42,9 +43,10 @@ public class BetsController implements BetsApi {
     @PreAuthorize("hasAuthority('ADMIN') || hasAuthority('MODERATOR')")
     @DeleteMapping("/{bet-id}")
     public ResponseEntity<BetDto> deleteBet(@AuthenticationPrincipal AuthenticatedUser currentUser,
-                                            @PathVariable("bet-id") String betId) {
+                                            @PathVariable("bet-id") String betId,
+                                            @RequestBody DeletedBetDto deletedBetMetaData) {
         String moderatorId = currentUser.getUser().getId();
         return ResponseEntity.status(200)
-                .body(betsService.deleteBet(moderatorId, betId));
+                .body(betsService.deleteBet(moderatorId, betId, deletedBetMetaData));
     }
 }

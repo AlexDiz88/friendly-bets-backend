@@ -5,6 +5,10 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import net.friendly_bets.models.PlayerStats;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 @AllArgsConstructor
 @NoArgsConstructor
@@ -49,22 +53,26 @@ public class PlayerStatsDto {
     @Schema(description = "текущий баланс игрока (может быть отрицательным)", example = "-73.32")
     private Double actualBalance;
 
-    private Double sumOfOdds;
-    private Double sumOfWonOdds;
-
-    public double getAverageOdds() {
-        if (betCount == 0  || (betCount.equals(emptyBetCount))) {
-            return 0.0;
-        }
-        return sumOfOdds / (betCount - emptyBetCount);
+    public static PlayerStatsDto from(PlayerStats playerStats) {
+        return PlayerStatsDto.builder()
+                .avatar(playerStats.getUser().getAvatar())
+                .username(playerStats.getUser().getUsername())
+                .totalBets(playerStats.getTotalBets())
+                .betCount(playerStats.getBetCount())
+                .wonBetCount(playerStats.getWonBetCount())
+                .returnedBetCount(playerStats.getReturnedBetCount())
+                .lostBetCount(playerStats.getLostBetCount())
+                .emptyBetCount(playerStats.getEmptyBetCount())
+                .winRate(playerStats.getWinRate())
+                .averageOdds(playerStats.getAverageOdds())
+                .averageWonBetOdds(playerStats.getAverageWonBetOdds())
+                .actualBalance(playerStats.getActualBalance())
+                .build();
     }
 
-    public double getAverageWonBetOdds() {
-        return wonBetCount > 0 ? sumOfWonOdds / wonBetCount : 0.0;
+    public static List<PlayerStatsDto> from(List<PlayerStats> playersStatsList) {
+        return playersStatsList.stream()
+                .map(PlayerStatsDto::from)
+                .collect(Collectors.toList());
     }
-
-    public double calculateWinRate() {
-        return 100.0 * wonBetCount / (betCount - returnedBetCount - emptyBetCount);
-    }
-
 }

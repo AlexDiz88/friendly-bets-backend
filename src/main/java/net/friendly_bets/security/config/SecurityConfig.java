@@ -30,11 +30,9 @@ import java.util.Arrays;
 @EnableGlobalMethodSecurity(securedEnabled = true, prePostEnabled = true, proxyTargetClass = true)
 public class SecurityConfig {
 
-    private final UserDetailsService userDetailsServiceImpl;
-
-    private final PasswordEncoder passwordEncoder;
-
-    private final ObjectMapper objectMapper;
+    UserDetailsService userDetailsServiceImpl;
+    PasswordEncoder passwordEncoder;
+    ObjectMapper objectMapper;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) throws Exception {

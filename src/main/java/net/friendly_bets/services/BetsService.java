@@ -2,6 +2,7 @@ package net.friendly_bets.services;
 
 import net.friendly_bets.dto.BetDto;
 import net.friendly_bets.dto.BetsPage;
+import net.friendly_bets.dto.DeletedBetDto;
 import net.friendly_bets.dto.EditedCompleteBetDto;
 
 public interface BetsService {
@@ -10,5 +11,5 @@ public interface BetsService {
 
     BetDto editBet(String moderatorId, String betId, EditedCompleteBetDto editedBet);
 
-    BetDto deleteBet(String moderatorId, String betId);
+    BetDto deleteBet(String moderatorId, String betId, DeletedBetDto deletedBetMetaData);
 }

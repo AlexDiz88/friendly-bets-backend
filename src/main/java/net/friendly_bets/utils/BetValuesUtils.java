@@ -40,15 +40,15 @@ public class BetValuesUtils {
         }
     }
 
-    public static void setBalanceChange(Bet bet, Bet.BetStatus betStatus) {
+    public static void setBalanceChange(Bet bet, Bet.BetStatus betStatus, Integer betSize, Double betOdds) {
         if (betStatus.equals(Bet.BetStatus.WON)) {
-            bet.setBalanceChange(bet.getBetOdds() * bet.getBetSize() - bet.getBetSize());
+            bet.setBalanceChange(betOdds * betSize - betSize);
         }
         if (betStatus.equals(Bet.BetStatus.RETURNED)) {
             bet.setBalanceChange(0.0);
         }
         if (betStatus.equals(Bet.BetStatus.LOST)) {
-            bet.setBalanceChange(-Double.valueOf(bet.getBetSize()));
+            bet.setBalanceChange(-Double.valueOf(betSize));
         }
     }
 }

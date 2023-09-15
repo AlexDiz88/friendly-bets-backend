@@ -2,8 +2,7 @@ package net.friendly_bets.advices;
 
 import lombok.extern.slf4j.Slf4j;
 import net.friendly_bets.dto.StandardResponseDto;
-import net.friendly_bets.exceptions.*;
-import org.springframework.http.HttpStatus;
+import net.friendly_bets.exceptions.RestException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
