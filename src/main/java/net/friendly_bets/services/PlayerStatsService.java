@@ -1,11 +1,14 @@
 package net.friendly_bets.services;
 
-import net.friendly_bets.dto.*;
+import net.friendly_bets.dto.AllPlayersStatsByLeaguesDto;
+import net.friendly_bets.dto.AllPlayersStatsPage;
 
 public interface PlayerStatsService {
 
-    AllPlayersStatsDto getAllPlayersStatsBySeason(String seasonId);
+    AllPlayersStatsPage getAllPlayersStatsBySeason(String seasonId);
 
     AllPlayersStatsByLeaguesDto getAllPlayersStatsByLeagues(String seasonId);
+
+    AllPlayersStatsPage playersStatsFullRecalculation(String seasonId);
 
 }

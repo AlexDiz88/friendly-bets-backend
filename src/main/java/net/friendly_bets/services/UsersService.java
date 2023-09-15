@@ -1,6 +1,9 @@
 package net.friendly_bets.services;
 
-import net.friendly_bets.dto.*;
+import net.friendly_bets.dto.UpdatedEmailDto;
+import net.friendly_bets.dto.UpdatedPasswordDto;
+import net.friendly_bets.dto.UpdatedUsernameDto;
+import net.friendly_bets.dto.UserDto;
 
 public interface UsersService {
 
@@ -11,9 +14,4 @@ public interface UsersService {
     UserDto editPassword(String currentUserId, UpdatedPasswordDto updatedPasswordDto);
 
     UserDto editUsername(String currentUserId, UpdatedUsernameDto updatedUsernameDto);
-
-    PlayersStatsPage getPlayersStatsBySeason(String seasonId);
-
-    PlayersStatsByLeaguesPage getPlayersStatsByLeagues(String seasonId);
-
 }

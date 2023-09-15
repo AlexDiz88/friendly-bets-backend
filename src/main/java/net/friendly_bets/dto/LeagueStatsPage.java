@@ -5,7 +5,6 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import net.friendly_bets.models.League;
 
 import java.util.List;
 
@@ -16,8 +15,8 @@ import java.util.List;
 @Schema(description = "Страница со списком статистики всех игроков")
 public class LeagueStatsPage {
 
-    @Schema(description = "Лига")
-    private League league;
+    @Schema(description = "Лига (без списка команд и ставок)")
+    private SimpleLeagueDto simpleLeague;
 
     @Schema(description = "Статистика игроков в лиге")
     private List<PlayerStatsDto> playersStats;

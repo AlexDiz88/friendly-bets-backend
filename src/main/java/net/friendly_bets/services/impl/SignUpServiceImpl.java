@@ -1,6 +1,8 @@
 package net.friendly_bets.services.impl;
 
+import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
+import lombok.experimental.FieldDefaults;
 import net.friendly_bets.dto.NewUserDto;
 import net.friendly_bets.dto.UserDto;
 import net.friendly_bets.exceptions.ConflictException;
@@ -15,10 +17,11 @@ import java.time.LocalDateTime;
 
 @RequiredArgsConstructor
 @Service
+@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class SignUpServiceImpl implements SignUpService {
 
-    private final UsersRepository usersRepository;
-    private final PasswordEncoder passwordEncoder;
+    UsersRepository usersRepository;
+    PasswordEncoder passwordEncoder;
 
     @Override
     @Transactional

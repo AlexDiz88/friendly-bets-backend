@@ -6,4 +6,6 @@ import org.springframework.data.mongodb.repository.MongoRepository;
 
 public interface LeaguesRepository extends MongoRepository<League, String> {
 
+    League findByBets_Id(String betId);
+
 }

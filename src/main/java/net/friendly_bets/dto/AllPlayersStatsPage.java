@@ -13,8 +13,8 @@ import java.util.List;
 @NoArgsConstructor
 @Builder
 @Schema(description = "Страница со списком статистики всех игроков")
-public class AllPlayersStatsDto {
+public class AllPlayersStatsPage {
 
     @Schema(description = "Список статистики всех игроков")
-    private List<PlayerStatsDto> allPlayersStats;
+    private List<PlayerStatsDto> playersStats;
 }

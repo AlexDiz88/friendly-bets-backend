@@ -1,6 +1,8 @@
 package net.friendly_bets.services.impl;
 
+import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
+import lombok.experimental.FieldDefaults;
 import net.friendly_bets.dto.NewTeamDto;
 import net.friendly_bets.dto.TeamDto;
 import net.friendly_bets.dto.TeamsPage;
@@ -17,9 +19,10 @@ import java.util.List;
 
 @RequiredArgsConstructor
 @Service
+@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class TeamsServiceImpl implements TeamsService {
 
-    private final TeamsRepository teamsRepository;
+    TeamsRepository teamsRepository;
     @Override
     public TeamsPage getAll() {
         List<Team> allTeams = teamsRepository.findAll();

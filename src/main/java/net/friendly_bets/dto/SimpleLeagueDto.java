@@ -14,8 +14,8 @@ import java.util.stream.Collectors;
 @NoArgsConstructor
 @Builder
 @Data
-@Schema(description = "Лига сезона")
-public class LeagueDto {
+@Schema(description = "Лига сезона (без списка команд и ставок)")
+public class SimpleLeagueDto {
 
     @Schema(description = "идентификатор лиги", example = "12-байтовый хэш ID")
     private String id;
@@ -38,15 +38,8 @@ public class LeagueDto {
     @Schema(description = "текущий игровой тур лиги", example = "14")
     private String currentMatchDay;
 
-    @Schema(description = "список команд лиги", example = "[Team1, Team2...]")
-    private List<TeamDto> teams;
-
-    @Schema(description = "список сделанных ставок на этот сезон", example = "[]")
-    private List<BetDto> bets;
-
-
-    public static LeagueDto from(String seasonId, League league) {
-        return LeagueDto.builder()
+    public static SimpleLeagueDto from(League league) {
+        return SimpleLeagueDto.builder()
                 .id(league.getId())
                 .name(league.getName())
                 .displayNameRu(league.getDisplayNameRu())
@@ -54,14 +47,12 @@ public class LeagueDto {
                 .shortNameRu(league.getShortNameRu())
                 .shortNameEn(league.getShortNameEn())
                 .currentMatchDay(league.getCurrentMatchDay())
-                .teams(TeamDto.from(league.getTeams()))
-                .bets(BetDto.from(seasonId, league.getId(), league.getBets()))
                 .build();
     }
 
-    public static List<LeagueDto> from(String seasonId, List<League> leagues) {
+    public static List<SimpleLeagueDto> from(List<League> leagues) {
         return leagues.stream()
-                .map((league)-> LeagueDto.from(seasonId, league))
+                .map(SimpleLeagueDto::from)
                 .collect(Collectors.toList());
     }
 }

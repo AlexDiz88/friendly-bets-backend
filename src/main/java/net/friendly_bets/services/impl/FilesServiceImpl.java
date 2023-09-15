@@ -1,7 +1,6 @@
 package net.friendly_bets.services.impl;
 
 import lombok.RequiredArgsConstructor;
-import net.friendly_bets.exceptions.NotFoundException;
 import net.friendly_bets.models.Team;
 import net.friendly_bets.models.User;
 import net.friendly_bets.repositories.TeamsRepository;

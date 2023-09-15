@@ -1,6 +1,8 @@
 package net.friendly_bets.services.impl;
 
+import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
+import lombok.experimental.FieldDefaults;
 import net.friendly_bets.dto.*;
 import net.friendly_bets.exceptions.BadRequestException;
 import net.friendly_bets.exceptions.ConflictException;
@@ -8,7 +10,6 @@ import net.friendly_bets.exceptions.NotFoundException;
 import net.friendly_bets.models.*;
 import net.friendly_bets.repositories.*;
 import net.friendly_bets.services.SeasonsService;
-import net.friendly_bets.utils.BetValuesUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,13 +24,15 @@ import static net.friendly_bets.utils.GetEntityOrThrow.*;
 
 @RequiredArgsConstructor
 @Service
+@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class SeasonsServiceImpl implements SeasonsService {
 
-    private final SeasonsRepository seasonsRepository;
-    private final UsersRepository usersRepository;
-    private final LeaguesRepository leaguesRepository;
-    private final TeamsRepository teamsRepository;
-    private final BetsRepository betsRepository;
+    SeasonsRepository seasonsRepository;
+    UsersRepository usersRepository;
+    LeaguesRepository leaguesRepository;
+    TeamsRepository teamsRepository;
+    BetsRepository betsRepository;
+    PlayerStatsRepository playerStatsRepository;
 
     @Override
     public SeasonsPage getAll() {
@@ -111,7 +114,7 @@ public class SeasonsServiceImpl implements SeasonsService {
     public SeasonDto getActiveSeason() {
         Optional<Season> seasonByStatus = seasonsRepository.findSeasonByStatus(Season.Status.ACTIVE);
         if (seasonByStatus.isEmpty()) {
-            return new SeasonDto();
+            throw new BadRequestException("Сезон со статусом " + Season.Status.ACTIVE.name() + " не найден");
         }
         Season season = seasonByStatus.get();
         return SeasonDto.from(season);
@@ -120,10 +123,21 @@ public class SeasonsServiceImpl implements SeasonsService {
     // ------------------------------------------------------------------------------------------------------ //
 
     @Override
+    public ActiveSeasonIdDto getActiveSeasonId() {
+        Optional<Season> activeSeason = seasonsRepository.findSeasonByStatus(Season.Status.ACTIVE);
+        if (activeSeason.isEmpty()) {
+            throw new BadRequestException("Сезон со статусом " + Season.Status.ACTIVE.name() + " не найден");
+        }
+        return new ActiveSeasonIdDto(activeSeason.get().getId());
+    }
+
+    // ------------------------------------------------------------------------------------------------------ //
+
+    @Override
     public SeasonDto getScheduledSeason() {
         Optional<Season> seasonByStatus = seasonsRepository.findSeasonByStatus(Season.Status.SCHEDULED);
         if (seasonByStatus.isEmpty()) {
-            return new SeasonDto();
+            throw new BadRequestException("Сезон со статусом " + Season.Status.SCHEDULED.name() + " не найден");
         }
         Season season = seasonByStatus.get();
         return SeasonDto.from(season);
@@ -157,7 +171,7 @@ public class SeasonsServiceImpl implements SeasonsService {
     public LeaguesPage getLeaguesBySeason(String seasonId) {
         Season season = getSeasonOrThrow(seasonsRepository, seasonId);
         return LeaguesPage.builder()
-                .leagues(LeagueDto.from(season.getLeagues()))
+                .leagues(LeagueDto.from(seasonId, season.getLeagues()))
                 .build();
     }
 
@@ -195,7 +209,7 @@ public class SeasonsServiceImpl implements SeasonsService {
 
     @Override
     @Transactional
-    public SeasonDto addTeamToLeagueInSeason(String seasonId, String leagueId, String teamId) {
+    public LeagueDto addTeamToLeagueInSeason(String seasonId, String leagueId, String teamId) {
         if (teamId == null || teamId.isBlank()) {
             throw new BadRequestException("Команда не выбрана");
         }
@@ -220,16 +234,15 @@ public class SeasonsServiceImpl implements SeasonsService {
 
         leagueInSeason.getTeams().add(team);
         leaguesRepository.save(leagueInSeason);
-        seasonsRepository.save(season);
 
-        return SeasonDto.from(season);
+        return LeagueDto.from(seasonId, leagueInSeason);
     }
 
     // ------------------------------------------------------------------------------------------------------ //
 
     @Override
     @Transactional
-    public SeasonDto addBetToLeagueInSeason(String moderatorId, String seasonId, String leagueId, NewBetDto newBet) {
+    public BetDto addBetToLeagueInSeason(String moderatorId, String seasonId, String leagueId, NewBetDto newBet) {
         checkTeams(newBet.getHomeTeamId(), newBet.getAwayTeamId());
         checkBetOdds(newBet.getBetOdds());
 
@@ -273,14 +286,21 @@ public class SeasonsServiceImpl implements SeasonsService {
         league.getBets().add(bet);
         setCurrentMatchDay(season, league);
         leaguesRepository.save(league);
-        return SeasonDto.from(season);
+
+        Optional<PlayerStats> playerStatsOptional = playerStatsRepository.findBySeasonIdAndLeagueIdAndUser(seasonId, leagueId, user);
+        PlayerStats playerStats = playerStatsOptional.orElseGet(() -> getDefaultPlayerStats(seasonId, leagueId, user));
+
+        playerStats.setTotalBets(playerStats.getTotalBets() + 1);
+        playerStatsRepository.save(playerStats);
+
+        return BetDto.from(seasonId, leagueId, bet);
     }
 
     // ------------------------------------------------------------------------------------------------------ //
 
     @Override
     @Transactional
-    public SeasonDto addEmptyBetToLeagueInSeason(String moderatorId, String seasonId, String leagueId, NewEmptyBetDto newEmptyBet) {
+    public BetDto addEmptyBetToLeagueInSeason(String moderatorId, String seasonId, String leagueId, NewEmptyBetDto newEmptyBet) {
         User moderator = getUserOrThrow(usersRepository, moderatorId);
         User user = getUserOrThrow(usersRepository, newEmptyBet.getUserId());
         Season season = getSeasonOrThrow(seasonsRepository, seasonId);
@@ -302,14 +322,24 @@ public class SeasonsServiceImpl implements SeasonsService {
         league.getBets().add(bet);
         setCurrentMatchDay(season, league);
         leaguesRepository.save(league);
-        return SeasonDto.from(season);
+
+        Optional<PlayerStats> playerStatsOptional = playerStatsRepository.findBySeasonIdAndLeagueIdAndUser(seasonId, leagueId, user);
+        PlayerStats playerStats = playerStatsOptional.orElseGet(() -> getDefaultPlayerStats(seasonId, leagueId, user));
+
+        playerStats.setTotalBets(playerStats.getTotalBets() + 1);
+        playerStats.setBetCount(playerStats.getBetCount() + 1);
+        playerStats.setEmptyBetCount(playerStats.getEmptyBetCount() + 1);
+        playerStats.setActualBalance(playerStats.getActualBalance() - Double.valueOf(newEmptyBet.getBetSize()));
+        playerStatsRepository.save(playerStats);
+
+        return BetDto.from(seasonId, leagueId, bet);
     }
 
     // ------------------------------------------------------------------------------------------------------ //
 
     @Override
     @Transactional
-    public SeasonDto addBetResult(String moderatorId, String seasonId, String betId, NewBetResult newBetResult) {
+    public BetDto addBetResult(String moderatorId, String seasonId, String betId, NewBetResult newBetResult) {
         try {
             Bet.BetStatus.valueOf(newBetResult.getBetStatus());
         } catch (IllegalArgumentException e) {
@@ -324,10 +354,11 @@ public class SeasonsServiceImpl implements SeasonsService {
         }
 
         User moderator = getUserOrThrow(usersRepository, moderatorId);
-        Season season =  getSeasonOrThrow(seasonsRepository, seasonId);
+        League league = leaguesRepository.findByBets_Id(bet.getId());
+        System.out.println("leagueId:" + league.getId());
 
         Bet.BetStatus betStatus = Bet.BetStatus.valueOf(newBetResult.getBetStatus());
-        setBalanceChange(bet, betStatus);
+        setBalanceChange(bet, betStatus, bet.getBetSize(), bet.getBetOdds());
 
         bet.setBetResultAddedAt(LocalDateTime.now());
         bet.setBetResultAddedBy(moderator);
@@ -335,6 +366,27 @@ public class SeasonsServiceImpl implements SeasonsService {
         bet.setGameResult(newBetResult.getGameResult());
         betsRepository.save(bet);
 
-        return SeasonDto.from(season);
+        Optional<PlayerStats> playerStatsOptional = playerStatsRepository.findBySeasonIdAndLeagueIdAndUser(seasonId, league.getId(), bet.getUser());
+        PlayerStats playerStats = playerStatsOptional.orElseGet(() -> getDefaultPlayerStats(seasonId, league.getId(), bet.getUser()));
+
+        playerStats.setBetCount(playerStats.getBetCount() + 1);
+        if (bet.getBetStatus().equals(Bet.BetStatus.WON)) {
+            playerStats.setWonBetCount(playerStats.getWonBetCount() + 1);
+            playerStats.setSumOfWonOdds(playerStats.getSumOfWonOdds() + bet.getBetOdds());
+        }
+        if (bet.getBetStatus().equals(Bet.BetStatus.RETURNED)) {
+            playerStats.setReturnedBetCount(playerStats.getReturnedBetCount() + 1);
+        }
+        if (bet.getBetStatus().equals(Bet.BetStatus.LOST)) {
+            playerStats.setLostBetCount(playerStats.getLostBetCount() + 1);
+        }
+        playerStats.setSumOfOdds(playerStats.getSumOfOdds() + bet.getBetOdds());
+        playerStats.setActualBalance(playerStats.getActualBalance() + bet.getBalanceChange());
+        playerStats.calculateWinRate();
+        playerStats.calculateAverageOdds();
+        playerStats.calculateAverageWonBetOdds();
+        playerStatsRepository.save(playerStats);
+
+        return BetDto.from(seasonId, league.getId(), bet);
     }
 }

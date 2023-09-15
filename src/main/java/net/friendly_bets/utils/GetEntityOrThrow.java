@@ -32,4 +32,24 @@ public class GetEntityOrThrow {
         return betsRepository.findById(betId).orElseThrow(
                 () -> new NotFoundException("Ставка", betId));
     }
+
+    public static PlayerStats getDefaultPlayerStats(String seasonId, String leagueId, User user) {
+        return PlayerStats.builder()
+                .seasonId(seasonId)
+                .leagueId(leagueId)
+                .user(user)
+                .totalBets(0)
+                .betCount(0)
+                .wonBetCount(0)
+                .returnedBetCount(0)
+                .lostBetCount(0)
+                .emptyBetCount(0)
+                .winRate(0.0)
+                .averageOdds(0.0)
+                .averageWonBetOdds(0.0)
+                .actualBalance(0.0)
+                .sumOfOdds(0.0)
+                .sumOfWonOdds(0.0)
+                .build();
+    }
 }

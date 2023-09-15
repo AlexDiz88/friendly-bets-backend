@@ -111,14 +111,21 @@ public interface SeasonsApi {
                                     schema = @Schema(implementation = SeasonDto.class))
                     }
             ),
-            @ApiResponse(responseCode = "403", description = "Пользователь не аутентифицирован",
+    })
+    ResponseEntity<SeasonDto> getActiveSeason();
+
+    // ------------------------------------------------------------------------------------------------------ //
+
+    @Operation(summary = "Получить ID текущего (активного) сезона", description = "Доступно всем")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "ID текущего сезона",
                     content = {
                             @Content(mediaType = "application/json",
-                                    schema = @Schema(ref = "StandardResponseDto"))
+                                    schema = @Schema(implementation = SeasonDto.class))
                     }
-            )
+            ),
     })
-    ResponseEntity<SeasonDto> getActiveSeason(@Parameter(hidden = true) AuthenticatedUser currentUser);
+    ResponseEntity<ActiveSeasonIdDto> getActiveSeasonId();
 
     // ------------------------------------------------------------------------------------------------------ //
 
@@ -207,7 +214,7 @@ public interface SeasonsApi {
             @ApiResponse(responseCode = "200", description = "Команда в лиге",
                     content = {
                             @Content(mediaType = "application/json",
-                                    schema = @Schema(implementation = SeasonDto.class))
+                                    schema = @Schema(implementation = LeagueDto.class))
                     }
             ),
             @ApiResponse(responseCode = "403", description = "Пользователь не аутентифицирован",
@@ -217,7 +224,7 @@ public interface SeasonsApi {
                     }
             )
     })
-    ResponseEntity<SeasonDto> addTeamToLeagueInSeason(@Parameter(hidden = true) AuthenticatedUser currentUser,
+    ResponseEntity<LeagueDto> addTeamToLeagueInSeason(@Parameter(hidden = true) AuthenticatedUser currentUser,
                                                       @Parameter(description = "ID сезона") String seasonId,
                                                       @Parameter(description = "ID лиги") String leagueId,
                                                       @Parameter(description = "ID команды") String teamId);
@@ -229,7 +236,7 @@ public interface SeasonsApi {
             @ApiResponse(responseCode = "200", description = "Новая ставка",
                     content = {
                             @Content(mediaType = "application/json",
-                                    schema = @Schema(implementation = SeasonDto.class))
+                                    schema = @Schema(implementation = BetDto.class))
                     }
             ),
             @ApiResponse(responseCode = "403", description = "Пользователь не аутентифицирован",
@@ -239,7 +246,7 @@ public interface SeasonsApi {
                     }
             )
     })
-    ResponseEntity<SeasonDto> addBetToLeagueInSeason(@Parameter(hidden = true) AuthenticatedUser currentUser,
+    ResponseEntity<BetDto> addBetToLeagueInSeason(@Parameter(hidden = true) AuthenticatedUser currentUser,
                                                      @Parameter(description = "ID сезона") String seasonId,
                                                      @Parameter(description = "ID лиги") String leagueId,
                                                      @Parameter(description = "новая ставка") @Valid NewBetDto newBet);
@@ -251,7 +258,7 @@ public interface SeasonsApi {
             @ApiResponse(responseCode = "200", description = "Новая пустая ставка",
                     content = {
                             @Content(mediaType = "application/json",
-                                    schema = @Schema(implementation = SeasonDto.class))
+                                    schema = @Schema(implementation = BetDto.class))
                     }
             ),
             @ApiResponse(responseCode = "403", description = "Пользователь не аутентифицирован",
@@ -261,7 +268,7 @@ public interface SeasonsApi {
                     }
             )
     })
-    ResponseEntity<SeasonDto> addEmptyBetToLeagueInSeason(@Parameter(hidden = true) AuthenticatedUser currentUser,
+    ResponseEntity<BetDto> addEmptyBetToLeagueInSeason(@Parameter(hidden = true) AuthenticatedUser currentUser,
                                                           @Parameter(description = "ID сезона") String seasonId,
                                                           @Parameter(description = "ID лиги") String leagueId,
                                                           @Parameter(description = "новая пустая ставка") @Valid NewEmptyBetDto newEmptyBet);
@@ -273,7 +280,7 @@ public interface SeasonsApi {
             @ApiResponse(responseCode = "200", description = "Новая статус и результат ставки",
                     content = {
                             @Content(mediaType = "application/json",
-                                    schema = @Schema(implementation = SeasonDto.class))
+                                    schema = @Schema(implementation = BetDto.class))
                     }
             ),
             @ApiResponse(responseCode = "403", description = "Пользователь не аутентифицирован",
@@ -283,7 +290,7 @@ public interface SeasonsApi {
                     }
             )
     })
-    ResponseEntity<SeasonDto> addBetResult(@Parameter(hidden = true) AuthenticatedUser currentUser,
+    ResponseEntity<BetDto> addBetResult(@Parameter(hidden = true) AuthenticatedUser currentUser,
                                         @Parameter(description = "ID сезона") String seasonId,
                                         @Parameter(description = "ID ставки") String betId,
                                         @Parameter(description = "результат матча и статус ставки") @Valid NewBetResult newBetResult);

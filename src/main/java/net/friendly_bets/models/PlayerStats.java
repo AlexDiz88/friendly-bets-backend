@@ -36,7 +36,7 @@ public class PlayerStats {
     private Double sumOfOdds;
     private Double sumOfWonOdds;
 
-    private void calculateWinRate() {
+    public void calculateWinRate() {
         if (betCount == 0 || betCount - returnedBetCount - emptyBetCount == 0) {
             winRate = 0.0;
         } else {
@@ -44,7 +44,7 @@ public class PlayerStats {
         }
     }
 
-    private void calculateAverageOdds() {
+    public void calculateAverageOdds() {
         if (betCount == 0 || betCount - emptyBetCount == 0) {
             averageOdds = 0.0;
         } else {
@@ -52,11 +52,11 @@ public class PlayerStats {
         }
     }
 
-    private void calculateAverageWonBetOdds() {
-        if (betCount == 0 || betCount - emptyBetCount == 0) {
+    public void calculateAverageWonBetOdds() {
+        if (wonBetCount == 0) {
             averageWonBetOdds = 0.0;
         } else {
-            averageWonBetOdds = sumOfOdds / (betCount - emptyBetCount);
+            averageWonBetOdds = sumOfWonOdds / wonBetCount;
         }
     }
 }

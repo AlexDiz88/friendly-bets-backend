@@ -9,7 +9,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.tags.Tags;
 import net.friendly_bets.dto.AllPlayersStatsByLeaguesDto;
-import net.friendly_bets.dto.AllPlayersStatsDto;
+import net.friendly_bets.dto.AllPlayersStatsPage;
 import org.springframework.http.ResponseEntity;
 
 @Tags(value = {
@@ -22,11 +22,11 @@ public interface PlayerStatsApi {
             @ApiResponse(responseCode = "200", description = "Общая статистика всех участников турнира в сезоне",
                     content = {
                             @Content(mediaType = "application/json",
-                                    schema = @Schema(implementation = AllPlayersStatsDto.class))
+                                    schema = @Schema(implementation = AllPlayersStatsPage.class))
                     }
             ),
     })
-    ResponseEntity<AllPlayersStatsDto> getAllPlayersStatsBySeason(@Parameter(description = "ID сезона") String seasonId);
+    ResponseEntity<AllPlayersStatsPage> getAllPlayersStatsBySeason(@Parameter(description = "ID сезона") String seasonId);
 
     // ------------------------------------------------------------------------------------------------------ //
 
@@ -40,4 +40,24 @@ public interface PlayerStatsApi {
             ),
     })
     ResponseEntity<AllPlayersStatsByLeaguesDto> getAllPlayersStatsByLeagues(@Parameter(description = "ID сезона") String seasonId);
+
+    // ------------------------------------------------------------------------------------------------------ //
+
+    @Operation(summary = "Полный пересчет всей статистики игроков по сезону", description = "Доступно только администратору")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Пересчитанная статистика всех игроков в сезоне",
+                    content = {
+                            @Content(mediaType = "application/json",
+                                    schema = @Schema(implementation = AllPlayersStatsPage.class))
+                    }
+            ),
+    })
+    @ApiResponse(responseCode = "403", description = "Пользователь не аутентифицирован",
+            content = {
+                    @Content(mediaType = "application/json",
+                            schema = @Schema(ref = "StandardResponseDto"))
+            }
+    )
+    ResponseEntity<AllPlayersStatsPage> playersStatsFullRecalculation(@Parameter(description = "ID сезона") String seasonId);
+
 }

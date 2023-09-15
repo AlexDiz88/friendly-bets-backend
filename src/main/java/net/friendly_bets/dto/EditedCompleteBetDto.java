@@ -7,7 +7,6 @@ import lombok.NoArgsConstructor;
 import javax.validation.constraints.Min;
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.NotNull;
-import javax.validation.constraints.Size;
 import java.time.LocalDateTime;
 
 @Data
@@ -15,8 +14,16 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 public class EditedCompleteBetDto {
 
-    @NotNull(message = "{field.isNull}")
-    @NotBlank(message = "{field.isBlank}")
+    @NotNull(message = "{field.seasonId.isNull}")
+    @NotBlank(message = "{field.seasonId.isBlank}")
+    private String seasonId;
+
+    @NotNull(message = "{field.leagueId.isNull}")
+    @NotBlank(message = "{field.leagueId.isBlank}")
+    private String leagueId;
+
+    @NotNull(message = "{field.userId.isNull}")
+    @NotBlank(message = "{field.userId.isBlank}")
     private String userId;
 
     @NotNull(message = "{field.isNull}")
@@ -46,8 +53,6 @@ public class EditedCompleteBetDto {
     @Min(value = 1, message = "{field.bet.betSizeMinValue}")
     private Integer betSize;
 
-    @NotNull(message = "{field.isNull}")
-    @NotBlank(message = "{field.bet.blankBetGameResult}")
     private String gameResult;
 
     @NotNull(message = "{field.isNull}")
