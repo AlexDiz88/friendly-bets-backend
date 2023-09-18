@@ -209,7 +209,7 @@ public class SeasonsServiceImpl implements SeasonsService {
 
     @Override
     @Transactional
-    public LeagueDto addTeamToLeagueInSeason(String seasonId, String leagueId, String teamId) {
+    public TeamDto addTeamToLeagueInSeason(String seasonId, String leagueId, String teamId) {
         if (teamId == null || teamId.isBlank()) {
             throw new BadRequestException("Команда не выбрана");
         }
@@ -235,7 +235,7 @@ public class SeasonsServiceImpl implements SeasonsService {
         leagueInSeason.getTeams().add(team);
         leaguesRepository.save(leagueInSeason);
 
-        return LeagueDto.from(seasonId, leagueInSeason);
+        return TeamDto.from(team);
     }
 
     // ------------------------------------------------------------------------------------------------------ //

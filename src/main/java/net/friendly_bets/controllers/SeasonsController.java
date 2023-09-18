@@ -107,7 +107,7 @@ public class SeasonsController implements SeasonsApi {
     @Override
     @PreAuthorize("hasAuthority('ADMIN')")
     @PostMapping("/{season-id}/leagues/{league-id}/teams/{team-id}")
-    public ResponseEntity<LeagueDto> addTeamToLeagueInSeason(@AuthenticationPrincipal AuthenticatedUser currentUser,
+    public ResponseEntity<TeamDto> addTeamToLeagueInSeason(@AuthenticationPrincipal AuthenticatedUser currentUser,
                                                              @PathVariable("season-id") String seasonId,
                                                              @PathVariable("league-id") String leagueId,
                                                              @PathVariable("team-id") String teamId) {
