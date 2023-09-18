@@ -214,7 +214,7 @@ public interface SeasonsApi {
             @ApiResponse(responseCode = "200", description = "Команда в лиге",
                     content = {
                             @Content(mediaType = "application/json",
-                                    schema = @Schema(implementation = LeagueDto.class))
+                                    schema = @Schema(implementation = TeamDto.class))
                     }
             ),
             @ApiResponse(responseCode = "403", description = "Пользователь не аутентифицирован",
@@ -224,7 +224,7 @@ public interface SeasonsApi {
                     }
             )
     })
-    ResponseEntity<LeagueDto> addTeamToLeagueInSeason(@Parameter(hidden = true) AuthenticatedUser currentUser,
+    ResponseEntity<TeamDto> addTeamToLeagueInSeason(@Parameter(hidden = true) AuthenticatedUser currentUser,
                                                       @Parameter(description = "ID сезона") String seasonId,
                                                       @Parameter(description = "ID лиги") String leagueId,
                                                       @Parameter(description = "ID команды") String teamId);

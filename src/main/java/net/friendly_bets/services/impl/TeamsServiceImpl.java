@@ -39,15 +39,6 @@ public class TeamsServiceImpl implements TeamsService {
         if (newTeam == null) {
             throw new BadRequestException("Объект не должен быть пустым");
         }
-        if (newTeam.getFullTitleRu() == null || newTeam.getFullTitleRu().trim().length() < 1) {
-            throw new BadRequestException("Название сезона(RU) не может быть пустым");
-        }
-        if (newTeam.getFullTitleEn() == null || newTeam.getFullTitleEn().trim().length() < 1) {
-            throw new BadRequestException("Название сезона(EN) не может быть пустым");
-        }
-        if (newTeam.getCountry() == null || newTeam.getCountry().trim().length() < 1) {
-            throw new BadRequestException("Название страны команды не может быть пустым");
-        }
         if (teamsRepository.existsByFullTitleRuOrFullTitleEn(newTeam.getFullTitleRu(), newTeam.getFullTitleEn())) {
             throw new ConflictException("Команда с таким названием уже существует");
         }
