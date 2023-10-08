@@ -225,9 +225,9 @@ public interface SeasonsApi {
             )
     })
     ResponseEntity<TeamDto> addTeamToLeagueInSeason(@Parameter(hidden = true) AuthenticatedUser currentUser,
-                                                      @Parameter(description = "ID сезона") String seasonId,
-                                                      @Parameter(description = "ID лиги") String leagueId,
-                                                      @Parameter(description = "ID команды") String teamId);
+                                                    @Parameter(description = "ID сезона") String seasonId,
+                                                    @Parameter(description = "ID лиги") String leagueId,
+                                                    @Parameter(description = "ID команды") String teamId);
 
     // ------------------------------------------------------------------------------------------------------ //
 
@@ -247,9 +247,9 @@ public interface SeasonsApi {
             )
     })
     ResponseEntity<BetDto> addBetToLeagueInSeason(@Parameter(hidden = true) AuthenticatedUser currentUser,
-                                                     @Parameter(description = "ID сезона") String seasonId,
-                                                     @Parameter(description = "ID лиги") String leagueId,
-                                                     @Parameter(description = "новая ставка") @Valid NewBetDto newBet);
+                                                  @Parameter(description = "ID сезона") String seasonId,
+                                                  @Parameter(description = "ID лиги") String leagueId,
+                                                  @Parameter(description = "новая ставка") @Valid NewBetDto newBet);
 
     // ------------------------------------------------------------------------------------------------------ //
 
@@ -269,15 +269,15 @@ public interface SeasonsApi {
             )
     })
     ResponseEntity<BetDto> addEmptyBetToLeagueInSeason(@Parameter(hidden = true) AuthenticatedUser currentUser,
-                                                          @Parameter(description = "ID сезона") String seasonId,
-                                                          @Parameter(description = "ID лиги") String leagueId,
-                                                          @Parameter(description = "новая пустая ставка") @Valid NewEmptyBetDto newEmptyBet);
+                                                       @Parameter(description = "ID сезона") String seasonId,
+                                                       @Parameter(description = "ID лиги") String leagueId,
+                                                       @Parameter(description = "новая пустая ставка") @Valid NewEmptyBetDto newEmptyBet);
 
     // ------------------------------------------------------------------------------------------------------ //
 
     @Operation(summary = "Результат ставки (по итогам проверки)", description = "Доступно только модератору и администратору (до реализации автоматического приёма ставок)")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Новая статус и результат ставки",
+            @ApiResponse(responseCode = "200", description = "Новый статус и результат ставки",
                     content = {
                             @Content(mediaType = "application/json",
                                     schema = @Schema(implementation = BetDto.class))
@@ -297,5 +297,30 @@ public interface SeasonsApi {
 
     // ------------------------------------------------------------------------------------------------------ //
 
+    @Operation(summary = "Получить список всех открытых(OPENED) ставок", description = "Доступно всем")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Список всех открытых(OPENED) ставок",
+                    content = {
+                            @Content(mediaType = "application/json",
+                                    schema = @Schema(implementation = BetsPage.class))
+                    }
+            ),
+    })
+    ResponseEntity<BetsPage> getAllOpenedBets(@Parameter(description = "ID сезона") String seasonId);
+
+    // ------------------------------------------------------------------------------------------------------ //
+
+    @Operation(summary = "Получить список всех завершенных(COMPLETED) ставок", description = "Доступно всем")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Список всех завершенных(COMPLETED) ставок",
+                    content = {
+                            @Content(mediaType = "application/json",
+                                    schema = @Schema(implementation = BetsPage.class))
+                    }
+            ),
+    })
+    ResponseEntity<BetsPage> getAllCompletedBets(@Parameter(description = "ID сезона") String seasonId, int page, int size);
+
+    // ------------------------------------------------------------------------------------------------------ //
 
 }

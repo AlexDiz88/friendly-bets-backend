@@ -10,6 +10,7 @@ import net.friendly_bets.exceptions.NotFoundException;
 import net.friendly_bets.models.*;
 import net.friendly_bets.repositories.*;
 import net.friendly_bets.services.SeasonsService;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -388,5 +389,32 @@ public class SeasonsServiceImpl implements SeasonsService {
         playerStatsRepository.save(playerStats);
 
         return BetDto.from(seasonId, league.getId(), bet);
+    }
+
+    // ------------------------------------------------------------------------------------------------------ //
+
+    @Override
+    public BetsPage getAllOpenedBets(String seasonId) {
+        Season season = getSeasonOrThrow(seasonsRepository, seasonId);
+        List<League> leagues = season.getLeagues();
+        List<BetDto> openedBets = new ArrayList<>();
+        for (League league : leagues) {
+            List<Bet> bets = league.getBets();
+            for (Bet bet : bets) {
+                if (bet.getBetStatus().equals(Bet.BetStatus.OPENED)) {
+                    openedBets.add(BetDto.from(seasonId, league.getId(), bet));
+                }
+            }
+        }
+        return BetsPage.builder()
+                .bets(openedBets)
+                .build();
+    }
+
+    // ------------------------------------------------------------------------------------------------------ //
+
+    @Override
+    public BetsPage getAllCompletedBets(String seasonId, PageRequest pageRequest) {
+        return null;
     }
 }
