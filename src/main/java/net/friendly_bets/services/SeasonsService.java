@@ -7,6 +7,8 @@ import java.util.List;
 
 public interface SeasonsService {
 
+    SeasonsPage dbRework();
+
     SeasonsPage getAll();
 
     SeasonDto addSeason(NewSeasonDto newSeason);

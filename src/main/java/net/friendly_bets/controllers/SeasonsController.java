@@ -21,6 +21,14 @@ public class SeasonsController implements SeasonsApi {
     private final SeasonsService seasonsService;
 
     @Override
+    @PreAuthorize("hasAuthority('ADMIN')")
+    @GetMapping("/db-rework")
+    public ResponseEntity<SeasonsPage> dbRework(@AuthenticationPrincipal AuthenticatedUser currentUser) {
+        return ResponseEntity
+                .ok(seasonsService.dbRework());
+    }
+
+    @Override
     @GetMapping
     public ResponseEntity<SeasonsPage> getSeasons(@AuthenticationPrincipal AuthenticatedUser currentUser) {
         return ResponseEntity

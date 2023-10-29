@@ -20,6 +20,8 @@ import java.util.List;
 })
 public interface SeasonsApi {
 
+    ResponseEntity<SeasonsPage> dbRework(@Parameter(hidden = true) AuthenticatedUser currentUser);
+
     @Operation(summary = "Получение списка всех сезонов", description = "Доступно только аутентифицированному пользователю")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Информацию о сезонах",

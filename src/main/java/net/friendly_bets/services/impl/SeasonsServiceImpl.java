@@ -36,21 +36,32 @@ public class SeasonsServiceImpl implements SeasonsService {
     PlayerStatsRepository playerStatsRepository;
 
     @Override
-    public SeasonsPage getAll() {
-//        Season season = seasonsRepository.findSeasonByStatus(Season.Status.ACTIVE).orElseThrow(
-//                () -> new BadRequestException("Нет активных сезонов"));
-//        List<League> leagues = season.getLeagues();
-//        for (League league : leagues) {
-//            List<Bet> bets = league.getBets();
-//            for (Bet bet : bets) {
-//                bet.setSeason(season);
-//                bet.setLeague(league);
-//                betsRepository.save(bet);
-//            }
-//        }
-//        List<Season> allSeasons = seasonsRepository.findAll();
+    @Transactional
+    public SeasonsPage dbRework() {
+        // TODO: этот метод сработает только при условии, что в сущности League есть поле List<Bet> bets;
+        // TODO: после выполнения этого метода, можно выполнить коммит с другой ветки на остальные изменения
+        // TODO: после выполнения - удалить
+        Season season = seasonsRepository.findSeasonByStatus(Season.Status.ACTIVE).orElseThrow(
+                () -> new BadRequestException("Нет активных сезонов"));
+        List<League> leagues = season.getLeagues();
+        for (League league : leagues) {
+            List<Bet> bets = league.getBets();
+            for (Bet bet : bets) {
+                bet.setSeason(season);
+                bet.setLeague(league);
+                betsRepository.save(bet);
+            }
+        }
         return SeasonsPage.builder()
-//                .seasons(SeasonDto.from(allSeasons))
+                .build();
+    }
+
+    @Override
+    @Transactional
+    public SeasonsPage getAll() {
+        List<Season> allSeasons = seasonsRepository.findAll();
+        return SeasonsPage.builder()
+                .seasons(SeasonDto.from(allSeasons))
                 .build();
     }
 
