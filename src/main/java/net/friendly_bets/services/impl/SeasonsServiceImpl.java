@@ -37,9 +37,20 @@ public class SeasonsServiceImpl implements SeasonsService {
 
     @Override
     public SeasonsPage getAll() {
-        List<Season> allSeasons = seasonsRepository.findAll();
+//        Season season = seasonsRepository.findSeasonByStatus(Season.Status.ACTIVE).orElseThrow(
+//                () -> new BadRequestException("Нет активных сезонов"));
+//        List<League> leagues = season.getLeagues();
+//        for (League league : leagues) {
+//            List<Bet> bets = league.getBets();
+//            for (Bet bet : bets) {
+//                bet.setSeason(season);
+//                bet.setLeague(league);
+//                betsRepository.save(bet);
+//            }
+//        }
+//        List<Season> allSeasons = seasonsRepository.findAll();
         return SeasonsPage.builder()
-                .seasons(SeasonDto.from(allSeasons))
+//                .seasons(SeasonDto.from(allSeasons))
                 .build();
     }
 
@@ -80,7 +91,7 @@ public class SeasonsServiceImpl implements SeasonsService {
             throw new BadRequestException("Недопустимый статус: " + status);
         }
         Season season = seasonsRepository.findById(seasonId).orElseThrow(
-                () -> new NotFoundException("Cезон", seasonId)
+                () -> new NotFoundException("Сезон", seasonId)
         );
         if (season.getStatus().toString().equals(status)) {
             throw new ConflictException("Сезон уже имеет этот статус");

@@ -7,11 +7,14 @@ import lombok.experimental.FieldDefaults;
 import net.friendly_bets.dto.StandardResponseDto;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
@@ -48,19 +51,26 @@ public class SecurityConfig {
                 .antMatchers("/swagger-ui.html/**").permitAll()
                 .and()
                 .formLogin()
+                .loginProcessingUrl("/api/login")
                 .successHandler((request, response, authentication) -> {
-                    fillResponse(response, 200, "Успешная авторизация");
+                    fillResponse(response, HttpStatus.OK.value(), "Успешная авторизация");
                 })
                 .failureHandler((request, response, exception) ->
-                        fillResponse(response, 401, "Неверный логин или пароль"))
+                        fillResponse(response, HttpStatus.UNAUTHORIZED.value(), "Неверный логин или пароль"))
                 .and()
                 .exceptionHandling()
                 .defaultAuthenticationEntryPointFor((request, response, authException) ->
-                                fillResponse(response, 403, "Пользователь не аутентифицирован"),
+                                fillResponse(response, HttpStatus.FORBIDDEN.value(), "Пользователь не аутентифицирован"),
                         new AntPathRequestMatcher("/api/**"))
+                .accessDeniedHandler((request, response, accessDeniedException) -> {
+                    Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+                    fillResponse(response, HttpStatus.FORBIDDEN.value(), "Access denied for user with email <" +
+                            authentication.getName() + "> and role " + authentication.getAuthorities());
+                })
                 .and()
-                .logout().logoutSuccessHandler((request, response, authentication) ->
-                        fillResponse(response, 200, "Выход выполнен успешно"));
+                .logout().logoutUrl("/api/logout")
+                .logoutSuccessHandler((request, response, authentication) ->
+                        fillResponse(response, HttpStatus.OK.value(), "Выход выполнен успешно"));
 
         return httpSecurity.build();
     }
@@ -70,6 +80,7 @@ public class SecurityConfig {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOriginPatterns(Arrays.asList(
                 "http://localhost:3000",
+                "http://localhost:5173",
                 "https://friendly-bets.net",
                 "https://www.friendly-bets.net",
                 "https://friendly-bets-9fph3.ondigitalocean.app"));
