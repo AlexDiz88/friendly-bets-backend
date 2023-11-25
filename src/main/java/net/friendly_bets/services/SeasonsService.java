@@ -1,7 +1,6 @@
 package net.friendly_bets.services;
 
 import net.friendly_bets.dto.*;
-import org.springframework.data.domain.PageRequest;
 
 import java.util.List;
 
@@ -30,14 +29,4 @@ public interface SeasonsService {
     SeasonDto addLeagueToSeason(String seasonId, NewLeagueDto newLeague);
 
     TeamDto addTeamToLeagueInSeason(String seasonId, String leagueId, String teamId);
-
-    BetDto addBetToLeagueInSeason(String moderatorId, String seasonId, String leagueId, NewBetDto newBet);
-
-    BetDto addEmptyBetToLeagueInSeason(String moderatorId, String seasonId, String leagueId, NewEmptyBetDto newEmptyBet);
-
-    BetDto addBetResult(String moderatorId, String seasonId, String betId, NewBetResult newBetResult);
-
-    BetsPage getAllOpenedBets(String seasonId);
-
-    BetsPage getAllCompletedBets(String seasonId, PageRequest pageRequest);
 }

@@ -3,9 +3,11 @@ package net.friendly_bets.repositories;
 import net.friendly_bets.models.League;
 import org.springframework.data.mongodb.repository.MongoRepository;
 
+import java.util.Optional;
+
 
 public interface LeaguesRepository extends MongoRepository<League, String> {
 
-    League findByBets_Id(String betId);
+    Optional<League> findByDisplayNameRu (String leagueName);
 
 }

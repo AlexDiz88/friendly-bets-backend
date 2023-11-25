@@ -19,6 +19,14 @@ public class NewBetDto {
     private String userId;
 
     @NotNull(message = "{field.isNull}")
+    @NotBlank(message = "{field.isBlank}")
+    private String seasonId;
+
+    @NotNull(message = "{field.isNull}")
+    @NotBlank(message = "{field.isBlank}")
+    private String leagueId;
+
+    @NotNull(message = "{field.isNull}")
     @NotBlank(message = "{field.bet.blankMatchDay}")
     private String matchDay;
 

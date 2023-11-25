@@ -3,21 +3,15 @@ package net.friendly_bets.services.impl;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
-import net.friendly_bets.dto.BetDto;
-import net.friendly_bets.dto.BetsPage;
-import net.friendly_bets.dto.DeletedBetDto;
-import net.friendly_bets.dto.EditedCompleteBetDto;
+import net.friendly_bets.dto.*;
 import net.friendly_bets.exceptions.BadRequestException;
 import net.friendly_bets.exceptions.ConflictException;
-import net.friendly_bets.models.Bet;
-import net.friendly_bets.models.PlayerStats;
-import net.friendly_bets.models.Team;
-import net.friendly_bets.models.User;
-import net.friendly_bets.repositories.BetsRepository;
-import net.friendly_bets.repositories.PlayerStatsRepository;
-import net.friendly_bets.repositories.TeamsRepository;
-import net.friendly_bets.repositories.UsersRepository;
+import net.friendly_bets.models.*;
+import net.friendly_bets.repositories.*;
 import net.friendly_bets.services.BetsService;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.mongodb.core.MongoOperations;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,16 +27,252 @@ import static net.friendly_bets.utils.GetEntityOrThrow.*;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class BetsServiceImpl implements BetsService {
 
+    SeasonsRepository seasonsRepository;
+    LeaguesRepository leaguesRepository;
     BetsRepository betsRepository;
     TeamsRepository teamsRepository;
     UsersRepository usersRepository;
     PlayerStatsRepository playerStatsRepository;
+    MongoOperations mongoOperations;
 
     @Override
-    public BetsPage getAllBets() {
-        List<Bet> allBets = betsRepository.findAll();
+    @Transactional
+    public BetDto addBet(String moderatorId, NewBetDto newBet) {
+        checkTeams(newBet.getHomeTeamId(), newBet.getAwayTeamId());
+        checkBetOdds(newBet.getBetOdds());
+
+        User moderator = getUserOrThrow(usersRepository, moderatorId);
+        User user = getUserOrThrow(usersRepository, newBet.getUserId());
+        Season season = getSeasonOrThrow(seasonsRepository, newBet.getSeasonId());
+        League league = getLeagueOrThrow(leaguesRepository, newBet.getLeagueId());
+        Team homeTeam = getTeamOrThrow(teamsRepository, newBet.getHomeTeamId());
+        Team awayTeam = getTeamOrThrow(teamsRepository, newBet.getAwayTeamId());
+
+        // TODO написать проверку совпадения ставок под лигу, а не из общего репозитория ставок
+        //  (т.к. могут быть совпадения в разных лигах/сезонах)
+        if (betsRepository.existsByUserAndMatchDayAndHomeTeamAndAwayTeamAndBetTitleAndBetOddsAndBetSize(
+                user,
+                newBet.getMatchDay(),
+                homeTeam,
+                awayTeam,
+                newBet.getBetTitle(),
+                newBet.getBetOdds(),
+                newBet.getBetSize()
+        )) {
+            throw new ConflictException("Ставка на этот матч от данного участника уже добавлена");
+        }
+
+        Bet bet = Bet.builder()
+                .createdAt(LocalDateTime.now())
+                .createdBy(moderator)
+                .user(user)
+                .season(season)
+                .league(league)
+                .matchDay(newBet.getMatchDay())
+                .gameId(newBet.getGameId())
+                .gameDate(newBet.getGameDate())
+                .homeTeam(homeTeam)
+                .awayTeam(awayTeam)
+                .betTitle(newBet.getBetTitle())
+                .betOdds(newBet.getBetOdds())
+                .betSize(newBet.getBetSize())
+                .betStatus(Bet.BetStatus.OPENED)
+                .build();
+
+        betsRepository.save(bet);
+        setCurrentMatchDay(betsRepository, season, league);
+        leaguesRepository.save(league);
+
+        Optional<PlayerStats> playerStatsOptional = playerStatsRepository.findBySeasonIdAndLeagueIdAndUser(newBet.getSeasonId(), newBet.getLeagueId(), user);
+        PlayerStats playerStats = playerStatsOptional.orElseGet(() -> getDefaultPlayerStats(newBet.getSeasonId(), newBet.getLeagueId(), user));
+
+        playerStats.setTotalBets(playerStats.getTotalBets() + 1);
+        playerStatsRepository.save(playerStats);
+
+        return BetDto.from(bet);
+    }
+
+    // ------------------------------------------------------------------------------------------------------ //
+
+    @Override
+    @Transactional
+    public BetDto addEmptyBet(String moderatorId, NewEmptyBetDto newEmptyBet) {
+        User moderator = getUserOrThrow(usersRepository, moderatorId);
+        User user = getUserOrThrow(usersRepository, newEmptyBet.getUserId());
+        Season season = getSeasonOrThrow(seasonsRepository, newEmptyBet.getSeasonId());
+        League league = getLeagueOrThrow(leaguesRepository, newEmptyBet.getLeagueId());
+
+        Bet bet = Bet.builder()
+                .createdAt(LocalDateTime.now())
+                .createdBy(moderator)
+                .user(user)
+                .season(season)
+                .league(league)
+                .matchDay(newEmptyBet.getMatchDay())
+                .betSize(newEmptyBet.getBetSize())
+                .betStatus(Bet.BetStatus.EMPTY)
+                .betResultAddedAt(LocalDateTime.now())
+                .betResultAddedBy(moderator)
+                .balanceChange(-Double.valueOf(newEmptyBet.getBetSize()))
+                .build();
+
+        betsRepository.save(bet);
+        setCurrentMatchDay(betsRepository, season, league);
+        leaguesRepository.save(league);
+
+        Optional<PlayerStats> playerStatsOptional = playerStatsRepository.findBySeasonIdAndLeagueIdAndUser(newEmptyBet.getSeasonId(), newEmptyBet.getLeagueId(), user);
+        PlayerStats playerStats = playerStatsOptional.orElseGet(() -> getDefaultPlayerStats(newEmptyBet.getSeasonId(), newEmptyBet.getLeagueId(), user));
+
+        playerStats.setTotalBets(playerStats.getTotalBets() + 1);
+        playerStats.setBetCount(playerStats.getBetCount() + 1);
+        playerStats.setEmptyBetCount(playerStats.getEmptyBetCount() + 1);
+        playerStats.setActualBalance(playerStats.getActualBalance() - Double.valueOf(newEmptyBet.getBetSize()));
+        playerStatsRepository.save(playerStats);
+
+        return BetDto.from(bet);
+    }
+
+    // ------------------------------------------------------------------------------------------------------ //
+
+    @Override
+    @Transactional
+    public BetDto setBetResult(String moderatorId, String betId, NewBetResult newBetResult) {
+        try {
+            Bet.BetStatus.valueOf(newBetResult.getBetStatus());
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Недопустимый статус: " + newBetResult.getBetStatus());
+        }
+
+        checkGameResult(newBetResult.getGameResult());
+
+        Bet bet = getBetOrThrow(betsRepository, betId);
+        if (!bet.getBetStatus().equals(Bet.BetStatus.OPENED)) {
+            throw new ConflictException("Эта ставка уже обработана другим модератором");
+        }
+
+        User moderator = getUserOrThrow(usersRepository, moderatorId);
+        Bet.BetStatus betStatus = Bet.BetStatus.valueOf(newBetResult.getBetStatus());
+        setBalanceChange(bet, betStatus, bet.getBetSize(), bet.getBetOdds());
+
+        bet.setBetResultAddedAt(LocalDateTime.now());
+        bet.setBetResultAddedBy(moderator);
+        bet.setBetStatus(betStatus);
+        bet.setGameResult(newBetResult.getGameResult());
+        betsRepository.save(bet);
+
+        Optional<PlayerStats> playerStatsOptional = playerStatsRepository.findBySeasonIdAndLeagueIdAndUser(bet.getSeason().getId(), bet.getLeague().getId(), bet.getUser());
+        PlayerStats playerStats = playerStatsOptional.orElseGet(() -> getDefaultPlayerStats(bet.getSeason().getId(), bet.getLeague().getId(), bet.getUser()));
+
+        playerStats.setBetCount(playerStats.getBetCount() + 1);
+        if (bet.getBetStatus().equals(Bet.BetStatus.WON)) {
+            playerStats.setWonBetCount(playerStats.getWonBetCount() + 1);
+            playerStats.setSumOfWonOdds(playerStats.getSumOfWonOdds() + bet.getBetOdds());
+        }
+        if (bet.getBetStatus().equals(Bet.BetStatus.RETURNED)) {
+            playerStats.setReturnedBetCount(playerStats.getReturnedBetCount() + 1);
+        }
+        if (bet.getBetStatus().equals(Bet.BetStatus.LOST)) {
+            playerStats.setLostBetCount(playerStats.getLostBetCount() + 1);
+        }
+        playerStats.setSumOfOdds(playerStats.getSumOfOdds() + bet.getBetOdds());
+        playerStats.setActualBalance(playerStats.getActualBalance() + bet.getBalanceChange());
+        playerStats.calculateWinRate();
+        playerStats.calculateAverageOdds();
+        playerStats.calculateAverageWonBetOdds();
+        playerStatsRepository.save(playerStats);
+
+        return BetDto.from(bet);
+    }
+
+    // ------------------------------------------------------------------------------------------------------ //
+
+    @Override
+    public BetsPage getOpenedBets(String seasonId) {
+        List<Bet> openedBets = betsRepository.findAllBySeason_IdAndBetStatus(seasonId, Bet.BetStatus.OPENED);
         return BetsPage.builder()
-//                .bets(BetDto.from(allBets))
+                .bets(BetDto.from(openedBets))
+                .build();
+    }
+
+    // ------------------------------------------------------------------------------------------------------ //
+
+    @Override
+    public BetsPage getCompletedBets(String seasonId, String playerId, String leagueId, Pageable pageable) {
+        System.out.println("getPageSize:" + pageable.getPageSize());
+        System.out.println("getPageNumber:" + pageable.getPageNumber());
+        System.out.println("playerId:" + playerId);
+        System.out.println("leagueId:" + leagueId);
+
+//        Page<Bet> betsPage = betsRepository.findAllByBetStatusIn(desiredStatuses, pageable);
+
+//        mongoOperations.indexOps(Bet.class).ensureIndex(new Index().on("user", Sort.Direction.ASC));
+//        mongoOperations.indexOps(Bet.class).ensureIndex(new Index().on("league", Sort.Direction.ASC));
+//        mongoOperations.indexOps(Bet.class).ensureIndex(new Index().on("betStatus", Sort.Direction.ASC));
+//        mongoOperations.indexOps(Bet.class).ensureIndex(new Index().on("createdAt", Sort.Direction.DESC));
+//        mongoOperations.indexOps(Bet.class).ensureIndex(new Index().on("betResultAddedAt", Sort.Direction.DESC));
+
+        List<Bet.BetStatus> desiredStatuses = List.of(Bet.BetStatus.WON, Bet.BetStatus.RETURNED,
+                Bet.BetStatus.LOST, Bet.BetStatus.EMPTY);
+
+        Page<Bet> completedBetsPage = null;
+
+        if (leagueId == null && playerId == null) {
+            completedBetsPage = betsRepository.findAllByBetStatusIn(desiredStatuses, pageable);
+        }
+        if (leagueId == null && playerId != null) {
+            completedBetsPage = betsRepository.findAllByBetStatusInAndUser_Id(desiredStatuses, playerId, pageable);
+        }
+        if (leagueId != null && playerId == null) {
+            completedBetsPage = betsRepository.findAllByBetStatusInAndLeague_Id(desiredStatuses, leagueId, pageable);
+        }
+        if (leagueId != null && playerId != null) {
+            completedBetsPage = betsRepository.findAllByBetStatusInAndLeague_IdAndUser_Id(desiredStatuses, leagueId, playerId, pageable);
+        }
+        if (completedBetsPage == null) {
+            throw new BadRequestException("Некорректный запрос");
+        }
+
+//        Criteria criteria = new Criteria();
+//        // TODO: Добавить фильтр по сезону
+//        Optional<League> leagueOptional = leagueName != null ? leaguesRepository.findByDisplayNameRu(leagueName) : Optional.empty();
+//        leagueOptional.ifPresent(league -> criteria.and("league").is(league.getId()));
+//        Optional<User> userOptional = playerName != null ? usersRepository.findByUsername(playerName) : Optional.empty();
+//        userOptional.ifPresent(user -> criteria.and("user").is(user.getId()));
+//        criteria.and("betStatus").in(desiredStatuses);
+
+//        Query query = new Query(criteria).with(pageable);
+//        List<Bet> completedBets = mongoOperations.find(query, Bet.class);
+//        Page<Bet> page = new PageImpl<>(completedBets, pageable, completedBets.size());
+//        int totalPages = page.getTotalPages();
+//        int totalAmountBets = (int) page.getTotalElements();
+
+        return BetsPage.builder()
+                .bets(BetDto.from(completedBetsPage.getContent()))
+                .totalPages(completedBetsPage.getTotalPages())
+                .build();
+    }
+
+    // ------------------------------------------------------------------------------------------------------ //
+
+    @Override
+    public BetsPage getAllBets(String seasonId, Pageable pageable) {
+        List<Bet.BetStatus> desiredStatuses = List.of(Bet.BetStatus.OPENED, Bet.BetStatus.WON, Bet.BetStatus.RETURNED,
+                Bet.BetStatus.LOST, Bet.BetStatus.EMPTY);
+
+        Page<Bet> allBets = betsRepository.findAllByBetStatusIn(desiredStatuses, pageable);
+
+//        Criteria criteria = new Criteria();
+//        // TODO: Добавить фильтр по сезону
+//        criteria.and("betStatus").in(desiredStatuses);
+//
+//        Query query = new Query(criteria).with(pageable);
+//        List<Bet> allBets = mongoOperations.find(query, Bet.class);
+//        Page<Bet> page = new PageImpl<>(allBets, pageable, allBets.size());
+
+
+        return BetsPage.builder()
+                .bets(BetDto.from(allBets.getContent()))
+                .totalPages(allBets.getTotalPages())
                 .build();
     }
 
@@ -222,7 +452,7 @@ public class BetsServiceImpl implements BetsService {
             playerStatsRepository.save(playerStats);
         }
 
-        return BetDto.from(editedBet.getSeasonId(), editedBet.getLeagueId(), bet);
+        return BetDto.from(bet);
     }
 
     @Override
@@ -275,7 +505,7 @@ public class BetsServiceImpl implements BetsService {
 
         betsRepository.save(bet);
 
-        return BetDto.from(deletedBetMetaData.getSeasonId(), deletedBetMetaData.getLeagueId(), bet);
+        return BetDto.from(bet);
     }
 
     // ------------------------------------------------------------------------------------------------------ //

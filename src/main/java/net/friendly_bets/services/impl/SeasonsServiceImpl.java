@@ -7,10 +7,15 @@ import net.friendly_bets.dto.*;
 import net.friendly_bets.exceptions.BadRequestException;
 import net.friendly_bets.exceptions.ConflictException;
 import net.friendly_bets.exceptions.NotFoundException;
-import net.friendly_bets.models.*;
-import net.friendly_bets.repositories.*;
+import net.friendly_bets.models.League;
+import net.friendly_bets.models.Season;
+import net.friendly_bets.models.Team;
+import net.friendly_bets.models.User;
+import net.friendly_bets.repositories.LeaguesRepository;
+import net.friendly_bets.repositories.SeasonsRepository;
+import net.friendly_bets.repositories.TeamsRepository;
+import net.friendly_bets.repositories.UsersRepository;
 import net.friendly_bets.services.SeasonsService;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,7 +25,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
-import static net.friendly_bets.utils.BetValuesUtils.*;
 import static net.friendly_bets.utils.GetEntityOrThrow.*;
 
 @RequiredArgsConstructor
@@ -32,26 +36,23 @@ public class SeasonsServiceImpl implements SeasonsService {
     UsersRepository usersRepository;
     LeaguesRepository leaguesRepository;
     TeamsRepository teamsRepository;
-    BetsRepository betsRepository;
-    PlayerStatsRepository playerStatsRepository;
 
     @Override
     @Transactional
     public SeasonsPage dbRework() {
         // TODO: этот метод сработает только при условии, что в сущности League есть поле List<Bet> bets;
         // TODO: после выполнения этого метода, можно выполнить коммит с другой ветки на остальные изменения
-        // TODO: после выполнения - удалить
         Season season = seasonsRepository.findSeasonByStatus(Season.Status.ACTIVE).orElseThrow(
                 () -> new BadRequestException("Нет активных сезонов"));
         List<League> leagues = season.getLeagues();
-        for (League league : leagues) {
-            List<Bet> bets = league.getBets();
-            for (Bet bet : bets) {
-                bet.setSeason(season);
-                bet.setLeague(league);
-                betsRepository.save(bet);
-            }
-        }
+//        for (League league : leagues) {
+//            List<Bet> bets = league.getBets();
+//            for (Bet bet : bets) {
+//                bet.setSeason(season);
+//                bet.setLeague(league);
+//                betsRepository.save(bet);
+//            }
+//        }
         return SeasonsPage.builder()
                 .build();
     }
@@ -218,7 +219,6 @@ public class SeasonsServiceImpl implements SeasonsService {
                 .shortNameEn(newLeague.getShortNameEn())
                 .currentMatchDay("1")
                 .teams(new ArrayList<>())
-                .bets(new ArrayList<>())
                 .build();
 
         leaguesRepository.save(league);
@@ -263,180 +263,4 @@ public class SeasonsServiceImpl implements SeasonsService {
 
     // ------------------------------------------------------------------------------------------------------ //
 
-    @Override
-    @Transactional
-    public BetDto addBetToLeagueInSeason(String moderatorId, String seasonId, String leagueId, NewBetDto newBet) {
-        checkTeams(newBet.getHomeTeamId(), newBet.getAwayTeamId());
-        checkBetOdds(newBet.getBetOdds());
-
-        User moderator = getUserOrThrow(usersRepository, moderatorId);
-        User user = getUserOrThrow(usersRepository, newBet.getUserId());
-        Season season = getSeasonOrThrow(seasonsRepository, seasonId);
-        League league = getLeagueOrThrow(leaguesRepository, leagueId);
-        Team homeTeam = getTeamOrThrow(teamsRepository, newBet.getHomeTeamId());
-        Team awayTeam = getTeamOrThrow(teamsRepository, newBet.getAwayTeamId());
-
-        // TODO написать проверку совпадения ставок под лигу, а не из общего репозитория ставок
-        //  (т.к. могут быть совпадения в разных лигах/сезонах)
-        if (betsRepository.existsByUserAndMatchDayAndHomeTeamAndAwayTeamAndBetTitleAndBetOddsAndBetSize(
-                user,
-                newBet.getMatchDay(),
-                homeTeam,
-                awayTeam,
-                newBet.getBetTitle(),
-                newBet.getBetOdds(),
-                newBet.getBetSize()
-        )) {
-            throw new ConflictException("Ставка на этот матч от данного участника уже добавлена");
-        }
-
-        Bet bet = Bet.builder()
-                .createdAt(LocalDateTime.now())
-                .createdBy(moderator)
-                .user(user)
-                .matchDay(newBet.getMatchDay())
-                .gameId(newBet.getGameId())
-                .gameDate(newBet.getGameDate())
-                .homeTeam(homeTeam)
-                .awayTeam(awayTeam)
-                .betTitle(newBet.getBetTitle())
-                .betOdds(newBet.getBetOdds())
-                .betSize(newBet.getBetSize())
-                .betStatus(Bet.BetStatus.OPENED)
-                .build();
-
-        betsRepository.save(bet);
-        league.getBets().add(bet);
-        setCurrentMatchDay(season, league);
-        leaguesRepository.save(league);
-
-        Optional<PlayerStats> playerStatsOptional = playerStatsRepository.findBySeasonIdAndLeagueIdAndUser(seasonId, leagueId, user);
-        PlayerStats playerStats = playerStatsOptional.orElseGet(() -> getDefaultPlayerStats(seasonId, leagueId, user));
-
-        playerStats.setTotalBets(playerStats.getTotalBets() + 1);
-        playerStatsRepository.save(playerStats);
-
-        return BetDto.from(seasonId, leagueId, bet);
-    }
-
-    // ------------------------------------------------------------------------------------------------------ //
-
-    @Override
-    @Transactional
-    public BetDto addEmptyBetToLeagueInSeason(String moderatorId, String seasonId, String leagueId, NewEmptyBetDto newEmptyBet) {
-        User moderator = getUserOrThrow(usersRepository, moderatorId);
-        User user = getUserOrThrow(usersRepository, newEmptyBet.getUserId());
-        Season season = getSeasonOrThrow(seasonsRepository, seasonId);
-        League league = getLeagueOrThrow(leaguesRepository, leagueId);
-
-        Bet bet = Bet.builder()
-                .createdAt(LocalDateTime.now())
-                .createdBy(moderator)
-                .user(user)
-                .matchDay(newEmptyBet.getMatchDay())
-                .betSize(newEmptyBet.getBetSize())
-                .betStatus(Bet.BetStatus.EMPTY)
-                .betResultAddedAt(LocalDateTime.now())
-                .betResultAddedBy(moderator)
-                .balanceChange(-Double.valueOf(newEmptyBet.getBetSize()))
-                .build();
-
-        betsRepository.save(bet);
-        league.getBets().add(bet);
-        setCurrentMatchDay(season, league);
-        leaguesRepository.save(league);
-
-        Optional<PlayerStats> playerStatsOptional = playerStatsRepository.findBySeasonIdAndLeagueIdAndUser(seasonId, leagueId, user);
-        PlayerStats playerStats = playerStatsOptional.orElseGet(() -> getDefaultPlayerStats(seasonId, leagueId, user));
-
-        playerStats.setTotalBets(playerStats.getTotalBets() + 1);
-        playerStats.setBetCount(playerStats.getBetCount() + 1);
-        playerStats.setEmptyBetCount(playerStats.getEmptyBetCount() + 1);
-        playerStats.setActualBalance(playerStats.getActualBalance() - Double.valueOf(newEmptyBet.getBetSize()));
-        playerStatsRepository.save(playerStats);
-
-        return BetDto.from(seasonId, leagueId, bet);
-    }
-
-    // ------------------------------------------------------------------------------------------------------ //
-
-    @Override
-    @Transactional
-    public BetDto addBetResult(String moderatorId, String seasonId, String betId, NewBetResult newBetResult) {
-        try {
-            Bet.BetStatus.valueOf(newBetResult.getBetStatus());
-        } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("Недопустимый статус: " + newBetResult.getBetStatus());
-        }
-
-        checkGameResult(newBetResult.getGameResult());
-
-        Bet bet = getBetOrThrow(betsRepository, betId);
-        if (!bet.getBetStatus().equals(Bet.BetStatus.OPENED)) {
-            throw new ConflictException("Эта ставка уже обработана другим модератором");
-        }
-
-        User moderator = getUserOrThrow(usersRepository, moderatorId);
-        League league = leaguesRepository.findByBets_Id(bet.getId());
-        System.out.println("leagueId:" + league.getId());
-
-        Bet.BetStatus betStatus = Bet.BetStatus.valueOf(newBetResult.getBetStatus());
-        setBalanceChange(bet, betStatus, bet.getBetSize(), bet.getBetOdds());
-
-        bet.setBetResultAddedAt(LocalDateTime.now());
-        bet.setBetResultAddedBy(moderator);
-        bet.setBetStatus(betStatus);
-        bet.setGameResult(newBetResult.getGameResult());
-        betsRepository.save(bet);
-
-        Optional<PlayerStats> playerStatsOptional = playerStatsRepository.findBySeasonIdAndLeagueIdAndUser(seasonId, league.getId(), bet.getUser());
-        PlayerStats playerStats = playerStatsOptional.orElseGet(() -> getDefaultPlayerStats(seasonId, league.getId(), bet.getUser()));
-
-        playerStats.setBetCount(playerStats.getBetCount() + 1);
-        if (bet.getBetStatus().equals(Bet.BetStatus.WON)) {
-            playerStats.setWonBetCount(playerStats.getWonBetCount() + 1);
-            playerStats.setSumOfWonOdds(playerStats.getSumOfWonOdds() + bet.getBetOdds());
-        }
-        if (bet.getBetStatus().equals(Bet.BetStatus.RETURNED)) {
-            playerStats.setReturnedBetCount(playerStats.getReturnedBetCount() + 1);
-        }
-        if (bet.getBetStatus().equals(Bet.BetStatus.LOST)) {
-            playerStats.setLostBetCount(playerStats.getLostBetCount() + 1);
-        }
-        playerStats.setSumOfOdds(playerStats.getSumOfOdds() + bet.getBetOdds());
-        playerStats.setActualBalance(playerStats.getActualBalance() + bet.getBalanceChange());
-        playerStats.calculateWinRate();
-        playerStats.calculateAverageOdds();
-        playerStats.calculateAverageWonBetOdds();
-        playerStatsRepository.save(playerStats);
-
-        return BetDto.from(seasonId, league.getId(), bet);
-    }
-
-    // ------------------------------------------------------------------------------------------------------ //
-
-    @Override
-    public BetsPage getAllOpenedBets(String seasonId) {
-        Season season = getSeasonOrThrow(seasonsRepository, seasonId);
-        List<League> leagues = season.getLeagues();
-        List<BetDto> openedBets = new ArrayList<>();
-        for (League league : leagues) {
-            List<Bet> bets = league.getBets();
-            for (Bet bet : bets) {
-                if (bet.getBetStatus().equals(Bet.BetStatus.OPENED)) {
-                    openedBets.add(BetDto.from(seasonId, league.getId(), bet));
-                }
-            }
-        }
-        return BetsPage.builder()
-                .bets(openedBets)
-                .build();
-    }
-
-    // ------------------------------------------------------------------------------------------------------ //
-
-    @Override
-    public BetsPage getAllCompletedBets(String seasonId, PageRequest pageRequest) {
-        return null;
-    }
 }

@@ -15,7 +15,7 @@ import java.util.stream.Collectors;
 @Builder
 @Data
 @Schema(description = "Лига сезона")
-public class LeagueDto {
+public class LeagueWithTeamsDto {
 
     @Schema(description = "идентификатор лиги", example = "12-байтовый хэш ID")
     private String id;
@@ -41,8 +41,8 @@ public class LeagueDto {
     @Schema(description = "список команд лиги", example = "[Team1, Team2...]")
     private List<TeamDto> teams;
 
-    public static LeagueDto from(League league) {
-        return LeagueDto.builder()
+    public static LeagueWithTeamsDto from(League league) {
+        return LeagueWithTeamsDto.builder()
                 .id(league.getId())
                 .name(league.getName())
                 .displayNameRu(league.getDisplayNameRu())
@@ -54,9 +54,9 @@ public class LeagueDto {
                 .build();
     }
 
-    public static List<LeagueDto> from(String seasonId, List<League> leagues) {
+    public static List<LeagueWithTeamsDto> from(String seasonId, List<League> leagues) {
         return leagues.stream()
-                .map(LeagueDto::from)
+                .map(LeagueWithTeamsDto::from)
                 .collect(Collectors.toList());
     }
 }

@@ -4,6 +4,7 @@ import net.friendly_bets.exceptions.BadRequestException;
 import net.friendly_bets.models.Bet;
 import net.friendly_bets.models.League;
 import net.friendly_bets.models.Season;
+import net.friendly_bets.repositories.BetsRepository;
 
 import java.util.regex.Pattern;
 
@@ -32,10 +33,12 @@ public class BetValuesUtils {
         }
     }
 
-    public static void setCurrentMatchDay(Season season, League league) {
+    public static void setCurrentMatchDay(BetsRepository betsRepository, Season season, League league) {
         if (season.getPlayers().size() != 0 && season.getBetCountPerMatchDay() != 0) {
-            int totalBets = (int) league.getBets().stream().filter(b -> !b.getBetStatus().equals(Bet.BetStatus.DELETED)).count();
+            int totalBets = betsRepository.countBetsByLeagueAndBetStatusNot(league, Bet.BetStatus.DELETED);
+            System.out.println("totalBets = " + totalBets); // TODO: delete
             int currentMatchDay = totalBets / (season.getPlayers().size() * season.getBetCountPerMatchDay()) + 1;
+            System.out.println("currentMatchDay = " + currentMatchDay); // TODO: delete
             league.setCurrentMatchDay(String.valueOf(currentMatchDay));
         }
     }

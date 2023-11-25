@@ -29,6 +29,7 @@ public class OpenApiDocumentation {
                         .responses(new ApiResponses()
                                 .addApiResponse("200", new ApiResponse().description("Успешный выход"))));
     }
+
     private static PathItem buildAuthenticationPathItem() {
         return new PathItem().post(
                 new Operation()
