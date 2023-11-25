@@ -5,6 +5,8 @@ import net.friendly_bets.models.Team;
 import net.friendly_bets.models.User;
 import org.springframework.data.mongodb.repository.MongoRepository;
 
+import java.util.List;
+
 
 public interface BetsRepository extends MongoRepository<Bet, String> {
 
@@ -29,5 +31,4 @@ public interface BetsRepository extends MongoRepository<Bet, String> {
             String gameResult,
             Bet.BetStatus betStatus
     );
-
 }

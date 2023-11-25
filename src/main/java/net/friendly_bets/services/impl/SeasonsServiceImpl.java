@@ -10,6 +10,7 @@ import net.friendly_bets.exceptions.NotFoundException;
 import net.friendly_bets.models.*;
 import net.friendly_bets.repositories.*;
 import net.friendly_bets.services.SeasonsService;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,6 +36,28 @@ public class SeasonsServiceImpl implements SeasonsService {
     PlayerStatsRepository playerStatsRepository;
 
     @Override
+    @Transactional
+    public SeasonsPage dbRework() {
+        // TODO: этот метод сработает только при условии, что в сущности League есть поле List<Bet> bets;
+        // TODO: после выполнения этого метода, можно выполнить коммит с другой ветки на остальные изменения
+        // TODO: после выполнения - удалить
+        Season season = seasonsRepository.findSeasonByStatus(Season.Status.ACTIVE).orElseThrow(
+                () -> new BadRequestException("Нет активных сезонов"));
+        List<League> leagues = season.getLeagues();
+        for (League league : leagues) {
+            List<Bet> bets = league.getBets();
+            for (Bet bet : bets) {
+                bet.setSeason(season);
+                bet.setLeague(league);
+                betsRepository.save(bet);
+            }
+        }
+        return SeasonsPage.builder()
+                .build();
+    }
+
+    @Override
+    @Transactional
     public SeasonsPage getAll() {
         List<Season> allSeasons = seasonsRepository.findAll();
         return SeasonsPage.builder()
@@ -79,7 +102,7 @@ public class SeasonsServiceImpl implements SeasonsService {
             throw new BadRequestException("Недопустимый статус: " + status);
         }
         Season season = seasonsRepository.findById(seasonId).orElseThrow(
-                () -> new NotFoundException("Cезон", seasonId)
+                () -> new NotFoundException("Сезон", seasonId)
         );
         if (season.getStatus().toString().equals(status)) {
             throw new ConflictException("Сезон уже имеет этот статус");
@@ -388,5 +411,32 @@ public class SeasonsServiceImpl implements SeasonsService {
         playerStatsRepository.save(playerStats);
 
         return BetDto.from(seasonId, league.getId(), bet);
+    }
+
+    // ------------------------------------------------------------------------------------------------------ //
+
+    @Override
+    public BetsPage getAllOpenedBets(String seasonId) {
+        Season season = getSeasonOrThrow(seasonsRepository, seasonId);
+        List<League> leagues = season.getLeagues();
+        List<BetDto> openedBets = new ArrayList<>();
+        for (League league : leagues) {
+            List<Bet> bets = league.getBets();
+            for (Bet bet : bets) {
+                if (bet.getBetStatus().equals(Bet.BetStatus.OPENED)) {
+                    openedBets.add(BetDto.from(seasonId, league.getId(), bet));
+                }
+            }
+        }
+        return BetsPage.builder()
+                .bets(openedBets)
+                .build();
+    }
+
+    // ------------------------------------------------------------------------------------------------------ //
+
+    @Override
+    public BetsPage getAllCompletedBets(String seasonId, PageRequest pageRequest) {
+        return null;
     }
 }
