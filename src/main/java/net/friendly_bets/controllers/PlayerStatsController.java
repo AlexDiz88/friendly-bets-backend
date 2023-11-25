@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class PlayerStatsController implements PlayerStatsApi {
 
     private final PlayerStatsService playerStatsService;
+
     @Override
     @GetMapping("/season/{season-id}")
     public ResponseEntity<AllPlayersStatsPage> getAllPlayersStatsBySeason(@PathVariable("season-id") String seasonId) {

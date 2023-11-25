@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import net.friendly_bets.dto.*;
 import net.friendly_bets.models.*;
+import net.friendly_bets.repositories.BetsRepository;
 import net.friendly_bets.repositories.PlayerStatsRepository;
 import net.friendly_bets.repositories.SeasonsRepository;
 import net.friendly_bets.services.PlayerStatsService;
@@ -23,6 +24,7 @@ public class PlayerStatsServiceImpl implements PlayerStatsService {
 
     PlayerStatsRepository playerStatsRepository;
     SeasonsRepository seasonsRepository;
+    BetsRepository betsRepository;
 
     @Override
     public AllPlayersStatsPage getAllPlayersStatsBySeason(String seasonId) {
@@ -87,18 +89,16 @@ public class PlayerStatsServiceImpl implements PlayerStatsService {
     @Transactional
     public AllPlayersStatsPage playersStatsFullRecalculation(String seasonId) {
         playerStatsRepository.deleteAllBySeasonId(seasonId);
-        Season season = getSeasonOrThrow(seasonsRepository, seasonId);
-        List<League> leagues = season.getLeagues();
         Map<String, PlayerStats> statsMap = new HashMap<>();
-        for (League league : leagues) {
-            List<Bet> bets = league.getBets();
+            List<Bet> bets = betsRepository.findAllBySeason_Id(seasonId);
             for (Bet bet : bets) {
+                // TODO: сделать запрос в базу сразу без удаленных ставок
                 if (bet.getBetStatus().equals(Bet.BetStatus.DELETED)) {
                     continue;
                 }
                 User user = bet.getUser();
-                String mapKey = seasonId + league.getId() + user.getId();
-                PlayerStats playerStats = statsMap.getOrDefault(mapKey, getDefaultPlayerStats(seasonId, league.getId(), user));
+                String mapKey = seasonId + bet.getLeague().getId() + user.getId();
+                PlayerStats playerStats = statsMap.getOrDefault(mapKey, getDefaultPlayerStats(seasonId, bet.getLeague().getId(), user));
 
                 playerStats.setTotalBets(playerStats.getTotalBets() + 1);
                 if (bet.getBetStatus().equals(Bet.BetStatus.OPENED)) {
@@ -131,7 +131,7 @@ public class PlayerStatsServiceImpl implements PlayerStatsService {
 
                 statsMap.put(mapKey, playerStats);
             }
-        }
+
         for (PlayerStats value : statsMap.values()) {
             playerStatsRepository.save(value);
         }

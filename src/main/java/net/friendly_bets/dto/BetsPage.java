@@ -17,4 +17,7 @@ public class BetsPage {
 
     @Schema(description = "Список всех ставок")
     private List<BetDto> bets;
+
+    @Schema(description = "Количество страниц")
+    private Integer totalPages;
 }

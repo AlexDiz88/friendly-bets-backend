@@ -27,6 +27,18 @@ public class BetDto {
     @Schema(description = "ID лиги", example = "12-байтовый хэш ID")
     private String leagueId;
 
+    @Schema(description = "отображаемое имя лиги (EN)", example = "Bundesliga")
+    private String leagueDisplayNameEn;
+
+    @Schema(description = "отображаемое имя лиги (RU)", example = "Бундеслига")
+    private String leagueDisplayNameRu;
+
+    @Schema(description = "сокращенное имя лиги (EN)", example = "BL")
+    private String leagueShortNameEn;
+
+    @Schema(description = "сокращенное имя лиги (RU)", example = "БЛ")
+    private String leagueShortNameRu;
+
     @Schema(description = "время создания/добавления ставки", example = "2023-08-15T12:00:00")
     private LocalDateTime createdAt;
 
@@ -73,12 +85,16 @@ public class BetDto {
     private LocalDateTime updatedAt;
 
 
-    public static BetDto from(String seasonId, String leagueId, Bet bet) {
+    public static BetDto from(Bet bet) {
         if (bet.getBetStatus().equals(Bet.BetStatus.EMPTY) || bet.getBetStatus().equals(Bet.BetStatus.DELETED)) {
             return BetDto.builder()
                     .id(bet.getId())
-                    .seasonId(seasonId)
-                    .leagueId(leagueId)
+                    .seasonId(bet.getSeason().getId())
+                    .leagueId(bet.getLeague().getId())
+                    .leagueDisplayNameEn(bet.getLeague().getDisplayNameEn())
+                    .leagueDisplayNameRu(bet.getLeague().getDisplayNameRu())
+                    .leagueShortNameEn(bet.getLeague().getShortNameEn())
+                    .leagueShortNameRu(bet.getLeague().getShortNameRu())
                     .createdAt(bet.getCreatedAt())
                     .player(UserDto.from(bet.getUser()))
                     .matchDay(bet.getMatchDay())
@@ -92,8 +108,12 @@ public class BetDto {
         }
         return BetDto.builder()
                 .id(bet.getId())
-                .seasonId(seasonId)
-                .leagueId(leagueId)
+                .seasonId(bet.getSeason().getId())
+                .leagueId(bet.getLeague().getId())
+                .leagueDisplayNameEn(bet.getLeague().getDisplayNameEn())
+                .leagueDisplayNameRu(bet.getLeague().getDisplayNameRu())
+                .leagueShortNameEn(bet.getLeague().getShortNameEn())
+                .leagueShortNameRu(bet.getLeague().getShortNameRu())
                 .createdAt(bet.getCreatedAt())
                 .player(UserDto.from(bet.getUser()))
                 .matchDay(bet.getMatchDay())
@@ -112,9 +132,9 @@ public class BetDto {
                 .build();
     }
 
-    public static List<BetDto> from(String seasonId, String leagueId, List<Bet> bets) {
+    public static List<BetDto> from(List<Bet> bets) {
         return bets.stream()
-                .map((bet) -> BetDto.from(seasonId, leagueId, bet))
+                .map(BetDto::from)
                 .collect(Collectors.toList());
     }
 }

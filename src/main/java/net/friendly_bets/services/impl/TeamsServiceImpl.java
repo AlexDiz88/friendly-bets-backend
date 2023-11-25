@@ -23,6 +23,7 @@ import java.util.List;
 public class TeamsServiceImpl implements TeamsService {
 
     TeamsRepository teamsRepository;
+
     @Override
     public TeamsPage getAll() {
         List<Team> allTeams = teamsRepository.findAll();
