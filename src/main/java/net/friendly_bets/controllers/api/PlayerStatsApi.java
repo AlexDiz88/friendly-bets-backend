@@ -10,6 +10,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.tags.Tags;
 import net.friendly_bets.dto.AllPlayersStatsByLeaguesDto;
 import net.friendly_bets.dto.AllPlayersStatsPage;
+import net.friendly_bets.dto.AllStatsByTeamsInSeasonDto;
+import net.friendly_bets.dto.PlayerStatsByTeamsDto;
 import org.springframework.http.ResponseEntity;
 
 @Tags(value = {
@@ -43,6 +45,19 @@ public interface PlayerStatsApi {
 
     // ------------------------------------------------------------------------------------------------------ //
 
+    @Operation(summary = "Статистика всех участников турнира в сезоне по командам", description = "Доступно всем")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Статистика всех участников турнира в сезоне по командам",
+                    content = {
+                            @Content(mediaType = "application/json",
+                                    schema = @Schema(implementation = PlayerStatsByTeamsDto.class))
+                    }
+            ),
+    })
+    ResponseEntity<AllStatsByTeamsInSeasonDto> getAllStatsByTeamsInSeason(@Parameter(description = "ID сезона") String seasonId);
+
+    // ------------------------------------------------------------------------------------------------------ //
+
     @Operation(summary = "Полный пересчет всей статистики игроков по сезону", description = "Доступно только администратору")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Пересчитанная статистика всех игроков в сезоне",
@@ -59,5 +74,19 @@ public interface PlayerStatsApi {
             }
     )
     ResponseEntity<AllPlayersStatsPage> playersStatsFullRecalculation(@Parameter(description = "ID сезона") String seasonId);
+
+    // ------------------------------------------------------------------------------------------------------ //
+
+    @Operation(summary = "Полный пересчет всей статистики игроков по командам в сезоне", description = "Доступно только администратору")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Пересчитанная статистика всех игроков по командам в сезоне"),
+    })
+    @ApiResponse(responseCode = "403", description = "Пользователь не аутентифицирован",
+            content = {
+                    @Content(mediaType = "application/json",
+                            schema = @Schema(ref = "StandardResponseDto"))
+            }
+    )
+    ResponseEntity<Void> playersStatsByTeamsRecalculation(@Parameter(description = "ID сезона") String seasonId);
 
 }

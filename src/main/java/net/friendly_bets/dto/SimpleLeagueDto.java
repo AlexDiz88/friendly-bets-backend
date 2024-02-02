@@ -14,7 +14,7 @@ import java.util.stream.Collectors;
 @NoArgsConstructor
 @Builder
 @Data
-@Schema(description = "Лига сезона (без списка команд и ставок)")
+@Schema(description = "Лига сезона (без списка команд)")
 public class SimpleLeagueDto {
 
     @Schema(description = "идентификатор лиги", example = "12-байтовый хэш ID")
