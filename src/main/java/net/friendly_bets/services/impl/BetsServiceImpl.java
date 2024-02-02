@@ -19,6 +19,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
+import static net.friendly_bets.services.impl.PlayerStatsServiceImpl.calculateTeamsStats;
 import static net.friendly_bets.utils.BetValuesUtils.*;
 import static net.friendly_bets.utils.GetEntityOrThrow.*;
 
@@ -33,6 +34,7 @@ public class BetsServiceImpl implements BetsService {
     TeamsRepository teamsRepository;
     UsersRepository usersRepository;
     PlayerStatsRepository playerStatsRepository;
+    PlayerStatsByTeamsRepository playerStatsByTeamsRepository;
     MongoOperations mongoOperations;
 
     @Override
@@ -162,6 +164,11 @@ public class BetsServiceImpl implements BetsService {
 
         Optional<PlayerStats> playerStatsOptional = playerStatsRepository.findBySeasonIdAndLeagueIdAndUser(bet.getSeason().getId(), bet.getLeague().getId(), bet.getUser());
         PlayerStats playerStats = playerStatsOptional.orElseGet(() -> getDefaultPlayerStats(bet.getSeason().getId(), bet.getLeague().getId(), bet.getUser()));
+        Optional<PlayerStatsByTeams> playerStatsByTeamsOptional = playerStatsByTeamsRepository.findBySeasonIdAndLeagueIdAndUser(bet.getSeason().getId(), bet.getLeague().getId(), bet.getUser());
+        PlayerStatsByTeams playerStatsByTeams = playerStatsByTeamsOptional.orElseGet(() -> getDefaultStatsByTeams(bet.getSeason().getId(), bet.getLeague().getId(), bet.getLeague().getDisplayNameRu(), bet.getUser(), false));
+        Optional<PlayerStatsByTeams> leagueStatsByTeamsOptional = playerStatsByTeamsRepository.findBySeasonIdAndLeagueIdAndIsLeagueStats(bet.getSeason().getId(), bet.getLeague().getId(), true);
+        PlayerStatsByTeams leagueStatsByTeams = leagueStatsByTeamsOptional.orElseGet(() -> getDefaultStatsByTeams(bet.getSeason().getId(), bet.getLeague().getId(), bet.getLeague().getDisplayNameRu(), bet.getUser(), true));
+
 
         playerStats.setBetCount(playerStats.getBetCount() + 1);
         if (bet.getBetStatus().equals(Bet.BetStatus.WON)) {
@@ -180,6 +187,11 @@ public class BetsServiceImpl implements BetsService {
         playerStats.calculateAverageOdds();
         playerStats.calculateAverageWonBetOdds();
         playerStatsRepository.save(playerStats);
+
+        PlayerStatsByTeams updatedStatsByTeams = calculateTeamsStats(bet, playerStatsByTeams);
+        PlayerStatsByTeams updatedLeagueStatsByTeams = calculateTeamsStats(bet, leagueStatsByTeams);
+        playerStatsByTeamsRepository.save(updatedStatsByTeams);
+        playerStatsByTeamsRepository.save(updatedLeagueStatsByTeams);
 
         return BetDto.from(bet);
     }

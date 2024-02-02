@@ -5,6 +5,8 @@ import net.friendly_bets.exceptions.NotFoundException;
 import net.friendly_bets.models.*;
 import net.friendly_bets.repositories.*;
 
+import java.util.ArrayList;
+
 @RequiredArgsConstructor
 public class GetEntityOrThrow {
 
@@ -50,6 +52,17 @@ public class GetEntityOrThrow {
                 .actualBalance(0.0)
                 .sumOfOdds(0.0)
                 .sumOfWonOdds(0.0)
+                .build();
+    }
+
+    public static PlayerStatsByTeams getDefaultStatsByTeams(String seasonId, String leagueId, String leagueNameRu, User user, boolean isLeagueStats) {
+        return PlayerStatsByTeams.builder()
+                .seasonId(seasonId)
+                .leagueId(leagueId)
+                .leagueNameRu(leagueNameRu)
+                .user(user)
+                .teamStats(new ArrayList<>())
+                .isLeagueStats(isLeagueStats)
                 .build();
     }
 }

@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import net.friendly_bets.controllers.api.PlayerStatsApi;
 import net.friendly_bets.dto.AllPlayersStatsByLeaguesDto;
 import net.friendly_bets.dto.AllPlayersStatsPage;
+import net.friendly_bets.dto.AllStatsByTeamsInSeasonDto;
 import net.friendly_bets.services.PlayerStatsService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -34,10 +35,25 @@ public class PlayerStatsController implements PlayerStatsApi {
     }
 
     @Override
+    @GetMapping("/season/{season-id}/teams")
+    public ResponseEntity<AllStatsByTeamsInSeasonDto> getAllStatsByTeamsInSeason(@PathVariable("season-id") String seasonId) {
+        return ResponseEntity.status(200)
+                .body(playerStatsService.getAllStatsByTeamsInSeason(seasonId));
+    }
+
+    @Override
     @PreAuthorize("hasAuthority('ADMIN')")
     @GetMapping("/season/{season-id}/recalculation")
     public ResponseEntity<AllPlayersStatsPage> playersStatsFullRecalculation(@PathVariable("season-id") String seasonId) {
         return ResponseEntity.status(200)
                 .body(playerStatsService.playersStatsFullRecalculation(seasonId));
+    }
+
+    @Override
+    @PreAuthorize("hasAuthority('ADMIN')")
+    @GetMapping("/season/{season-id}/recalculation/teams")
+    public ResponseEntity<Void> playersStatsByTeamsRecalculation(@PathVariable("season-id") String seasonId) {
+        playerStatsService.playersStatsByTeamsRecalculation(seasonId);
+        return ResponseEntity.ok().build();
     }
 }
