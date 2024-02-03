@@ -48,12 +48,6 @@ public class BetDto {
     @Schema(description = "игровой тур", example = "14")
     private String matchDay;
 
-    @Schema(description = "идентификатор матча (от букмекера)", example = "соответствует системе ID у букмекера")
-    private String gameId;
-
-    @Schema(description = "дата и время начала матча", example = "2023-07-18T18:31:33")
-    private LocalDateTime gameDate;
-
     @Schema(description = "команда хозяев", example = "{Команда1}")
     private TeamDto homeTeam;
 
@@ -117,8 +111,6 @@ public class BetDto {
                 .createdAt(bet.getCreatedAt())
                 .player(UserDto.from(bet.getUser()))
                 .matchDay(bet.getMatchDay())
-                .gameId(bet.getGameId())
-                .gameDate(bet.getGameDate())
                 .homeTeam(TeamDto.from(bet.getHomeTeam()))
                 .awayTeam(TeamDto.from(bet.getAwayTeam()))
                 .betTitle(bet.getBetTitle())

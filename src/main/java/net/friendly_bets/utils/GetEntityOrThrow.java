@@ -1,11 +1,13 @@
 package net.friendly_bets.utils;
 
 import lombok.RequiredArgsConstructor;
+import net.friendly_bets.exceptions.BadRequestException;
 import net.friendly_bets.exceptions.NotFoundException;
 import net.friendly_bets.models.*;
 import net.friendly_bets.repositories.*;
 
 import java.util.ArrayList;
+import java.util.Optional;
 
 @RequiredArgsConstructor
 public class GetEntityOrThrow {
@@ -34,6 +36,25 @@ public class GetEntityOrThrow {
         return betsRepository.findById(betId).orElseThrow(
                 () -> new NotFoundException("Ставка", betId));
     }
+
+    public static PlayerStats getPlayerStatsOrThrow(PlayerStatsRepository playerStatsRepository, String seasonId, String leagueId, User user) {
+        Optional<PlayerStats> playerStatsOptional =
+                playerStatsRepository.findBySeasonIdAndLeagueIdAndUser(seasonId, leagueId, user);
+        return playerStatsOptional.orElseThrow(() -> new BadRequestException("Общей статистики участника не существует"));
+    }
+
+    public static PlayerStatsByTeams getPlayerStatsByTeamsOrThrow(PlayerStatsByTeamsRepository playerStatsByTeamsRepository, String seasonId, String leagueId, User user, boolean isLeagueStats) {
+        Optional<PlayerStatsByTeams> playerStatsByTeamsOptional =
+                playerStatsByTeamsRepository.findBySeasonIdAndLeagueIdAndUserAndIsLeagueStats(seasonId, leagueId, user, isLeagueStats);
+        return playerStatsByTeamsOptional.orElseThrow(() -> new BadRequestException("Статистики участника по командам не существует"));
+    }
+
+    public static PlayerStatsByTeams getLeagueStatsByTeamsOrThrow(PlayerStatsByTeamsRepository playerStatsByTeamsRepository, String seasonId, String leagueId, boolean isLeagueStats) {
+        Optional<PlayerStatsByTeams> leagueStatsByTeamsOptional =
+                playerStatsByTeamsRepository.findBySeasonIdAndLeagueIdAndIsLeagueStats(seasonId, leagueId, isLeagueStats);
+        return leagueStatsByTeamsOptional.orElseThrow(() -> new BadRequestException("Статистики лиги по командам не существует"));
+    }
+
 
     public static PlayerStats getDefaultPlayerStats(String seasonId, String leagueId, User user) {
         return PlayerStats.builder()
