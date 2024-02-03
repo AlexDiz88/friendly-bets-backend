@@ -10,7 +10,7 @@ import java.util.Optional;
 
 public interface PlayerStatsByTeamsRepository extends MongoRepository<PlayerStatsByTeams, String> {
 
-    Optional<PlayerStatsByTeams> findBySeasonIdAndLeagueIdAndUser(String seasonId, String leagueId, User user);
+    Optional<PlayerStatsByTeams> findBySeasonIdAndLeagueIdAndUserAndIsLeagueStats(String seasonId, String leagueId, User user, boolean isLeagueStats);
 
     Optional<PlayerStatsByTeams> findBySeasonIdAndLeagueIdAndIsLeagueStats(String seasonId, String leagueId, boolean isLeagueStats);
 
