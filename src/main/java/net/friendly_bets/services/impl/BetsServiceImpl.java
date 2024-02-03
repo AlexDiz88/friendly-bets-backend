@@ -9,6 +9,7 @@ import net.friendly_bets.exceptions.ConflictException;
 import net.friendly_bets.models.*;
 import net.friendly_bets.repositories.*;
 import net.friendly_bets.services.BetsService;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.core.MongoOperations;
@@ -169,7 +170,6 @@ public class BetsServiceImpl implements BetsService {
         Optional<PlayerStatsByTeams> leagueStatsByTeamsOptional = playerStatsByTeamsRepository.findBySeasonIdAndLeagueIdAndIsLeagueStats(bet.getSeason().getId(), bet.getLeague().getId(), true);
         PlayerStatsByTeams leagueStatsByTeams = leagueStatsByTeamsOptional.orElseGet(() -> getDefaultStatsByTeams(bet.getSeason().getId(), bet.getLeague().getId(), bet.getLeague().getDisplayNameRu(), bet.getUser(), true));
 
-
         playerStats.setBetCount(playerStats.getBetCount() + 1);
         if (bet.getBetStatus().equals(Bet.BetStatus.WON)) {
             playerStats.setWonBetCount(playerStats.getWonBetCount() + 1);
@@ -183,9 +183,7 @@ public class BetsServiceImpl implements BetsService {
         }
         playerStats.setSumOfOdds(playerStats.getSumOfOdds() + bet.getBetOdds());
         playerStats.setActualBalance(playerStats.getActualBalance() + bet.getBalanceChange());
-        playerStats.calculateWinRate();
-        playerStats.calculateAverageOdds();
-        playerStats.calculateAverageWonBetOdds();
+        recalculatePlayerStats(playerStats);
         playerStatsRepository.save(playerStats);
 
         PlayerStatsByTeams updatedStatsByTeams = calculateTeamsStats(bet, playerStatsByTeams);
@@ -402,9 +400,7 @@ public class BetsServiceImpl implements BetsService {
                 }
             }
             playerStats.setActualBalance(playerStats.getActualBalance() - previousBet.getBalanceChange() + bet.getBalanceChange());
-            playerStats.calculateWinRate();
-            playerStats.calculateAverageOdds();
-            playerStats.calculateAverageWonBetOdds();
+            recalculatePlayerStats(playerStats);
             playerStatsRepository.save(playerStats);
         }
 
@@ -425,9 +421,7 @@ public class BetsServiceImpl implements BetsService {
             if (previousBet.getBetStatus().equals(Bet.BetStatus.LOST)) {
                 previousPlayerStats.setLostBetCount(previousPlayerStats.getLostBetCount() - 1);
             }
-            previousPlayerStats.calculateWinRate();
-            previousPlayerStats.calculateAverageOdds();
-            previousPlayerStats.calculateAverageWonBetOdds();
+            recalculatePlayerStats(previousPlayerStats);
             playerStatsRepository.save(previousPlayerStats);
 
             Optional<PlayerStats> playerStatsOptional = playerStatsRepository.findBySeasonIdAndLeagueIdAndUser(editedBet.getSeasonId(), editedBet.getLeagueId(), user);
@@ -446,9 +440,7 @@ public class BetsServiceImpl implements BetsService {
             if (bet.getBetStatus().equals(Bet.BetStatus.LOST)) {
                 playerStats.setLostBetCount(playerStats.getLostBetCount() + 1);
             }
-            playerStats.calculateWinRate();
-            playerStats.calculateAverageOdds();
-            playerStats.calculateAverageWonBetOdds();
+            recalculatePlayerStats(playerStats);
             playerStatsRepository.save(playerStats);
         }
         if (!user.equals(previousBet.getUser()) && previousBet.getBetStatus().equals(Bet.BetStatus.OPENED) && bet.getBetStatus().equals(Bet.BetStatus.OPENED)) {
@@ -466,45 +458,150 @@ public class BetsServiceImpl implements BetsService {
         return BetDto.from(bet);
     }
 
+    // ------------------------------------------------------------------------------------------------------ //
+    // группа методов для РЕДАКТИРОВАНИЯ ставки и пересчёта всей связанной статистики
+
+    //    @Override
+    @Transactional
+    public BetDto editBet2(String moderatorId, String betId, EditedCompleteBetDto editedBet) {
+        checkTeams(editedBet.getHomeTeamId(), editedBet.getAwayTeamId());
+        checkBetOdds(editedBet.getBetOdds());
+
+        User moderator = getUserOrThrow(usersRepository, moderatorId);
+        User user = getUserOrThrow(usersRepository, editedBet.getUserId());
+        Team homeTeam = getTeamOrThrow(teamsRepository, editedBet.getHomeTeamId());
+        Team awayTeam = getTeamOrThrow(teamsRepository, editedBet.getAwayTeamId());
+        Bet bet = getBetOrThrow(betsRepository, betId);
+
+        Bet previousBet = createPreviousBet(bet);
+
+        handleBetStatus(bet, editedBet, user, homeTeam, awayTeam);
+        updateBetDetails(bet, moderator, user, editedBet, homeTeam, awayTeam);
+
+        updatePlayerStats(user, previousBet, bet, editedBet);
+
+        return BetDto.from(bet);
+    }
+
+    private Bet createPreviousBet(Bet bet) {
+        return Bet.builder()
+                .user(bet.getUser())
+                .betOdds(bet.getBetOdds())
+                .betStatus(bet.getBetStatus())
+                .balanceChange(bet.getBalanceChange())
+                .betSize(bet.getBetSize())
+                .gameResult(bet.getGameResult())
+                .build();
+    }
+
+    private void handleBetStatus(Bet bet, EditedCompleteBetDto editedBet, User user, Team homeTeam, Team awayTeam) {
+        Bet.BetStatus newStatus = Bet.BetStatus.valueOf(editedBet.getBetStatus());
+
+        if (bet.getBetStatus() != Bet.BetStatus.OPENED) {
+            validateGameResult(editedBet);
+            validateBetUniqueness(user, editedBet, homeTeam, awayTeam, newStatus);
+            setBalanceChange(bet, newStatus, editedBet.getBetSize(), editedBet.getBetOdds());
+            bet.setGameResult(editedBet.getGameResult());
+        } else {
+            validateBetUniqueness(user, editedBet, homeTeam, awayTeam, newStatus);
+        }
+
+        bet.setBetStatus(newStatus);
+    }
+
+    private void validateGameResult(EditedCompleteBetDto editedBet) {
+        if (StringUtils.isBlank(editedBet.getGameResult())) {
+            throw new BadRequestException("Счёт матча отсутствует");
+        }
+        checkGameResult(editedBet.getGameResult());
+    }
+
+    private void validateBetUniqueness(User user, EditedCompleteBetDto editedBet, Team homeTeam, Team awayTeam, Bet.BetStatus newStatus) {
+        if (betsRepository.existsByUserAndMatchDayAndHomeTeamAndAwayTeamAndBetTitleAndBetOddsAndBetSizeAndGameResultAndBetStatus(
+                user, editedBet.getMatchDay(), homeTeam, awayTeam, editedBet.getBetTitle(),
+                editedBet.getBetOdds(), editedBet.getBetSize(), editedBet.getGameResult(), newStatus)) {
+            throw new ConflictException("Ставка на этот матч уже отредактирована другим модератором");
+        }
+    }
+
+    private void updateBetDetails(Bet bet, User moderator, User user, EditedCompleteBetDto editedBet, Team homeTeam, Team awayTeam) {
+        bet.setUpdatedAt(LocalDateTime.now());
+        bet.setUpdatedBy(moderator);
+        bet.setUser(user);
+        bet.setMatchDay(editedBet.getMatchDay());
+        bet.setHomeTeam(homeTeam);
+        bet.setAwayTeam(awayTeam);
+        bet.setBetTitle(editedBet.getBetTitle());
+        bet.setBetOdds(editedBet.getBetOdds());
+        bet.setBetSize(editedBet.getBetSize());
+
+        betsRepository.save(bet);
+    }
+
+    private void updatePlayerStats(User user, Bet previousBet, Bet bet, EditedCompleteBetDto editedBet) {
+        if (user.equals(previousBet.getUser()) && !bet.getBetStatus().equals(Bet.BetStatus.OPENED)) {
+            Optional<PlayerStats> playerStatsOptional = playerStatsRepository.findBySeasonIdAndLeagueIdAndUser(editedBet.getSeasonId(), editedBet.getLeagueId(), user);
+            PlayerStats playerStats = playerStatsOptional.orElseGet(() -> getDefaultPlayerStats(editedBet.getSeasonId(), editedBet.getLeagueId(), user));
+
+            updatePlayerStatsOnBetStatusChange(playerStats, previousBet, bet);
+
+            playerStats.setActualBalance(playerStats.getActualBalance() - previousBet.getBalanceChange() + bet.getBalanceChange());
+            recalculatePlayerStats(playerStats);
+            playerStatsRepository.save(playerStats);
+        }
+    }
+
+    private void updatePlayerStatsOnBetStatusChange(PlayerStats playerStats, Bet previousBet, Bet currentBet) {
+        if (previousBet.getBetStatus() != currentBet.getBetStatus()) {
+            if (!previousBet.getBetOdds().equals(currentBet.getBetOdds())) {
+                playerStats.setSumOfOdds(playerStats.getSumOfOdds() - previousBet.getBetOdds() + currentBet.getBetOdds());
+
+                if (currentBet.getBetStatus().equals(Bet.BetStatus.WON)) {
+                    playerStats.setSumOfWonOdds(playerStats.getSumOfWonOdds() - previousBet.getBetOdds() + currentBet.getBetOdds());
+                    playerStats.calculateAverageWonBetOdds();
+                }
+            }
+
+            if (previousBet.getBetStatus().equals(Bet.BetStatus.WON)) {
+                playerStats.setWonBetCount(playerStats.getWonBetCount() - 1);
+                playerStats.setSumOfWonOdds(playerStats.getSumOfWonOdds() - previousBet.getBetOdds());
+            } else if (previousBet.getBetStatus().equals(Bet.BetStatus.RETURNED)) {
+                playerStats.setReturnedBetCount(playerStats.getReturnedBetCount() - 1);
+            } else if (previousBet.getBetStatus().equals(Bet.BetStatus.LOST)) {
+                playerStats.setLostBetCount(playerStats.getLostBetCount() - 1);
+            }
+
+            if (currentBet.getBetStatus().equals(Bet.BetStatus.WON)) {
+                playerStats.setWonBetCount(playerStats.getWonBetCount() + 1);
+                playerStats.setSumOfWonOdds(playerStats.getSumOfWonOdds() + currentBet.getBetOdds());
+            } else if (currentBet.getBetStatus().equals(Bet.BetStatus.RETURNED)) {
+                playerStats.setReturnedBetCount(playerStats.getReturnedBetCount() + 1);
+            } else if (currentBet.getBetStatus().equals(Bet.BetStatus.LOST)) {
+                playerStats.setLostBetCount(playerStats.getLostBetCount() + 1);
+            }
+        }
+    }
+
+    // ------------------------------------------------------------------------------------------------------ //
+    // группа методов для УДАЛЕНИЯ ставки и пересчёта всей связанной статистики
+
     @Override
     @Transactional
     public BetDto deleteBet(String moderatorId, String betId, DeletedBetDto deletedBetMetaData) {
         Bet bet = getBetOrThrow(betsRepository, betId);
         User moderator = getUserOrThrow(usersRepository, moderatorId);
+        String homeTeamId = bet.getHomeTeam().getId();
+        String awayTeamId = bet.getAwayTeam().getId();
 
-        Optional<PlayerStats> playerStatsOptional = playerStatsRepository.findBySeasonIdAndLeagueIdAndUser(deletedBetMetaData.getSeasonId(), deletedBetMetaData.getLeagueId(), bet.getUser());
-        if (playerStatsOptional.isEmpty()) {
-            throw new BadRequestException("Статистики участника с указанными данными не существует");
-        }
-        PlayerStats playerStats = playerStatsOptional.get();
+        PlayerStats playerStats = getPlayerStatsOrThrow(playerStatsRepository, deletedBetMetaData.getSeasonId(), deletedBetMetaData.getLeagueId(), bet.getUser());
+        PlayerStatsByTeams playerStatsByTeams = getPlayerStatsByTeamsOrThrow(playerStatsByTeamsRepository, bet.getSeason().getId(), bet.getLeague().getId(), bet.getUser(), false);
+        PlayerStatsByTeams leagueStatsByTeams = getLeagueStatsByTeamsOrThrow(playerStatsByTeamsRepository, bet.getSeason().getId(), bet.getLeague().getId(), true);
 
-        playerStats.setTotalBets(playerStats.getTotalBets() - 1);
-        System.out.println("betStatus:" + bet.getBetStatus());
+        processStats(bet, homeTeamId, awayTeamId, playerStats, playerStatsByTeams, leagueStatsByTeams);
 
-        if (!bet.getBetStatus().equals(Bet.BetStatus.OPENED)) {
-            playerStats.setBetCount(playerStats.getBetCount() - 1);
-            playerStats.setActualBalance(playerStats.getActualBalance() - bet.getBalanceChange());
-        }
-        if (bet.getBetStatus().equals(Bet.BetStatus.EMPTY)) {
-            playerStats.setEmptyBetCount(playerStats.getEmptyBetCount() - 1);
-        }
-        if (bet.getBetStatus().equals(Bet.BetStatus.WON)) {
-            playerStats.setWonBetCount(playerStats.getWonBetCount() - 1);
-            playerStats.setSumOfOdds(playerStats.getSumOfOdds() - bet.getBetOdds());
-            playerStats.setSumOfWonOdds(playerStats.getSumOfWonOdds() - bet.getBetOdds());
-        }
-        if (bet.getBetStatus().equals(Bet.BetStatus.RETURNED)) {
-            playerStats.setReturnedBetCount(playerStats.getReturnedBetCount() - 1);
-            playerStats.setSumOfOdds(playerStats.getSumOfOdds() - bet.getBetOdds());
-        }
-        if (bet.getBetStatus().equals(Bet.BetStatus.LOST)) {
-            playerStats.setLostBetCount(playerStats.getLostBetCount() - 1);
-            playerStats.setSumOfOdds(playerStats.getSumOfOdds() - bet.getBetOdds());
-        }
-        playerStats.calculateWinRate();
-        playerStats.calculateAverageOdds();
-        playerStats.calculateAverageWonBetOdds();
+        recalculatePlayerStats(playerStats);
         playerStatsRepository.save(playerStats);
+        playerStatsByTeamsRepository.saveAll(List.of(playerStatsByTeams, leagueStatsByTeams));
 
         if (bet.getBetStatus() != Bet.BetStatus.OPENED && bet.getBetStatus() != Bet.BetStatus.DELETED) {
             bet.setBalanceChange(0.0);
@@ -512,13 +609,122 @@ public class BetsServiceImpl implements BetsService {
 
         bet.setUpdatedAt(LocalDateTime.now());
         bet.setUpdatedBy(moderator);
+        BetDto betDto = BetDto.from(bet);
         bet.setBetStatus(Bet.BetStatus.DELETED);
 
         betsRepository.save(bet);
 
-        return BetDto.from(bet);
+        return betDto;
+    }
+
+    private void processStats(Bet bet, String homeTeamId, String awayTeamId, PlayerStats playerStats, PlayerStatsByTeams playerStatsByTeams, PlayerStatsByTeams leagueStatsByTeams) {
+        playerStats.setTotalBets(playerStats.getTotalBets() - 1);
+
+        if (!bet.getBetStatus().equals(Bet.BetStatus.OPENED)) {
+            playerStats.setBetCount(playerStats.getBetCount() - 1);
+            playerStats.setActualBalance(playerStats.getActualBalance() - bet.getBalanceChange());
+
+            processTeamStats(playerStatsByTeams.getTeamStats(), homeTeamId, awayTeamId, bet);
+            processTeamStats(leagueStatsByTeams.getTeamStats(), homeTeamId, awayTeamId, bet);
+        }
+
+        switch (bet.getBetStatus()) {
+            case EMPTY -> playerStats.setEmptyBetCount(playerStats.getEmptyBetCount() - 1);
+            case WON ->
+                    processWonStats(playerStats, playerStatsByTeams, leagueStatsByTeams, homeTeamId, awayTeamId, bet);
+            case RETURNED ->
+                    processReturnedStats(playerStats, playerStatsByTeams, leagueStatsByTeams, homeTeamId, awayTeamId, bet);
+            case LOST ->
+                    processLostStats(playerStats, playerStatsByTeams, leagueStatsByTeams, homeTeamId, awayTeamId, bet);
+        }
+    }
+
+    private void processTeamStats(List<TeamStats> teamStatsList, String homeTeamId, String awayTeamId, Bet bet) {
+        for (TeamStats teamStats : teamStatsList) {
+            String teamId = teamStats.getTeam().getId();
+            if (teamId.equals(homeTeamId) || teamId.equals(awayTeamId)) {
+                teamStats.setBetCount(teamStats.getBetCount() - 1);
+                teamStats.setActualBalance(teamStats.getActualBalance() - bet.getBalanceChange());
+            }
+        }
+    }
+
+    private void processWonStats(PlayerStats playerStats, PlayerStatsByTeams playerStatsByTeams, PlayerStatsByTeams leagueStatsByTeams, String homeTeamId, String awayTeamId, Bet bet) {
+        playerStats.setWonBetCount(playerStats.getWonBetCount() - 1);
+        playerStats.setSumOfOdds(playerStats.getSumOfOdds() - bet.getBetOdds());
+        playerStats.setSumOfWonOdds(playerStats.getSumOfWonOdds() - bet.getBetOdds());
+
+        processWonTeamStats(playerStatsByTeams.getTeamStats(), homeTeamId, awayTeamId, bet);
+        processWonTeamStats(leagueStatsByTeams.getTeamStats(), homeTeamId, awayTeamId, bet);
+    }
+
+    private void processReturnedStats(PlayerStats playerStats, PlayerStatsByTeams playerStatsByTeams, PlayerStatsByTeams leagueStatsByTeams, String homeTeamId, String awayTeamId, Bet bet) {
+        playerStats.setReturnedBetCount(playerStats.getReturnedBetCount() - 1);
+        playerStats.setSumOfOdds(playerStats.getSumOfOdds() - bet.getBetOdds());
+
+        processReturnedTeamStats(playerStatsByTeams.getTeamStats(), homeTeamId, awayTeamId, bet);
+        processReturnedTeamStats(leagueStatsByTeams.getTeamStats(), homeTeamId, awayTeamId, bet);
+    }
+
+    private void processLostStats(PlayerStats playerStats, PlayerStatsByTeams playerStatsByTeams, PlayerStatsByTeams leagueStatsByTeams, String homeTeamId, String awayTeamId, Bet bet) {
+        playerStats.setLostBetCount(playerStats.getLostBetCount() - 1);
+        playerStats.setSumOfOdds(playerStats.getSumOfOdds() - bet.getBetOdds());
+
+        processLostTeamStats(playerStatsByTeams.getTeamStats(), homeTeamId, awayTeamId, bet);
+        processLostTeamStats(leagueStatsByTeams.getTeamStats(), homeTeamId, awayTeamId, bet);
+    }
+
+    private void processWonTeamStats(List<TeamStats> teamStatsList, String homeTeamId, String awayTeamId, Bet bet) {
+        for (TeamStats teamStats : teamStatsList) {
+            String teamId = teamStats.getTeam().getId();
+            if (teamId.equals(homeTeamId) || teamId.equals(awayTeamId)) {
+                teamStats.setWonBetCount(teamStats.getWonBetCount() - 1);
+                teamStats.setSumOfOdds(teamStats.getSumOfOdds() - bet.getBetOdds());
+                teamStats.setSumOfWonOdds(teamStats.getSumOfWonOdds() - bet.getBetOdds());
+                recalculateStatsByTeams(teamStats);
+            }
+        }
+    }
+
+    private void processReturnedTeamStats(List<TeamStats> teamStatsList, String homeTeamId, String awayTeamId, Bet bet) {
+        for (TeamStats teamStats : teamStatsList) {
+            String teamId = teamStats.getTeam().getId();
+            if (teamId.equals(homeTeamId) || teamId.equals(awayTeamId)) {
+                teamStats.setReturnedBetCount(teamStats.getReturnedBetCount() - 1);
+                teamStats.setSumOfOdds(teamStats.getSumOfOdds() - bet.getBetOdds());
+                recalculateStatsByTeams(teamStats);
+            }
+        }
+    }
+
+    private void processLostTeamStats(List<TeamStats> teamStatsList, String homeTeamId, String awayTeamId, Bet bet) {
+        for (TeamStats teamStats : teamStatsList) {
+            String teamId = teamStats.getTeam().getId();
+            if (teamId.equals(homeTeamId) || teamId.equals(awayTeamId)) {
+                teamStats.setLostBetCount(teamStats.getLostBetCount() - 1);
+                teamStats.setSumOfOdds(teamStats.getSumOfOdds() - bet.getBetOdds());
+                recalculateStatsByTeams(teamStats);
+            }
+        }
+    }
+
+    // ------------------------------------------------------------------------------------------------------ //
+
+    private static void recalculatePlayerStats(PlayerStats stats) {
+        stats.calculateWinRate();
+        stats.calculateAverageOdds();
+        stats.calculateAverageWonBetOdds();
+    }
+
+    private static void recalculateStatsByTeams(TeamStats stats) {
+        stats.calculateWinRate();
+        stats.calculateAverageOdds();
+        stats.calculateAverageWonBetOdds();
     }
 
     // ------------------------------------------------------------------------------------------------------ //
 
 }
+
+
+
