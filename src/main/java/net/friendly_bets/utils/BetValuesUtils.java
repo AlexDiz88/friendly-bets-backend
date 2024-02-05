@@ -44,13 +44,13 @@ public class BetValuesUtils {
     }
 
     public static void setBalanceChange(Bet bet, Bet.BetStatus betStatus, Integer betSize, Double betOdds) {
-        if (betStatus.equals(Bet.BetStatus.WON)) {
+        if (betStatus == Bet.BetStatus.WON) {
             bet.setBalanceChange(betOdds * betSize - betSize);
         }
-        if (betStatus.equals(Bet.BetStatus.RETURNED)) {
+        if (betStatus == Bet.BetStatus.RETURNED) {
             bet.setBalanceChange(0.0);
         }
-        if (betStatus.equals(Bet.BetStatus.LOST)) {
+        if (betStatus == Bet.BetStatus.LOST) {
             bet.setBalanceChange(-Double.valueOf(betSize));
         }
     }
