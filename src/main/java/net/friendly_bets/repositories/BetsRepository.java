@@ -14,9 +14,10 @@ import java.util.List;
 
 public interface BetsRepository extends MongoRepository<Bet, String> {
 
-    boolean existsByUserAndMatchDayAndHomeTeamAndAwayTeamAndBetTitleAndBetOddsAndBetSize(
+    boolean existsByUserAndMatchDayAndPlayoffRoundAndHomeTeamAndAwayTeamAndBetTitleAndBetOddsAndBetSize(
             User user,
             String matchDay,
+            String playoffRound,
             Team homeTeam,
             Team awayTeam,
             String betTitle,

@@ -53,9 +53,10 @@ public class BetsServiceImpl implements BetsService {
 
         // TODO: есть метод для доп.проверки по сезону и лиге. Необходимо протестировать перед замено
         //  (замена нужна т.к. могут быть совпадения в разных лигах/сезонах)
-        if (betsRepository.existsByUserAndMatchDayAndHomeTeamAndAwayTeamAndBetTitleAndBetOddsAndBetSize(
+        if (betsRepository.existsByUserAndMatchDayAndPlayoffRoundAndHomeTeamAndAwayTeamAndBetTitleAndBetOddsAndBetSize(
                 user,
                 newBet.getMatchDay(),
+                newBet.getPlayoffRound(),
                 homeTeam,
                 awayTeam,
                 newBet.getBetTitle(),
