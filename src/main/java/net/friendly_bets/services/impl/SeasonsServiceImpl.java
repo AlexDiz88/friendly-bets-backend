@@ -7,14 +7,8 @@ import net.friendly_bets.dto.*;
 import net.friendly_bets.exceptions.BadRequestException;
 import net.friendly_bets.exceptions.ConflictException;
 import net.friendly_bets.exceptions.NotFoundException;
-import net.friendly_bets.models.League;
-import net.friendly_bets.models.Season;
-import net.friendly_bets.models.Team;
-import net.friendly_bets.models.User;
-import net.friendly_bets.repositories.LeaguesRepository;
-import net.friendly_bets.repositories.SeasonsRepository;
-import net.friendly_bets.repositories.TeamsRepository;
-import net.friendly_bets.repositories.UsersRepository;
+import net.friendly_bets.models.*;
+import net.friendly_bets.repositories.*;
 import net.friendly_bets.services.SeasonsService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -37,25 +31,7 @@ public class SeasonsServiceImpl implements SeasonsService {
     LeaguesRepository leaguesRepository;
     TeamsRepository teamsRepository;
 
-    @Override
-    @Transactional
-    public SeasonsPage dbRework() {
-        // TODO: этот метод сработает только при условии, что в сущности League есть поле List<Bet> bets;
-        // TODO: после выполнения этого метода, можно выполнить коммит с другой ветки на остальные изменения
-        Season season = seasonsRepository.findSeasonByStatus(Season.Status.ACTIVE).orElseThrow(
-                () -> new BadRequestException("Нет активных сезонов"));
-        List<League> leagues = season.getLeagues();
-//        for (League league : leagues) {
-//            List<Bet> bets = league.getBets();
-//            for (Bet bet : bets) {
-//                bet.setSeason(season);
-//                bet.setLeague(league);
-//                betsRepository.save(bet);
-//            }
-//        }
-        return SeasonsPage.builder()
-                .build();
-    }
+    BetsRepository betsRepository;
 
     @Override
     @Transactional
@@ -259,6 +235,24 @@ public class SeasonsServiceImpl implements SeasonsService {
         leaguesRepository.save(leagueInSeason);
 
         return TeamDto.from(team);
+    }
+
+    // ------------------------------------------------------------------------------------------------------ //
+
+    @Override
+    public void dbRework() {
+        List<Bet> allBets = betsRepository.findAll();
+        for (Bet bet : allBets) {
+            if (bet.getMatchDay().contains("1/")) {
+                bet.setIsPlayoff(true);
+                bet.setMatchDay(bet.getMatchDay() + " финала");
+                bet.setPlayoffRound("1");
+            } else {
+                bet.setIsPlayoff(false);
+                bet.setPlayoffRound("");
+            }
+            betsRepository.save(bet);
+        }
     }
 
     // ------------------------------------------------------------------------------------------------------ //

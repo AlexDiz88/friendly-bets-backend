@@ -27,8 +27,14 @@ public class NewEmptyBetDto {
     private String leagueId;
 
     @NotNull(message = "{field.isNull}")
+    private Boolean isPlayoff;
+
+    @NotNull(message = "{field.isNull}")
     @NotBlank(message = "{field.bet.blankMatchDay}")
     private String matchDay;
+
+    @NotNull(message = "{field.isNull}")
+    private String playoffRound;
 
     @NotNull(message = "{field.bet.betSizeIsNull}")
     @Min(value = 1, message = "{field.bet.betSizeMinValue}")

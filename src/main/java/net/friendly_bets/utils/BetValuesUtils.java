@@ -11,9 +11,11 @@ import java.util.regex.Pattern;
 public class BetValuesUtils {
 
     private static final String SCORE_PATTERN = "^\\d+:\\d+ \\(\\d+:\\d+\\)$";
+    private static final String SCORE_OT_PATTERN = "^\\d+:\\d+ \\(\\d+:\\d+\\) \\[доп\\.\\d+:\\d+\\]$";
+    private static final String SCORE_PENALTY_PATTERN = "^\\d+:\\d+ \\(\\d+:\\d+\\) \\[доп\\.\\d+:\\d+, пен\\.\\d+:\\d+\\]$";
 
     public static void checkGameResult(String score) {
-        if (!Pattern.matches(SCORE_PATTERN, score)) {
+        if (!Pattern.matches(SCORE_PATTERN, score) && !Pattern.matches(SCORE_OT_PATTERN, score) && !Pattern.matches(SCORE_PENALTY_PATTERN, score)) {
             throw new BadRequestException("Некорректный счёт матча: " + score);
         }
     }
@@ -36,9 +38,7 @@ public class BetValuesUtils {
     public static void setCurrentMatchDay(BetsRepository betsRepository, Season season, League league) {
         if (season.getPlayers().size() != 0 && season.getBetCountPerMatchDay() != 0) {
             int totalBets = betsRepository.countBetsByLeagueAndBetStatusNot(league, Bet.BetStatus.DELETED);
-            System.out.println("totalBets = " + totalBets); // TODO: delete
             int currentMatchDay = totalBets / (season.getPlayers().size() * season.getBetCountPerMatchDay()) + 1;
-            System.out.println("currentMatchDay = " + currentMatchDay); // TODO: delete
             league.setCurrentMatchDay(String.valueOf(currentMatchDay));
         }
     }

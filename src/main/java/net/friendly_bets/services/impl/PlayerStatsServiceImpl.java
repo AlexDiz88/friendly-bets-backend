@@ -104,7 +104,6 @@ public class PlayerStatsServiceImpl implements PlayerStatsService {
         Map<String, PlayerStats> statsMap = new HashMap<>();
         List<Bet> bets = betsRepository.findAllBySeason_Id(seasonId);
         for (Bet bet : bets) {
-            // TODO: сделать запрос в базу сразу без удаленных ставок
             if (bet.getBetStatus().equals(Bet.BetStatus.DELETED)) {
                 continue;
             }
@@ -178,7 +177,6 @@ public class PlayerStatsServiceImpl implements PlayerStatsService {
         }
     }
 
-    // TODO: проверить работу метода + после этого использовать его в BetsServiceImpl
     public static PlayerStatsByTeams calculateTeamsStats(Bet bet, PlayerStatsByTeams playerStatsByTeams) {
         for (Team team : Arrays.asList(bet.getHomeTeam(), bet.getAwayTeam())) {
             Optional<TeamStats> optionalTeamStats = Optional.ofNullable(playerStatsByTeams)

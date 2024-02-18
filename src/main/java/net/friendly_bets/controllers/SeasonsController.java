@@ -20,14 +20,6 @@ public class SeasonsController implements SeasonsApi {
     private final SeasonsService seasonsService;
 
     @Override
-    @PreAuthorize("hasAuthority('ADMIN')")
-    @GetMapping("/db-rework")
-    public ResponseEntity<SeasonsPage> dbRework(@AuthenticationPrincipal AuthenticatedUser currentUser) {
-        return ResponseEntity
-                .ok(seasonsService.dbRework());
-    }
-
-    @Override
     @GetMapping
     public ResponseEntity<SeasonsPage> getSeasons(@AuthenticationPrincipal AuthenticatedUser currentUser) {
         return ResponseEntity
@@ -121,5 +113,13 @@ public class SeasonsController implements SeasonsApi {
                                                            @PathVariable("team-id") String teamId) {
         return ResponseEntity.status(201)
                 .body(seasonsService.addTeamToLeagueInSeason(seasonId, leagueId, teamId));
+    }
+
+    @Override
+    @PreAuthorize("hasAuthority('ADMIN')")
+    @GetMapping("/db-rework")
+    public ResponseEntity<Void> dbRework(@AuthenticationPrincipal AuthenticatedUser currentUser) {
+        seasonsService.dbRework();
+        return ResponseEntity.ok().build();
     }
 }
