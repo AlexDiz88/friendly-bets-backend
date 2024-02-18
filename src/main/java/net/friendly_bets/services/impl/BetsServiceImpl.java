@@ -51,8 +51,8 @@ public class BetsServiceImpl implements BetsService {
         Team homeTeam = getTeamOrThrow(teamsRepository, newBet.getHomeTeamId());
         Team awayTeam = getTeamOrThrow(teamsRepository, newBet.getAwayTeamId());
 
-        // TODO написать проверку совпадения ставок под лигу, а не из общего репозитория ставок
-        //  (т.к. могут быть совпадения в разных лигах/сезонах)
+        // TODO: есть метод для доп.проверки по сезону и лиге. Необходимо протестировать перед замено
+        //  (замена нужна т.к. могут быть совпадения в разных лигах/сезонах)
         if (betsRepository.existsByUserAndMatchDayAndHomeTeamAndAwayTeamAndBetTitleAndBetOddsAndBetSize(
                 user,
                 newBet.getMatchDay(),
@@ -71,7 +71,9 @@ public class BetsServiceImpl implements BetsService {
                 .user(user)
                 .season(season)
                 .league(league)
+                .isPlayoff(newBet.getIsPlayoff())
                 .matchDay(newBet.getMatchDay())
+                .playoffRound(newBet.getPlayoffRound())
                 .gameId(newBet.getGameId())
                 .gameDate(newBet.getGameDate())
                 .homeTeam(homeTeam)
@@ -111,7 +113,9 @@ public class BetsServiceImpl implements BetsService {
                 .user(user)
                 .season(season)
                 .league(league)
+                .isPlayoff(newEmptyBet.getIsPlayoff())
                 .matchDay(newEmptyBet.getMatchDay())
+                .playoffRound(newEmptyBet.getPlayoffRound())
                 .betSize(newEmptyBet.getBetSize())
                 .betStatus(Bet.BetStatus.EMPTY)
                 .betResultAddedAt(LocalDateTime.now())
@@ -207,11 +211,6 @@ public class BetsServiceImpl implements BetsService {
 
     @Override
     public BetsPage getCompletedBets(String seasonId, String playerId, String leagueId, Pageable pageable) {
-        System.out.println("getPageSize:" + pageable.getPageSize());
-        System.out.println("getPageNumber:" + pageable.getPageNumber());
-        System.out.println("playerId:" + playerId);
-        System.out.println("leagueId:" + leagueId);
-
 //        Page<Bet> betsPage = betsRepository.findAllByBetStatusIn(desiredStatuses, pageable);
 
 //        mongoOperations.indexOps(Bet.class).ensureIndex(new Index().on("user", Sort.Direction.ASC));
@@ -315,7 +314,9 @@ public class BetsServiceImpl implements BetsService {
         }
         return Bet.builder()
                 .user(bet.getUser())
+                .isPlayoff(bet.getIsPlayoff())
                 .matchDay(bet.getMatchDay())
+                .playoffRound(bet.getPlayoffRound())
                 .homeTeam(bet.getHomeTeam())
                 .awayTeam(bet.getAwayTeam())
                 .betTitle(bet.getBetTitle())
@@ -348,8 +349,8 @@ public class BetsServiceImpl implements BetsService {
     }
 
     private void validateBetUniqueness(User user, EditedCompleteBetDto editedBet, Team homeTeam, Team awayTeam, Bet.BetStatus newStatus) {
-        if (betsRepository.existsByUserAndMatchDayAndHomeTeamAndAwayTeamAndBetTitleAndBetOddsAndBetSizeAndGameResultAndBetStatus(
-                user, editedBet.getMatchDay(), homeTeam, awayTeam, editedBet.getBetTitle(),
+        if (betsRepository.existsByUserAndMatchDayAndPlayoffRoundAndHomeTeamAndAwayTeamAndBetTitleAndBetOddsAndBetSizeAndGameResultAndBetStatus(
+                user, editedBet.getMatchDay(), editedBet.getPlayoffRound(), homeTeam, awayTeam, editedBet.getBetTitle(),
                 editedBet.getBetOdds(), editedBet.getBetSize(), editedBet.getGameResult(), newStatus)) {
             throw new ConflictException("Ставка на этот матч уже отредактирована другим модератором");
         }
@@ -360,7 +361,9 @@ public class BetsServiceImpl implements BetsService {
         bet.setUpdatedAt(LocalDateTime.now());
         bet.setUpdatedBy(moderator);
         bet.setUser(newUser);
+        bet.setIsPlayoff(editedBet.getIsPlayoff());
         bet.setMatchDay(editedBet.getMatchDay());
+        bet.setPlayoffRound(editedBet.getPlayoffRound());
         bet.setHomeTeam(newHomeTeam);
         bet.setAwayTeam(newAwayTeam);
         bet.setBetTitle(editedBet.getBetTitle());

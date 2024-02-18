@@ -27,8 +27,14 @@ public class EditedCompleteBetDto {
     private String userId;
 
     @NotNull(message = "{field.isNull}")
+    private Boolean isPlayoff;
+
+    @NotNull(message = "{field.isNull}")
     @NotBlank(message = "{field.bet.blankMatchDay}")
     private String matchDay;
+
+    @NotNull(message = "{field.isNull}")
+    private String playoffRound;
 
     private String gameId;
 

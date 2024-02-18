@@ -45,8 +45,14 @@ public class BetDto {
     @Schema(description = "игрок, сделавший ставку", example = "{Player}")
     private UserDto player;
 
+    @Schema(description = "является ли игра матчем плей-офф", example = "true")
+    private Boolean isPlayoff;
+
     @Schema(description = "игровой тур", example = "14")
     private String matchDay;
+
+    @Schema(description = "раунд плей-офф", example = "1")
+    private String playoffRound;
 
     @Schema(description = "команда хозяев", example = "{Команда1}")
     private TeamDto homeTeam;
@@ -91,7 +97,9 @@ public class BetDto {
                     .leagueShortNameRu(bet.getLeague().getShortNameRu())
                     .createdAt(bet.getCreatedAt())
                     .player(UserDto.from(bet.getUser()))
+                    .isPlayoff(bet.getIsPlayoff())
                     .matchDay(bet.getMatchDay())
+                    .playoffRound(bet.getPlayoffRound())
                     .betSize(bet.getBetSize())
                     .gameResult(bet.getGameResult())
                     .betResultAddedAt(bet.getBetResultAddedAt())
@@ -110,7 +118,9 @@ public class BetDto {
                 .leagueShortNameRu(bet.getLeague().getShortNameRu())
                 .createdAt(bet.getCreatedAt())
                 .player(UserDto.from(bet.getUser()))
+                .isPlayoff(bet.getIsPlayoff())
                 .matchDay(bet.getMatchDay())
+                .playoffRound(bet.getPlayoffRound())
                 .homeTeam(TeamDto.from(bet.getHomeTeam()))
                 .awayTeam(TeamDto.from(bet.getAwayTeam()))
                 .betTitle(bet.getBetTitle())

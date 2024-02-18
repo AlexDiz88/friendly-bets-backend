@@ -6,8 +6,6 @@ import java.util.List;
 
 public interface SeasonsService {
 
-    SeasonsPage dbRework();
-
     SeasonsPage getAll();
 
     SeasonDto addSeason(NewSeasonDto newSeason);
@@ -29,4 +27,6 @@ public interface SeasonsService {
     SeasonDto addLeagueToSeason(String seasonId, NewLeagueDto newLeague);
 
     TeamDto addTeamToLeagueInSeason(String seasonId, String leagueId, String teamId);
+
+    void dbRework();
 }
