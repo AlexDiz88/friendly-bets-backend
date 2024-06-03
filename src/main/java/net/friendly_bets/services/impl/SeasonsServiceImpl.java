@@ -7,7 +7,10 @@ import net.friendly_bets.dto.*;
 import net.friendly_bets.exceptions.BadRequestException;
 import net.friendly_bets.exceptions.ConflictException;
 import net.friendly_bets.exceptions.NotFoundException;
-import net.friendly_bets.models.*;
+import net.friendly_bets.models.League;
+import net.friendly_bets.models.Season;
+import net.friendly_bets.models.Team;
+import net.friendly_bets.models.User;
 import net.friendly_bets.repositories.*;
 import net.friendly_bets.services.SeasonsService;
 import org.springframework.stereotype.Service;
@@ -241,18 +244,18 @@ public class SeasonsServiceImpl implements SeasonsService {
 
     @Override
     public void dbRework() {
-        List<Bet> allBets = betsRepository.findAll();
-        for (Bet bet : allBets) {
-            if (bet.getMatchDay().contains("1/")) {
-                bet.setIsPlayoff(true);
-                bet.setMatchDay(bet.getMatchDay() + " финала");
-                bet.setPlayoffRound("1");
-            } else {
-                bet.setIsPlayoff(false);
-                bet.setPlayoffRound("");
-            }
-            betsRepository.save(bet);
-        }
+//        List<Bet> allBets = betsRepository.findAll();
+//        for (Bet bet : allBets) {
+//            if (bet.getMatchDay().contains("1/")) {
+//                bet.setIsPlayoff(true);
+//                bet.setMatchDay(bet.getMatchDay() + " финала");
+//                bet.setPlayoffRound("1");
+//            } else {
+//                bet.setIsPlayoff(false);
+//                bet.setPlayoffRound("");
+//            }
+//            betsRepository.save(bet);
+//        }
     }
 
     // ------------------------------------------------------------------------------------------------------ //

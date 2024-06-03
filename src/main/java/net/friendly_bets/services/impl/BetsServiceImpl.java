@@ -518,18 +518,26 @@ public class BetsServiceImpl implements BetsService {
     public BetDto deleteBet(String moderatorId, String betId, DeletedBetDto deletedBetMetaData) {
         Bet bet = getBetOrThrow(betsRepository, betId);
         User moderator = getUserOrThrow(usersRepository, moderatorId);
-        String homeTeamId = bet.getHomeTeam().getId();
-        String awayTeamId = bet.getAwayTeam().getId();
+        String homeTeamId = "";
+        String awayTeamId = "";
+        PlayerStatsByTeams playerStatsByTeams = null;
+        PlayerStatsByTeams leagueStatsByTeams = null;
+        if (bet.getBetStatus() != Bet.BetStatus.EMPTY) {
+            homeTeamId = bet.getHomeTeam().getId();
+            awayTeamId = bet.getAwayTeam().getId();
+            playerStatsByTeams = getPlayerStatsByTeamsOrThrow(playerStatsByTeamsRepository, bet.getSeason().getId(), bet.getLeague().getId(), bet.getUser(), false);
+            leagueStatsByTeams = getLeagueStatsByTeamsOrThrow(playerStatsByTeamsRepository, bet.getSeason().getId(), bet.getLeague().getId(), true);
+        }
 
         PlayerStats playerStats = getPlayerStatsOrThrow(playerStatsRepository, deletedBetMetaData.getSeasonId(), deletedBetMetaData.getLeagueId(), bet.getUser());
-        PlayerStatsByTeams playerStatsByTeams = getPlayerStatsByTeamsOrThrow(playerStatsByTeamsRepository, bet.getSeason().getId(), bet.getLeague().getId(), bet.getUser(), false);
-        PlayerStatsByTeams leagueStatsByTeams = getLeagueStatsByTeamsOrThrow(playerStatsByTeamsRepository, bet.getSeason().getId(), bet.getLeague().getId(), true);
 
         processStats(bet, homeTeamId, awayTeamId, playerStats, playerStatsByTeams, leagueStatsByTeams);
 
         recalculatePlayerStats(playerStats);
         playerStatsRepository.save(playerStats);
-        playerStatsByTeamsRepository.saveAll(List.of(playerStatsByTeams, leagueStatsByTeams));
+        if (bet.getBetStatus() != Bet.BetStatus.EMPTY && playerStatsByTeams != null && leagueStatsByTeams != null) {
+            playerStatsByTeamsRepository.saveAll(List.of(playerStatsByTeams, leagueStatsByTeams));
+        }
 
         if (bet.getBetStatus() != Bet.BetStatus.OPENED && bet.getBetStatus() != Bet.BetStatus.DELETED) {
             bet.setBalanceChange(0.0);
@@ -552,8 +560,10 @@ public class BetsServiceImpl implements BetsService {
             playerStats.setBetCount(playerStats.getBetCount() - 1);
             playerStats.setActualBalance(playerStats.getActualBalance() - bet.getBalanceChange());
 
-            processTeamStats(playerStatsByTeams.getTeamStats(), homeTeamId, awayTeamId, bet);
-            processTeamStats(leagueStatsByTeams.getTeamStats(), homeTeamId, awayTeamId, bet);
+            if (!bet.getBetStatus().equals(Bet.BetStatus.EMPTY)) {
+                processTeamStats(playerStatsByTeams.getTeamStats(), homeTeamId, awayTeamId, bet);
+                processTeamStats(leagueStatsByTeams.getTeamStats(), homeTeamId, awayTeamId, bet);
+            }
         }
 
         switch (bet.getBetStatus()) {
