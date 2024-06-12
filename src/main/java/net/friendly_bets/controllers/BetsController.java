@@ -65,7 +65,7 @@ public class BetsController implements BetsApi {
                                                      @RequestParam(required = false) String playerId,
                                                      @RequestParam(required = false) String leagueId,
                                                      @RequestParam(required = false, defaultValue = "0") int page,
-                                                     @RequestParam(required = false, defaultValue = "28") int size,
+                                                     @RequestParam(required = false, defaultValue = "14") int size,
                                                      @RequestParam(required = false) String sortBy) {
         Pageable pageable = PageRequest.of(page, size, sortBy != null ? Sort.by(sortBy) : Sort.by(Sort.Order.desc("betResultAddedAt")));
         return ResponseEntity

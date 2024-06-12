@@ -69,4 +69,12 @@ public interface BetsRepository extends MongoRepository<Bet, String> {
 
     @Query("{ 'user.username' : ?0, 'league.displayNameRu' : ?1, 'betStatus' : { $in : ?2 } }")
     List<Bet> findAllByUser_UsernameAndLeague_DisplayNameRuAndBetStatusIn(String username, String leagueName, List<Bet.BetStatus> betStatuses, Pageable pageable);
+
+    Page<Bet> findAllBySeason_IdAndBetStatusIn(String seasonId, List<Bet.BetStatus> betStatuses, Pageable pageable);
+
+    Page<Bet> findAllBySeason_IdAndBetStatusInAndLeague_IdAndUser_Id(String seasonId, List<Bet.BetStatus> betStatuses, String leagueId, String userId, Pageable pageable);
+
+    Page<Bet> findAllBySeason_IdAndBetStatusInAndLeague_Id(String seasonId, List<Bet.BetStatus> betStatuses, String leagueId, Pageable pageable);
+
+    Page<Bet> findAllBySeason_IdAndBetStatusInAndUser_Id(String seasonId, List<Bet.BetStatus> betStatuses, String userId, Pageable pageable);
 }
