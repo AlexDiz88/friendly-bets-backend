@@ -226,16 +226,16 @@ public class BetsServiceImpl implements BetsService {
         Page<Bet> completedBetsPage = null;
 
         if (leagueId == null && playerId == null) {
-            completedBetsPage = betsRepository.findAllByBetStatusIn(desiredStatuses, pageable);
+            completedBetsPage = betsRepository.findAllBySeason_IdAndBetStatusIn(seasonId, desiredStatuses, pageable);
         }
         if (leagueId == null && playerId != null) {
-            completedBetsPage = betsRepository.findAllByBetStatusInAndUser_Id(desiredStatuses, playerId, pageable);
+            completedBetsPage = betsRepository.findAllBySeason_IdAndBetStatusInAndUser_Id(seasonId, desiredStatuses, playerId, pageable);
         }
         if (leagueId != null && playerId == null) {
-            completedBetsPage = betsRepository.findAllByBetStatusInAndLeague_Id(desiredStatuses, leagueId, pageable);
+            completedBetsPage = betsRepository.findAllBySeason_IdAndBetStatusInAndLeague_Id(seasonId, desiredStatuses, leagueId, pageable);
         }
         if (leagueId != null && playerId != null) {
-            completedBetsPage = betsRepository.findAllByBetStatusInAndLeague_IdAndUser_Id(desiredStatuses, leagueId, playerId, pageable);
+            completedBetsPage = betsRepository.findAllBySeason_IdAndBetStatusInAndLeague_IdAndUser_Id(seasonId, desiredStatuses, leagueId, playerId, pageable);
         }
         if (completedBetsPage == null) {
             throw new BadRequestException("Некорректный запрос");
@@ -268,7 +268,7 @@ public class BetsServiceImpl implements BetsService {
         List<Bet.BetStatus> desiredStatuses = List.of(Bet.BetStatus.OPENED, Bet.BetStatus.WON, Bet.BetStatus.RETURNED,
                 Bet.BetStatus.LOST, Bet.BetStatus.EMPTY);
 
-        Page<Bet> allBets = betsRepository.findAllByBetStatusIn(desiredStatuses, pageable);
+        Page<Bet> allBets = betsRepository.findAllBySeason_IdAndBetStatusIn(seasonId, desiredStatuses, pageable);
 
 //        Criteria criteria = new Criteria();
 //        // TODO: Добавить фильтр по сезону

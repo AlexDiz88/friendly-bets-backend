@@ -90,13 +90,16 @@ public class SeasonsServiceImpl implements SeasonsService {
         if (season.getStatus().equals(Season.Status.FINISHED)) {
             throw new BadRequestException("Сезон завершен и его статус больше нельзя изменить");
         }
-
         if (status.equals("ACTIVE")) {
-            Optional<Season> currentActiveSeason = seasonsRepository.findSeasonByStatus(Season.Status.ACTIVE);
-            currentActiveSeason.ifPresent(value -> value.setStatus(Season.Status.PAUSED));
+            seasonsRepository.findSeasonByStatus(Season.Status.ACTIVE)
+                    .ifPresent(s -> {
+                        s.setStatus(Season.Status.PAUSED);
+                        seasonsRepository.save(s);
+                    });
         }
 
         season.setStatus(Season.Status.valueOf(status));
+
         seasonsRepository.save(season);
 
         return SeasonDto.from(season);
@@ -152,7 +155,7 @@ public class SeasonsServiceImpl implements SeasonsService {
     @Transactional
     public SeasonDto registrationInSeason(String userId, String seasonId) {
         Season season = getSeasonOrThrow(seasonsRepository, seasonId);
-        User user = getUserOrThrow(usersRepository, seasonId);
+        User user = getUserOrThrow(usersRepository, userId);
         if (user.getUsername() == null || user.getUsername().isBlank()) {
             throw new BadRequestException("Сначала заполните поле 'Имя' в личном кабинете");
         }
