@@ -24,7 +24,6 @@ import static net.friendly_bets.utils.GetEntityOrThrow.*;
 public class PlayerStatsServiceImpl implements PlayerStatsService {
 
     PlayerStatsRepository playerStatsRepository;
-
     PlayerStatsByTeamsRepository playerStatsByTeamsRepository;
     SeasonsRepository seasonsRepository;
     BetsRepository betsRepository;

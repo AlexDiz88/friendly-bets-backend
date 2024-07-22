@@ -11,7 +11,10 @@ import net.friendly_bets.models.League;
 import net.friendly_bets.models.Season;
 import net.friendly_bets.models.Team;
 import net.friendly_bets.models.User;
-import net.friendly_bets.repositories.*;
+import net.friendly_bets.repositories.LeaguesRepository;
+import net.friendly_bets.repositories.SeasonsRepository;
+import net.friendly_bets.repositories.TeamsRepository;
+import net.friendly_bets.repositories.UsersRepository;
 import net.friendly_bets.services.SeasonsService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,8 +36,6 @@ public class SeasonsServiceImpl implements SeasonsService {
     UsersRepository usersRepository;
     LeaguesRepository leaguesRepository;
     TeamsRepository teamsRepository;
-
-    BetsRepository betsRepository;
 
     @Override
     @Transactional
@@ -81,15 +82,18 @@ public class SeasonsServiceImpl implements SeasonsService {
         } catch (IllegalArgumentException e) {
             throw new BadRequestException("Недопустимый статус: " + status);
         }
-        Season season = seasonsRepository.findById(seasonId).orElseThrow(
-                () -> new NotFoundException("Сезон", seasonId)
-        );
+
+        Season season = getSeasonOrThrow(seasonsRepository, seasonId);
+
         if (season.getStatus().toString().equals(status)) {
             throw new ConflictException("Сезон уже имеет этот статус");
         }
-        if (season.getStatus().equals(Season.Status.FINISHED)) {
-            throw new BadRequestException("Сезон завершен и его статус больше нельзя изменить");
-        }
+
+//        TODO: стоит ли запретить менять статус окончненных турниров??
+//        if (season.getStatus().equals(Season.Status.FINISHED)) {
+//            throw new BadRequestException("Сезон завершен и его статус больше нельзя изменить");
+//        }
+
         if (status.equals("ACTIVE")) {
             seasonsRepository.findSeasonByStatus(Season.Status.ACTIVE)
                     .ifPresent(s -> {
@@ -177,7 +181,7 @@ public class SeasonsServiceImpl implements SeasonsService {
     public LeaguesPage getLeaguesBySeason(String seasonId) {
         Season season = getSeasonOrThrow(seasonsRepository, seasonId);
         return LeaguesPage.builder()
-                .leagues(LeagueDto.from(seasonId, season.getLeagues()))
+                .leagues(LeagueDto.from(season.getLeagues()))
                 .build();
     }
 

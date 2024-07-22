@@ -47,8 +47,4 @@ public class League {
     @DBRef
     @Field(name = "teams")
     private List<Team> teams;
-
-//    @DBRef
-//    @Field(name = "bets")
-//    private List<Bet> bets;
 }

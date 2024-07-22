@@ -51,9 +51,9 @@ public class BetsServiceImpl implements BetsService {
         Team homeTeam = getTeamOrThrow(teamsRepository, newBet.getHomeTeamId());
         Team awayTeam = getTeamOrThrow(teamsRepository, newBet.getAwayTeamId());
 
-        // TODO: есть метод для доп.проверки по сезону и лиге. Необходимо протестировать перед замено
-        //  (замена нужна т.к. могут быть совпадения в разных лигах/сезонах)
-        if (betsRepository.existsByUserAndMatchDayAndPlayoffRoundAndHomeTeamAndAwayTeamAndBetTitleAndBetOddsAndBetSize(
+        if (betsRepository.existsBySeasonIdAndLeagueIdAndUserAndMatchDayAndPlayoffRoundAndHomeTeamAndAwayTeamAndBetTitleAndBetOddsAndBetSize(
+                season.getId(),
+                league.getId(),
                 user,
                 newBet.getMatchDay(),
                 newBet.getPlayoffRound(),

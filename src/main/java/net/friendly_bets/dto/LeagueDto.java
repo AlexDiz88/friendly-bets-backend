@@ -54,7 +54,7 @@ public class LeagueDto {
                 .build();
     }
 
-    public static List<LeagueDto> from(String seasonId, List<League> leagues) {
+    public static List<LeagueDto> from(List<League> leagues) {
         return leagues.stream()
                 .map(LeagueDto::from)
                 .collect(Collectors.toList());
