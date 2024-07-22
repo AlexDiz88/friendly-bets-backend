@@ -49,10 +49,22 @@ public class GetEntityOrThrow {
         return playerStatsByTeamsOptional.orElseThrow(() -> new BadRequestException("Статистики участника по командам не существует"));
     }
 
+    public static PlayerStatsByTeams getPlayerStatsByTeamsOrNull(PlayerStatsByTeamsRepository playerStatsByTeamsRepository, String seasonId, String leagueId, User user, boolean isLeagueStats) {
+        Optional<PlayerStatsByTeams> playerStatsByTeamsOptional =
+                playerStatsByTeamsRepository.findBySeasonIdAndLeagueIdAndUserAndIsLeagueStats(seasonId, leagueId, user, isLeagueStats);
+        return playerStatsByTeamsOptional.orElse(null);
+    }
+
     public static PlayerStatsByTeams getLeagueStatsByTeamsOrThrow(PlayerStatsByTeamsRepository playerStatsByTeamsRepository, String seasonId, String leagueId, boolean isLeagueStats) {
         Optional<PlayerStatsByTeams> leagueStatsByTeamsOptional =
                 playerStatsByTeamsRepository.findBySeasonIdAndLeagueIdAndIsLeagueStats(seasonId, leagueId, isLeagueStats);
         return leagueStatsByTeamsOptional.orElseThrow(() -> new BadRequestException("Статистики лиги по командам не существует"));
+    }
+
+    public static PlayerStatsByTeams getLeagueStatsByTeamsOrNull(PlayerStatsByTeamsRepository playerStatsByTeamsRepository, String seasonId, String leagueId, boolean isLeagueStats) {
+        Optional<PlayerStatsByTeams> leagueStatsByTeamsOptional =
+                playerStatsByTeamsRepository.findBySeasonIdAndLeagueIdAndIsLeagueStats(seasonId, leagueId, isLeagueStats);
+        return leagueStatsByTeamsOptional.orElse(null);
     }
 
 

@@ -155,16 +155,20 @@ public class PlayerStatsServiceImpl implements PlayerStatsService {
         playerStatsByTeamsRepository.deleteAllBySeasonId(seasonId);
         Map<String, PlayerStatsByTeams> statsMap = new HashMap<>();
         List<Bet> bets = betsRepository.findAllBySeason_Id(seasonId);
+        EnumSet<Bet.BetStatus> ignoredStatuses = EnumSet.of(Bet.BetStatus.DELETED, Bet.BetStatus.OPENED, Bet.BetStatus.EMPTY);
 
         for (Bet bet : bets) {
-            if (bet.getBetStatus().equals(Bet.BetStatus.DELETED) || bet.getBetStatus().equals(Bet.BetStatus.OPENED) || bet.getBetStatus().equals(Bet.BetStatus.EMPTY)) {
+            if (ignoredStatuses.contains(bet.getBetStatus())) {
                 continue;
             }
             User user = bet.getUser();
-            String mapKey = seasonId + bet.getLeague().getId() + user.getId();
-            String mapKeyForLeagues = seasonId + bet.getLeague().getId();
-            PlayerStatsByTeams leaguesStatsByTeams = statsMap.getOrDefault(mapKeyForLeagues, getDefaultStatsByTeams(bet.getSeason().getId(), bet.getLeague().getId(), bet.getLeague().getDisplayNameRu(), bet.getUser(), true));
-            PlayerStatsByTeams playersStatsByTeams = statsMap.getOrDefault(mapKey, getDefaultStatsByTeams(bet.getSeason().getId(), bet.getLeague().getId(), bet.getLeague().getDisplayNameRu(), bet.getUser(), false));
+            String leagueId = bet.getLeague().getId();
+            String mapKey = seasonId + leagueId + user.getId();
+            String mapKeyForLeagues = seasonId + leagueId;
+            PlayerStatsByTeams leaguesStatsByTeams =
+                    statsMap.getOrDefault(mapKeyForLeagues, getDefaultStatsByTeams(seasonId, leagueId, bet.getLeague().getDisplayNameRu(), user, true));
+            PlayerStatsByTeams playersStatsByTeams =
+                    statsMap.getOrDefault(mapKey, getDefaultStatsByTeams(seasonId, leagueId, bet.getLeague().getDisplayNameRu(), user, false));
 
             PlayerStatsByTeams leagueStatsByTeams = calculateTeamsStats(bet, leaguesStatsByTeams);
             PlayerStatsByTeams statsByTeams = calculateTeamsStats(bet, playersStatsByTeams);
