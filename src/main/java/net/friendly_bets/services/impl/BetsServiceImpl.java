@@ -192,8 +192,9 @@ public class BetsServiceImpl implements BetsService {
         playerStatsRepository.save(playerStats);
 
         PlayerStatsByTeams updatedStatsByTeams = calculateTeamsStats(bet, playerStatsByTeams);
+        playerStatsByTeamsRepository.save(updatedStatsByTeams);
         PlayerStatsByTeams updatedLeagueStatsByTeams = calculateTeamsStats(bet, leagueStatsByTeams);
-        playerStatsByTeamsRepository.saveAll(List.of(updatedStatsByTeams, updatedLeagueStatsByTeams));
+        playerStatsByTeamsRepository.save(updatedLeagueStatsByTeams);
 
         return BetDto.from(bet);
     }
@@ -378,9 +379,9 @@ public class BetsServiceImpl implements BetsService {
     private void updatePlayerStats(Bet betInDB, Bet previousStateOfBet, EditedCompleteBetDto editedBet) {
         PlayerStats statsOfPreviousPlayer = getPlayerStatsOrThrow(playerStatsRepository, editedBet.getSeasonId(), editedBet.getLeagueId(), previousStateOfBet.getUser());
         PlayerStats statsOfActualPlayer = getPlayerStatsOrThrow(playerStatsRepository, betInDB.getSeason().getId(), betInDB.getLeague().getId(), betInDB.getUser());
-        PlayerStatsByTeams statsByTeamsOfPreviousPlayer = getPlayerStatsByTeamsOrThrow(playerStatsByTeamsRepository, editedBet.getSeasonId(), editedBet.getLeagueId(), previousStateOfBet.getUser(), false);
-        PlayerStatsByTeams statsByTeamsOfActualPlayer = getPlayerStatsByTeamsOrThrow(playerStatsByTeamsRepository, editedBet.getSeasonId(), editedBet.getLeagueId(), betInDB.getUser(), false);
-        PlayerStatsByTeams leagueStatsByTeams = getLeagueStatsByTeamsOrThrow(playerStatsByTeamsRepository, editedBet.getSeasonId(), editedBet.getLeagueId(), true);
+        PlayerStatsByTeams statsByTeamsOfPreviousPlayer = getPlayerStatsByTeamsOrNull(playerStatsByTeamsRepository, editedBet.getSeasonId(), editedBet.getLeagueId(), previousStateOfBet.getUser(), false);
+        PlayerStatsByTeams statsByTeamsOfActualPlayer = getPlayerStatsByTeamsOrNull(playerStatsByTeamsRepository, editedBet.getSeasonId(), editedBet.getLeagueId(), betInDB.getUser(), false);
+        PlayerStatsByTeams leagueStatsByTeams = getLeagueStatsByTeamsOrNull(playerStatsByTeamsRepository, editedBet.getSeasonId(), editedBet.getLeagueId(), true);
 
         // если статус OPENED и новый игрок -> обновление статистики для КАЖДОГО игрока (общая + по лиге). По командам менять НЕ нужно
         if (betInDB.getBetStatus() == Bet.BetStatus.OPENED && !editedBet.getUserId().equals(previousStateOfBet.getUser().getId())) {
@@ -410,7 +411,15 @@ public class BetsServiceImpl implements BetsService {
         }
 
         playerStatsRepository.saveAll(List.of(statsOfPreviousPlayer, statsOfActualPlayer));
-        playerStatsByTeamsRepository.saveAll(List.of(statsByTeamsOfPreviousPlayer, statsByTeamsOfActualPlayer, leagueStatsByTeams));
+        if (statsByTeamsOfPreviousPlayer != null) {
+            playerStatsByTeamsRepository.save(statsByTeamsOfPreviousPlayer);
+        }
+        if (statsByTeamsOfActualPlayer != null) {
+            playerStatsByTeamsRepository.save(statsByTeamsOfActualPlayer);
+        }
+        if (leagueStatsByTeams != null) {
+            playerStatsByTeamsRepository.save(leagueStatsByTeams);
+        }
     }
 
     private void updatePlayerStatsOnCompletedBet(PlayerStats playerStats, Bet bet, boolean isStatsToAppend) {
@@ -436,6 +445,8 @@ public class BetsServiceImpl implements BetsService {
     }
 
     private void updateTeamsStatsOnCompletedBet(PlayerStatsByTeams playerStatsByTeams, Bet bet, boolean isStatsToAppend) {
+        if (playerStatsByTeams == null) return;
+
         int multiplier = isStatsToAppend ? 1 : -1;
         String homeTeamId = bet.getHomeTeam().getId();
         String awayTeamId = bet.getAwayTeam().getId();
@@ -525,8 +536,8 @@ public class BetsServiceImpl implements BetsService {
         if (bet.getBetStatus() != Bet.BetStatus.EMPTY) {
             homeTeamId = bet.getHomeTeam().getId();
             awayTeamId = bet.getAwayTeam().getId();
-            playerStatsByTeams = getPlayerStatsByTeamsOrThrow(playerStatsByTeamsRepository, bet.getSeason().getId(), bet.getLeague().getId(), bet.getUser(), false);
-            leagueStatsByTeams = getLeagueStatsByTeamsOrThrow(playerStatsByTeamsRepository, bet.getSeason().getId(), bet.getLeague().getId(), true);
+            playerStatsByTeams = getPlayerStatsByTeamsOrNull(playerStatsByTeamsRepository, bet.getSeason().getId(), bet.getLeague().getId(), bet.getUser(), false);
+            leagueStatsByTeams = getLeagueStatsByTeamsOrNull(playerStatsByTeamsRepository, bet.getSeason().getId(), bet.getLeague().getId(), true);
         }
 
         PlayerStats playerStats = getPlayerStatsOrThrow(playerStatsRepository, deletedBetMetaData.getSeasonId(), deletedBetMetaData.getLeagueId(), bet.getUser());
@@ -561,8 +572,12 @@ public class BetsServiceImpl implements BetsService {
             playerStats.setActualBalance(playerStats.getActualBalance() - bet.getBalanceChange());
 
             if (!bet.getBetStatus().equals(Bet.BetStatus.EMPTY)) {
-                processTeamStats(playerStatsByTeams.getTeamStats(), homeTeamId, awayTeamId, bet);
-                processTeamStats(leagueStatsByTeams.getTeamStats(), homeTeamId, awayTeamId, bet);
+                if (playerStatsByTeams != null) {
+                    processTeamStats(playerStatsByTeams.getTeamStats(), homeTeamId, awayTeamId, bet);
+                }
+                if (leagueStatsByTeams != null) {
+                    processTeamStats(leagueStatsByTeams.getTeamStats(), homeTeamId, awayTeamId, bet);
+                }
             }
         }
 
@@ -592,24 +607,36 @@ public class BetsServiceImpl implements BetsService {
         playerStats.setSumOfOdds(playerStats.getSumOfOdds() - bet.getBetOdds());
         playerStats.setSumOfWonOdds(playerStats.getSumOfWonOdds() - bet.getBetOdds());
 
-        processWonTeamStats(playerStatsByTeams.getTeamStats(), homeTeamId, awayTeamId, bet);
-        processWonTeamStats(leagueStatsByTeams.getTeamStats(), homeTeamId, awayTeamId, bet);
+        if (playerStatsByTeams != null) {
+            processWonTeamStats(playerStatsByTeams.getTeamStats(), homeTeamId, awayTeamId, bet);
+        }
+        if (leagueStatsByTeams != null) {
+            processWonTeamStats(leagueStatsByTeams.getTeamStats(), homeTeamId, awayTeamId, bet);
+        }
     }
 
     private void processReturnedStats(PlayerStats playerStats, PlayerStatsByTeams playerStatsByTeams, PlayerStatsByTeams leagueStatsByTeams, String homeTeamId, String awayTeamId, Bet bet) {
         playerStats.setReturnedBetCount(playerStats.getReturnedBetCount() - 1);
         playerStats.setSumOfOdds(playerStats.getSumOfOdds() - bet.getBetOdds());
 
-        processReturnedTeamStats(playerStatsByTeams.getTeamStats(), homeTeamId, awayTeamId, bet);
-        processReturnedTeamStats(leagueStatsByTeams.getTeamStats(), homeTeamId, awayTeamId, bet);
+        if (playerStatsByTeams != null) {
+            processReturnedTeamStats(playerStatsByTeams.getTeamStats(), homeTeamId, awayTeamId, bet);
+        }
+        if (leagueStatsByTeams != null) {
+            processReturnedTeamStats(leagueStatsByTeams.getTeamStats(), homeTeamId, awayTeamId, bet);
+        }
     }
 
     private void processLostStats(PlayerStats playerStats, PlayerStatsByTeams playerStatsByTeams, PlayerStatsByTeams leagueStatsByTeams, String homeTeamId, String awayTeamId, Bet bet) {
         playerStats.setLostBetCount(playerStats.getLostBetCount() - 1);
         playerStats.setSumOfOdds(playerStats.getSumOfOdds() - bet.getBetOdds());
 
-        processLostTeamStats(playerStatsByTeams.getTeamStats(), homeTeamId, awayTeamId, bet);
-        processLostTeamStats(leagueStatsByTeams.getTeamStats(), homeTeamId, awayTeamId, bet);
+        if (playerStatsByTeams != null) {
+            processLostTeamStats(playerStatsByTeams.getTeamStats(), homeTeamId, awayTeamId, bet);
+        }
+        if (leagueStatsByTeams != null) {
+            processLostTeamStats(leagueStatsByTeams.getTeamStats(), homeTeamId, awayTeamId, bet);
+        }
     }
 
     private void processWonTeamStats(List<TeamStats> teamStatsList, String homeTeamId, String awayTeamId, Bet bet) {
