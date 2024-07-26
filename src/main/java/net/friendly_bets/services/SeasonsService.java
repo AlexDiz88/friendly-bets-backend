@@ -30,5 +30,5 @@ public interface SeasonsService {
 
     TeamDto addTeamToLeagueInSeason(String seasonId, String leagueId, String teamId);
 
-    void dbUpdate();
+    String dbUpdate();
 }

@@ -17,9 +17,6 @@ import net.friendly_bets.repositories.TeamsRepository;
 import net.friendly_bets.repositories.UsersRepository;
 import net.friendly_bets.services.SeasonsService;
 import org.springframework.data.mongodb.core.MongoTemplate;
-import org.springframework.data.mongodb.core.query.Criteria;
-import org.springframework.data.mongodb.core.query.Query;
-import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -56,20 +53,8 @@ public class SeasonsServiceImpl implements SeasonsService {
     @Override
     @Transactional
     public SeasonDto addSeason(NewSeasonDto newSeason) {
-        if (newSeason == null) {
-            throw new BadRequestException("Сезон не может быть равен null");
-        }
-        if (newSeason.getTitle() == null || newSeason.getTitle().isBlank()) {
-            throw new BadRequestException("Название сезона не может быть пустым либо null");
-        }
         if (seasonsRepository.existsByTitle(newSeason.getTitle())) {
             throw new BadRequestException("Сезон с таким названием уже существует");
-        }
-        if (newSeason.getBetCountPerMatchDay() == null) {
-            throw new BadRequestException("Количество ставок на тур не должно быть равно null");
-        }
-        if (newSeason.getBetCountPerMatchDay() <= 0) {
-            throw new BadRequestException("Количество ставок на тур должно быть больше 0");
         }
 
         Season season = Season.builder()
@@ -218,12 +203,6 @@ public class SeasonsServiceImpl implements SeasonsService {
         Season season = getSeasonOrThrow(seasonsRepository, seasonId);
         League.LeagueCode leagueCode;
 
-        if (newLeague == null) {
-            throw new BadRequestException("Лиги равна null");
-        }
-        if (newLeague.getLeagueCode() == null) {
-            throw new BadRequestException("Отсутствует код лиги");
-        }
         try {
             leagueCode = League.LeagueCode.valueOf(newLeague.getLeagueCode());
         } catch (IllegalArgumentException e) {
@@ -286,22 +265,24 @@ public class SeasonsServiceImpl implements SeasonsService {
 
     @Override
     @Transactional
-    public void dbUpdate() {
-        List<Team> allTeams = teamsRepository.findAll();
-
-        for (Team team : allTeams) {
-            // Создаем запрос для обновления конкретного документа
-            Query individualQuery = new Query().addCriteria(Criteria.where("_id").is(team.getId()));
-
-            // Создаем обновление для добавления поля "title" и удаления полей "fullTitleEn" и "fullTitleRu"
-            Update update = new Update()
-                    .set("title", team.getFullTitleEn())
-                    .unset("fullTitleEn")
-                    .unset("fullTitleRu");
-
-            // Выполняем обновление для конкретного документа
-            mongoTemplate.updateFirst(individualQuery, update, Team.class);
-        }
+    public String dbUpdate() {
+//        List<Team> allTeams = teamsRepository.findAll();
+//
+//        for (Team team : allTeams) {
+//            // Создаем запрос для обновления конкретного документа
+//            Query individualQuery = new Query().addCriteria(Criteria.where("_id").is(team.getId()));
+//
+//            // Создаем обновление для добавления поля "title" и удаления полей "fullTitleEn" и "fullTitleRu"
+//            Update update = new Update()
+//                    .set("title", team.getFullTitleEn())
+//                    .unset("fullTitleEn")
+//                    .unset("fullTitleRu");
+//
+//            // Выполняем обновление для конкретного документа
+//            mongoTemplate.updateFirst(individualQuery, update, Team.class);
+//
+//        }
+        return "DB update complete";
     }
 
     // ------------------------------------------------------------------------------------------------------ //

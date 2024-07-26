@@ -250,7 +250,7 @@ public interface SeasonsApi {
 
     // ------------------------------------------------------------------------------------------------------ //
 
-    ResponseEntity<Void> dbUpdate(@Parameter(hidden = true) AuthenticatedUser currentUser);
+    ResponseEntity<String> dbUpdate(@Parameter(hidden = true) AuthenticatedUser currentUser);
 
     // ------------------------------------------------------------------------------------------------------ //
 }
