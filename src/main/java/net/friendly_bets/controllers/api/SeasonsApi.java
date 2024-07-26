@@ -86,7 +86,7 @@ public interface SeasonsApi {
 
     @Operation(summary = "Получение списка всех статусов сезона", description = "Доступно только администратору")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Информацию о статусах сезона",
+            @ApiResponse(responseCode = "200", description = "Информация о статусах сезона",
                     content = {
                             @Content(mediaType = "application/json",
                                     schema = @Schema(implementation = List.class))
@@ -100,6 +100,25 @@ public interface SeasonsApi {
             )
     })
     ResponseEntity<List<String>> getSeasonStatusList(@Parameter(hidden = true) AuthenticatedUser currentUser);
+
+    // ------------------------------------------------------------------------------------------------------ //
+
+    @Operation(summary = "Получение списка всех кодов лиг", description = "Доступно только администратору")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Информация о кодах лиг",
+                    content = {
+                            @Content(mediaType = "application/json",
+                                    schema = @Schema(implementation = List.class))
+                    }
+            ),
+            @ApiResponse(responseCode = "403", description = "Пользователь не аутентифицирован",
+                    content = {
+                            @Content(mediaType = "application/json",
+                                    schema = @Schema(ref = "StandardResponseDto"))
+                    }
+            )
+    })
+    ResponseEntity<List<String>> getLeagueCodeList(@Parameter(hidden = true) AuthenticatedUser currentUser);
 
     // ------------------------------------------------------------------------------------------------------ //
 
@@ -231,7 +250,7 @@ public interface SeasonsApi {
 
     // ------------------------------------------------------------------------------------------------------ //
 
-    ResponseEntity<Void> dbRework(@Parameter(hidden = true) AuthenticatedUser currentUser);
+    ResponseEntity<Void> dbUpdate(@Parameter(hidden = true) AuthenticatedUser currentUser);
 
     // ------------------------------------------------------------------------------------------------------ //
 }

@@ -16,7 +16,7 @@ import java.util.List;
 public class LeagueStatsPage {
 
     @Schema(description = "Лига (без списка команд и ставок)")
-    private SimpleLeagueDto simpleLeague;
+    private LeagueSimpleDto simpleLeague;
 
     @Schema(description = "Статистика игроков в лиге")
     private List<PlayerStatsDto> playersStats;

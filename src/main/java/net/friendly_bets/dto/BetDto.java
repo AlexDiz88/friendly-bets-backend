@@ -27,23 +27,14 @@ public class BetDto {
     @Schema(description = "ID лиги", example = "12-байтовый хэш ID")
     private String leagueId;
 
-    @Schema(description = "отображаемое имя лиги (EN)", example = "Bundesliga")
-    private String leagueDisplayNameEn;
-
-    @Schema(description = "отображаемое имя лиги (RU)", example = "Бундеслига")
-    private String leagueDisplayNameRu;
-
-    @Schema(description = "сокращенное имя лиги (EN)", example = "BL")
-    private String leagueShortNameEn;
-
-    @Schema(description = "сокращенное имя лиги (RU)", example = "БЛ")
-    private String leagueShortNameRu;
+    @Schema(description = "код лиги", example = "BL")
+    private String leagueCode;
 
     @Schema(description = "время создания/добавления ставки", example = "2023-08-15T12:00:00")
     private LocalDateTime createdAt;
 
     @Schema(description = "игрок, сделавший ставку", example = "{Player}")
-    private UserDto player;
+    private UserSimpleDto player;
 
     @Schema(description = "является ли игра матчем плей-офф", example = "true")
     private Boolean isPlayoff;
@@ -91,12 +82,9 @@ public class BetDto {
                     .id(bet.getId())
                     .seasonId(bet.getSeason().getId())
                     .leagueId(bet.getLeague().getId())
-                    .leagueDisplayNameEn(bet.getLeague().getDisplayNameEn())
-                    .leagueDisplayNameRu(bet.getLeague().getDisplayNameRu())
-                    .leagueShortNameEn(bet.getLeague().getShortNameEn())
-                    .leagueShortNameRu(bet.getLeague().getShortNameRu())
+                    .leagueCode(bet.getLeague().getLeagueCode().toString())
                     .createdAt(bet.getCreatedAt())
-                    .player(UserDto.from(bet.getUser()))
+                    .player(UserSimpleDto.from(bet.getUser()))
                     .isPlayoff(bet.getIsPlayoff())
                     .matchDay(bet.getMatchDay())
                     .playoffRound(bet.getPlayoffRound())
@@ -112,12 +100,9 @@ public class BetDto {
                 .id(bet.getId())
                 .seasonId(bet.getSeason().getId())
                 .leagueId(bet.getLeague().getId())
-                .leagueDisplayNameEn(bet.getLeague().getDisplayNameEn())
-                .leagueDisplayNameRu(bet.getLeague().getDisplayNameRu())
-                .leagueShortNameEn(bet.getLeague().getShortNameEn())
-                .leagueShortNameRu(bet.getLeague().getShortNameRu())
+                .leagueCode(bet.getLeague().getLeagueCode().toString())
                 .createdAt(bet.getCreatedAt())
-                .player(UserDto.from(bet.getUser()))
+                .player(UserSimpleDto.from(bet.getUser()))
                 .isPlayoff(bet.getIsPlayoff())
                 .matchDay(bet.getMatchDay())
                 .playoffRound(bet.getPlayoffRound())

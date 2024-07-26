@@ -171,9 +171,9 @@ public class BetsServiceImpl implements BetsService {
         Optional<PlayerStats> playerStatsOptional = playerStatsRepository.findBySeasonIdAndLeagueIdAndUser(bet.getSeason().getId(), bet.getLeague().getId(), bet.getUser());
         PlayerStats playerStats = playerStatsOptional.orElseGet(() -> getDefaultPlayerStats(bet.getSeason().getId(), bet.getLeague().getId(), bet.getUser()));
         Optional<PlayerStatsByTeams> playerStatsByTeamsOptional = playerStatsByTeamsRepository.findBySeasonIdAndLeagueIdAndUserAndIsLeagueStats(bet.getSeason().getId(), bet.getLeague().getId(), bet.getUser(), false);
-        PlayerStatsByTeams playerStatsByTeams = playerStatsByTeamsOptional.orElseGet(() -> getDefaultStatsByTeams(bet.getSeason().getId(), bet.getLeague().getId(), bet.getLeague().getDisplayNameRu(), bet.getUser(), false));
+        PlayerStatsByTeams playerStatsByTeams = playerStatsByTeamsOptional.orElseGet(() -> getDefaultStatsByTeams(bet.getSeason().getId(), bet.getLeague().getId(), bet.getLeague().getLeagueCode().toString(), bet.getUser(), false));
         Optional<PlayerStatsByTeams> leagueStatsByTeamsOptional = playerStatsByTeamsRepository.findBySeasonIdAndLeagueIdAndIsLeagueStats(bet.getSeason().getId(), bet.getLeague().getId(), true);
-        PlayerStatsByTeams leagueStatsByTeams = leagueStatsByTeamsOptional.orElseGet(() -> getDefaultStatsByTeams(bet.getSeason().getId(), bet.getLeague().getId(), bet.getLeague().getDisplayNameRu(), bet.getUser(), true));
+        PlayerStatsByTeams leagueStatsByTeams = leagueStatsByTeamsOptional.orElseGet(() -> getDefaultStatsByTeams(bet.getSeason().getId(), bet.getLeague().getId(), bet.getLeague().getLeagueCode().toString(), bet.getUser(), true));
 
         playerStats.setBetCount(playerStats.getBetCount() + 1);
         if (bet.getBetStatus().equals(Bet.BetStatus.WON)) {

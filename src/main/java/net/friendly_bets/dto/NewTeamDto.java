@@ -14,11 +14,7 @@ public class NewTeamDto {
 
     @NotNull(message = "{field.isNull}")
     @NotBlank(message = "{field.isBlank}")
-    private String fullTitleRu;
-
-    @NotNull(message = "{field.isNull}")
-    @NotBlank(message = "{field.isBlank}")
-    private String fullTitleEn;
+    private String title;
 
     @NotNull(message = "{field.isNull}")
     @NotBlank(message = "{field.isBlank}")

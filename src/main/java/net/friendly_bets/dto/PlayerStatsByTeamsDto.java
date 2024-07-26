@@ -23,8 +23,8 @@ public class PlayerStatsByTeamsDto {
     @Schema(description = "ID лиги", example = "12-байтовый хэш ID")
     private String leagueId;
 
-    @Schema(description = "название лиги", example = "АПЛ")
-    private String leagueNameRu;
+    @Schema(description = "код лиги", example = "BL")
+    private String leagueCode;
 
     @Schema(description = "фото участника турнира", example = "путь_к_изображению.png")
     private String avatar;
@@ -43,7 +43,7 @@ public class PlayerStatsByTeamsDto {
         return PlayerStatsByTeamsDto.builder()
                 .seasonId(playerStatsByTeams.getSeasonId())
                 .leagueId(playerStatsByTeams.getLeagueId())
-                .leagueNameRu(playerStatsByTeams.getLeagueNameRu())
+                .leagueCode(playerStatsByTeams.getLeagueCode())
                 .avatar(playerStatsByTeams.getUser().getAvatar())
                 .username(playerStatsByTeams.getUser().getUsername())
                 .isLeagueStats(playerStatsByTeams.isLeagueStats())

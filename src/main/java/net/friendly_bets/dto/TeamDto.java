@@ -20,26 +20,13 @@ public class TeamDto {
     @Schema(description = "идентификатор команды", example = "12-байтовый хэш ID")
     private String id;
 
-    @Schema(description = "название команды (русский)", example = "Арсенал")
-    private String fullTitleRu;
-
     @Schema(description = "название команды (english)", example = "Arsenal")
-    private String fullTitleEn;
-
-    @Schema(description = "страна команды (аббревиатура на английском, 3 символа)", example = "ENG")
-    private String country;
-
-    @Schema(description = "логотип команды", example = "logo.jpeg")
-    private String logo;
-
+    private String title;
 
     public static TeamDto from(Team team) {
         return TeamDto.builder()
                 .id(team.getId())
-                .fullTitleRu(team.getFullTitleRu())
-                .fullTitleEn(team.getFullTitleEn())
-                .country(team.getCountry())
-                .logo(team.getLogo())
+                .title(team.getTitle())
                 .build();
     }
 

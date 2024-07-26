@@ -14,17 +14,5 @@ public class NewLeagueDto {
 
     @NotNull(message = "{field.isNull}")
     @NotBlank(message = "{field.isBlank}")
-    private String displayNameRu;
-
-    @NotNull(message = "{field.isNull}")
-    @NotBlank(message = "{field.isBlank}")
-    private String displayNameEn;
-
-    @NotNull(message = "{field.isNull}")
-    @NotBlank(message = "{field.isBlank}")
-    private String shortNameRu;
-
-    @NotNull(message = "{field.isNull}")
-    @NotBlank(message = "{field.isBlank}")
-    private String shortNameEn;
+    private String leagueCode;
 }

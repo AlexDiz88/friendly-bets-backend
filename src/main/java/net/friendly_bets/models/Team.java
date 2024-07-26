@@ -30,6 +30,9 @@ public class Team {
     @Field(name = "full_title_en")
     private String fullTitleEn;
 
+    @Field(name = "title")
+    private String title;
+
     @Field(name = "country")
     private String country;
 

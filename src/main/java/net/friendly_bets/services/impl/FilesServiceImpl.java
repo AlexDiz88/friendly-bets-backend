@@ -47,7 +47,7 @@ public class FilesServiceImpl implements FilesService {
     public String saveLogoImage(String teamId, MultipartFile image) {
         Team team = getTeamOrThrow(teamsRepository, teamId);
         // TODO: проработать путь файла (пробелы, нижние подчеркивания)
-        String fileName = team.getFullTitleEn();
+        String fileName = team.getTitle();
         fileName = saveImage(image, fileName, UPLOAD_PATH_LOGO);
         System.out.println(fileName);
         team.setLogo(fileName);

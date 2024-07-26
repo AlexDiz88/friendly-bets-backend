@@ -15,44 +15,32 @@ import java.util.stream.Collectors;
 @Builder
 @Data
 @Schema(description = "Лига сезона (без списка команд)")
-public class SimpleLeagueDto {
+public class LeagueSimpleDto {
 
     @Schema(description = "идентификатор лиги", example = "12-байтовый хэш ID")
     private String id;
 
+    @Schema(description = "код лиги", example = "BL")
+    private String leagueCode;
+
     @Schema(description = "название лиги (автогенерация)", example = "АПЛ-2223")
     private String name;
-
-    @Schema(description = "отображаемое на сайте название лиги (русский)", example = "Бундеслига")
-    private String displayNameRu;
-
-    @Schema(description = "отображаемое на сайте название лиги (english)", example = "Bundesliga")
-    private String displayNameEn;
-
-    @Schema(description = "сокарщенное имя лиги (русский)", example = "БЛ")
-    private String shortNameRu;
-
-    @Schema(description = "сокарщенное имя лиги (english)", example = "BL")
-    private String shortNameEn;
 
     @Schema(description = "текущий игровой тур лиги", example = "14")
     private String currentMatchDay;
 
-    public static SimpleLeagueDto from(League league) {
-        return SimpleLeagueDto.builder()
+    public static LeagueSimpleDto from(League league) {
+        return LeagueSimpleDto.builder()
                 .id(league.getId())
+                .leagueCode(league.getLeagueCode().toString())
                 .name(league.getName())
-                .displayNameRu(league.getDisplayNameRu())
-                .displayNameEn(league.getDisplayNameEn())
-                .shortNameRu(league.getShortNameRu())
-                .shortNameEn(league.getShortNameEn())
                 .currentMatchDay(league.getCurrentMatchDay())
                 .build();
     }
 
-    public static List<SimpleLeagueDto> from(List<League> leagues) {
+    public static List<LeagueSimpleDto> from(List<League> leagues) {
         return leagues.stream()
-                .map(SimpleLeagueDto::from)
+                .map(LeagueSimpleDto::from)
                 .collect(Collectors.toList());
     }
 }

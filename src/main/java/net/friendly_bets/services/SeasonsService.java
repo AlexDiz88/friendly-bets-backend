@@ -14,6 +14,8 @@ public interface SeasonsService {
 
     List<String> getSeasonStatusList();
 
+    List<String> getLeagueCodeList();
+
     SeasonDto getActiveSeason();
 
     ActiveSeasonIdDto getActiveSeasonId();
@@ -28,5 +30,5 @@ public interface SeasonsService {
 
     TeamDto addTeamToLeagueInSeason(String seasonId, String leagueId, String teamId);
 
-    void dbRework();
+    void dbUpdate();
 }

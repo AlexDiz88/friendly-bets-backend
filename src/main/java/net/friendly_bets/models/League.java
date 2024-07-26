@@ -19,6 +19,10 @@ import java.util.List;
 @Document(collection = "leagues")
 public class League {
 
+    public enum LeagueCode {
+        EPL, BL, CL, LE, EC, WC
+    }
+
     @MongoId
     @Field(name = "_id")
     private String id;
@@ -26,20 +30,11 @@ public class League {
     @Field(name = "created_at")
     private LocalDateTime createdAt;
 
+    @Field(name = "league_code")
+    private LeagueCode leagueCode;
+
     @Field(name = "league_name")
     private String name;
-
-    @Field(name = "display_name_ru")
-    private String displayNameRu;
-
-    @Field(name = "display_name_en")
-    private String displayNameEn;
-
-    @Field(name = "short_name_ru")
-    private String shortNameRu;
-
-    @Field(name = "short_name_en")
-    private String shortNameEn;
 
     @Field(name = "current_match_day")
     private String currentMatchDay;
