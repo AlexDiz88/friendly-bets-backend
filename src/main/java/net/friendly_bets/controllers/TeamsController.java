@@ -29,6 +29,15 @@ public class TeamsController implements TeamsApi {
 
     @Override
     @PreAuthorize("hasAuthority('ADMIN')")
+    @GetMapping("/{league-id}")
+    public ResponseEntity<TeamsPage> getLeagueTeams(@AuthenticationPrincipal AuthenticatedUser currentUser,
+                                                    @PathVariable("league-id") String leagueId) {
+        return ResponseEntity
+                .ok(teamsService.getLeagueTeams(leagueId));
+    }
+
+    @Override
+    @PreAuthorize("hasAuthority('ADMIN')")
     @PostMapping
     public ResponseEntity<TeamDto> createTeam(@AuthenticationPrincipal AuthenticatedUser currentUser,
                                               @RequestBody NewTeamDto newTeam) {

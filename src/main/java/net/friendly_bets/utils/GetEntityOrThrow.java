@@ -88,11 +88,11 @@ public class GetEntityOrThrow {
                 .build();
     }
 
-    public static PlayerStatsByTeams getDefaultStatsByTeams(String seasonId, String leagueId, String leagueNameRu, User user, boolean isLeagueStats) {
+    public static PlayerStatsByTeams getDefaultStatsByTeams(String seasonId, String leagueId, String leagueCode, User user, boolean isLeagueStats) {
         return PlayerStatsByTeams.builder()
                 .seasonId(seasonId)
                 .leagueId(leagueId)
-                .leagueNameRu(leagueNameRu)
+                .leagueCode(leagueCode)
                 .user(user)
                 .teamStats(new ArrayList<>())
                 .isLeagueStats(isLeagueStats)

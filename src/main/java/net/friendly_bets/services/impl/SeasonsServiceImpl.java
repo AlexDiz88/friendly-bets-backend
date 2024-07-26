@@ -11,8 +11,15 @@ import net.friendly_bets.models.League;
 import net.friendly_bets.models.Season;
 import net.friendly_bets.models.Team;
 import net.friendly_bets.models.User;
-import net.friendly_bets.repositories.*;
+import net.friendly_bets.repositories.LeaguesRepository;
+import net.friendly_bets.repositories.SeasonsRepository;
+import net.friendly_bets.repositories.TeamsRepository;
+import net.friendly_bets.repositories.UsersRepository;
 import net.friendly_bets.services.SeasonsService;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,8 +40,7 @@ public class SeasonsServiceImpl implements SeasonsService {
     UsersRepository usersRepository;
     LeaguesRepository leaguesRepository;
     TeamsRepository teamsRepository;
-
-    BetsRepository betsRepository;
+    MongoTemplate mongoTemplate;
 
     @Override
     @Transactional
@@ -50,8 +56,20 @@ public class SeasonsServiceImpl implements SeasonsService {
     @Override
     @Transactional
     public SeasonDto addSeason(NewSeasonDto newSeason) {
+        if (newSeason == null) {
+            throw new BadRequestException("Сезон не может быть равен null");
+        }
+        if (newSeason.getTitle() == null || newSeason.getTitle().isBlank()) {
+            throw new BadRequestException("Название сезона не может быть пустым либо null");
+        }
         if (seasonsRepository.existsByTitle(newSeason.getTitle())) {
             throw new BadRequestException("Сезон с таким названием уже существует");
+        }
+        if (newSeason.getBetCountPerMatchDay() == null) {
+            throw new BadRequestException("Количество ставок на тур не должно быть равно null");
+        }
+        if (newSeason.getBetCountPerMatchDay() <= 0) {
+            throw new BadRequestException("Количество ставок на тур должно быть больше 0");
         }
 
         Season season = Season.builder()
@@ -81,15 +99,18 @@ public class SeasonsServiceImpl implements SeasonsService {
         } catch (IllegalArgumentException e) {
             throw new BadRequestException("Недопустимый статус: " + status);
         }
-        Season season = seasonsRepository.findById(seasonId).orElseThrow(
-                () -> new NotFoundException("Сезон", seasonId)
-        );
+
+        Season season = getSeasonOrThrow(seasonsRepository, seasonId);
+
         if (season.getStatus().toString().equals(status)) {
             throw new ConflictException("Сезон уже имеет этот статус");
         }
-        if (season.getStatus().equals(Season.Status.FINISHED)) {
-            throw new BadRequestException("Сезон завершен и его статус больше нельзя изменить");
-        }
+
+//        TODO: стоит ли запретить менять статус окончненных турниров??
+//        if (season.getStatus().equals(Season.Status.FINISHED)) {
+//            throw new BadRequestException("Сезон завершен и его статус больше нельзя изменить");
+//        }
+
         if (status.equals("ACTIVE")) {
             seasonsRepository.findSeasonByStatus(Season.Status.ACTIVE)
                     .ifPresent(s -> {
@@ -99,7 +120,6 @@ public class SeasonsServiceImpl implements SeasonsService {
         }
 
         season.setStatus(Season.Status.valueOf(status));
-
         seasonsRepository.save(season);
 
         return SeasonDto.from(season);
@@ -110,6 +130,15 @@ public class SeasonsServiceImpl implements SeasonsService {
     @Override
     public List<String> getSeasonStatusList() {
         return Arrays.stream(Season.Status.values())
+                .map(Enum::toString)
+                .toList();
+    }
+
+    // ------------------------------------------------------------------------------------------------------ //
+
+    @Override
+    public List<String> getLeagueCodeList() {
+        return Arrays.stream(League.LeagueCode.values())
                 .map(Enum::toString)
                 .toList();
     }
@@ -177,7 +206,7 @@ public class SeasonsServiceImpl implements SeasonsService {
     public LeaguesPage getLeaguesBySeason(String seasonId) {
         Season season = getSeasonOrThrow(seasonsRepository, seasonId);
         return LeaguesPage.builder()
-                .leagues(LeagueDto.from(seasonId, season.getLeagues()))
+                .leagues(LeagueDto.from(season.getLeagues()))
                 .build();
     }
 
@@ -187,18 +216,28 @@ public class SeasonsServiceImpl implements SeasonsService {
     @Transactional
     public SeasonDto addLeagueToSeason(String seasonId, NewLeagueDto newLeague) {
         Season season = getSeasonOrThrow(seasonsRepository, seasonId);
+        League.LeagueCode leagueCode;
 
-        if (season.getLeagues().stream().anyMatch(l -> l.getDisplayNameRu().equals(newLeague.getDisplayNameRu()))) {
+        if (newLeague == null) {
+            throw new BadRequestException("Лиги равна null");
+        }
+        if (newLeague.getLeagueCode() == null) {
+            throw new BadRequestException("Отсутствует код лиги");
+        }
+        try {
+            leagueCode = League.LeagueCode.valueOf(newLeague.getLeagueCode());
+        } catch (IllegalArgumentException e) {
+            throw new BadRequestException("Недопустимый статус: " + newLeague.getLeagueCode());
+        }
+
+        if (season.getLeagues().stream().anyMatch(l -> l.getLeagueCode().equals(leagueCode))) {
             throw new ConflictException("Лига с таким названием уже существует в этом турнире");
         }
 
         League league = League.builder()
                 .createdAt(LocalDateTime.now())
-                .name(newLeague.getDisplayNameRu() + "-" + season.getTitle())
-                .displayNameRu(newLeague.getDisplayNameRu())
-                .displayNameEn(newLeague.getDisplayNameEn())
-                .shortNameRu(newLeague.getShortNameRu())
-                .shortNameEn(newLeague.getShortNameEn())
+                .leagueCode(League.LeagueCode.valueOf(newLeague.getLeagueCode()))
+                .name(newLeague.getLeagueCode() + " " + season.getTitle())
                 .currentMatchDay("1")
                 .teams(new ArrayList<>())
                 .build();
@@ -246,19 +285,23 @@ public class SeasonsServiceImpl implements SeasonsService {
     // ------------------------------------------------------------------------------------------------------ //
 
     @Override
-    public void dbRework() {
-//        List<Bet> allBets = betsRepository.findAll();
-//        for (Bet bet : allBets) {
-//            if (bet.getMatchDay().contains("1/")) {
-//                bet.setIsPlayoff(true);
-//                bet.setMatchDay(bet.getMatchDay() + " финала");
-//                bet.setPlayoffRound("1");
-//            } else {
-//                bet.setIsPlayoff(false);
-//                bet.setPlayoffRound("");
-//            }
-//            betsRepository.save(bet);
-//        }
+    @Transactional
+    public void dbUpdate() {
+        List<Team> allTeams = teamsRepository.findAll();
+
+        for (Team team : allTeams) {
+            // Создаем запрос для обновления конкретного документа
+            Query individualQuery = new Query().addCriteria(Criteria.where("_id").is(team.getId()));
+
+            // Создаем обновление для добавления поля "title" и удаления полей "fullTitleEn" и "fullTitleRu"
+            Update update = new Update()
+                    .set("title", team.getFullTitleEn())
+                    .unset("fullTitleEn")
+                    .unset("fullTitleRu");
+
+            // Выполняем обновление для конкретного документа
+            mongoTemplate.updateFirst(individualQuery, update, Team.class);
+        }
     }
 
     // ------------------------------------------------------------------------------------------------------ //

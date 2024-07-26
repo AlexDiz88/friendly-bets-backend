@@ -23,7 +23,7 @@ public class PlayerStatsByTeams {
     private String id;
     private String seasonId;
     private String leagueId;
-    private String leagueNameRu;
+    private String leagueCode;
     @DBRef
     private User user;
     private boolean isLeagueStats;

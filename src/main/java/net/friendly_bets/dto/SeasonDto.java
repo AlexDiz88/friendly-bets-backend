@@ -20,7 +20,7 @@ public class SeasonDto {
     @Schema(description = "идентификатор сезона", example = "12-битовый хэш ID")
     private String id;
 
-    @Schema(description = "название сезона (годы проведения)", example = "2223")
+    @Schema(description = "название сезона (годы проведения)", example = "Season 2023-2024")
     private String title;
 
     @Schema(description = "количество ставок на каждый игровой тур", example = "2")
@@ -43,7 +43,7 @@ public class SeasonDto {
                 .betCountPerMatchDay(season.getBetCountPerMatchDay())
                 .status(season.getStatus().name())
                 .players(UserDto.from(season.getPlayers()))
-                .leagues(LeagueDto.from(season.getId(), season.getLeagues()))
+                .leagues(LeagueDto.from(season.getLeagues()))
                 .build();
     }
 

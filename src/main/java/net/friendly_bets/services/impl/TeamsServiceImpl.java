@@ -8,7 +8,9 @@ import net.friendly_bets.dto.TeamDto;
 import net.friendly_bets.dto.TeamsPage;
 import net.friendly_bets.exceptions.BadRequestException;
 import net.friendly_bets.exceptions.ConflictException;
+import net.friendly_bets.models.League;
 import net.friendly_bets.models.Team;
+import net.friendly_bets.repositories.LeaguesRepository;
 import net.friendly_bets.repositories.TeamsRepository;
 import net.friendly_bets.services.TeamsService;
 import org.springframework.stereotype.Service;
@@ -17,12 +19,15 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import static net.friendly_bets.utils.GetEntityOrThrow.getLeagueOrThrow;
+
 @RequiredArgsConstructor
 @Service
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class TeamsServiceImpl implements TeamsService {
 
     TeamsRepository teamsRepository;
+    LeaguesRepository leaguesRepository;
 
     @Override
     public TeamsPage getAll() {
@@ -35,19 +40,30 @@ public class TeamsServiceImpl implements TeamsService {
     // ------------------------------------------------------------------------------------------------------ //
 
     @Override
+    public TeamsPage getLeagueTeams(String leagueId) {
+        League league = getLeagueOrThrow(leaguesRepository, leagueId);
+        List<Team> allTeams = league.getTeams();
+        return TeamsPage.builder()
+                .teams(TeamDto.from(allTeams))
+                .build();
+    }
+
+    // ------------------------------------------------------------------------------------------------------ //
+
+
+    @Override
     @Transactional
     public TeamDto createTeam(NewTeamDto newTeam) {
         if (newTeam == null) {
-            throw new BadRequestException("Объект не должен быть пустым");
+            throw new BadRequestException("Объект не должен быть равен null");
         }
-        if (teamsRepository.existsByFullTitleRuOrFullTitleEn(newTeam.getFullTitleRu(), newTeam.getFullTitleEn())) {
+        if (teamsRepository.existsByTitle(newTeam.getTitle())) {
             throw new ConflictException("Команда с таким названием уже существует");
         }
 
         Team team = Team.builder()
                 .createdAt(LocalDateTime.now())
-                .fullTitleRu(newTeam.getFullTitleRu())
-                .fullTitleEn(newTeam.getFullTitleEn())
+                .title(newTeam.getTitle())
                 .country(newTeam.getCountry())
                 .logo("")
                 .build();

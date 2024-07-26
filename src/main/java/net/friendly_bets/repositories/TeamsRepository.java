@@ -6,6 +6,6 @@ import org.springframework.data.mongodb.repository.MongoRepository;
 
 public interface TeamsRepository extends MongoRepository<Team, String> {
 
-    boolean existsByFullTitleRuOrFullTitleEn(String titleRu, String titleEn);
+    boolean existsByTitle(String title);
 
 }

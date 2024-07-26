@@ -40,6 +40,26 @@ public interface TeamsApi {
 
     // ------------------------------------------------------------------------------------------------------ //
 
+    @Operation(summary = "Получение списка команд лиги", description = "Доступно только администратору")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Список команд лиги",
+                    content = {
+                            @Content(mediaType = "application/json",
+                                    schema = @Schema(implementation = TeamsPage.class))
+                    }
+            ),
+            @ApiResponse(responseCode = "403", description = "Пользователь не аутентифицирован",
+                    content = {
+                            @Content(mediaType = "application/json",
+                                    schema = @Schema(ref = "StandardResponseDto"))
+                    }
+            )
+    })
+    ResponseEntity<TeamsPage> getLeagueTeams(@Parameter(hidden = true) AuthenticatedUser currentUser,
+                                             @Parameter(description = "ID лиги") String leagueId);
+
+    // ------------------------------------------------------------------------------------------------------ //
+
     @Operation(summary = "Добавить новую команду", description = "Доступно только администратору")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Новая команда",

@@ -24,7 +24,6 @@ import static net.friendly_bets.utils.GetEntityOrThrow.*;
 public class PlayerStatsServiceImpl implements PlayerStatsService {
 
     PlayerStatsRepository playerStatsRepository;
-
     PlayerStatsByTeamsRepository playerStatsByTeamsRepository;
     SeasonsRepository seasonsRepository;
     BetsRepository betsRepository;
@@ -81,7 +80,7 @@ public class PlayerStatsServiceImpl implements PlayerStatsService {
             String leagueId = league.getId();
             List<PlayerStats> leaguePlayerStats = statsByLeague.getOrDefault(leagueId, Collections.emptyList());
 
-            LeagueStatsPage leagueStatsDto = new LeagueStatsPage(SimpleLeagueDto.from(league), PlayerStatsDto.from(leaguePlayerStats));
+            LeagueStatsPage leagueStatsDto = new LeagueStatsPage(LeagueSimpleDto.from(league), PlayerStatsDto.from(leaguePlayerStats));
             leagueStatsList.add(leagueStatsDto);
         }
 
@@ -166,9 +165,9 @@ public class PlayerStatsServiceImpl implements PlayerStatsService {
             String mapKey = seasonId + leagueId + user.getId();
             String mapKeyForLeagues = seasonId + leagueId;
             PlayerStatsByTeams leaguesStatsByTeams =
-                    statsMap.getOrDefault(mapKeyForLeagues, getDefaultStatsByTeams(seasonId, leagueId, bet.getLeague().getDisplayNameRu(), user, true));
+                    statsMap.getOrDefault(mapKeyForLeagues, getDefaultStatsByTeams(seasonId, leagueId, bet.getLeague().getLeagueCode().toString(), user, true));
             PlayerStatsByTeams playersStatsByTeams =
-                    statsMap.getOrDefault(mapKey, getDefaultStatsByTeams(seasonId, leagueId, bet.getLeague().getDisplayNameRu(), user, false));
+                    statsMap.getOrDefault(mapKey, getDefaultStatsByTeams(seasonId, leagueId, bet.getLeague().getLeagueCode().toString(), user, false));
 
             PlayerStatsByTeams leagueStatsByTeams = calculateTeamsStats(bet, leaguesStatsByTeams);
             PlayerStatsByTeams statsByTeams = calculateTeamsStats(bet, playersStatsByTeams);

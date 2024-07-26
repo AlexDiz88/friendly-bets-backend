@@ -8,6 +8,8 @@ public interface TeamsService {
 
     TeamsPage getAll();
 
+    TeamsPage getLeagueTeams(String leagueId);
+
     TeamDto createTeam(NewTeamDto newTeam);
 
 }

@@ -54,6 +54,14 @@ public class SeasonsController implements SeasonsApi {
     }
 
     @Override
+    @PreAuthorize("hasAuthority('ADMIN')")
+    @GetMapping("/leagues/codes")
+    public ResponseEntity<List<String>> getLeagueCodeList(@AuthenticationPrincipal AuthenticatedUser currentUser) {
+        return ResponseEntity
+                .ok(seasonsService.getLeagueCodeList());
+    }
+
+    @Override
     @GetMapping("/active")
     public ResponseEntity<SeasonDto> getActiveSeason() {
         return ResponseEntity
@@ -117,9 +125,9 @@ public class SeasonsController implements SeasonsApi {
 
     @Override
     @PreAuthorize("hasAuthority('ADMIN')")
-    @GetMapping("/db-rework")
-    public ResponseEntity<Void> dbRework(@AuthenticationPrincipal AuthenticatedUser currentUser) {
-        seasonsService.dbRework();
+    @GetMapping("/db-update")
+    public ResponseEntity<Void> dbUpdate(@AuthenticationPrincipal AuthenticatedUser currentUser) {
+        seasonsService.dbUpdate();
         return ResponseEntity.ok().build();
     }
 }

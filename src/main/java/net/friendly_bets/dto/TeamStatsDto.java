@@ -5,7 +5,6 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import net.friendly_bets.models.Team;
 import net.friendly_bets.models.TeamStats;
 
 import java.util.List;
@@ -19,7 +18,7 @@ import java.util.stream.Collectors;
 public class TeamStatsDto {
 
     @Schema(description = "команда", example = "Арсенал")
-    private Team team;
+    private TeamDto team;
 
     @Schema(description = "количество обработанных ставок", example = "10")
     private Integer betCount;
@@ -47,7 +46,7 @@ public class TeamStatsDto {
 
     public static TeamStatsDto from(TeamStats teamStats) {
         return TeamStatsDto.builder()
-                .team(teamStats.getTeam())
+                .team(TeamDto.from(teamStats.getTeam()))
                 .betCount(teamStats.getBetCount())
                 .wonBetCount(teamStats.getWonBetCount())
                 .returnedBetCount(teamStats.getReturnedBetCount())
