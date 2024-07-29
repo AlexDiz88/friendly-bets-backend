@@ -266,9 +266,15 @@ public class SeasonsServiceImpl implements SeasonsService {
     @Override
     @Transactional
     public String dbUpdate() {
-//        List<Team> allTeams = teamsRepository.findAll();
-//
-//        for (Team team : allTeams) {
+        List<Team> allTeams = teamsRepository.findAll();
+
+        for (Team team : allTeams) {
+            String title = team.getTitle();
+            String replaced = title.replace(" ", "");
+            if (!title.equals(replaced)) {
+                team.setTitle(replaced);
+                teamsRepository.save(team);
+            }
 //            // Создаем запрос для обновления конкретного документа
 //            Query individualQuery = new Query().addCriteria(Criteria.where("_id").is(team.getId()));
 //
@@ -280,8 +286,8 @@ public class SeasonsServiceImpl implements SeasonsService {
 //
 //            // Выполняем обновление для конкретного документа
 //            mongoTemplate.updateFirst(individualQuery, update, Team.class);
-//
-//        }
+
+        }
         return "DB update complete";
     }
 
