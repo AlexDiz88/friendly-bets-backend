@@ -126,8 +126,7 @@ public class SeasonsController implements SeasonsApi {
     @Override
     @PreAuthorize("hasAuthority('ADMIN')")
     @GetMapping("/db-update")
-    public ResponseEntity<Void> dbUpdate(@AuthenticationPrincipal AuthenticatedUser currentUser) {
-        seasonsService.dbUpdate();
-        return ResponseEntity.ok().build();
+    public ResponseEntity<String> dbUpdate(@AuthenticationPrincipal AuthenticatedUser currentUser) {
+        return ResponseEntity.ok(seasonsService.dbUpdate());
     }
 }

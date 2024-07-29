@@ -6,7 +6,6 @@ import lombok.experimental.FieldDefaults;
 import net.friendly_bets.dto.NewTeamDto;
 import net.friendly_bets.dto.TeamDto;
 import net.friendly_bets.dto.TeamsPage;
-import net.friendly_bets.exceptions.BadRequestException;
 import net.friendly_bets.exceptions.ConflictException;
 import net.friendly_bets.models.League;
 import net.friendly_bets.models.Team;
@@ -54,9 +53,6 @@ public class TeamsServiceImpl implements TeamsService {
     @Override
     @Transactional
     public TeamDto createTeam(NewTeamDto newTeam) {
-        if (newTeam == null) {
-            throw new BadRequestException("Объект не должен быть равен null");
-        }
         if (teamsRepository.existsByTitle(newTeam.getTitle())) {
             throw new ConflictException("Команда с таким названием уже существует");
         }

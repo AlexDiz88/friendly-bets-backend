@@ -24,12 +24,6 @@ public class Team {
     @Field(name = "created_at")
     private LocalDateTime createdAt;
 
-    @Field(name = "full_title_ru")
-    private String fullTitleRu;
-
-    @Field(name = "full_title_en")
-    private String fullTitleEn;
-
     @Field(name = "title")
     private String title;
 
