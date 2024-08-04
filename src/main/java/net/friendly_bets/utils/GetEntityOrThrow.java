@@ -7,6 +7,7 @@ import net.friendly_bets.models.*;
 import net.friendly_bets.repositories.*;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 @RequiredArgsConstructor
@@ -14,39 +15,50 @@ public class GetEntityOrThrow {
 
     public static User getUserOrThrow(UsersRepository usersRepository, String userId) {
         return usersRepository.findById(userId).orElseThrow(
-                () -> new NotFoundException("Пользователь", userId));
+                () -> new NotFoundException("User", userId));
     }
 
     public static Season getSeasonOrThrow(SeasonsRepository seasonsRepository, String seasonId) {
         return seasonsRepository.findById(seasonId).orElseThrow(
-                () -> new NotFoundException("Сезон", seasonId));
+                () -> new NotFoundException("Season", seasonId));
     }
 
     public static League getLeagueOrThrow(LeaguesRepository leaguesRepository, String leagueId) {
         return leaguesRepository.findById(leagueId).orElseThrow(
-                () -> new NotFoundException("Лига", leagueId));
+                () -> new NotFoundException("League", leagueId));
     }
 
     public static Team getTeamOrThrow(TeamsRepository teamsRepository, String teamId) {
         return teamsRepository.findById(teamId).orElseThrow(
-                () -> new NotFoundException("Команда", teamId));
+                () -> new NotFoundException("Team", teamId));
     }
 
     public static Bet getBetOrThrow(BetsRepository betsRepository, String betId) {
         return betsRepository.findById(betId).orElseThrow(
-                () -> new NotFoundException("Ставка", betId));
+                () -> new NotFoundException("Bet", betId));
+    }
+
+    public static CalendarNode getCalendarNodeOrThrow(CalendarsRepository calendarsRepository, String calendarNodeId) {
+        return calendarsRepository.findById(calendarNodeId).orElseThrow(
+                () -> new NotFoundException("CalendarNode", calendarNodeId));
     }
 
     public static PlayerStats getPlayerStatsOrThrow(PlayerStatsRepository playerStatsRepository, String seasonId, String leagueId, User user) {
         Optional<PlayerStats> playerStatsOptional =
                 playerStatsRepository.findBySeasonIdAndLeagueIdAndUser(seasonId, leagueId, user);
-        return playerStatsOptional.orElseThrow(() -> new BadRequestException("Общей статистики участника не существует"));
+        return playerStatsOptional.orElseThrow(() -> new BadRequestException("noTotalPlayerStats"));
     }
 
-    public static PlayerStatsByTeams getPlayerStatsByTeamsOrThrow(PlayerStatsByTeamsRepository playerStatsByTeamsRepository, String seasonId, String leagueId, User user, boolean isLeagueStats) {
+    public static PlayerStatsByTeams getPlayerStatsByTeamsOrThrow(PlayerStatsByTeamsRepository playerStatsByTeamsRepository, String seasonId, String leagueId, User user) {
         Optional<PlayerStatsByTeams> playerStatsByTeamsOptional =
-                playerStatsByTeamsRepository.findBySeasonIdAndLeagueIdAndUserAndIsLeagueStats(seasonId, leagueId, user, isLeagueStats);
-        return playerStatsByTeamsOptional.orElseThrow(() -> new BadRequestException("Статистики участника по командам не существует"));
+                playerStatsByTeamsRepository.findBySeasonIdAndLeagueIdAndUserAndIsLeagueStats(seasonId, leagueId, user, false);
+        return playerStatsByTeamsOptional.orElseThrow(() -> new BadRequestException("noPlayerStatsByTeamsInLeague"));
+    }
+
+    public static PlayerStatsByTeams getTotalStatsByTeamsOrThrow(PlayerStatsByTeamsRepository playerStatsByTeamsRepository, String seasonId, String leagueId) {
+        Optional<PlayerStatsByTeams> playerStatsByTeamsOptional =
+                playerStatsByTeamsRepository.findBySeasonIdAndLeagueIdAndIsLeagueStats(seasonId, leagueId, true);
+        return playerStatsByTeamsOptional.orElseThrow(() -> new BadRequestException("noTotalStatsByTeamsInLeague"));
     }
 
     public static PlayerStatsByTeams getPlayerStatsByTeamsOrNull(PlayerStatsByTeamsRepository playerStatsByTeamsRepository, String seasonId, String leagueId, User user, boolean isLeagueStats) {
@@ -55,16 +67,16 @@ public class GetEntityOrThrow {
         return playerStatsByTeamsOptional.orElse(null);
     }
 
-    public static PlayerStatsByTeams getLeagueStatsByTeamsOrThrow(PlayerStatsByTeamsRepository playerStatsByTeamsRepository, String seasonId, String leagueId, boolean isLeagueStats) {
-        Optional<PlayerStatsByTeams> leagueStatsByTeamsOptional =
-                playerStatsByTeamsRepository.findBySeasonIdAndLeagueIdAndIsLeagueStats(seasonId, leagueId, isLeagueStats);
-        return leagueStatsByTeamsOptional.orElseThrow(() -> new BadRequestException("Статистики лиги по командам не существует"));
-    }
-
     public static PlayerStatsByTeams getLeagueStatsByTeamsOrNull(PlayerStatsByTeamsRepository playerStatsByTeamsRepository, String seasonId, String leagueId, boolean isLeagueStats) {
         Optional<PlayerStatsByTeams> leagueStatsByTeamsOptional =
                 playerStatsByTeamsRepository.findBySeasonIdAndLeagueIdAndIsLeagueStats(seasonId, leagueId, isLeagueStats);
         return leagueStatsByTeamsOptional.orElse(null);
+    }
+
+    public static List<CalendarNode> getListOfCalendarNodesBySeasonOrThrow(CalendarsRepository calendarsRepository, String seasonId) {
+        Optional<List<CalendarNode>> calendarNodesListOptional =
+                calendarsRepository.findBySeasonId(seasonId);
+        return calendarNodesListOptional.orElseThrow(() -> new BadRequestException("noCalendarNodesBySeason"));
     }
 
 

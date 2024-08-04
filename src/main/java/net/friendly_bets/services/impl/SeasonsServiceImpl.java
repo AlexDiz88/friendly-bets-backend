@@ -7,18 +7,21 @@ import net.friendly_bets.dto.*;
 import net.friendly_bets.exceptions.BadRequestException;
 import net.friendly_bets.exceptions.ConflictException;
 import net.friendly_bets.exceptions.NotFoundException;
-import net.friendly_bets.models.*;
-import net.friendly_bets.repositories.*;
+import net.friendly_bets.models.League;
+import net.friendly_bets.models.Season;
+import net.friendly_bets.models.Team;
+import net.friendly_bets.models.User;
+import net.friendly_bets.repositories.LeaguesRepository;
+import net.friendly_bets.repositories.SeasonsRepository;
+import net.friendly_bets.repositories.TeamsRepository;
+import net.friendly_bets.repositories.UsersRepository;
 import net.friendly_bets.services.SeasonsService;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 import static net.friendly_bets.utils.GetEntityOrThrow.*;
 
@@ -32,7 +35,6 @@ public class SeasonsServiceImpl implements SeasonsService {
     LeaguesRepository leaguesRepository;
     TeamsRepository teamsRepository;
     MongoTemplate mongoTemplate;
-    private final BetsRepository betsRepository;
 
     @Override
     @Transactional
@@ -260,31 +262,20 @@ public class SeasonsServiceImpl implements SeasonsService {
 
     @Override
     @Transactional
-    public String dbUpdate() {
-        List<Team> allTeams = teamsRepository.findAll();
-
-        for (Team team : allTeams) {
-            String title = team.getTitle();
-            String replaced = title.replace(" ", "");
-            if (!title.equals(replaced)) {
-                team.setTitle(replaced);
-                teamsRepository.save(team);
-            }
-        }
-
-        List<Bet> allBets = betsRepository.findAll();
-
-        for (Bet bet : allBets) {
-            String matchDay = bet.getMatchDay();
-            if (matchDay != null && matchDay.startsWith("1/")) {
-                int index = matchDay.indexOf(" ");
-                if (index != -1) {
-                    String res = matchDay.substring(0, index);
-                    bet.setMatchDay(res);
-                    betsRepository.save(bet);
-                }
-            }
-        }
+    public Map<String, String> dbUpdate() {
+//        List<Bet> allBets = betsRepository.findAll();
+//
+//        for (Bet bet : allBets) {
+//            String matchDay = bet.getMatchDay();
+//            if (matchDay != null && matchDay.startsWith("1/")) {
+//                int index = matchDay.indexOf(" ");
+//                if (index != -1) {
+//                    String res = matchDay.substring(0, index);
+//                    bet.setMatchDay(res);
+//                    betsRepository.save(bet);
+//                }
+//            }
+//        }
 
 
 //            // Создаем запрос для обновления конкретного документа
@@ -300,7 +291,9 @@ public class SeasonsServiceImpl implements SeasonsService {
 //            mongoTemplate.updateFirst(individualQuery, update, Team.class);
 
 
-        return "DB update complete";
+        Map<String, String> response = new HashMap<>();
+        response.put("message", "DB update complete");
+        return response;
     }
 
     // ------------------------------------------------------------------------------------------------------ //

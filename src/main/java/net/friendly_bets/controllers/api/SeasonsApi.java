@@ -14,6 +14,7 @@ import org.springframework.http.ResponseEntity;
 
 import javax.validation.Valid;
 import java.util.List;
+import java.util.Map;
 
 @Tags(value = {
         @Tag(name = "Seasons")
@@ -250,7 +251,7 @@ public interface SeasonsApi {
 
     // ------------------------------------------------------------------------------------------------------ //
 
-    ResponseEntity<String> dbUpdate(@Parameter(hidden = true) AuthenticatedUser currentUser);
+    ResponseEntity<Map<String, String>> dbUpdate(@Parameter(hidden = true) AuthenticatedUser currentUser);
 
     // ------------------------------------------------------------------------------------------------------ //
 }

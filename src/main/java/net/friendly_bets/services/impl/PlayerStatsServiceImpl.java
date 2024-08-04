@@ -6,10 +6,7 @@ import lombok.experimental.FieldDefaults;
 import net.friendly_bets.dto.*;
 import net.friendly_bets.exceptions.NotFoundException;
 import net.friendly_bets.models.*;
-import net.friendly_bets.repositories.BetsRepository;
-import net.friendly_bets.repositories.PlayerStatsByTeamsRepository;
-import net.friendly_bets.repositories.PlayerStatsRepository;
-import net.friendly_bets.repositories.SeasonsRepository;
+import net.friendly_bets.repositories.*;
 import net.friendly_bets.services.PlayerStatsService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,6 +24,7 @@ public class PlayerStatsServiceImpl implements PlayerStatsService {
     PlayerStatsByTeamsRepository playerStatsByTeamsRepository;
     SeasonsRepository seasonsRepository;
     BetsRepository betsRepository;
+    UsersRepository usersRepository;
 
     @Override
     public AllPlayersStatsPage getAllPlayersStatsBySeason(String seasonId) {
@@ -90,10 +88,22 @@ public class PlayerStatsServiceImpl implements PlayerStatsService {
     @Override
     public AllStatsByTeamsInSeasonDto getAllStatsByTeamsInSeason(String seasonId) {
         List<PlayerStatsByTeams> allStatsByTeams = playerStatsByTeamsRepository.findAllBySeasonId(seasonId).orElseThrow(
-                () -> new NotFoundException("Season", seasonId)
-        );
+                () -> new NotFoundException("Season", seasonId));
 
         return new AllStatsByTeamsInSeasonDto(PlayerStatsByTeamsDto.from(allStatsByTeams));
+    }
+
+    @Override
+    public StatsByTeamsDto getStatsByTeams(String seasonId, String leagueId, String userId) {
+        PlayerStatsByTeams statsByTeams;
+        if (userId.equals("total")) {
+            statsByTeams = getTotalStatsByTeamsOrThrow(playerStatsByTeamsRepository, seasonId, leagueId);
+        } else {
+            User user = getUserOrThrow(usersRepository, userId);
+            statsByTeams = getPlayerStatsByTeamsOrThrow(playerStatsByTeamsRepository, seasonId, leagueId, user);
+        }
+
+        return new StatsByTeamsDto(PlayerStatsByTeamsDto.from(statsByTeams));
     }
 
     @Override

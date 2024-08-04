@@ -1,0 +1,57 @@
+package net.friendly_bets.dto;
+
+import io.swagger.v3.oas.annotations.media.Schema;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import net.friendly_bets.models.CalendarNode;
+import net.friendly_bets.models.LeagueMatchdayNode;
+
+import java.time.LocalDate;
+import java.util.List;
+import java.util.stream.Collectors;
+
+@AllArgsConstructor
+@NoArgsConstructor
+@Builder
+@Data
+@Schema(description = "Запись календаря тура")
+public class CalendarNodeDto {
+
+    @Schema(description = "идентификатор записи календаря", example = "12-байтовый хэш ID")
+    private String id;
+
+    @Schema(description = "идентификатор сезона", example = "12-байтовый хэш ID")
+    private String seasonId;
+
+    @Schema(description = "дата начала тура", example = "DD.MM.YYYY")
+    private LocalDate startDate;
+
+    @Schema(description = "дата окончания тура", example = "DD.MM.YYYY")
+    private LocalDate endDate;
+
+    @Schema(description = "список лиг и игровых дней", example = "[LeagueMatchdayNode1, LeagueMatchdayNode2...]")
+    private List<LeagueMatchdayNode> leagueMatchdayNodes;
+
+    @Schema(description = "список ставок на эту запись календаря", example = "[Bet1, Bet2...]")
+    private List<BetDto> bets;
+
+    public static CalendarNodeDto from(CalendarNode calendarNode) {
+        return CalendarNodeDto.builder()
+                .id(calendarNode.getId())
+                .seasonId(calendarNode.getSeasonId())
+                .startDate(calendarNode.getStartDate())
+                .endDate(calendarNode.getEndDate())
+                .leagueMatchdayNodes(calendarNode.getLeagueMatchdayNodes())
+                .bets(BetDto.from(calendarNode.getBets()))
+                .build();
+    }
+
+    public static List<CalendarNodeDto> from(List<CalendarNode> calendarNodes) {
+        return calendarNodes.stream()
+                .map(CalendarNodeDto::from)
+                .collect(Collectors.toList());
+    }
+
+}

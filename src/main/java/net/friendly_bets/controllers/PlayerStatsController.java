@@ -5,6 +5,7 @@ import net.friendly_bets.controllers.api.PlayerStatsApi;
 import net.friendly_bets.dto.AllPlayersStatsByLeaguesDto;
 import net.friendly_bets.dto.AllPlayersStatsPage;
 import net.friendly_bets.dto.AllStatsByTeamsInSeasonDto;
+import net.friendly_bets.dto.StatsByTeamsDto;
 import net.friendly_bets.services.PlayerStatsService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -39,6 +40,15 @@ public class PlayerStatsController implements PlayerStatsApi {
     public ResponseEntity<AllStatsByTeamsInSeasonDto> getAllStatsByTeamsInSeason(@PathVariable("season-id") String seasonId) {
         return ResponseEntity.status(200)
                 .body(playerStatsService.getAllStatsByTeamsInSeason(seasonId));
+    }
+
+    @Override
+    @GetMapping("/season/{season-id}/league/{league-id}/user/{user-id}")
+    public ResponseEntity<StatsByTeamsDto> getStatsByTeams(@PathVariable("season-id") String seasonId,
+                                                           @PathVariable("league-id") String leagueId,
+                                                           @PathVariable("user-id") String userId) {
+        return ResponseEntity.status(200)
+                .body(playerStatsService.getStatsByTeams(seasonId, leagueId, userId));
     }
 
     @Override
