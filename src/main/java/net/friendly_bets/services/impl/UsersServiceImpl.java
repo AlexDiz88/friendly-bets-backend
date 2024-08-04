@@ -39,10 +39,10 @@ public class UsersServiceImpl implements UsersService {
     public UserDto editEmail(String currentUserId, UpdatedEmailDto updatedEmailDto) {
         User user = getUserOrThrow(usersRepository, currentUserId);
         if (user.getEmail().equals(updatedEmailDto.getNewEmail().toLowerCase())) {
-            throw new ConflictException("Новый E-mail совпадает со старым");
+            throw new ConflictException("newAndOldEmailsAreSame");
         }
         if (usersRepository.existsByEmail(updatedEmailDto.getNewEmail().toLowerCase())) {
-            throw new ConflictException("Пользователь с таким E-mail уже существует");
+            throw new ConflictException("userWithThisEmailAlreadyExist");
         }
 
         user.setEmail(updatedEmailDto.getNewEmail().toLowerCase());
@@ -57,16 +57,16 @@ public class UsersServiceImpl implements UsersService {
     @Transactional
     public UserDto editPassword(String currentUserId, UpdatedPasswordDto updatedPasswordDto) {
         if (updatedPasswordDto.getNewPassword().equals(updatedPasswordDto.getCurrentPassword())) {
-            throw new BadRequestException("Введенные текущий и новый пароль совпадают");
+            throw new BadRequestException("enteredPasswordsAreSame");
         }
 
         User user = getUserOrThrow(usersRepository, currentUserId);
 
         if (!passwordEncoder.matches(updatedPasswordDto.getCurrentPassword(), user.getHashPassword())) {
-            throw new BadRequestException("Введенный текущий пароль указан неверно");
+            throw new BadRequestException("actualPasswordNotCorrect");
         }
         if (passwordEncoder.matches(updatedPasswordDto.getNewPassword(), user.getHashPassword())) {
-            throw new ConflictException("Новый пароль совпадает с текущим");
+            throw new ConflictException("newAndOldPasswordsAreSame");
         }
 
         user.setHashPassword(passwordEncoder.encode(updatedPasswordDto.getNewPassword()));
@@ -82,10 +82,10 @@ public class UsersServiceImpl implements UsersService {
     public UserDto editUsername(String currentUserId, UpdatedUsernameDto updatedUsernameDto) {
         User user = getUserOrThrow(usersRepository, currentUserId);
         if (user.getUsername() != null && user.getUsername().equals(updatedUsernameDto.getNewUsername())) {
-            throw new BadRequestException("Новое имя совпадает со старым");
+            throw new BadRequestException("newAndOldUsernamesAreSame");
         }
         if (usersRepository.existsByUsername(updatedUsernameDto.getNewUsername())) {
-            throw new ConflictException("Пользователь с таким именем уже существует. Выберите себе другое имя");
+            throw new ConflictException("usernameAlreadyExist");
         }
 
         user.setUsername(updatedUsernameDto.getNewUsername());

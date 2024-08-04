@@ -63,7 +63,7 @@ public class BetsServiceImpl implements BetsService {
                 newBet.getBetOdds(),
                 newBet.getBetSize()
         )) {
-            throw new ConflictException("Ставка на этот матч от данного участника уже добавлена");
+            throw new ConflictException("betAlreadyAdded");
         }
 
         Bet bet = Bet.builder()
@@ -148,14 +148,14 @@ public class BetsServiceImpl implements BetsService {
         try {
             Bet.BetStatus.valueOf(newBetResult.getBetStatus());
         } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("Недопустимый статус: " + newBetResult.getBetStatus());
+            throw new IllegalArgumentException("invalidStatus");
         }
 
         checkGameResult(newBetResult.getGameResult());
 
         Bet bet = getBetOrThrow(betsRepository, betId);
         if (!bet.getBetStatus().equals(Bet.BetStatus.OPENED)) {
-            throw new ConflictException("Эта ставка уже обработана другим модератором");
+            throw new ConflictException("betAlreadyProcessed");
         }
 
         User moderator = getUserOrThrow(usersRepository, moderatorId);
@@ -239,7 +239,7 @@ public class BetsServiceImpl implements BetsService {
             completedBetsPage = betsRepository.findAllBySeason_IdAndBetStatusInAndLeague_IdAndUser_Id(seasonId, desiredStatuses, leagueId, playerId, pageable);
         }
         if (completedBetsPage == null) {
-            throw new BadRequestException("Некорректный запрос");
+            throw new BadRequestException("invalidRequest");
         }
 
 //        Criteria criteria = new Criteria();
@@ -312,7 +312,7 @@ public class BetsServiceImpl implements BetsService {
 
     private Bet getPreviousStateOfBet(Bet bet) {
         if (bet.getBetStatus().equals(Bet.BetStatus.EMPTY) || bet.getBetStatus().equals(Bet.BetStatus.DELETED)) {
-            throw new BadRequestException("Пустые и удалённые ставки редактировать запрещено");
+            throw new BadRequestException("emptyAndDeletedBetsCannotBeEdited");
         }
         return Bet.builder()
                 .user(bet.getUser())
@@ -345,7 +345,7 @@ public class BetsServiceImpl implements BetsService {
 
     private void validateGameResult(EditedCompleteBetDto editedBet) {
         if (StringUtils.isBlank(editedBet.getGameResult())) {
-            throw new BadRequestException("Счёт матча отсутствует");
+            throw new BadRequestException("gamescoreIsBlank");
         }
         checkGameResult(editedBet.getGameResult());
     }
@@ -354,7 +354,7 @@ public class BetsServiceImpl implements BetsService {
         if (betsRepository.existsByUserAndMatchDayAndPlayoffRoundAndHomeTeamAndAwayTeamAndBetTitleAndBetOddsAndBetSizeAndGameResultAndBetStatus(
                 user, editedBet.getMatchDay(), editedBet.getPlayoffRound(), homeTeam, awayTeam, editedBet.getBetTitle(),
                 editedBet.getBetOdds(), editedBet.getBetSize(), editedBet.getGameResult(), newStatus)) {
-            throw new ConflictException("Ставка на этот матч уже отредактирована другим модератором");
+            throw new ConflictException("betAlreadyEdited");
         }
     }
 
