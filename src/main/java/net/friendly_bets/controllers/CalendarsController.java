@@ -41,12 +41,13 @@ public class CalendarsController implements CalendarsApi {
 
     @Override
     @PreAuthorize("hasAuthority('ADMIN') || hasAuthority('MODERATOR')")
-    @PutMapping("/{calendar-id}/bets/{bet-id}")
+    @PutMapping("/{calendar-id}/leagues/{league-id}/bets/{bet-id}")
     public ResponseEntity<CalendarNodeDto> addBetToCalendarNode(@AuthenticationPrincipal AuthenticatedUser currentUser,
                                                                 @PathVariable("bet-id") String betId,
-                                                                @PathVariable("calendar-id") String calendarNodeId) {
+                                                                @PathVariable("calendar-id") String calendarNodeId,
+                                                                @PathVariable("league-id") String leagueId) {
         return ResponseEntity
-                .ok(calendarsService.addBetToCalendarNode(betId, calendarNodeId));
+                .ok(calendarsService.addBetToCalendarNode(betId, calendarNodeId, leagueId));
     }
 
     @Override

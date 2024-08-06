@@ -6,7 +6,6 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import net.friendly_bets.models.CalendarNode;
-import net.friendly_bets.models.LeagueMatchdayNode;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -32,10 +31,7 @@ public class CalendarNodeDto {
     private LocalDate endDate;
 
     @Schema(description = "список лиг и игровых дней", example = "[LeagueMatchdayNode1, LeagueMatchdayNode2...]")
-    private List<LeagueMatchdayNode> leagueMatchdayNodes;
-
-    @Schema(description = "список ставок на эту запись календаря", example = "[Bet1, Bet2...]")
-    private List<BetDto> bets;
+    private List<LeagueMatchdayNodeDto> leagueMatchdayNodes;
 
     public static CalendarNodeDto from(CalendarNode calendarNode) {
         return CalendarNodeDto.builder()
@@ -43,8 +39,7 @@ public class CalendarNodeDto {
                 .seasonId(calendarNode.getSeasonId())
                 .startDate(calendarNode.getStartDate())
                 .endDate(calendarNode.getEndDate())
-                .leagueMatchdayNodes(calendarNode.getLeagueMatchdayNodes())
-                .bets(BetDto.from(calendarNode.getBets()))
+                .leagueMatchdayNodes(LeagueMatchdayNodeDto.from(calendarNode.getLeagueMatchdayNodes()))
                 .build();
     }
 

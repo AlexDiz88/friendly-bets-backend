@@ -7,6 +7,7 @@ import net.friendly_bets.dto.*;
 import net.friendly_bets.exceptions.BadRequestException;
 import net.friendly_bets.models.Bet;
 import net.friendly_bets.models.CalendarNode;
+import net.friendly_bets.models.LeagueMatchdayNode;
 import net.friendly_bets.repositories.BetsRepository;
 import net.friendly_bets.repositories.CalendarsRepository;
 import net.friendly_bets.repositories.SeasonsRepository;
@@ -57,7 +58,6 @@ public class CalendarsServiceImpl implements CalendarsService {
                 .startDate(newCalendarNode.getStartDate())
                 .endDate(newCalendarNode.getEndDate())
                 .leagueMatchdayNodes(newCalendarNode.getLeagueMatchdayNodes())
-                .bets(new ArrayList<>())
                 .build();
 
         calendarsRepository.save(calendarNode);
@@ -70,12 +70,25 @@ public class CalendarsServiceImpl implements CalendarsService {
 
     @Override
     @Transactional
-    public CalendarNodeDto addBetToCalendarNode(String betId, String calendarNodeId) {
+    public CalendarNodeDto addBetToCalendarNode(String betId, String calendarNodeId, String leagueId) {
         CalendarNode calendarNode = getCalendarNodeOrThrow(calendarsRepository, calendarNodeId);
         Bet bet = getBetOrThrow(betsRepository, betId);
-        calendarNode.getBets().add(bet);
+        List<LeagueMatchdayNode> leagueMatchdayNodes = calendarNode.getLeagueMatchdayNodes();
+        boolean betAdded = false;
+        for (LeagueMatchdayNode node : leagueMatchdayNodes) {
+            if (node.getLeagueId().equals(leagueId)) {
+                node.getBets().add(bet);
+                betAdded = true;
+                break;
+            }
+        }
 
-        calendarsRepository.save(calendarNode);
+        if (betAdded) {
+            calendarsRepository.save(calendarNode);
+        } else {
+            throw new BadRequestException("leagueNotFoundInCalendarNode");
+        }
+
         return CalendarNodeDto.from(calendarNode);
     }
 
@@ -84,7 +97,11 @@ public class CalendarsServiceImpl implements CalendarsService {
     @Override
     public BetsPage getBetsByCalendarNode(String calendarNodeId) {
         CalendarNode calendarNode = getCalendarNodeOrThrow(calendarsRepository, calendarNodeId);
-        List<Bet> bets = calendarNode.getBets();
+
+        List<Bet> bets = new ArrayList<>();
+        for (LeagueMatchdayNode leagueMatchdayNode : calendarNode.getLeagueMatchdayNodes()) {
+            bets.addAll(leagueMatchdayNode.getBets());
+        }
 
         return BetsPage.builder()
                 .bets(BetDto.from(bets))
@@ -98,12 +115,14 @@ public class CalendarsServiceImpl implements CalendarsService {
     @Transactional
     public CalendarNodeDto deleteCalendarNode(String calendarNodeId) {
         CalendarNode calendarNode = getCalendarNodeOrThrow(calendarsRepository, calendarNodeId);
+        boolean hasBets = calendarNode.getLeagueMatchdayNodes().stream()
+                .anyMatch(node -> !node.getBets().isEmpty());
 
-        if (calendarNode.getBets().isEmpty()) {
-            calendarsRepository.delete(calendarNode);
-        } else {
+        if (hasBets) {
             throw new BadRequestException("cannotDeleteCalendarNodeWithBets");
         }
+
+        calendarsRepository.delete(calendarNode);
 
         return CalendarNodeDto.from(calendarNode);
     }

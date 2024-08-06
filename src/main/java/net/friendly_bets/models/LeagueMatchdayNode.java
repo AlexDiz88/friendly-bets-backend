@@ -4,6 +4,9 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.springframework.data.mongodb.core.mapping.DBRef;
+
+import java.util.List;
 
 @NoArgsConstructor
 @AllArgsConstructor
@@ -15,4 +18,6 @@ public class LeagueMatchdayNode {
     private String matchDay;
     private Boolean isPlayoff;
     private String playoffRound;
+    @DBRef
+    private List<Bet> bets;
 }

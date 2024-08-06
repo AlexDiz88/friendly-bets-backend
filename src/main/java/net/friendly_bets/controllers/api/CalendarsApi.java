@@ -30,7 +30,7 @@ public interface CalendarsApi {
                                     schema = @Schema(implementation = CalendarNodesPage.class))
                     }
             ),
-            @ApiResponse(responseCode = "403", description = "Пользователь не аутентифицирован",
+            @ApiResponse(responseCode = "403", description = "userNotAuthenticated",
                     content = {
                             @Content(mediaType = "application/json",
                                     schema = @Schema(ref = "StandardResponseDto"))
@@ -50,7 +50,7 @@ public interface CalendarsApi {
                                     schema = @Schema(implementation = CalendarNodeDto.class))
                     }
             ),
-            @ApiResponse(responseCode = "403", description = "Пользователь не аутентифицирован",
+            @ApiResponse(responseCode = "403", description = "userNotAuthenticated",
                     content = {
                             @Content(mediaType = "application/json",
                                     schema = @Schema(ref = "StandardResponseDto"))
@@ -70,7 +70,7 @@ public interface CalendarsApi {
                                     schema = @Schema(implementation = CalendarNodeDto.class))
                     }
             ),
-            @ApiResponse(responseCode = "403", description = "Пользователь не аутентифицирован",
+            @ApiResponse(responseCode = "403", description = "userNotAuthenticated",
                     content = {
                             @Content(mediaType = "application/json",
                                     schema = @Schema(ref = "StandardResponseDto"))
@@ -79,7 +79,8 @@ public interface CalendarsApi {
     })
     ResponseEntity<CalendarNodeDto> addBetToCalendarNode(@Parameter(hidden = true) AuthenticatedUser currentUser,
                                                          @Parameter(description = "ID ставки") String betId,
-                                                         @Parameter(description = "ID записи календаря") String calendarNodeId);
+                                                         @Parameter(description = "ID записи календаря") String calendarNodeId,
+                                                         @Parameter(description = "ID лиги") String leagueId);
 
     // ------------------------------------------------------------------------------------------------------ //
 

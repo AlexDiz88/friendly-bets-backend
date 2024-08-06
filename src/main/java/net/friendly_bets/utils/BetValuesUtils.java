@@ -94,9 +94,9 @@ public class BetValuesUtils {
 
             if (!uniqueCombinations.add(combination)) {
                 if (node.getIsPlayoff() && !node.getMatchDay().equals("final")) {
-                    throw new ConflictException("Выбранная лига с указанным туром уже добавлена в календарь: " + node.getLeagueCode() + " - " + node.getMatchDay() + " [" + node.getPlayoffRound() + "]");
+                    throw new ConflictException("Выбранная лига с указанным туром уже добавлена в календарь - " + node.getLeagueCode() + " " + node.getMatchDay() + " [" + node.getPlayoffRound() + "]");
                 } else {
-                    throw new ConflictException("Выбранная лига с указанным туром уже добавлена в календарь: " + node.getLeagueCode() + " - " + node.getMatchDay());
+                    throw new ConflictException("Выбранная лига с указанным туром уже добавлена в календарь - " + node.getLeagueCode() + " " + node.getMatchDay());
                 }
             }
         }

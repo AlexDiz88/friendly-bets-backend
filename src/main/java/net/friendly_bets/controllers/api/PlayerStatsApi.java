@@ -79,7 +79,7 @@ public interface PlayerStatsApi {
                     }
             ),
     })
-    @ApiResponse(responseCode = "403", description = "Пользователь не аутентифицирован",
+    @ApiResponse(responseCode = "403", description = "userNotAuthenticated",
             content = {
                     @Content(mediaType = "application/json",
                             schema = @Schema(ref = "StandardResponseDto"))
@@ -93,7 +93,7 @@ public interface PlayerStatsApi {
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Пересчитанная статистика всех игроков по командам в сезоне"),
     })
-    @ApiResponse(responseCode = "403", description = "Пользователь не аутентифицирован",
+    @ApiResponse(responseCode = "403", description = "userNotAuthenticated",
             content = {
                     @Content(mediaType = "application/json",
                             schema = @Schema(ref = "StandardResponseDto"))
