@@ -7,14 +7,8 @@ import net.friendly_bets.dto.*;
 import net.friendly_bets.exceptions.BadRequestException;
 import net.friendly_bets.exceptions.ConflictException;
 import net.friendly_bets.exceptions.NotFoundException;
-import net.friendly_bets.models.League;
-import net.friendly_bets.models.Season;
-import net.friendly_bets.models.Team;
-import net.friendly_bets.models.User;
-import net.friendly_bets.repositories.LeaguesRepository;
-import net.friendly_bets.repositories.SeasonsRepository;
-import net.friendly_bets.repositories.TeamsRepository;
-import net.friendly_bets.repositories.UsersRepository;
+import net.friendly_bets.models.*;
+import net.friendly_bets.repositories.*;
 import net.friendly_bets.services.SeasonsService;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.stereotype.Service;
@@ -34,6 +28,7 @@ public class SeasonsServiceImpl implements SeasonsService {
     UsersRepository usersRepository;
     LeaguesRepository leaguesRepository;
     TeamsRepository teamsRepository;
+    BetsRepository betsRepository;
     MongoTemplate mongoTemplate;
 
     @Override
@@ -263,19 +258,15 @@ public class SeasonsServiceImpl implements SeasonsService {
     @Override
     @Transactional
     public Map<String, String> dbUpdate() {
-//        List<Bet> allBets = betsRepository.findAll();
-//
-//        for (Bet bet : allBets) {
-//            String matchDay = bet.getMatchDay();
-//            if (matchDay != null && matchDay.startsWith("1/")) {
-//                int index = matchDay.indexOf(" ");
-//                if (index != -1) {
-//                    String res = matchDay.substring(0, index);
-//                    bet.setMatchDay(res);
-//                    betsRepository.save(bet);
-//                }
-//            }
-//        }
+        List<Bet> allBets = betsRepository.findAllBySeason_Id("666af3277f505e49026dbf41");
+
+        for (Bet bet : allBets) {
+            String playoffRound = bet.getPlayoffRound();
+            if (playoffRound != null && playoffRound.equals("1")) {
+                bet.setPlayoffRound("");
+                betsRepository.save(bet);
+            }
+        }
 
 
 //            // Создаем запрос для обновления конкретного документа
