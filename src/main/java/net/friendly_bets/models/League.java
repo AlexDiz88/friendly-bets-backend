@@ -39,7 +39,7 @@ public class League {
     @Field(name = "current_match_day")
     private String currentMatchDay;
 
-    @DBRef
+    @DBRef(lazy = true)
     @Field(name = "teams")
     private List<Team> teams;
 }

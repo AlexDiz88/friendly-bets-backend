@@ -33,19 +33,23 @@ public class CalendarNodeDto {
     @Schema(description = "список лиг и игровых дней", example = "[LeagueMatchdayNode1, LeagueMatchdayNode2...]")
     private List<LeagueMatchdayNodeDto> leagueMatchdayNodes;
 
-    public static CalendarNodeDto from(CalendarNode calendarNode) {
+    @Schema(description = "флаг, есть ли ставки в записи календаря", example = "true")
+    private Boolean hasBets;
+
+    public static CalendarNodeDto from(CalendarNode calendarNode, boolean isWithBets) {
         return CalendarNodeDto.builder()
                 .id(calendarNode.getId())
                 .seasonId(calendarNode.getSeasonId())
                 .startDate(calendarNode.getStartDate())
                 .endDate(calendarNode.getEndDate())
-                .leagueMatchdayNodes(LeagueMatchdayNodeDto.from(calendarNode.getLeagueMatchdayNodes()))
+                .leagueMatchdayNodes(LeagueMatchdayNodeDto.from(calendarNode.getLeagueMatchdayNodes(), isWithBets))
+                .hasBets(calendarNode.getHasBets())
                 .build();
     }
 
-    public static List<CalendarNodeDto> from(List<CalendarNode> calendarNodes) {
+    public static List<CalendarNodeDto> from(List<CalendarNode> calendarNodes, boolean withBets) {
         return calendarNodes.stream()
-                .map(CalendarNodeDto::from)
+                .map(node -> CalendarNodeDto.from(node, withBets))
                 .collect(Collectors.toList());
     }
 

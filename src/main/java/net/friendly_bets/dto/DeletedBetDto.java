@@ -22,4 +22,8 @@ public class DeletedBetDto {
     @NotNull(message = "{field.leagueId.isNull}")
     @NotBlank(message = "{field.leagueId.isBlank}")
     private String leagueId;
+
+    @NotNull(message = "{field..bet.blankCalendarNodeId}")
+    @NotBlank(message = "{field.bet.blankCalendarNodeId}")
+    private String calendarNodeId;
 }

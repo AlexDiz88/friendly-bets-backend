@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 import net.friendly_bets.models.League;
 import net.friendly_bets.models.LeagueMatchdayNode;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -36,20 +37,20 @@ public class LeagueMatchdayNodeDto {
     @Schema(description = "идентификатор лиги", example = "12-байтовый хэш ID")
     private List<BetDto> bets;
 
-    public static LeagueMatchdayNodeDto from(LeagueMatchdayNode node) {
+    public static LeagueMatchdayNodeDto from(LeagueMatchdayNode node, boolean isWithBets) {
         return LeagueMatchdayNodeDto.builder()
                 .leagueId(node.getLeagueId())
                 .leagueCode(node.getLeagueCode())
                 .matchDay(node.getMatchDay())
                 .isPlayoff(node.getIsPlayoff())
                 .playoffRound(node.getPlayoffRound())
-                .bets(BetDto.from(node.getBets()))
+                .bets(isWithBets ? BetDto.from(node.getBets()) : new ArrayList<>())
                 .build();
     }
 
-    public static List<LeagueMatchdayNodeDto> from(List<LeagueMatchdayNode> nodes) {
+    public static List<LeagueMatchdayNodeDto> from(List<LeagueMatchdayNode> nodes, boolean isWithBets) {
         return nodes.stream()
-                .map(LeagueMatchdayNodeDto::from)
+                .map(node -> LeagueMatchdayNodeDto.from(node, isWithBets))
                 .collect(Collectors.toList());
     }
 

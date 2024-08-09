@@ -49,6 +49,18 @@ public class GetEntityOrThrow {
         return playerStatsOptional.orElseThrow(() -> new BadRequestException("noTotalPlayerStats"));
     }
 
+    public static PlayerStats getPlayerStatsOrDefault(PlayerStatsRepository playerStatsRepository, String seasonId, String leagueId, User user) {
+        Optional<PlayerStats> playerStatsOptional =
+                playerStatsRepository.findBySeasonIdAndLeagueIdAndUser(seasonId, leagueId, user);
+        return playerStatsOptional.orElseGet(() -> getDefaultPlayerStats(seasonId, leagueId, user));
+    }
+
+    public static PlayerStatsByTeams getPlayerStatsByTeamsOrDefault(PlayerStatsByTeamsRepository playerStatsByTeamsRepository, String seasonId, String leagueId, String leagueCode, User user) {
+        Optional<PlayerStatsByTeams> playerStatsByTeamsOptional =
+                playerStatsByTeamsRepository.findBySeasonIdAndLeagueIdAndUserAndIsLeagueStats(seasonId, leagueId, user, false);
+        return playerStatsByTeamsOptional.orElseGet(() -> getDefaultStatsByTeams(seasonId, leagueId, leagueCode, user, false));
+    }
+
     public static PlayerStatsByTeams getPlayerStatsByTeamsOrThrow(PlayerStatsByTeamsRepository playerStatsByTeamsRepository, String seasonId, String leagueId, User user) {
         Optional<PlayerStatsByTeams> playerStatsByTeamsOptional =
                 playerStatsByTeamsRepository.findBySeasonIdAndLeagueIdAndUserAndIsLeagueStats(seasonId, leagueId, user, false);
@@ -76,6 +88,12 @@ public class GetEntityOrThrow {
     public static List<CalendarNode> getListOfCalendarNodesBySeasonOrThrow(CalendarsRepository calendarsRepository, String seasonId) {
         Optional<List<CalendarNode>> calendarNodesListOptional =
                 calendarsRepository.findBySeasonId(seasonId);
+        return calendarNodesListOptional.orElseThrow(() -> new BadRequestException("noCalendarNodesBySeason"));
+    }
+
+    public static List<CalendarNode> getListOfCalendarNodesWithBetsBySeasonOrThrow(CalendarsRepository calendarsRepository, String seasonId) {
+        Optional<List<CalendarNode>> calendarNodesListOptional =
+                calendarsRepository.findBySeasonIdAndHasBets(seasonId, true);
         return calendarNodesListOptional.orElseThrow(() -> new BadRequestException("noCalendarNodesBySeason"));
     }
 

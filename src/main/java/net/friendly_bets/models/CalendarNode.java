@@ -4,6 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.springframework.data.mongodb.core.index.CompoundIndex;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 import org.springframework.data.mongodb.core.mapping.MongoId;
@@ -17,6 +18,7 @@ import java.util.List;
 @Builder
 @Data
 @Document(collection = "calendar_nodes")
+@CompoundIndex(def = "{'seasonId': 1, 'hasBets': 1}")
 public class CalendarNode {
     @MongoId
     @Field(name = "_id")
@@ -36,4 +38,7 @@ public class CalendarNode {
 
     @Field(name = "league_matchday_nodes")
     private List<LeagueMatchdayNode> leagueMatchdayNodes;
+
+    @Field(name = "has_bets")
+    private Boolean hasBets;
 }

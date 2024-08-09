@@ -122,6 +122,7 @@ public class PlayerStatsServiceImpl implements PlayerStatsService {
 
             playerStats.setTotalBets(playerStats.getTotalBets() + 1);
             if (bet.getBetStatus().equals(Bet.BetStatus.OPENED)) {
+                statsMap.put(mapKey, playerStats);
                 continue;
             }
 

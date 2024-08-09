@@ -12,7 +12,7 @@ import org.springframework.data.mongodb.core.mapping.DBRef;
 @Data
 public class TeamStats {
 
-    @DBRef
+    @DBRef(lazy = true)
     private Team team;
     private Integer betCount;
     private Integer wonBetCount;

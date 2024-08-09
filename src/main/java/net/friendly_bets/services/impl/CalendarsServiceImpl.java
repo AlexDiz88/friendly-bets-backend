@@ -15,7 +15,9 @@ import net.friendly_bets.services.CalendarsService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -39,8 +41,33 @@ public class CalendarsServiceImpl implements CalendarsService {
         calendarNodes.sort(Comparator.comparing(CalendarNode::getStartDate).reversed());
 
         return CalendarNodesPage.builder()
-                .calendarNodes(CalendarNodeDto.from(calendarNodes))
+                .calendarNodes(CalendarNodeDto.from(calendarNodes, false))
                 .build();
+    }
+
+    // ------------------------------------------------------------------------------------------------------ //
+
+    @Override
+    public CalendarNodesPage getSeasonCalendarHasBetsNodes(String seasonId) {
+        List<CalendarNode> calendarNodes = getListOfCalendarNodesWithBetsBySeasonOrThrow(calendarsRepository, seasonId);
+        calendarNodes.sort(Comparator.comparing(CalendarNode::getStartDate).reversed());
+
+        return CalendarNodesPage.builder()
+                .calendarNodes(CalendarNodeDto.from(calendarNodes, false))
+                .build();
+    }
+
+    // ------------------------------------------------------------------------------------------------------ //
+
+    @Override
+    public BetsPage getActualCalendarNodeBets(String seasonId) {
+        List<CalendarNode> calendarNodes = getListOfCalendarNodesWithBetsBySeasonOrThrow(calendarsRepository, seasonId);
+
+        CalendarNode closestNode = calendarNodes.stream()
+                .min(Comparator.comparing(node -> Math.abs(ChronoUnit.DAYS.between(LocalDate.now(), node.getStartDate()))))
+                .orElseThrow(() -> new BadRequestException("noCalendarNodesBySeason"));
+
+        return getBetsByCalendarNode(closestNode.getId());
     }
 
     // ------------------------------------------------------------------------------------------------------ //
@@ -58,11 +85,12 @@ public class CalendarsServiceImpl implements CalendarsService {
                 .startDate(newCalendarNode.getStartDate())
                 .endDate(newCalendarNode.getEndDate())
                 .leagueMatchdayNodes(newCalendarNode.getLeagueMatchdayNodes())
+                .hasBets(false)
                 .build();
 
         calendarsRepository.save(calendarNode);
 
-        return CalendarNodeDto.from(calendarNode);
+        return CalendarNodeDto.from(calendarNode, false);
     }
 
     // ------------------------------------------------------------------------------------------------------ //
@@ -84,12 +112,15 @@ public class CalendarsServiceImpl implements CalendarsService {
         }
 
         if (betAdded) {
+            if (!calendarNode.getHasBets()) {
+                calendarNode.setHasBets(true);
+            }
             calendarsRepository.save(calendarNode);
         } else {
             throw new BadRequestException("leagueNotFoundInCalendarNode");
         }
 
-        return CalendarNodeDto.from(calendarNode);
+        return CalendarNodeDto.from(calendarNode, false);
     }
 
     // ------------------------------------------------------------------------------------------------------ //
@@ -115,16 +146,75 @@ public class CalendarsServiceImpl implements CalendarsService {
     @Transactional
     public CalendarNodeDto deleteCalendarNode(String calendarNodeId) {
         CalendarNode calendarNode = getCalendarNodeOrThrow(calendarsRepository, calendarNodeId);
-        boolean hasBets = calendarNode.getLeagueMatchdayNodes().stream()
-                .anyMatch(node -> !node.getBets().isEmpty());
 
-        if (hasBets) {
+        if (calendarNode.getHasBets()) {
             throw new BadRequestException("cannotDeleteCalendarNodeWithBets");
         }
 
         calendarsRepository.delete(calendarNode);
 
-        return CalendarNodeDto.from(calendarNode);
+        return CalendarNodeDto.from(calendarNode, false);
+    }
+
+    // ------------------------------------------------------------------------------------------------------ //
+
+    @Override
+    @Transactional
+    public CalendarNodeDto deleteBetInCalendarNode(String calendarNodeId, String betId) {
+        CalendarNode calendarNode = getCalendarNodeOrThrow(calendarsRepository, calendarNodeId);
+        boolean betFound = false;
+
+        for (LeagueMatchdayNode leagueMatchdayNode : calendarNode.getLeagueMatchdayNodes()) {
+            List<Bet> bets = leagueMatchdayNode.getBets();
+            betFound = bets.removeIf(bet -> bet.getId().equals(betId)) || betFound;
+        }
+
+        if (!betFound) {
+            throw new BadRequestException("betNotFoundInCalendar");
+        }
+
+        boolean hasBets = calendarNode.getLeagueMatchdayNodes().stream()
+                .anyMatch(leagueMatchdayNode -> !leagueMatchdayNode.getBets().isEmpty());
+
+        calendarNode.setHasBets(hasBets);
+
+        calendarsRepository.save(calendarNode);
+
+        return CalendarNodeDto.from(calendarNode, false);
+    }
+
+    // ------------------------------------------------------------------------------------------------------ //
+
+    // TODO: удалить метод после рефакторинга базы данных (добавление calendarNodeId в ставки в старых сезонах)
+    @Override
+    @Transactional
+    public CalendarNodeDto deleteBetInCalendars(String seasonId, String betId) {
+        List<CalendarNode> calendarNodes = getListOfCalendarNodesBySeasonOrThrow(calendarsRepository, seasonId);
+
+        CalendarNode updatedCalendarNode = null;
+        boolean betFound = false;
+
+        for (CalendarNode calendarNode : calendarNodes) {
+            for (LeagueMatchdayNode leagueMatchdayNode : calendarNode.getLeagueMatchdayNodes()) {
+                if (leagueMatchdayNode.getBets().removeIf(bet -> bet.getId().equals(betId))) {
+                    betFound = true;
+                    updatedCalendarNode = calendarNode;
+                    break;
+                }
+            }
+            if (betFound) {
+                break;
+            }
+        }
+
+        boolean hasBets = updatedCalendarNode.getLeagueMatchdayNodes().stream()
+                .anyMatch(leagueMatchdayNode -> !leagueMatchdayNode.getBets().isEmpty());
+
+        updatedCalendarNode.setHasBets(hasBets);
+
+        calendarsRepository.save(updatedCalendarNode);
+
+        return CalendarNodeDto.from(updatedCalendarNode, false);
     }
 
     // ------------------------------------------------------------------------------------------------------ //

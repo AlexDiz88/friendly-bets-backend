@@ -22,7 +22,7 @@ import javax.validation.Valid;
 })
 public interface CalendarsApi {
 
-    @Operation(summary = "Получение календаря всех туров сезона", description = "Доступно только модератору и администратору")
+    @Operation(summary = "Получение календаря всех туров сезона", description = "Доступно всем")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Календарь всех туров сезона",
                     content = {
@@ -39,6 +39,46 @@ public interface CalendarsApi {
     })
     ResponseEntity<CalendarNodesPage> getAllSeasonCalendarNodes(@Parameter(hidden = true) AuthenticatedUser currentUser,
                                                                 @Parameter(description = "ID сезона") String seasonId);
+
+    // ------------------------------------------------------------------------------------------------------ //
+
+    @Operation(summary = "Получение календаря всех туров сезона в которых есть ставки", description = "Доступно всем")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Календарь всех туров сезона в которых есть ставки",
+                    content = {
+                            @Content(mediaType = "application/json",
+                                    schema = @Schema(implementation = CalendarNodesPage.class))
+                    }
+            ),
+            @ApiResponse(responseCode = "403", description = "userNotAuthenticated",
+                    content = {
+                            @Content(mediaType = "application/json",
+                                    schema = @Schema(ref = "StandardResponseDto"))
+                    }
+            )
+    })
+    ResponseEntity<CalendarNodesPage> getSeasonCalendarHasBetsNodes(@Parameter(hidden = true) AuthenticatedUser currentUser,
+                                                                    @Parameter(description = "ID сезона") String seasonId);
+
+    // ------------------------------------------------------------------------------------------------------ //
+
+    @Operation(summary = "Получение актуального тура календаря", description = "Доступно всем")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Список ставок за актуальный тур календаря",
+                    content = {
+                            @Content(mediaType = "application/json",
+                                    schema = @Schema(implementation = BetsPage.class))
+                    }
+            ),
+            @ApiResponse(responseCode = "403", description = "userNotAuthenticated",
+                    content = {
+                            @Content(mediaType = "application/json",
+                                    schema = @Schema(ref = "StandardResponseDto"))
+                    }
+            )
+    })
+    ResponseEntity<BetsPage> getActualCalendarNodeBets(@Parameter(hidden = true) AuthenticatedUser currentUser,
+                                                       @Parameter(description = "ID сезона") String seasonId);
 
     // ------------------------------------------------------------------------------------------------------ //
 

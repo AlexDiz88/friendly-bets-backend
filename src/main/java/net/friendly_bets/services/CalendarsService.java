@@ -9,6 +9,10 @@ public interface CalendarsService {
 
     CalendarNodesPage getAllSeasonCalendarNodes(String seasonId);
 
+    CalendarNodesPage getSeasonCalendarHasBetsNodes(String seasonId);
+
+    BetsPage getActualCalendarNodeBets(String seasonId);
+
     CalendarNodeDto createCalendarNode(NewCalendarNodeDto newCalendarNode);
 
     CalendarNodeDto addBetToCalendarNode(String betId, String calendarNodeId, String leagueId);
@@ -16,4 +20,8 @@ public interface CalendarsService {
     BetsPage getBetsByCalendarNode(String calendarNodeId);
 
     CalendarNodeDto deleteCalendarNode(String calendarNodeId);
+
+    CalendarNodeDto deleteBetInCalendarNode(String calendarNodeId, String betId);
+
+    CalendarNodeDto deleteBetInCalendars(String seasonId, String betId);
 }

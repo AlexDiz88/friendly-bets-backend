@@ -39,11 +39,11 @@ public class Season {
     @Field(name = "status")
     private Status status;
 
-    @DBRef
+    @DBRef(lazy = true)
     @Field(name = "players")
     private List<User> players;
 
-    @DBRef
+    @DBRef(lazy = true)
     @Field(name = "leagues")
     private List<League> leagues;
 }

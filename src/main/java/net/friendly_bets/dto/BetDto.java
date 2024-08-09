@@ -75,6 +75,9 @@ public class BetDto {
     @Schema(description = "время изменения/редавтирования/аннулирования ставки", example = "2023-08-15T12:00:00")
     private LocalDateTime updatedAt;
 
+    @Schema(description = "идентификатор записи календаря", example = "12-байтовый хэш ID")
+    private String calendarNodeId;
+
 
     public static BetDto from(Bet bet) {
         if (bet.getBetStatus().equals(Bet.BetStatus.EMPTY) || bet.getBetStatus().equals(Bet.BetStatus.DELETED)) {
@@ -94,6 +97,7 @@ public class BetDto {
                     .betStatus(bet.getBetStatus().toString())
                     .balanceChange(bet.getBalanceChange())
                     .updatedAt(bet.getUpdatedAt())
+                    .calendarNodeId(bet.getCalendarNodeId())
                     .build();
         }
         return BetDto.builder()
@@ -116,6 +120,7 @@ public class BetDto {
                 .betStatus(bet.getBetStatus().toString())
                 .balanceChange(bet.getBalanceChange())
                 .updatedAt(bet.getUpdatedAt())
+                .calendarNodeId(bet.getCalendarNodeId())
                 .build();
     }
 

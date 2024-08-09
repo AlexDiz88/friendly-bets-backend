@@ -22,12 +22,27 @@ public class CalendarsController implements CalendarsApi {
     private final CalendarsService calendarsService;
 
     @Override
-    @PreAuthorize("hasAuthority('ADMIN') || hasAuthority('MODERATOR')")
     @GetMapping("/seasons/{season-id}")
     public ResponseEntity<CalendarNodesPage> getAllSeasonCalendarNodes(@AuthenticationPrincipal AuthenticatedUser currentUser,
                                                                        @PathVariable("season-id") String seasonId) {
         return ResponseEntity
                 .ok(calendarsService.getAllSeasonCalendarNodes(seasonId));
+    }
+
+    @Override
+    @GetMapping("/seasons/{season-id}/has-bets")
+    public ResponseEntity<CalendarNodesPage> getSeasonCalendarHasBetsNodes(@AuthenticationPrincipal AuthenticatedUser currentUser,
+                                                                           @PathVariable("season-id") String seasonId) {
+        return ResponseEntity
+                .ok(calendarsService.getSeasonCalendarHasBetsNodes(seasonId));
+    }
+
+    @Override
+    @GetMapping("/seasons/{season-id}/actual")
+    public ResponseEntity<BetsPage> getActualCalendarNodeBets(@AuthenticationPrincipal AuthenticatedUser currentUser,
+                                                              @PathVariable("season-id") String seasonId) {
+        return ResponseEntity
+                .ok(calendarsService.getActualCalendarNodeBets(seasonId));
     }
 
     @Override
