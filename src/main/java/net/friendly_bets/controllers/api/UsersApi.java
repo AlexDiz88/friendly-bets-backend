@@ -30,7 +30,7 @@ public interface UsersApi {
                                     schema = @Schema(implementation = UserDto.class))
                     }
             ),
-            @ApiResponse(responseCode = "403", description = "Пользователь не аутентифицирован",
+            @ApiResponse(responseCode = "403", description = "userNotAuthenticated",
                     content = {
                             @Content(mediaType = "application/json",
                                     schema = @Schema(ref = "StandardResponseDto"))
@@ -49,7 +49,7 @@ public interface UsersApi {
                                     schema = @Schema(implementation = UserDto.class))
                     }
             ),
-            @ApiResponse(responseCode = "403", description = "Пользователь не аутентифицирован",
+            @ApiResponse(responseCode = "403", description = "userNotAuthenticated",
                     content = {
                             @Content(mediaType = "application/json",
                                     schema = @Schema(ref = "StandardResponseDto"))
@@ -69,7 +69,7 @@ public interface UsersApi {
                                     schema = @Schema(implementation = UserDto.class))
                     }
             ),
-            @ApiResponse(responseCode = "403", description = "Пользователь не аутентифицирован",
+            @ApiResponse(responseCode = "403", description = "userNotAuthenticated",
                     content = {
                             @Content(mediaType = "application/json",
                                     schema = @Schema(ref = "StandardResponseDto"))
@@ -89,7 +89,7 @@ public interface UsersApi {
                                     schema = @Schema(implementation = UserDto.class))
                     }
             ),
-            @ApiResponse(responseCode = "403", description = "Пользователь не аутентифицирован",
+            @ApiResponse(responseCode = "403", description = "userNotAuthenticated",
                     content = {
                             @Content(mediaType = "application/json",
                                     schema = @Schema(ref = "StandardResponseDto"))

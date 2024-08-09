@@ -27,7 +27,7 @@ public interface BetsApi {
                                     schema = @Schema(implementation = BetDto.class))
                     }
             ),
-            @ApiResponse(responseCode = "403", description = "Пользователь не аутентифицирован",
+            @ApiResponse(responseCode = "403", description = "userNotAuthenticated",
                     content = {
                             @Content(mediaType = "application/json",
                                     schema = @Schema(ref = "StandardResponseDto"))
@@ -47,7 +47,7 @@ public interface BetsApi {
                                     schema = @Schema(implementation = BetDto.class))
                     }
             ),
-            @ApiResponse(responseCode = "403", description = "Пользователь не аутентифицирован",
+            @ApiResponse(responseCode = "403", description = "userNotAuthenticated",
                     content = {
                             @Content(mediaType = "application/json",
                                     schema = @Schema(ref = "StandardResponseDto"))
@@ -67,7 +67,7 @@ public interface BetsApi {
                                     schema = @Schema(implementation = BetDto.class))
                     }
             ),
-            @ApiResponse(responseCode = "403", description = "Пользователь не аутентифицирован",
+            @ApiResponse(responseCode = "403", description = "userNotAuthenticated",
                     content = {
                             @Content(mediaType = "application/json",
                                     schema = @Schema(ref = "StandardResponseDto"))
@@ -135,7 +135,7 @@ public interface BetsApi {
                                     schema = @Schema(implementation = BetDto.class))
                     }
             ),
-            @ApiResponse(responseCode = "403", description = "Пользователь не аутентифицирован",
+            @ApiResponse(responseCode = "403", description = "userNotAuthenticated",
                     content = {
                             @Content(mediaType = "application/json",
                                     schema = @Schema(ref = "StandardResponseDto"))
@@ -156,7 +156,7 @@ public interface BetsApi {
                                     schema = @Schema(implementation = BetDto.class))
                     }
             ),
-            @ApiResponse(responseCode = "403", description = "Пользователь не аутентифицирован",
+            @ApiResponse(responseCode = "403", description = "userNotAuthenticated",
                     content = {
                             @Content(mediaType = "application/json",
                                     schema = @Schema(ref = "StandardResponseDto"))

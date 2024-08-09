@@ -29,7 +29,7 @@ public interface TeamsApi {
                                     schema = @Schema(implementation = TeamsPage.class))
                     }
             ),
-            @ApiResponse(responseCode = "403", description = "Пользователь не аутентифицирован",
+            @ApiResponse(responseCode = "403", description = "userNotAuthenticated",
                     content = {
                             @Content(mediaType = "application/json",
                                     schema = @Schema(ref = "StandardResponseDto"))
@@ -48,7 +48,7 @@ public interface TeamsApi {
                                     schema = @Schema(implementation = TeamsPage.class))
                     }
             ),
-            @ApiResponse(responseCode = "403", description = "Пользователь не аутентифицирован",
+            @ApiResponse(responseCode = "403", description = "userNotAuthenticated",
                     content = {
                             @Content(mediaType = "application/json",
                                     schema = @Schema(ref = "StandardResponseDto"))
@@ -68,7 +68,7 @@ public interface TeamsApi {
                                     schema = @Schema(implementation = TeamDto.class))
                     }
             ),
-            @ApiResponse(responseCode = "403", description = "Пользователь не аутентифицирован",
+            @ApiResponse(responseCode = "403", description = "userNotAuthenticated",
                     content = {
                             @Content(mediaType = "application/json",
                                     schema = @Schema(ref = "StandardResponseDto"))

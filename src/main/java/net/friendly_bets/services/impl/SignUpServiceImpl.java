@@ -27,7 +27,7 @@ public class SignUpServiceImpl implements SignUpService {
     @Transactional
     public UserDto signUp(NewUserDto newUser) {
         if (usersRepository.existsByEmail(newUser.getEmail().toLowerCase())) {
-            throw new ConflictException("Пользователь с таким e-mail уже зарегистрирован");
+            throw new ConflictException("userWithThisEmailAlreadyRegistered");
         }
         User user = User.builder()
                 .createdAt(LocalDateTime.now())

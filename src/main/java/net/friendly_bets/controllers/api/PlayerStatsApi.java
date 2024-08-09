@@ -8,10 +8,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.tags.Tags;
-import net.friendly_bets.dto.AllPlayersStatsByLeaguesDto;
-import net.friendly_bets.dto.AllPlayersStatsPage;
-import net.friendly_bets.dto.AllStatsByTeamsInSeasonDto;
-import net.friendly_bets.dto.PlayerStatsByTeamsDto;
+import net.friendly_bets.dto.*;
 import org.springframework.http.ResponseEntity;
 
 @Tags(value = {
@@ -50,11 +47,26 @@ public interface PlayerStatsApi {
             @ApiResponse(responseCode = "200", description = "Статистика всех участников турнира в сезоне по командам",
                     content = {
                             @Content(mediaType = "application/json",
-                                    schema = @Schema(implementation = PlayerStatsByTeamsDto.class))
+                                    schema = @Schema(implementation = AllStatsByTeamsInSeasonDto.class))
                     }
             ),
     })
     ResponseEntity<AllStatsByTeamsInSeasonDto> getAllStatsByTeamsInSeason(@Parameter(description = "ID сезона") String seasonId);
+
+    // ------------------------------------------------------------------------------------------------------ //
+
+    @Operation(summary = "Статистика по командам", description = "Доступно всем")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Статистика по командам",
+                    content = {
+                            @Content(mediaType = "application/json",
+                                    schema = @Schema(implementation = PlayerStatsByTeamsDto.class))
+                    }
+            ),
+    })
+    ResponseEntity<StatsByTeamsDto> getStatsByTeams(@Parameter(description = "ID сезона") String seasonId,
+                                                    @Parameter(description = "ID лиги") String leagueId,
+                                                    @Parameter(description = "ID игрока") String userId);
 
     // ------------------------------------------------------------------------------------------------------ //
 
@@ -67,7 +79,7 @@ public interface PlayerStatsApi {
                     }
             ),
     })
-    @ApiResponse(responseCode = "403", description = "Пользователь не аутентифицирован",
+    @ApiResponse(responseCode = "403", description = "userNotAuthenticated",
             content = {
                     @Content(mediaType = "application/json",
                             schema = @Schema(ref = "StandardResponseDto"))
@@ -81,7 +93,7 @@ public interface PlayerStatsApi {
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Пересчитанная статистика всех игроков по командам в сезоне"),
     })
-    @ApiResponse(responseCode = "403", description = "Пользователь не аутентифицирован",
+    @ApiResponse(responseCode = "403", description = "userNotAuthenticated",
             content = {
                     @Content(mediaType = "application/json",
                             schema = @Schema(ref = "StandardResponseDto"))

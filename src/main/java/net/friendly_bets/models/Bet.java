@@ -28,19 +28,19 @@ public class Bet {
     @Field(name = "created_at")
     private LocalDateTime createdAt;
 
-    @DBRef
+    @DBRef(lazy = true)
     @Field(name = "created_by")
     private User createdBy;
 
-    @DBRef
+    @DBRef(lazy = true)
     @Field(name = "user")
     private User user;
 
-    @DBRef
+    @DBRef(lazy = true)
     @Field(name = "season")
     private Season season;
 
-    @DBRef
+    @DBRef(lazy = true)
     @Field(name = "league")
     private League league;
 
@@ -59,11 +59,11 @@ public class Bet {
     @Field(name = "game_date")
     private LocalDateTime gameDate;
 
-    @DBRef
+    @DBRef(lazy = true)
     @Field(name = "home_team")
     private Team homeTeam;
 
-    @DBRef
+    @DBRef(lazy = true)
     @Field(name = "away_team")
     private Team awayTeam;
 
@@ -79,7 +79,7 @@ public class Bet {
     @Field(name = "bet_result_added_at")
     private LocalDateTime betResultAddedAt;
 
-    @DBRef
+    @DBRef(lazy = true)
     @Field(name = "bet_result_added_by")
     private User betResultAddedBy;
 
@@ -95,7 +95,10 @@ public class Bet {
     @Field(name = "updated_at")
     private LocalDateTime updatedAt;
 
-    @DBRef
+    @DBRef(lazy = true)
     @Field(name = "updated_by")
     private User updatedBy;
+
+    @Field(name = "calendar_node_id")
+    private String calendarNodeId;
 }

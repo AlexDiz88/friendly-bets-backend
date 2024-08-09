@@ -14,6 +14,7 @@ import org.springframework.http.ResponseEntity;
 
 import javax.validation.Valid;
 import java.util.List;
+import java.util.Map;
 
 @Tags(value = {
         @Tag(name = "Seasons")
@@ -28,7 +29,7 @@ public interface SeasonsApi {
                                     schema = @Schema(implementation = SeasonsPage.class))
                     }
             ),
-            @ApiResponse(responseCode = "403", description = "Пользователь не аутентифицирован",
+            @ApiResponse(responseCode = "403", description = "userNotAuthenticated",
                     content = {
                             @Content(mediaType = "application/json",
                                     schema = @Schema(ref = "StandardResponseDto"))
@@ -47,7 +48,7 @@ public interface SeasonsApi {
                                     schema = @Schema(implementation = SeasonDto.class))
                     }
             ),
-            @ApiResponse(responseCode = "403", description = "Пользователь не аутентифицирован",
+            @ApiResponse(responseCode = "403", description = "userNotAuthenticated",
                     content = {
                             @Content(mediaType = "application/json",
                                     schema = @Schema(ref = "StandardResponseDto"))
@@ -68,7 +69,7 @@ public interface SeasonsApi {
                                     schema = @Schema(implementation = SeasonDto.class))
                     }
             ),
-            @ApiResponse(responseCode = "403", description = "Пользователь не аутентифицирован",
+            @ApiResponse(responseCode = "403", description = "userNotAuthenticated",
                     content = {
                             @Content(mediaType = "application/json",
                                     schema = @Schema(ref = "StandardResponseDto"))
@@ -92,7 +93,7 @@ public interface SeasonsApi {
                                     schema = @Schema(implementation = List.class))
                     }
             ),
-            @ApiResponse(responseCode = "403", description = "Пользователь не аутентифицирован",
+            @ApiResponse(responseCode = "403", description = "userNotAuthenticated",
                     content = {
                             @Content(mediaType = "application/json",
                                     schema = @Schema(ref = "StandardResponseDto"))
@@ -111,7 +112,7 @@ public interface SeasonsApi {
                                     schema = @Schema(implementation = List.class))
                     }
             ),
-            @ApiResponse(responseCode = "403", description = "Пользователь не аутентифицирован",
+            @ApiResponse(responseCode = "403", description = "userNotAuthenticated",
                     content = {
                             @Content(mediaType = "application/json",
                                     schema = @Schema(ref = "StandardResponseDto"))
@@ -156,7 +157,7 @@ public interface SeasonsApi {
                                     schema = @Schema(implementation = SeasonDto.class))
                     }
             ),
-            @ApiResponse(responseCode = "403", description = "Пользователь не аутентифицирован",
+            @ApiResponse(responseCode = "403", description = "userNotAuthenticated",
                     content = {
                             @Content(mediaType = "application/json",
                                     schema = @Schema(ref = "StandardResponseDto"))
@@ -175,7 +176,7 @@ public interface SeasonsApi {
                                     schema = @Schema(implementation = SeasonDto.class))
                     }
             ),
-            @ApiResponse(responseCode = "403", description = "Пользователь не аутентифицирован",
+            @ApiResponse(responseCode = "403", description = "userNotAuthenticated",
                     content = {
                             @Content(mediaType = "application/json",
                                     schema = @Schema(ref = "StandardResponseDto"))
@@ -195,7 +196,7 @@ public interface SeasonsApi {
                                     schema = @Schema(implementation = LeaguesPage.class))
                     }
             ),
-            @ApiResponse(responseCode = "403", description = "Пользователь не аутентифицирован",
+            @ApiResponse(responseCode = "403", description = "userNotAuthenticated",
                     content = {
                             @Content(mediaType = "application/json",
                                     schema = @Schema(ref = "StandardResponseDto"))
@@ -215,7 +216,7 @@ public interface SeasonsApi {
                                     schema = @Schema(implementation = SeasonDto.class))
                     }
             ),
-            @ApiResponse(responseCode = "403", description = "Пользователь не аутентифицирован",
+            @ApiResponse(responseCode = "403", description = "userNotAuthenticated",
                     content = {
                             @Content(mediaType = "application/json",
                                     schema = @Schema(ref = "StandardResponseDto"))
@@ -236,7 +237,7 @@ public interface SeasonsApi {
                                     schema = @Schema(implementation = TeamDto.class))
                     }
             ),
-            @ApiResponse(responseCode = "403", description = "Пользователь не аутентифицирован",
+            @ApiResponse(responseCode = "403", description = "userNotAuthenticated",
                     content = {
                             @Content(mediaType = "application/json",
                                     schema = @Schema(ref = "StandardResponseDto"))
@@ -250,7 +251,7 @@ public interface SeasonsApi {
 
     // ------------------------------------------------------------------------------------------------------ //
 
-    ResponseEntity<String> dbUpdate(@Parameter(hidden = true) AuthenticatedUser currentUser);
+    ResponseEntity<Map<String, String>> dbUpdate(@Parameter(hidden = true) AuthenticatedUser currentUser);
 
     // ------------------------------------------------------------------------------------------------------ //
 }

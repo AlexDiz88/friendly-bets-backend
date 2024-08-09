@@ -54,7 +54,7 @@ public class TeamsServiceImpl implements TeamsService {
     @Transactional
     public TeamDto createTeam(NewTeamDto newTeam) {
         if (teamsRepository.existsByTitle(newTeam.getTitle())) {
-            throw new ConflictException("Команда с таким названием уже существует");
+            throw new ConflictException("teamWithThisTitleAlreadyExist");
         }
 
         Team team = Team.builder()

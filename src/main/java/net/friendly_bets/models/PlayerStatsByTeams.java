@@ -24,7 +24,7 @@ public class PlayerStatsByTeams {
     private String seasonId;
     private String leagueId;
     private String leagueCode;
-    @DBRef
+    @DBRef(lazy = true)
     private User user;
     private boolean isLeagueStats;
     private List<TeamStats> teamStats;

@@ -3,6 +3,7 @@ package net.friendly_bets.services;
 import net.friendly_bets.dto.*;
 
 import java.util.List;
+import java.util.Map;
 
 public interface SeasonsService {
 
@@ -30,5 +31,5 @@ public interface SeasonsService {
 
     TeamDto addTeamToLeagueInSeason(String seasonId, String leagueId, String teamId);
 
-    String dbUpdate();
+    Map<String, String> dbUpdate();
 }

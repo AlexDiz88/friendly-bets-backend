@@ -64,4 +64,10 @@ public class EditedCompleteBetDto {
     @NotNull(message = "{field.isNull}")
     @NotBlank(message = "{field.bet.blankBetStatus}")
     private String betStatus;
+
+    String prevCalendarNodeId;
+
+    @NotNull(message = "{field.bet.blankCalendarNodeId}")
+    @NotBlank(message = "{field.bet.blankCalendarNodeId}")
+    private String calendarNodeId;
 }

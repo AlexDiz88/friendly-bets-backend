@@ -15,10 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 import static net.friendly_bets.utils.GetEntityOrThrow.*;
 
@@ -31,8 +28,8 @@ public class SeasonsServiceImpl implements SeasonsService {
     UsersRepository usersRepository;
     LeaguesRepository leaguesRepository;
     TeamsRepository teamsRepository;
+    BetsRepository betsRepository;
     MongoTemplate mongoTemplate;
-    private final BetsRepository betsRepository;
 
     @Override
     @Transactional
@@ -49,7 +46,7 @@ public class SeasonsServiceImpl implements SeasonsService {
     @Transactional
     public SeasonDto addSeason(NewSeasonDto newSeason) {
         if (seasonsRepository.existsByTitle(newSeason.getTitle())) {
-            throw new BadRequestException("Сезон с таким названием уже существует");
+            throw new BadRequestException("seasonWithThisTitleAlreadyExist");
         }
 
         Season season = Season.builder()
@@ -71,19 +68,19 @@ public class SeasonsServiceImpl implements SeasonsService {
     @Transactional
     public SeasonDto changeSeasonStatus(String seasonId, String status) {
         if (status == null) {
-            throw new BadRequestException("Статус сезона is null");
+            throw new BadRequestException("seasonStatusIsNull");
         }
         status = status.substring(1, status.length() - 1);
         try {
             Season.Status.valueOf(status);
         } catch (IllegalArgumentException e) {
-            throw new BadRequestException("Недопустимый статус: " + status);
+            throw new BadRequestException("invalidStatus");
         }
 
         Season season = getSeasonOrThrow(seasonsRepository, seasonId);
 
         if (season.getStatus().toString().equals(status)) {
-            throw new ConflictException("Сезон уже имеет этот статус");
+            throw new ConflictException("seasonAlreadyHasSameStatus");
         }
 
 //        TODO: стоит ли запретить менять статус окончненных турниров??
@@ -129,7 +126,7 @@ public class SeasonsServiceImpl implements SeasonsService {
     public SeasonDto getActiveSeason() {
         Optional<Season> seasonByStatus = seasonsRepository.findSeasonByStatus(Season.Status.ACTIVE);
         if (seasonByStatus.isEmpty()) {
-            throw new BadRequestException("Сезон со статусом " + Season.Status.ACTIVE.name() + " не найден");
+            throw new BadRequestException("noActiveSeasonWasFounded");
         }
         Season season = seasonByStatus.get();
         return SeasonDto.from(season);
@@ -141,7 +138,7 @@ public class SeasonsServiceImpl implements SeasonsService {
     public ActiveSeasonIdDto getActiveSeasonId() {
         Optional<Season> activeSeason = seasonsRepository.findSeasonByStatus(Season.Status.ACTIVE);
         if (activeSeason.isEmpty()) {
-            throw new BadRequestException("Сезон со статусом " + Season.Status.ACTIVE.name() + " не найден");
+            throw new BadRequestException("noActiveSeasonWasFounded");
         }
         return new ActiveSeasonIdDto(activeSeason.get().getId());
     }
@@ -152,7 +149,7 @@ public class SeasonsServiceImpl implements SeasonsService {
     public SeasonDto getScheduledSeason() {
         Optional<Season> seasonByStatus = seasonsRepository.findSeasonByStatus(Season.Status.SCHEDULED);
         if (seasonByStatus.isEmpty()) {
-            throw new BadRequestException("Сезон со статусом " + Season.Status.SCHEDULED.name() + " не найден");
+            throw new BadRequestException("noScheduledSeasonWasFounded");
         }
         Season season = seasonByStatus.get();
         return SeasonDto.from(season);
@@ -166,13 +163,13 @@ public class SeasonsServiceImpl implements SeasonsService {
         Season season = getSeasonOrThrow(seasonsRepository, seasonId);
         User user = getUserOrThrow(usersRepository, userId);
         if (user.getUsername() == null || user.getUsername().isBlank()) {
-            throw new BadRequestException("Сначала заполните поле 'Имя' в личном кабинете");
+            throw new BadRequestException("fillUsernameInProfile");
         }
         if (user.getRole().equals(User.Role.ADMIN)) {
-            throw new ConflictException("Администратор не имеет права регистрироваться на турнирах");
+            throw new ConflictException("administratorNotAllowedRegisterInSeason");
         }
         if (season.getPlayers().stream().anyMatch(player -> player.getId().equals(userId))) {
-            throw new ConflictException("Вы уже зарегистрированы на этом турнире");
+            throw new ConflictException("youAlreadyRegisteredInSeason");
         }
 
         season.getPlayers().add(user);
@@ -201,11 +198,11 @@ public class SeasonsServiceImpl implements SeasonsService {
         try {
             leagueCode = League.LeagueCode.valueOf(newLeague.getLeagueCode());
         } catch (IllegalArgumentException e) {
-            throw new BadRequestException("Недопустимый статус: " + newLeague.getLeagueCode());
+            throw new BadRequestException("invalidStatus");
         }
 
         if (season.getLeagues().stream().anyMatch(l -> l.getLeagueCode().equals(leagueCode))) {
-            throw new ConflictException("Лига с таким названием уже существует в этом турнире");
+            throw new ConflictException("leagueAlreadyExistInThisSeason");
         }
 
         League league = League.builder()
@@ -229,25 +226,25 @@ public class SeasonsServiceImpl implements SeasonsService {
     @Transactional
     public TeamDto addTeamToLeagueInSeason(String seasonId, String leagueId, String teamId) {
         if (teamId == null || teamId.isBlank()) {
-            throw new BadRequestException("Команда не выбрана");
+            throw new BadRequestException("teamIdIsNull");
         }
         if (leagueId == null || leagueId.isBlank()) {
-            throw new BadRequestException("Лига не выбрана");
+            throw new BadRequestException("leagueIdIsNull");
         }
         if (seasonId == null || seasonId.isBlank()) {
-            throw new BadRequestException("Сезон не выбран");
+            throw new BadRequestException("seasonIdIsNull");
         }
         Season season = getSeasonOrThrow(seasonsRepository, seasonId);
         Team team = getTeamOrThrow(teamsRepository, teamId);
 
         Optional<League> optionalLeague = season.getLeagues().stream().filter(l -> l.getId().equals(leagueId)).findFirst();
         if (optionalLeague.isEmpty()) {
-            throw new NotFoundException("Лига", leagueId);
+            throw new NotFoundException("League", leagueId);
         }
 
         League leagueInSeason = optionalLeague.get();
         if (leagueInSeason.getTeams().stream().anyMatch(t -> t.getId().equals(teamId))) {
-            throw new ConflictException("Эта команда уже добавлена в данную лигу в этом сезоне");
+            throw new ConflictException("teamAlreadyExistInLeagueInThisSeason");
         }
 
         leagueInSeason.getTeams().add(team);
@@ -260,29 +257,14 @@ public class SeasonsServiceImpl implements SeasonsService {
 
     @Override
     @Transactional
-    public String dbUpdate() {
-        List<Team> allTeams = teamsRepository.findAll();
-
-        for (Team team : allTeams) {
-            String title = team.getTitle();
-            String replaced = title.replace(" ", "");
-            if (!title.equals(replaced)) {
-                team.setTitle(replaced);
-                teamsRepository.save(team);
-            }
-        }
-
-        List<Bet> allBets = betsRepository.findAll();
+    public Map<String, String> dbUpdate() {
+        List<Bet> allBets = betsRepository.findAllBySeason_Id("666af3277f505e49026dbf41");
 
         for (Bet bet : allBets) {
-            String matchDay = bet.getMatchDay();
-            if (matchDay != null && matchDay.startsWith("1/")) {
-                int index = matchDay.indexOf(" ");
-                if (index != -1) {
-                    String res = matchDay.substring(0, index);
-                    bet.setMatchDay(res);
-                    betsRepository.save(bet);
-                }
+            String playoffRound = bet.getPlayoffRound();
+            if (playoffRound != null && playoffRound.equals("1")) {
+                bet.setPlayoffRound("");
+                betsRepository.save(bet);
             }
         }
 
@@ -300,7 +282,9 @@ public class SeasonsServiceImpl implements SeasonsService {
 //            mongoTemplate.updateFirst(individualQuery, update, Team.class);
 
 
-        return "DB update complete";
+        Map<String, String> response = new HashMap<>();
+        response.put("message", "DB update complete");
+        return response;
     }
 
     // ------------------------------------------------------------------------------------------------------ //

@@ -60,7 +60,7 @@ public class SecurityConfig {
                 .and()
                 .exceptionHandling()
                 .defaultAuthenticationEntryPointFor((request, response, authException) ->
-                                fillResponse(response, HttpStatus.FORBIDDEN.value(), "Пользователь не аутентифицирован"),
+                                fillResponse(response, HttpStatus.FORBIDDEN.value(), "userNotAuthenticated"),
                         new AntPathRequestMatcher("/api/**"))
                 .accessDeniedHandler((request, response, accessDeniedException) -> {
                     Authentication authentication = SecurityContextHolder.getContext().getAuthentication();

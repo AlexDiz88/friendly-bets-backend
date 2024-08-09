@@ -36,6 +36,8 @@ public class BetsServiceImpl implements BetsService {
     UsersRepository usersRepository;
     PlayerStatsRepository playerStatsRepository;
     PlayerStatsByTeamsRepository playerStatsByTeamsRepository;
+
+    CalendarsServiceImpl calendarsService;
     MongoOperations mongoOperations;
 
     @Override
@@ -63,7 +65,7 @@ public class BetsServiceImpl implements BetsService {
                 newBet.getBetOdds(),
                 newBet.getBetSize()
         )) {
-            throw new ConflictException("Ставка на этот матч от данного участника уже добавлена");
+            throw new ConflictException("betAlreadyAdded");
         }
 
         Bet bet = Bet.builder()
@@ -83,11 +85,14 @@ public class BetsServiceImpl implements BetsService {
                 .betOdds(newBet.getBetOdds())
                 .betSize(newBet.getBetSize())
                 .betStatus(Bet.BetStatus.OPENED)
+                .calendarNodeId(newBet.getCalendarNodeId())
                 .build();
 
         betsRepository.save(bet);
         setCurrentMatchDay(betsRepository, season, league);
         leaguesRepository.save(league);
+
+        calendarsService.addBetToCalendarNode(bet.getId(), newBet.getCalendarNodeId(), newBet.getLeagueId());
 
         Optional<PlayerStats> playerStatsOptional = playerStatsRepository.findBySeasonIdAndLeagueIdAndUser(newBet.getSeasonId(), newBet.getLeagueId(), user);
         PlayerStats playerStats = playerStatsOptional.orElseGet(() -> getDefaultPlayerStats(newBet.getSeasonId(), newBet.getLeagueId(), user));
@@ -122,11 +127,14 @@ public class BetsServiceImpl implements BetsService {
                 .betResultAddedAt(LocalDateTime.now())
                 .betResultAddedBy(moderator)
                 .balanceChange(-Double.valueOf(newEmptyBet.getBetSize()))
+                .calendarNodeId(newEmptyBet.getCalendarNodeId())
                 .build();
 
         betsRepository.save(bet);
         setCurrentMatchDay(betsRepository, season, league);
         leaguesRepository.save(league);
+
+        calendarsService.addBetToCalendarNode(bet.getId(), newEmptyBet.getCalendarNodeId(), newEmptyBet.getLeagueId());
 
         Optional<PlayerStats> playerStatsOptional = playerStatsRepository.findBySeasonIdAndLeagueIdAndUser(newEmptyBet.getSeasonId(), newEmptyBet.getLeagueId(), user);
         PlayerStats playerStats = playerStatsOptional.orElseGet(() -> getDefaultPlayerStats(newEmptyBet.getSeasonId(), newEmptyBet.getLeagueId(), user));
@@ -148,14 +156,14 @@ public class BetsServiceImpl implements BetsService {
         try {
             Bet.BetStatus.valueOf(newBetResult.getBetStatus());
         } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("Недопустимый статус: " + newBetResult.getBetStatus());
+            throw new IllegalArgumentException("invalidStatus");
         }
 
         checkGameResult(newBetResult.getGameResult());
 
         Bet bet = getBetOrThrow(betsRepository, betId);
         if (!bet.getBetStatus().equals(Bet.BetStatus.OPENED)) {
-            throw new ConflictException("Эта ставка уже обработана другим модератором");
+            throw new ConflictException("betAlreadyProcessed");
         }
 
         User moderator = getUserOrThrow(usersRepository, moderatorId);
@@ -239,7 +247,7 @@ public class BetsServiceImpl implements BetsService {
             completedBetsPage = betsRepository.findAllBySeason_IdAndBetStatusInAndLeague_IdAndUser_Id(seasonId, desiredStatuses, leagueId, playerId, pageable);
         }
         if (completedBetsPage == null) {
-            throw new BadRequestException("Некорректный запрос");
+            throw new BadRequestException("invalidRequest");
         }
 
 //        Criteria criteria = new Criteria();
@@ -306,13 +314,15 @@ public class BetsServiceImpl implements BetsService {
         handleBetStatus(betInDB, editedBet, newUser, newHomeTeam, newAwayTeam);
         updateBetDetails(betInDB, moderator, newUser, editedBet, newHomeTeam, newAwayTeam);
         updatePlayerStats(betInDB, previousStateOfBet, editedBet);
+        updateCalendar(betInDB, editedBet);
 
         return BetDto.from(betInDB);
     }
 
+
     private Bet getPreviousStateOfBet(Bet bet) {
         if (bet.getBetStatus().equals(Bet.BetStatus.EMPTY) || bet.getBetStatus().equals(Bet.BetStatus.DELETED)) {
-            throw new BadRequestException("Пустые и удалённые ставки редактировать запрещено");
+            throw new BadRequestException("emptyAndDeletedBetsCannotBeEdited");
         }
         return Bet.builder()
                 .user(bet.getUser())
@@ -330,6 +340,7 @@ public class BetsServiceImpl implements BetsService {
                 .build();
     }
 
+    @Transactional
     private void handleBetStatus(Bet bet, EditedCompleteBetDto editedBet, User user, Team homeTeam, Team awayTeam) {
         Bet.BetStatus newStatus = Bet.BetStatus.valueOf(editedBet.getBetStatus());
         validateBetUniqueness(user, editedBet, homeTeam, awayTeam, newStatus);
@@ -345,7 +356,7 @@ public class BetsServiceImpl implements BetsService {
 
     private void validateGameResult(EditedCompleteBetDto editedBet) {
         if (StringUtils.isBlank(editedBet.getGameResult())) {
-            throw new BadRequestException("Счёт матча отсутствует");
+            throw new BadRequestException("gamescoreIsBlank");
         }
         checkGameResult(editedBet.getGameResult());
     }
@@ -354,7 +365,7 @@ public class BetsServiceImpl implements BetsService {
         if (betsRepository.existsByUserAndMatchDayAndPlayoffRoundAndHomeTeamAndAwayTeamAndBetTitleAndBetOddsAndBetSizeAndGameResultAndBetStatus(
                 user, editedBet.getMatchDay(), editedBet.getPlayoffRound(), homeTeam, awayTeam, editedBet.getBetTitle(),
                 editedBet.getBetOdds(), editedBet.getBetSize(), editedBet.getGameResult(), newStatus)) {
-            throw new ConflictException("Ставка на этот матч уже отредактирована другим модератором");
+            throw new ConflictException("betAlreadyEdited");
         }
     }
 
@@ -377,10 +388,11 @@ public class BetsServiceImpl implements BetsService {
 
     @Transactional
     private void updatePlayerStats(Bet betInDB, Bet previousStateOfBet, EditedCompleteBetDto editedBet) {
+        League league = getLeagueOrThrow(leaguesRepository, editedBet.getLeagueId());
         PlayerStats statsOfPreviousPlayer = getPlayerStatsOrThrow(playerStatsRepository, editedBet.getSeasonId(), editedBet.getLeagueId(), previousStateOfBet.getUser());
-        PlayerStats statsOfActualPlayer = getPlayerStatsOrThrow(playerStatsRepository, betInDB.getSeason().getId(), betInDB.getLeague().getId(), betInDB.getUser());
+        PlayerStats statsOfActualPlayer = getPlayerStatsOrDefault(playerStatsRepository, betInDB.getSeason().getId(), betInDB.getLeague().getId(), betInDB.getUser());
         PlayerStatsByTeams statsByTeamsOfPreviousPlayer = getPlayerStatsByTeamsOrNull(playerStatsByTeamsRepository, editedBet.getSeasonId(), editedBet.getLeagueId(), previousStateOfBet.getUser(), false);
-        PlayerStatsByTeams statsByTeamsOfActualPlayer = getPlayerStatsByTeamsOrNull(playerStatsByTeamsRepository, editedBet.getSeasonId(), editedBet.getLeagueId(), betInDB.getUser(), false);
+        PlayerStatsByTeams statsByTeamsOfActualPlayer = getPlayerStatsByTeamsOrDefault(playerStatsByTeamsRepository, editedBet.getSeasonId(), editedBet.getLeagueId(), league.getLeagueCode().toString(), betInDB.getUser());
         PlayerStatsByTeams leagueStatsByTeams = getLeagueStatsByTeamsOrNull(playerStatsByTeamsRepository, editedBet.getSeasonId(), editedBet.getLeagueId(), true);
 
         // если статус OPENED и новый игрок -> обновление статистики для КАЖДОГО игрока (общая + по лиге). По командам менять НЕ нужно
@@ -419,6 +431,21 @@ public class BetsServiceImpl implements BetsService {
         }
         if (leagueStatsByTeams != null) {
             playerStatsByTeamsRepository.save(leagueStatsByTeams);
+        }
+    }
+
+    @Transactional
+    private void updateCalendar(Bet betInDB, EditedCompleteBetDto editedBet) {
+        // TODO: убрать временное решение. Оставить только deleteBetInCalendarNode
+        if (!editedBet.getCalendarNodeId().equals(editedBet.getPrevCalendarNodeId())) {
+            if (editedBet.getPrevCalendarNodeId() == null || editedBet.getPrevCalendarNodeId().isBlank()) {
+                calendarsService.deleteBetInCalendars(editedBet.getSeasonId(), betInDB.getId());
+            } else {
+                calendarsService.deleteBetInCalendarNode(editedBet.getPrevCalendarNodeId(), betInDB.getId());
+            }
+            betInDB.setCalendarNodeId(editedBet.getCalendarNodeId());
+            betsRepository.save(betInDB);
+            calendarsService.addBetToCalendarNode(betInDB.getId(), editedBet.getCalendarNodeId(), editedBet.getLeagueId());
         }
     }
 
@@ -558,6 +585,13 @@ public class BetsServiceImpl implements BetsService {
         bet.setUpdatedBy(moderator);
         BetDto betDto = BetDto.from(bet);
         bet.setBetStatus(Bet.BetStatus.DELETED);
+
+        // TODO: убрать временное решение. Оставить только deleteBetInCalendarNode
+        if (deletedBetMetaData.getCalendarNodeId() == null || deletedBetMetaData.getCalendarNodeId().isBlank()) {
+            calendarsService.deleteBetInCalendars(deletedBetMetaData.getSeasonId(), betId);
+        } else {
+            calendarsService.deleteBetInCalendarNode(deletedBetMetaData.getCalendarNodeId(), betId);
+        }
 
         betsRepository.save(bet);
 
