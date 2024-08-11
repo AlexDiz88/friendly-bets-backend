@@ -17,7 +17,7 @@ public interface BetsService {
 
     BetsPage getAllBets(String seasonId, Pageable pageable);
 
-    BetDto editBet(String moderatorId, String betId, EditedCompleteBetDto editedBet);
+    BetDto editBet(String moderatorId, String betId, EditedBetDto editedBet);
 
     BetDto deleteBet(String moderatorId, String betId, DeletedBetDto deletedBetMetaData);
 }

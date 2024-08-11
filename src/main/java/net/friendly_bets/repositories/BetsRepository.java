@@ -14,10 +14,9 @@ import java.util.List;
 
 public interface BetsRepository extends MongoRepository<Bet, String> {
 
-    boolean existsByUserAndMatchDayAndPlayoffRoundAndHomeTeamAndAwayTeamAndBetTitleAndBetOddsAndBetSize(
+    boolean existsByUserAndMatchDayAndHomeTeamAndAwayTeamAndBetTitleAndBetOddsAndBetSize(
             User user,
             String matchDay,
-            String playoffRound,
             Team homeTeam,
             Team awayTeam,
             String betTitle,
@@ -25,12 +24,11 @@ public interface BetsRepository extends MongoRepository<Bet, String> {
             Integer betSize
     );
 
-    boolean existsBySeasonIdAndLeagueIdAndUserAndMatchDayAndPlayoffRoundAndHomeTeamAndAwayTeamAndBetTitleAndBetOddsAndBetSize(
+    boolean existsBySeasonIdAndLeagueIdAndUserAndMatchDayAndHomeTeamAndAwayTeamAndBetTitleAndBetOddsAndBetSize(
             String seasonId,
             String leagueId,
             User user,
             String matchDay,
-            String playoffRound,
             Team homeTeam,
             Team awayTeam,
             String betTitle,
@@ -38,10 +36,9 @@ public interface BetsRepository extends MongoRepository<Bet, String> {
             Integer betSize
     );
 
-    boolean existsByUserAndMatchDayAndPlayoffRoundAndHomeTeamAndAwayTeamAndBetTitleAndBetOddsAndBetSizeAndGameResultAndBetStatus(
+    boolean existsByUserAndMatchDayAndHomeTeamAndAwayTeamAndBetTitleAndBetOddsAndBetSizeAndGameResultAndBetStatus(
             User user,
             String matchDay,
-            String playoffRound,
             Team homeTeam,
             Team awayTeam,
             String betTitle,

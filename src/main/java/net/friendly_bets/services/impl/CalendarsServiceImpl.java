@@ -104,7 +104,7 @@ public class CalendarsServiceImpl implements CalendarsService {
         List<LeagueMatchdayNode> leagueMatchdayNodes = calendarNode.getLeagueMatchdayNodes();
         boolean betAdded = false;
         for (LeagueMatchdayNode node : leagueMatchdayNodes) {
-            if (node.getLeagueId().equals(leagueId)) {
+            if (leagueId != null && leagueId.equals(node.getLeagueId())) {
                 node.getBets().add(bet);
                 betAdded = true;
                 break;
@@ -206,7 +206,9 @@ public class CalendarsServiceImpl implements CalendarsService {
                 break;
             }
         }
-
+        if (updatedCalendarNode == null) {
+            throw new BadRequestException("betNotFoundInAnyCalendar");
+        }
         boolean hasBets = updatedCalendarNode.getLeagueMatchdayNodes().stream()
                 .anyMatch(leagueMatchdayNode -> !leagueMatchdayNode.getBets().isEmpty());
 

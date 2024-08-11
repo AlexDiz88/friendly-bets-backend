@@ -28,12 +28,6 @@ public class LeagueMatchdayNodeDto {
     @Schema(description = "игровой тур", example = "14")
     private String matchDay;
 
-    @Schema(description = "является ли игра матчем плей-офф", example = "true")
-    private Boolean isPlayoff;
-
-    @Schema(description = "раунд плей-офф", example = "1")
-    private String playoffRound;
-
     @Schema(description = "идентификатор лиги", example = "12-байтовый хэш ID")
     private List<BetDto> bets;
 
@@ -42,8 +36,6 @@ public class LeagueMatchdayNodeDto {
                 .leagueId(node.getLeagueId())
                 .leagueCode(node.getLeagueCode())
                 .matchDay(node.getMatchDay())
-                .isPlayoff(node.getIsPlayoff())
-                .playoffRound(node.getPlayoffRound())
                 .bets(isWithBets ? BetDto.from(node.getBets()) : new ArrayList<>())
                 .build();
     }

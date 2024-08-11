@@ -36,14 +36,8 @@ public class BetDto {
     @Schema(description = "игрок, сделавший ставку", example = "{Player}")
     private UserSimpleDto player;
 
-    @Schema(description = "является ли игра матчем плей-офф", example = "true")
-    private Boolean isPlayoff;
-
     @Schema(description = "игровой тур", example = "14")
     private String matchDay;
-
-    @Schema(description = "раунд плей-офф", example = "1")
-    private String playoffRound;
 
     @Schema(description = "команда хозяев", example = "{Команда1}")
     private TeamDto homeTeam;
@@ -63,7 +57,7 @@ public class BetDto {
     @Schema(description = "время добавления результата ставки", example = "2023-08-15T12:00:00")
     private LocalDateTime betResultAddedAt;
 
-    @Schema(description = "счет матча", example = "2:1(1:1)")
+    @Schema(description = "счет матча", example = "2:1 (1:1)")
     private String gameResult;
 
     @Schema(description = "статус ставки", example = "OPENED")
@@ -88,9 +82,7 @@ public class BetDto {
                     .leagueCode(bet.getLeague().getLeagueCode().toString())
                     .createdAt(bet.getCreatedAt())
                     .player(UserSimpleDto.from(bet.getUser()))
-                    .isPlayoff(bet.getIsPlayoff())
                     .matchDay(bet.getMatchDay())
-                    .playoffRound(bet.getPlayoffRound())
                     .betSize(bet.getBetSize())
                     .gameResult(bet.getGameResult())
                     .betResultAddedAt(bet.getBetResultAddedAt())
@@ -107,9 +99,7 @@ public class BetDto {
                 .leagueCode(bet.getLeague().getLeagueCode().toString())
                 .createdAt(bet.getCreatedAt())
                 .player(UserSimpleDto.from(bet.getUser()))
-                .isPlayoff(bet.getIsPlayoff())
                 .matchDay(bet.getMatchDay())
-                .playoffRound(bet.getPlayoffRound())
                 .homeTeam(TeamDto.from(bet.getHomeTeam()))
                 .awayTeam(TeamDto.from(bet.getAwayTeam()))
                 .betTitle(bet.getBetTitle())

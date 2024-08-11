@@ -16,8 +16,6 @@ public class LeagueMatchdayNode {
     private String leagueId;
     private League.LeagueCode leagueCode;
     private String matchDay;
-    private Boolean isPlayoff;
-    private String playoffRound;
     @DBRef(lazy = true)
     private List<Bet> bets;
 }

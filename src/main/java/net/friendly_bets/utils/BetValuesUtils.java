@@ -74,30 +74,15 @@ public class BetValuesUtils {
         for (CalendarNode calendarNode : calendarNodes) {
             List<LeagueMatchdayNode> leagueMatchdayNodes = calendarNode.getLeagueMatchdayNodes();
             for (LeagueMatchdayNode leagueMatchdayNode : leagueMatchdayNodes) {
-                String combination;
-                if (leagueMatchdayNode.getMatchDay().equals("final")) {
-                    combination = leagueMatchdayNode.getLeagueId() + leagueMatchdayNode.getMatchDay();
-                } else {
-                    combination = leagueMatchdayNode.getLeagueId() + leagueMatchdayNode.getMatchDay() + leagueMatchdayNode.getPlayoffRound();
-                }
+                String combination = leagueMatchdayNode.getLeagueId() + leagueMatchdayNode.getMatchDay();
                 uniqueCombinations.add(combination);
             }
         }
 
         for (LeagueMatchdayNode node : matchdayNodes) {
-            String combination;
-            if (node.getMatchDay().equals("final")) {
-                combination = node.getLeagueId() + node.getMatchDay();
-            } else {
-                combination = node.getLeagueId() + node.getMatchDay() + node.getPlayoffRound();
-            }
-
+            String combination = node.getLeagueId() + node.getMatchDay();
             if (!uniqueCombinations.add(combination)) {
-                if (node.getIsPlayoff() && !node.getMatchDay().equals("final")) {
-                    throw new ConflictException("Выбранная лига с указанным туром уже добавлена в календарь - " + node.getLeagueCode() + " " + node.getMatchDay() + " [" + node.getPlayoffRound() + "]");
-                } else {
-                    throw new ConflictException("Выбранная лига с указанным туром уже добавлена в календарь - " + node.getLeagueCode() + " " + node.getMatchDay());
-                }
+                throw new ConflictException("Выбранная лига с указанным туром уже добавлена в календарь - " + node.getLeagueCode() + " " + node.getMatchDay());
             }
         }
     }

@@ -144,7 +144,7 @@ public interface BetsApi {
     })
     ResponseEntity<BetDto> editBet(@Parameter(hidden = true) AuthenticatedUser currentUser,
                                    @Parameter(description = "ID ставки") String betId,
-                                   @Valid EditedCompleteBetDto editedBet);
+                                   @Valid EditedBetDto editedBet);
 
     // ------------------------------------------------------------------------------------------------------ //
 

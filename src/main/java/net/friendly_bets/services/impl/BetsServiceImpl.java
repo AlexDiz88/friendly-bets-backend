@@ -53,12 +53,11 @@ public class BetsServiceImpl implements BetsService {
         Team homeTeam = getTeamOrThrow(teamsRepository, newBet.getHomeTeamId());
         Team awayTeam = getTeamOrThrow(teamsRepository, newBet.getAwayTeamId());
 
-        if (betsRepository.existsBySeasonIdAndLeagueIdAndUserAndMatchDayAndPlayoffRoundAndHomeTeamAndAwayTeamAndBetTitleAndBetOddsAndBetSize(
+        if (betsRepository.existsBySeasonIdAndLeagueIdAndUserAndMatchDayAndHomeTeamAndAwayTeamAndBetTitleAndBetOddsAndBetSize(
                 season.getId(),
                 league.getId(),
                 user,
                 newBet.getMatchDay(),
-                newBet.getPlayoffRound(),
                 homeTeam,
                 awayTeam,
                 newBet.getBetTitle(),
@@ -74,11 +73,7 @@ public class BetsServiceImpl implements BetsService {
                 .user(user)
                 .season(season)
                 .league(league)
-                .isPlayoff(newBet.getIsPlayoff())
                 .matchDay(newBet.getMatchDay())
-                .playoffRound(newBet.getPlayoffRound())
-                .gameId(newBet.getGameId())
-                .gameDate(newBet.getGameDate())
                 .homeTeam(homeTeam)
                 .awayTeam(awayTeam)
                 .betTitle(newBet.getBetTitle())
@@ -119,9 +114,7 @@ public class BetsServiceImpl implements BetsService {
                 .user(user)
                 .season(season)
                 .league(league)
-                .isPlayoff(newEmptyBet.getIsPlayoff())
                 .matchDay(newEmptyBet.getMatchDay())
-                .playoffRound(newEmptyBet.getPlayoffRound())
                 .betSize(newEmptyBet.getBetSize())
                 .betStatus(Bet.BetStatus.EMPTY)
                 .betResultAddedAt(LocalDateTime.now())
@@ -299,7 +292,7 @@ public class BetsServiceImpl implements BetsService {
 
     @Override
     @Transactional
-    public BetDto editBet(String moderatorId, String betId, EditedCompleteBetDto editedBet) {
+    public BetDto editBet(String moderatorId, String betId, EditedBetDto editedBet) {
         checkTeams(editedBet.getHomeTeamId(), editedBet.getAwayTeamId());
         checkBetOdds(editedBet.getBetOdds());
 
@@ -341,7 +334,7 @@ public class BetsServiceImpl implements BetsService {
     }
 
     @Transactional
-    private void handleBetStatus(Bet bet, EditedCompleteBetDto editedBet, User user, Team homeTeam, Team awayTeam) {
+    private void handleBetStatus(Bet bet, EditedBetDto editedBet, User user, Team homeTeam, Team awayTeam) {
         Bet.BetStatus newStatus = Bet.BetStatus.valueOf(editedBet.getBetStatus());
         validateBetUniqueness(user, editedBet, homeTeam, awayTeam, newStatus);
 
@@ -354,29 +347,27 @@ public class BetsServiceImpl implements BetsService {
         bet.setBetStatus(newStatus);
     }
 
-    private void validateGameResult(EditedCompleteBetDto editedBet) {
+    private void validateGameResult(EditedBetDto editedBet) {
         if (StringUtils.isBlank(editedBet.getGameResult())) {
             throw new BadRequestException("gamescoreIsBlank");
         }
         checkGameResult(editedBet.getGameResult());
     }
 
-    private void validateBetUniqueness(User user, EditedCompleteBetDto editedBet, Team homeTeam, Team awayTeam, Bet.BetStatus newStatus) {
-        if (betsRepository.existsByUserAndMatchDayAndPlayoffRoundAndHomeTeamAndAwayTeamAndBetTitleAndBetOddsAndBetSizeAndGameResultAndBetStatus(
-                user, editedBet.getMatchDay(), editedBet.getPlayoffRound(), homeTeam, awayTeam, editedBet.getBetTitle(),
+    private void validateBetUniqueness(User user, EditedBetDto editedBet, Team homeTeam, Team awayTeam, Bet.BetStatus newStatus) {
+        if (betsRepository.existsByUserAndMatchDayAndHomeTeamAndAwayTeamAndBetTitleAndBetOddsAndBetSizeAndGameResultAndBetStatus(
+                user, editedBet.getMatchDay(), homeTeam, awayTeam, editedBet.getBetTitle(),
                 editedBet.getBetOdds(), editedBet.getBetSize(), editedBet.getGameResult(), newStatus)) {
             throw new ConflictException("betAlreadyEdited");
         }
     }
 
     @Transactional
-    private void updateBetDetails(Bet bet, User moderator, User newUser, EditedCompleteBetDto editedBet, Team newHomeTeam, Team newAwayTeam) {
+    private void updateBetDetails(Bet bet, User moderator, User newUser, EditedBetDto editedBet, Team newHomeTeam, Team newAwayTeam) {
         bet.setUpdatedAt(LocalDateTime.now());
         bet.setUpdatedBy(moderator);
         bet.setUser(newUser);
-        bet.setIsPlayoff(editedBet.getIsPlayoff());
         bet.setMatchDay(editedBet.getMatchDay());
-        bet.setPlayoffRound(editedBet.getPlayoffRound());
         bet.setHomeTeam(newHomeTeam);
         bet.setAwayTeam(newAwayTeam);
         bet.setBetTitle(editedBet.getBetTitle());
@@ -387,7 +378,7 @@ public class BetsServiceImpl implements BetsService {
     }
 
     @Transactional
-    private void updatePlayerStats(Bet betInDB, Bet previousStateOfBet, EditedCompleteBetDto editedBet) {
+    private void updatePlayerStats(Bet betInDB, Bet previousStateOfBet, EditedBetDto editedBet) {
         League league = getLeagueOrThrow(leaguesRepository, editedBet.getLeagueId());
         PlayerStats statsOfPreviousPlayer = getPlayerStatsOrThrow(playerStatsRepository, editedBet.getSeasonId(), editedBet.getLeagueId(), previousStateOfBet.getUser());
         PlayerStats statsOfActualPlayer = getPlayerStatsOrDefault(playerStatsRepository, betInDB.getSeason().getId(), betInDB.getLeague().getId(), betInDB.getUser());
@@ -435,7 +426,7 @@ public class BetsServiceImpl implements BetsService {
     }
 
     @Transactional
-    private void updateCalendar(Bet betInDB, EditedCompleteBetDto editedBet) {
+    private void updateCalendar(Bet betInDB, EditedBetDto editedBet) {
         // TODO: убрать временное решение. Оставить только deleteBetInCalendarNode
         if (!editedBet.getCalendarNodeId().equals(editedBet.getPrevCalendarNodeId())) {
             if (editedBet.getPrevCalendarNodeId() == null || editedBet.getPrevCalendarNodeId().isBlank()) {
