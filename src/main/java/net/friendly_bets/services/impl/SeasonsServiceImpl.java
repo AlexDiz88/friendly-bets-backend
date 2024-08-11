@@ -272,7 +272,7 @@ public class SeasonsServiceImpl implements SeasonsService {
         int nonStandardMatchDayCount = 0;
 
         // Найти все ставки с указанным идентификатором сезона
-        List<Bet> bets = betsRepository.findAllBySeason_Id("64b83925225e665f916ac04b");
+        List<Bet> bets = betsRepository.findAllBySeason_Id("666af3277f505e49026dbf41");
 
         for (Bet bet : bets) {
             totalBets++;  // Увеличение общего счетчика ставок
