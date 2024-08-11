@@ -264,6 +264,7 @@ public class SeasonsServiceImpl implements SeasonsService {
     public Map<String, String> dbUpdate() {
         // Инициализация счетчиков
         int totalBets = 0;
+        int euro24playoff = 0;
         int nullOrBlankMatchDayCount = 0;
         int startsWithOneSlashCount = 0;
         int validMatchDayCount = 0;
@@ -300,6 +301,11 @@ public class SeasonsServiceImpl implements SeasonsService {
                 shouldUpdate = true;
             }
 
+            if (matchDay.equals("1/8") || matchDay.equals("1/4") || matchDay.equals("1/2")) {
+                euro24playoff++;
+                shouldUpdate = true;
+            }
+
             if (shouldUpdate) {
                 // Создание объекта обновления
                 Update update = new Update();
@@ -330,6 +336,7 @@ public class SeasonsServiceImpl implements SeasonsService {
 
         // Подготовка ответа с количеством обработанных ставок
         System.out.println("Общее число ставок : " + totalBets);
+        System.out.println("Евро24 плейофф : " + euro24playoff);
         System.out.println("matchDay равные null либо пустой строке : " + nullOrBlankMatchDayCount);
         System.out.println("Валидных ставок плейоффа 1/Х которым будут добавлять скобки [Y] : " + startsWithOneSlashCount);
         System.out.println("Ставок обычных туров либо финалов: " + validMatchDayCount);
