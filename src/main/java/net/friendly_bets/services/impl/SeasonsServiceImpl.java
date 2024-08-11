@@ -296,10 +296,6 @@ public class SeasonsServiceImpl implements SeasonsService {
                 startsWithOneSlashCount++;
                 shouldUpdate = true;
             }
-            if (matchDay.matches("^[1-9]|[1-9][0-9]*$") || matchDay.equals("final")) {
-                validMatchDayCount++;
-                shouldUpdate = true;
-            }
 
             if (matchDay.equals("1/8") || matchDay.equals("1/4") || matchDay.equals("1/2")) {
                 euro24playoff++;
