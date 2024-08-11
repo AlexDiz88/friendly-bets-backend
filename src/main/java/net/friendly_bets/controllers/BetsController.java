@@ -89,7 +89,7 @@ public class BetsController implements BetsApi {
     @PutMapping("/{bet-id}")
     public ResponseEntity<BetDto> editBet(@AuthenticationPrincipal AuthenticatedUser currentUser,
                                           @PathVariable("bet-id") String betId,
-                                          @RequestBody EditedCompleteBetDto editedBet) {
+                                          @RequestBody EditedBetDto editedBet) {
         String moderatorId = currentUser.getUser().getId();
         return ResponseEntity
                 .ok(betsService.editBet(moderatorId, betId, editedBet));

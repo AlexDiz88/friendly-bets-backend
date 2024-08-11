@@ -7,7 +7,6 @@ import lombok.NoArgsConstructor;
 import javax.validation.constraints.Min;
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.NotNull;
-import java.time.LocalDateTime;
 
 @Data
 @AllArgsConstructor
@@ -27,18 +26,8 @@ public class NewBetDto {
     private String leagueId;
 
     @NotNull(message = "{field.isNull}")
-    private Boolean isPlayoff;
-
-    @NotNull(message = "{field.isNull}")
     @NotBlank(message = "{field.bet.blankMatchDay}")
     private String matchDay;
-
-    @NotNull(message = "{field.isNull}")
-    private String playoffRound;
-
-    private String gameId;
-
-    private LocalDateTime gameDate;
 
     @NotNull(message = "{field.isNull}")
     @NotBlank(message = "{field.bet.blankHomeTeam}")

@@ -7,24 +7,27 @@ import lombok.NoArgsConstructor;
 import javax.validation.constraints.Min;
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.NotNull;
-import java.time.LocalDateTime;
 
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
 public class EditedBetDto {
 
-    @NotNull(message = "{field.isNull}")
-    @NotBlank(message = "{field.isBlank}")
+    @NotNull(message = "{field.seasonId.isNull}")
+    @NotBlank(message = "{field.seasonId.isBlank}")
+    private String seasonId;
+
+    @NotNull(message = "{field.leagueId.isNull}")
+    @NotBlank(message = "{field.leagueId.isBlank}")
+    private String leagueId;
+
+    @NotNull(message = "{field.userId.isNull}")
+    @NotBlank(message = "{field.userId.isBlank}")
     private String userId;
 
     @NotNull(message = "{field.isNull}")
     @NotBlank(message = "{field.bet.blankMatchDay}")
     private String matchDay;
-
-    private String gameId;
-
-    private LocalDateTime gameDate;
 
     @NotNull(message = "{field.isNull}")
     @NotBlank(message = "{field.bet.blankHomeTeam}")
@@ -45,7 +48,15 @@ public class EditedBetDto {
     @Min(value = 1, message = "{field.bet.betSizeMinValue}")
     private Integer betSize;
 
-    @NotNull(message = "{field..bet.blankCalendarNodeId}")
+    private String gameResult;
+
+    @NotNull(message = "{field.isNull}")
+    @NotBlank(message = "{field.bet.blankBetStatus}")
+    private String betStatus;
+
+    String prevCalendarNodeId;
+
+    @NotNull(message = "{field.bet.blankCalendarNodeId}")
     @NotBlank(message = "{field.bet.blankCalendarNodeId}")
     private String calendarNodeId;
 }
