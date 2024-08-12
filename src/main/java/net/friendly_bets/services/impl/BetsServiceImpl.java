@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
@@ -53,7 +54,7 @@ public class BetsServiceImpl implements BetsService {
         Team homeTeam = getTeamOrThrow(teamsRepository, newBet.getHomeTeamId());
         Team awayTeam = getTeamOrThrow(teamsRepository, newBet.getAwayTeamId());
 
-        if (betsRepository.existsBySeasonIdAndLeagueIdAndUserAndMatchDayAndHomeTeamAndAwayTeamAndBetTitleAndBetOddsAndBetSize(
+        if (betsRepository.existsBySeasonIdAndLeagueIdAndUserAndMatchDayAndHomeTeamAndAwayTeamAndBetTitleAndBetOddsAndBetSizeAndBetStatusIn(
                 season.getId(),
                 league.getId(),
                 user,
@@ -62,7 +63,8 @@ public class BetsServiceImpl implements BetsService {
                 awayTeam,
                 newBet.getBetTitle(),
                 newBet.getBetOdds(),
-                newBet.getBetSize()
+                newBet.getBetSize(),
+                Arrays.asList(Bet.BetStatus.OPENED, Bet.BetStatus.WON, Bet.BetStatus.RETURNED, Bet.BetStatus.LOST)
         )) {
             throw new ConflictException("betAlreadyAdded");
         }
@@ -214,14 +216,6 @@ public class BetsServiceImpl implements BetsService {
 
     @Override
     public BetsPage getCompletedBets(String seasonId, String playerId, String leagueId, Pageable pageable) {
-//        Page<Bet> betsPage = betsRepository.findAllByBetStatusIn(desiredStatuses, pageable);
-
-//        mongoOperations.indexOps(Bet.class).ensureIndex(new Index().on("user", Sort.Direction.ASC));
-//        mongoOperations.indexOps(Bet.class).ensureIndex(new Index().on("league", Sort.Direction.ASC));
-//        mongoOperations.indexOps(Bet.class).ensureIndex(new Index().on("betStatus", Sort.Direction.ASC));
-//        mongoOperations.indexOps(Bet.class).ensureIndex(new Index().on("createdAt", Sort.Direction.DESC));
-//        mongoOperations.indexOps(Bet.class).ensureIndex(new Index().on("betResultAddedAt", Sort.Direction.DESC));
-
         List<Bet.BetStatus> desiredStatuses = List.of(Bet.BetStatus.WON, Bet.BetStatus.RETURNED,
                 Bet.BetStatus.LOST, Bet.BetStatus.EMPTY);
 
@@ -243,20 +237,6 @@ public class BetsServiceImpl implements BetsService {
             throw new BadRequestException("invalidRequest");
         }
 
-//        Criteria criteria = new Criteria();
-//        // TODO: Добавить фильтр по сезону
-//        Optional<League> leagueOptional = leagueName != null ? leaguesRepository.findByDisplayNameRu(leagueName) : Optional.empty();
-//        leagueOptional.ifPresent(league -> criteria.and("league").is(league.getId()));
-//        Optional<User> userOptional = playerName != null ? usersRepository.findByUsername(playerName) : Optional.empty();
-//        userOptional.ifPresent(user -> criteria.and("user").is(user.getId()));
-//        criteria.and("betStatus").in(desiredStatuses);
-
-//        Query query = new Query(criteria).with(pageable);
-//        List<Bet> completedBets = mongoOperations.find(query, Bet.class);
-//        Page<Bet> page = new PageImpl<>(completedBets, pageable, completedBets.size());
-//        int totalPages = page.getTotalPages();
-//        int totalAmountBets = (int) page.getTotalElements();
-
         return BetsPage.builder()
                 .bets(BetDto.from(completedBetsPage.getContent()))
                 .totalPages(completedBetsPage.getTotalPages())
@@ -271,15 +251,6 @@ public class BetsServiceImpl implements BetsService {
                 Bet.BetStatus.LOST, Bet.BetStatus.EMPTY);
 
         Page<Bet> allBets = betsRepository.findAllBySeason_IdAndBetStatusIn(seasonId, desiredStatuses, pageable);
-
-//        Criteria criteria = new Criteria();
-//        // TODO: Добавить фильтр по сезону
-//        criteria.and("betStatus").in(desiredStatuses);
-//
-//        Query query = new Query(criteria).with(pageable);
-//        List<Bet> allBets = mongoOperations.find(query, Bet.class);
-//        Page<Bet> page = new PageImpl<>(allBets, pageable, allBets.size());
-
 
         return BetsPage.builder()
                 .bets(BetDto.from(allBets.getContent()))
@@ -319,9 +290,7 @@ public class BetsServiceImpl implements BetsService {
         }
         return Bet.builder()
                 .user(bet.getUser())
-                .isPlayoff(bet.getIsPlayoff())
                 .matchDay(bet.getMatchDay())
-                .playoffRound(bet.getPlayoffRound())
                 .homeTeam(bet.getHomeTeam())
                 .awayTeam(bet.getAwayTeam())
                 .betTitle(bet.getBetTitle())
