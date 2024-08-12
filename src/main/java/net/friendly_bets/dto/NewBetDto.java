@@ -48,7 +48,7 @@ public class NewBetDto {
     @Min(value = 1, message = "{field.bet.betSizeMinValue}")
     private Integer betSize;
 
-    @NotNull(message = "{field..bet.blankCalendarNodeId}")
+    @NotNull(message = "{field.bet.blankCalendarNodeId}")
     @NotBlank(message = "{field.bet.blankCalendarNodeId}")
     private String calendarNodeId;
 }

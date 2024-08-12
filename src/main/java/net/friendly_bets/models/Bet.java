@@ -44,20 +44,8 @@ public class Bet {
     @Field(name = "league")
     private League league;
 
-    @Field(name = "is_playoff")
-    private Boolean isPlayoff;
-
     @Field(name = "match_day")
     private String matchDay;
-
-    @Field(name = "playoff_round")
-    private String playoffRound;
-
-    @Field(name = "game_id")
-    private String gameId;
-
-    @Field(name = "game_date")
-    private LocalDateTime gameDate;
 
     @DBRef(lazy = true)
     @Field(name = "home_team")
