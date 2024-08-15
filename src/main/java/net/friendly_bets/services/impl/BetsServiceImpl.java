@@ -119,8 +119,6 @@ public class BetsServiceImpl implements BetsService {
                 .matchDay(newEmptyBet.getMatchDay())
                 .betSize(newEmptyBet.getBetSize())
                 .betStatus(Bet.BetStatus.EMPTY)
-                .betResultAddedAt(LocalDateTime.now())
-                .betResultAddedBy(moderator)
                 .balanceChange(-Double.valueOf(newEmptyBet.getBetSize()))
                 .calendarNodeId(newEmptyBet.getCalendarNodeId())
                 .build();
