@@ -74,7 +74,50 @@ public class BetDto {
 
 
     public static BetDto from(Bet bet) {
-        if (bet.getBetStatus().equals(Bet.BetStatus.EMPTY) || bet.getBetStatus().equals(Bet.BetStatus.DELETED)) {
+        if (bet.getBetStatus().equals(Bet.BetStatus.WON)
+                || bet.getBetStatus().equals(Bet.BetStatus.RETURNED)
+                || bet.getBetStatus().equals(Bet.BetStatus.LOST)) {
+            return BetDto.builder()
+                    .id(bet.getId())
+                    .seasonId(bet.getSeason().getId())
+                    .leagueId(bet.getLeague().getId())
+                    .leagueCode(bet.getLeague().getLeagueCode().toString())
+                    .createdAt(bet.getCreatedAt())
+                    .player(UserSimpleDto.from(bet.getUser()))
+                    .matchDay(bet.getMatchDay())
+                    .homeTeam(TeamDto.from(bet.getHomeTeam()))
+                    .awayTeam(TeamDto.from(bet.getAwayTeam()))
+                    .betTitle(bet.getBetTitle())
+                    .betOdds(bet.getBetOdds())
+                    .betSize(bet.getBetSize())
+                    .betResultAddedAt(bet.getBetResultAddedAt())
+                    .gameResult(bet.getGameResult())
+                    .betStatus(bet.getBetStatus().toString())
+                    .balanceChange(bet.getBalanceChange())
+                    .updatedAt(bet.getUpdatedAt())
+                    .calendarNodeId(bet.getCalendarNodeId())
+                    .build();
+        }
+        if (bet.getBetStatus().equals(Bet.BetStatus.OPENED)) {
+            return BetDto.builder()
+                    .id(bet.getId())
+                    .seasonId(bet.getSeason().getId())
+                    .leagueId(bet.getLeague().getId())
+                    .leagueCode(bet.getLeague().getLeagueCode().toString())
+                    .createdAt(bet.getCreatedAt())
+                    .player(UserSimpleDto.from(bet.getUser()))
+                    .matchDay(bet.getMatchDay())
+                    .homeTeam(TeamDto.from(bet.getHomeTeam()))
+                    .awayTeam(TeamDto.from(bet.getAwayTeam()))
+                    .betTitle(bet.getBetTitle())
+                    .betOdds(bet.getBetOdds())
+                    .betSize(bet.getBetSize())
+                    .betStatus(Bet.BetStatus.OPENED.toString())
+                    .updatedAt(bet.getUpdatedAt())
+                    .calendarNodeId(bet.getCalendarNodeId())
+                    .build();
+        }
+        if (bet.getBetStatus().equals(Bet.BetStatus.EMPTY)) {
             return BetDto.builder()
                     .id(bet.getId())
                     .seasonId(bet.getSeason().getId())
@@ -84,33 +127,21 @@ public class BetDto {
                     .player(UserSimpleDto.from(bet.getUser()))
                     .matchDay(bet.getMatchDay())
                     .betSize(bet.getBetSize())
-                    .gameResult(bet.getGameResult())
-                    .betResultAddedAt(bet.getBetResultAddedAt())
-                    .betStatus(bet.getBetStatus().toString())
+                    .betStatus(Bet.BetStatus.EMPTY.toString())
                     .balanceChange(bet.getBalanceChange())
-                    .updatedAt(bet.getUpdatedAt())
+                    .calendarNodeId(bet.getCalendarNodeId())
+                    .build();
+        }
+        if (bet.getBetStatus().equals(Bet.BetStatus.DELETED)) {
+            return BetDto.builder()
+                    .id(bet.getId())
+                    .seasonId(bet.getSeason().getId())
+                    .betStatus(Bet.BetStatus.DELETED.toString())
                     .calendarNodeId(bet.getCalendarNodeId())
                     .build();
         }
         return BetDto.builder()
                 .id(bet.getId())
-                .seasonId(bet.getSeason().getId())
-                .leagueId(bet.getLeague().getId())
-                .leagueCode(bet.getLeague().getLeagueCode().toString())
-                .createdAt(bet.getCreatedAt())
-                .player(UserSimpleDto.from(bet.getUser()))
-                .matchDay(bet.getMatchDay())
-                .homeTeam(TeamDto.from(bet.getHomeTeam()))
-                .awayTeam(TeamDto.from(bet.getAwayTeam()))
-                .betTitle(bet.getBetTitle())
-                .betOdds(bet.getBetOdds())
-                .betSize(bet.getBetSize())
-                .betResultAddedAt(bet.getBetResultAddedAt())
-                .gameResult(bet.getGameResult())
-                .betStatus(bet.getBetStatus().toString())
-                .balanceChange(bet.getBalanceChange())
-                .updatedAt(bet.getUpdatedAt())
-                .calendarNodeId(bet.getCalendarNodeId())
                 .build();
     }
 
