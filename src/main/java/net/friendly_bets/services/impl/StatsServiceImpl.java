@@ -44,7 +44,7 @@ public class StatsServiceImpl implements StatsService {
 
         List<PlayerStats> resultStats = season.getPlayers().stream()
                 .map(user -> getPlayerStatsOrNull(playerStatsRepository, seasonId, TOTAL_ID, user))
-                .filter(playerStats -> playerStats.getTotalBets() > 0)
+                .filter(playerStats -> playerStats != null && playerStats.getTotalBets() > 0)
                 .collect(Collectors.toList());
 
         return new AllPlayersStatsPage(PlayerStatsDto.from(resultStats));
