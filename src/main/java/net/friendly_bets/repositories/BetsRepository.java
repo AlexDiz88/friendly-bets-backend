@@ -2,46 +2,34 @@ package net.friendly_bets.repositories;
 
 import net.friendly_bets.models.Bet;
 import net.friendly_bets.models.League;
-import net.friendly_bets.models.Team;
-import net.friendly_bets.models.User;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.data.mongodb.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 
 
 public interface BetsRepository extends MongoRepository<Bet, String> {
 
-    boolean existsByUserAndMatchDayAndHomeTeamAndAwayTeamAndBetTitleAndBetOddsAndBetSize(
-            User user,
-            String matchDay,
-            Team homeTeam,
-            Team awayTeam,
-            String betTitle,
-            Double betOdds,
-            Integer betSize
-    );
-
-    boolean existsBySeasonIdAndLeagueIdAndUserAndMatchDayAndHomeTeamAndAwayTeamAndBetTitleAndBetOddsAndBetSizeAndBetStatusIn(
+    boolean existsBySeason_IdAndLeague_IdAndUser_IdAndMatchDayAndHomeTeam_IdAndAwayTeam_IdAndBetStatusIn(
             String seasonId,
             String leagueId,
-            User user,
+            String userId,
             String matchDay,
-            Team homeTeam,
-            Team awayTeam,
-            String betTitle,
-            Double betOdds,
-            Integer betSize,
+            String homeTeamId,
+            String awayTeamId,
             List<Bet.BetStatus> betStatuses
     );
 
-    boolean existsByUserAndMatchDayAndHomeTeamAndAwayTeamAndBetTitleAndBetOddsAndBetSizeAndGameResultAndBetStatus(
-            User user,
+    boolean existsBySeason_IdAndLeague_IdAndUser_IdAndMatchDayAndHomeTeam_IdAndAwayTeam_IdAndBetTitleAndBetOddsAndBetSizeAndGameResultAndBetStatus(
+            String seasonId,
+            String leagueId,
+            String userId,
             String matchDay,
-            Team homeTeam,
-            Team awayTeam,
+            String homeTeamId,
+            String awayTeamId,
             String betTitle,
             Double betOdds,
             Integer betSize,
@@ -55,19 +43,6 @@ public interface BetsRepository extends MongoRepository<Bet, String> {
 
     List<Bet> findAllBySeason_IdAndBetStatus(String seasonId, Bet.BetStatus betStatus);
 
-    Page<Bet> findAllByBetStatusIn(List<Bet.BetStatus> betStatuses, Pageable pageable);
-
-    Page<Bet> findAllByBetStatusInAndLeague_IdAndUser_Id(List<Bet.BetStatus> betStatuses, String leagueId, String userId, Pageable pageable);
-
-    Page<Bet> findAllByBetStatusInAndLeague_Id(List<Bet.BetStatus> betStatuses, String leagueId, Pageable pageable);
-
-    Page<Bet> findAllByBetStatusInAndUser_Id(List<Bet.BetStatus> betStatuses, String userId, Pageable pageable);
-
-    List<Bet> findAllByUser_IdAndLeague_IdAndBetStatusIn(String userId, String leagueId, List<Bet.BetStatus> betStatuses, Pageable pageable);
-
-    @Query("{ 'user.username' : ?0, 'league.displayNameRu' : ?1, 'betStatus' : { $in : ?2 } }")
-    List<Bet> findAllByUser_UsernameAndLeague_DisplayNameRuAndBetStatusIn(String username, String leagueName, List<Bet.BetStatus> betStatuses, Pageable pageable);
-
     Page<Bet> findAllBySeason_IdAndBetStatusIn(String seasonId, List<Bet.BetStatus> betStatuses, Pageable pageable);
 
     Page<Bet> findAllBySeason_IdAndBetStatusInAndLeague_IdAndUser_Id(String seasonId, List<Bet.BetStatus> betStatuses, String leagueId, String userId, Pageable pageable);
@@ -75,4 +50,16 @@ public interface BetsRepository extends MongoRepository<Bet, String> {
     Page<Bet> findAllBySeason_IdAndBetStatusInAndLeague_Id(String seasonId, List<Bet.BetStatus> betStatuses, String leagueId, Pageable pageable);
 
     Page<Bet> findAllBySeason_IdAndBetStatusInAndUser_Id(String seasonId, List<Bet.BetStatus> betStatuses, String userId, Pageable pageable);
+
+    @Query("SELECT b FROM Bet b WHERE b.season.id = :seasonId " +
+            "AND b.betStatus IN :betStatuses " +
+            "AND (:playerId IS NULL OR b.user.id = :playerId) " +
+            "AND (:leagueId IS NULL OR b.league.id = :leagueId) " +
+            "ORDER BY COALESCE(b.betResultAddedAt, b.createdAt) DESC")
+    Page<Bet> findAllBySeasonIdAndBetStatusIn(
+            @Param("seasonId") String seasonId,
+            @Param("betStatuses") List<Bet.BetStatus> betStatuses,
+            @Param("playerId") String playerId,
+            @Param("leagueId") String leagueId,
+            Pageable pageable);
 }

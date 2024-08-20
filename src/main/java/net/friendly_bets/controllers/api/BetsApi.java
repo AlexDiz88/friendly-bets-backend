@@ -35,7 +35,7 @@ public interface BetsApi {
             )
     })
     ResponseEntity<BetDto> addBet(@Parameter(hidden = true) AuthenticatedUser currentUser,
-                                  @Parameter(description = "новая ставка") @Valid NewBetDto newBet);
+                                  @Parameter(description = "новая ставка") @Valid NewBet newBet);
 
     // ------------------------------------------------------------------------------------------------------ //
 
@@ -55,7 +55,7 @@ public interface BetsApi {
             )
     })
     ResponseEntity<BetDto> addEmptyBet(@Parameter(hidden = true) AuthenticatedUser currentUser,
-                                       @Parameter(description = "новая пустая ставка") @Valid NewEmptyBetDto newEmptyBet);
+                                       @Parameter(description = "новая пустая ставка") @Valid NewEmptyBet newEmptyBet);
 
     // ------------------------------------------------------------------------------------------------------ //
 
@@ -76,7 +76,7 @@ public interface BetsApi {
     })
     ResponseEntity<BetDto> setBetResult(@Parameter(hidden = true) AuthenticatedUser currentUser,
                                         @Parameter(description = "ID ставки") String betId,
-                                        @Parameter(description = "результат матча и статус ставки") @Valid NewBetResult newBetResult);
+                                        @Parameter(description = "результат матча и статус ставки") @Valid BetResult betResult);
 
     // ------------------------------------------------------------------------------------------------------ //
 

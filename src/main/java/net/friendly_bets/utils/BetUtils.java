@@ -1,0 +1,250 @@
+package net.friendly_bets.utils;
+
+import lombok.AccessLevel;
+import lombok.experimental.FieldDefaults;
+import lombok.experimental.UtilityClass;
+import net.friendly_bets.dto.BetResult;
+import net.friendly_bets.dto.EditedBetDto;
+import net.friendly_bets.dto.NewBet;
+import net.friendly_bets.dto.NewEmptyBet;
+import net.friendly_bets.exceptions.BadRequestException;
+import net.friendly_bets.exceptions.ConflictException;
+import net.friendly_bets.models.*;
+import net.friendly_bets.repositories.BetsRepository;
+import net.friendly_bets.repositories.CalendarsRepository;
+import net.friendly_bets.repositories.LeaguesRepository;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.regex.Pattern;
+
+import static net.friendly_bets.utils.Constants.COMPLETED_BET_STATUSES;
+import static net.friendly_bets.utils.Constants.WRL_STATUSES;
+import static net.friendly_bets.utils.GetEntityOrThrow.getListOfCalendarNodesBySeasonOrThrow;
+
+@UtilityClass
+@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
+public class BetUtils {
+    private static final String SCORE_PATTERN = "^\\d+:\\d+ \\(\\d+:\\d+\\)$";
+    private static final String SCORE_OT_PATTERN = "^\\d+:\\d+ \\(\\d+:\\d+\\) \\[доп\\.\\d+:\\d+\\]$";
+    private static final String SCORE_PENALTY_PATTERN = "^\\d+:\\d+ \\(\\d+:\\d+\\) \\[доп\\.\\d+:\\d+, пен\\.\\d+:\\d+\\]$";
+
+
+    public static void checkGameResult(String score) {
+        if (score == null || score.isBlank()) {
+            throw new BadRequestException("gamescoreIsBlank");
+        }
+        if (!Pattern.matches(SCORE_PATTERN, score) && !Pattern.matches(SCORE_OT_PATTERN, score) && !Pattern.matches(SCORE_PENALTY_PATTERN, score)) {
+            throw new BadRequestException("invalidGamescore");
+        }
+    }
+
+    public static void validateBet(NewBet newBet) {
+        checkTeams(newBet.getHomeTeamId(), newBet.getAwayTeamId());
+        checkBetOdds(newBet.getBetOdds());
+    }
+
+    public static void checkTeams(String homeTeamId, String awayTeamId) {
+        if (homeTeamId.equals(awayTeamId)) {
+            throw new BadRequestException("homeTeamCannotBeEqualAwayTeam");
+        }
+    }
+
+    public static void checkBetOdds(Double betOdds) {
+        if (betOdds.isNaN()) {
+            throw new BadRequestException("betCoefIsNotNumber");
+        }
+        if (betOdds <= 1) {
+            throw new BadRequestException("betCoefCannotBeLessThan");
+        }
+    }
+
+    public static void checkIfBetAlreadyExists(BetsRepository betsRepo, NewBet newBet) {
+        if (betsRepo.existsBySeason_IdAndLeague_IdAndUser_IdAndMatchDayAndHomeTeam_IdAndAwayTeam_IdAndBetStatusIn(
+                newBet.getSeasonId(),
+                newBet.getLeagueId(),
+                newBet.getUserId(),
+                newBet.getMatchDay(),
+                newBet.getHomeTeamId(),
+                newBet.getAwayTeamId(),
+                Arrays.asList(Bet.BetStatus.OPENED, Bet.BetStatus.WON, Bet.BetStatus.RETURNED, Bet.BetStatus.LOST))) {
+            throw new ConflictException("betAlreadyAdded");
+        }
+    }
+
+    public static void checkIfBetAlreadyEdited(BetsRepository betsRepo, EditedBetDto editedBet, Bet.BetStatus betStatus) {
+        if (betsRepo.existsBySeason_IdAndLeague_IdAndUser_IdAndMatchDayAndHomeTeam_IdAndAwayTeam_IdAndBetTitleAndBetOddsAndBetSizeAndGameResultAndBetStatus(
+                editedBet.getSeasonId(),
+                editedBet.getLeagueId(),
+                editedBet.getUserId(),
+                editedBet.getMatchDay(),
+                editedBet.getHomeTeamId(),
+                editedBet.getAwayTeamId(),
+                editedBet.getBetTitle(),
+                editedBet.getBetOdds(),
+                editedBet.getBetSize(),
+                editedBet.getGameResult(),
+                betStatus)) {
+            throw new ConflictException("betAlreadyEdited");
+        }
+    }
+
+    public static Bet createNewOpenedBet(NewBet newOpenedBet, User moderator, User user, Season season, League league, Team homeTeam, Team awayTeam) {
+        return Bet.builder()
+                .createdAt(LocalDateTime.now())
+                .createdBy(moderator)
+                .user(user)
+                .season(season)
+                .league(league)
+                .matchDay(newOpenedBet.getMatchDay())
+                .homeTeam(homeTeam)
+                .awayTeam(awayTeam)
+                .betTitle(newOpenedBet.getBetTitle())
+                .betOdds(newOpenedBet.getBetOdds())
+                .betSize(newOpenedBet.getBetSize())
+                .betStatus(Bet.BetStatus.OPENED)
+                .calendarNodeId(newOpenedBet.getCalendarNodeId())
+                .build();
+    }
+
+    public static Bet createNewEmptyBet(NewEmptyBet newEmptyBet, User moderator, User user, Season season, League league) {
+        return Bet.builder()
+                .createdAt(LocalDateTime.now())
+                .createdBy(moderator)
+                .user(user)
+                .season(season)
+                .league(league)
+                .matchDay(newEmptyBet.getMatchDay())
+                .betSize(newEmptyBet.getBetSize())
+                .betResultAddedAt(LocalDateTime.now())
+                .betStatus(Bet.BetStatus.EMPTY)
+                .balanceChange(-Double.valueOf(newEmptyBet.getBetSize()))
+                .calendarNodeId(newEmptyBet.getCalendarNodeId())
+                .build();
+    }
+
+    public static Bet getPreviousStateOfBet(Bet bet) {
+        if (bet.getBetStatus().equals(Bet.BetStatus.EMPTY) || bet.getBetStatus().equals(Bet.BetStatus.DELETED)) {
+            throw new BadRequestException("emptyAndDeletedBetsCannotBeEdited");
+        }
+        return Bet.builder()
+                .user(bet.getUser())
+                .matchDay(bet.getMatchDay())
+                .homeTeam(bet.getHomeTeam())
+                .awayTeam(bet.getAwayTeam())
+                .betTitle(bet.getBetTitle())
+                .betOdds(bet.getBetOdds())
+                .betSize(bet.getBetSize())
+                .betStatus(bet.getBetStatus())
+                .gameResult(bet.getGameResult())
+                .balanceChange(bet.getBalanceChange())
+                .build();
+    }
+
+    @Transactional
+    public static void updateLeagueCurrentMatchDay(LeaguesRepository leaguesRepository, BetsRepository betsRepository, Season season, League league) {
+        if (season.getPlayers() == null || season.getPlayers().isEmpty()) {
+            throw new BadRequestException("noPlayersInSeason");
+        }
+        if (season.getBetCountPerMatchDay() == null || season.getBetCountPerMatchDay() == 0) {
+            throw new BadRequestException("nullOrZeroBetCountPerMatchDay");
+        }
+        int totalBets = betsRepository.countBetsByLeagueAndBetStatusNot(league, Bet.BetStatus.DELETED);
+        int currentMatchDay = totalBets / (season.getPlayers().size() * season.getBetCountPerMatchDay()) + 1;
+
+        if (!league.getCurrentMatchDay().equals(String.valueOf(currentMatchDay))) {
+            league.setCurrentMatchDay(String.valueOf(currentMatchDay));
+            leaguesRepository.save(league);
+        }
+    }
+
+    public static void processBetResultValues(User moderator, Bet bet, BetResult betResult) {
+        Bet.BetStatus betStatus = Bet.BetStatus.valueOf(betResult.getBetStatus());
+        updateBalanceChange(bet, betStatus, bet.getBetSize(), bet.getBetOdds());
+        bet.setBetResultAddedAt(LocalDateTime.now());
+        bet.setBetResultAddedBy(moderator);
+        bet.setBetStatus(betStatus);
+        bet.setGameResult(betResult.getGameResult());
+    }
+
+    public static void updateBalanceChange(Bet bet, Bet.BetStatus betStatus, Integer betSize, Double betOdds) {
+        if (betStatus == Bet.BetStatus.WON) {
+            bet.setBalanceChange(betOdds * betSize - betSize);
+        }
+        if (betStatus == Bet.BetStatus.RETURNED) {
+            bet.setBalanceChange(0.0);
+        }
+        if (betStatus == Bet.BetStatus.LOST) {
+            bet.setBalanceChange(-Double.valueOf(betSize));
+        }
+    }
+
+    public static void updateEditedBetValues(BetsRepository betsRepo, Bet bet, EditedBetDto editedBet, User moderator, User user, Team homeTeam, Team awayTeam) {
+        updateBalanceChangeAndGameResultAndBetStatus(betsRepo, bet, editedBet);
+        updateBetDetails(bet, moderator, user, editedBet, homeTeam, awayTeam);
+    }
+
+    public static void updateBalanceChangeAndGameResultAndBetStatus(BetsRepository betsRepository, Bet bet, EditedBetDto editedBet) {
+        Bet.BetStatus betStatus = Bet.BetStatus.valueOf(editedBet.getBetStatus());
+        checkIfBetAlreadyEdited(betsRepository, editedBet, betStatus);
+
+        if (WRL_STATUSES.contains(bet.getBetStatus())) {
+            checkGameResult(editedBet.getGameResult());
+            updateBalanceChange(bet, betStatus, editedBet.getBetSize(), editedBet.getBetOdds());
+            bet.setGameResult(editedBet.getGameResult());
+        }
+
+        bet.setBetStatus(betStatus);
+    }
+
+    public static void updateBetDetails(Bet bet, User moderator, User user, EditedBetDto editedBet, Team homeTeam, Team awayTeam) {
+        bet.setUpdatedAt(LocalDateTime.now());
+        bet.setUpdatedBy(moderator);
+        bet.setUser(user);
+        bet.setMatchDay(editedBet.getMatchDay());
+        bet.setHomeTeam(homeTeam);
+        bet.setAwayTeam(awayTeam);
+        bet.setBetTitle(editedBet.getBetTitle());
+        bet.setBetOdds(editedBet.getBetOdds());
+        bet.setBetSize(editedBet.getBetSize());
+    }
+
+    public static void updateDeletedBetValues(Bet bet, User moderator) {
+        bet.setUpdatedAt(LocalDateTime.now());
+        bet.setUpdatedBy(moderator);
+        if (COMPLETED_BET_STATUSES.contains(bet.getBetStatus())) {
+            bet.setBalanceChange(0.0);
+        }
+    }
+
+    public static void datesRangeValidation(LocalDate startDate, LocalDate endDate) {
+        if (startDate.isAfter(endDate)) {
+            throw new ConflictException("startDateMustBeBeforeOrEqualToEndDate");
+        }
+    }
+
+    public static void leagueMatchdaysValidation(CalendarsRepository calendarsRepository, List<LeagueMatchdayNode> matchdayNodes, String seasonId) {
+        Set<String> uniqueCombinations = new HashSet<>();
+        List<CalendarNode> calendarNodes = getListOfCalendarNodesBySeasonOrThrow(calendarsRepository, seasonId);
+
+        for (CalendarNode calendarNode : calendarNodes) {
+            List<LeagueMatchdayNode> leagueMatchdayNodes = calendarNode.getLeagueMatchdayNodes();
+            for (LeagueMatchdayNode leagueMatchdayNode : leagueMatchdayNodes) {
+                String combination = leagueMatchdayNode.getLeagueId() + leagueMatchdayNode.getMatchDay();
+                uniqueCombinations.add(combination);
+            }
+        }
+
+        for (LeagueMatchdayNode node : matchdayNodes) {
+            String combination = node.getLeagueId() + node.getMatchDay();
+            if (!uniqueCombinations.add(combination)) {
+                throw new ConflictException("Выбранная лига с указанным туром уже добавлена в календарь - " + node.getLeagueCode() + " " + node.getMatchDay());
+            }
+        }
+    }
+}

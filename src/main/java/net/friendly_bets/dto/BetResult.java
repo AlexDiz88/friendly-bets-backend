@@ -10,7 +10,7 @@ import javax.validation.constraints.NotNull;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class NewBetResult {
+public class BetResult {
 
     @NotNull(message = "{field.isNull}")
     @NotBlank(message = "{field.bet.blankBetGameResult}")

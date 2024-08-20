@@ -5,7 +5,7 @@ import net.friendly_bets.dto.AllPlayersStatsPage;
 import net.friendly_bets.dto.AllStatsByTeamsInSeasonDto;
 import net.friendly_bets.dto.StatsByTeamsDto;
 
-public interface PlayerStatsService {
+public interface StatsService {
 
     AllPlayersStatsPage getAllPlayersStatsBySeason(String seasonId);
 
