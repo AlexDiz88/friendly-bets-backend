@@ -22,13 +22,14 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
-import static net.friendly_bets.utils.BetValuesUtils.datesRangeValidation;
-import static net.friendly_bets.utils.BetValuesUtils.leagueMatchdaysValidation;
+import static net.friendly_bets.utils.BetUtils.datesRangeValidation;
+import static net.friendly_bets.utils.BetUtils.leagueMatchdaysValidation;
 import static net.friendly_bets.utils.GetEntityOrThrow.*;
 
 @RequiredArgsConstructor
 @Service
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
+@Transactional
 public class CalendarsServiceImpl implements CalendarsService {
 
     CalendarsRepository calendarsRepository;
@@ -73,7 +74,6 @@ public class CalendarsServiceImpl implements CalendarsService {
     // ------------------------------------------------------------------------------------------------------ //
 
     @Override
-    @Transactional
     public CalendarNodeDto createCalendarNode(NewCalendarNodeDto newCalendarNode) {
         getSeasonOrThrow(seasonsRepository, newCalendarNode.getSeasonId());
         datesRangeValidation(newCalendarNode.getStartDate(), newCalendarNode.getEndDate());
@@ -97,7 +97,6 @@ public class CalendarsServiceImpl implements CalendarsService {
 
 
     @Override
-    @Transactional
     public CalendarNodeDto addBetToCalendarNode(String betId, String calendarNodeId, String leagueId) {
         CalendarNode calendarNode = getCalendarNodeOrThrow(calendarsRepository, calendarNodeId);
         Bet bet = getBetOrThrow(betsRepository, betId);
@@ -143,7 +142,6 @@ public class CalendarsServiceImpl implements CalendarsService {
     // ------------------------------------------------------------------------------------------------------ //
 
     @Override
-    @Transactional
     public CalendarNodeDto deleteCalendarNode(String calendarNodeId) {
         CalendarNode calendarNode = getCalendarNodeOrThrow(calendarsRepository, calendarNodeId);
 
@@ -159,7 +157,6 @@ public class CalendarsServiceImpl implements CalendarsService {
     // ------------------------------------------------------------------------------------------------------ //
 
     @Override
-    @Transactional
     public CalendarNodeDto deleteBetInCalendarNode(String calendarNodeId, String betId) {
         CalendarNode calendarNode = getCalendarNodeOrThrow(calendarsRepository, calendarNodeId);
         boolean betFound = false;
@@ -187,7 +184,6 @@ public class CalendarsServiceImpl implements CalendarsService {
 
     // TODO: удалить метод после рефакторинга базы данных (добавление calendarNodeId в ставки в старых сезонах)
     @Override
-    @Transactional
     public CalendarNodeDto deleteBetInCalendars(String seasonId, String betId) {
         List<CalendarNode> calendarNodes = getListOfCalendarNodesBySeasonOrThrow(calendarsRepository, seasonId);
 
@@ -220,4 +216,27 @@ public class CalendarsServiceImpl implements CalendarsService {
     }
 
     // ------------------------------------------------------------------------------------------------------ //
+
+    public void updateCalendar(Bet bet, EditedBetDto editedBet) {
+        if (!editedBet.getCalendarNodeId().equals(editedBet.getPrevCalendarNodeId())) {
+            deleteBetFromCalendar(bet, editedBet.getPrevCalendarNodeId());
+            bet.setCalendarNodeId(editedBet.getCalendarNodeId());
+            addBetToCalendarNode(bet.getId(), editedBet.getCalendarNodeId(), editedBet.getLeagueId());
+        }
+    }
+
+    // ------------------------------------------------------------------------------------------------------ //
+
+    public void deleteBetFromCalendar(Bet bet, String calendarNodeId) {
+        // TODO: убрать временное решение. Оставить только deleteBetInCalendarNode
+        if (calendarNodeId == null || calendarNodeId.isBlank()) {
+            deleteBetInCalendars(bet.getSeason().getId(), bet.getId());
+        } else {
+            deleteBetInCalendarNode(calendarNodeId, bet.getId());
+        }
+    }
+
+    // ------------------------------------------------------------------------------------------------------ //
+
+
 }

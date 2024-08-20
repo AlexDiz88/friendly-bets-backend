@@ -25,7 +25,7 @@ public class BetsController implements BetsApi {
     @PreAuthorize("hasAuthority('ADMIN') || hasAuthority('MODERATOR')")
     @PostMapping("/add")
     public ResponseEntity<BetDto> addBet(@AuthenticationPrincipal AuthenticatedUser currentUser,
-                                         @RequestBody NewBetDto newBet) {
+                                         @RequestBody NewBet newBet) {
         String moderatorId = currentUser.getUser().getId();
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(betsService.addBet(moderatorId, newBet));
@@ -35,7 +35,7 @@ public class BetsController implements BetsApi {
     @PreAuthorize("hasAuthority('ADMIN') || hasAuthority('MODERATOR')")
     @PostMapping("/add/empty")
     public ResponseEntity<BetDto> addEmptyBet(@AuthenticationPrincipal AuthenticatedUser currentUser,
-                                              @RequestBody NewEmptyBetDto newEmptyBet) {
+                                              @RequestBody NewEmptyBet newEmptyBet) {
         String moderatorId = currentUser.getUser().getId();
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(betsService.addEmptyBet(moderatorId, newEmptyBet));
@@ -46,10 +46,10 @@ public class BetsController implements BetsApi {
     @PutMapping("{bet-id}/set-bet-result")
     public ResponseEntity<BetDto> setBetResult(@AuthenticationPrincipal AuthenticatedUser currentUser,
                                                @PathVariable("bet-id") String betId,
-                                               @RequestBody NewBetResult newBetResult) {
+                                               @RequestBody BetResult betResult) {
         String moderatorId = currentUser.getUser().getId();
         return ResponseEntity
-                .ok(betsService.setBetResult(moderatorId, betId, newBetResult));
+                .ok(betsService.setBetResult(moderatorId, betId, betResult));
     }
 
     @Override

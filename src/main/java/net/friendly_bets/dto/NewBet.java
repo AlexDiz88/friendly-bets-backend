@@ -11,8 +11,7 @@ import javax.validation.constraints.NotNull;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class NewEmptyBetDto {
-
+public class NewBet {
 
     @NotNull(message = "{field.isNull}")
     @NotBlank(message = "{field.isBlank}")
@@ -29,6 +28,21 @@ public class NewEmptyBetDto {
     @NotNull(message = "{field.isNull}")
     @NotBlank(message = "{field.bet.blankMatchDay}")
     private String matchDay;
+
+    @NotNull(message = "{field.isNull}")
+    @NotBlank(message = "{field.bet.blankHomeTeam}")
+    private String homeTeamId;
+
+    @NotNull(message = "{field.isNull}")
+    @NotBlank(message = "{field.bet.blankAwayTeam}")
+    private String awayTeamId;
+
+    @NotNull(message = "{field.isNull}")
+    @NotBlank(message = "{field.bet.blankBetTitle}")
+    private String betTitle;
+
+    @NotNull(message = "{field.bet.betOddsIsNull}")
+    private Double betOdds;
 
     @NotNull(message = "{field.bet.betSizeIsNull}")
     @Min(value = 1, message = "{field.bet.betSizeMinValue}")

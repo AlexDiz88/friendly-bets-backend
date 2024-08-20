@@ -23,17 +23,8 @@ public class PlayerStatsByTeamsDto {
     @Schema(description = "ID лиги", example = "12-байтовый хэш ID")
     private String leagueId;
 
-    @Schema(description = "код лиги", example = "BL")
-    private String leagueCode;
-
-    @Schema(description = "фото участника турнира", example = "путь_к_изображению.png")
-    private String avatar;
-
-    @Schema(description = "имя участника турнира", example = "Player")
-    private String username;
-
-    @Schema(description = "флаг статистики по лиге, а не по участнику")
-    private boolean isLeagueStats;
+    @Schema(description = "ID игрока", example = "12-байтовый хэш ID")
+    private String userId;
 
     @Schema(description = "лист статистики по командам")
     private List<TeamStatsDto> teamStats;
@@ -43,10 +34,7 @@ public class PlayerStatsByTeamsDto {
         return PlayerStatsByTeamsDto.builder()
                 .seasonId(playerStatsByTeams.getSeasonId())
                 .leagueId(playerStatsByTeams.getLeagueId())
-                .leagueCode(playerStatsByTeams.getLeagueCode())
-                .avatar(playerStatsByTeams.getUser().getAvatar())
-                .username(playerStatsByTeams.getUser().getUsername())
-                .isLeagueStats(playerStatsByTeams.isLeagueStats())
+                .userId(playerStatsByTeams.getUserId())
                 .teamStats(TeamStatsDto.from(playerStatsByTeams.getTeamStats()))
                 .build();
     }
