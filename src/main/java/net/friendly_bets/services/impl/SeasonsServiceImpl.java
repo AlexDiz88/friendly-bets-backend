@@ -11,9 +11,6 @@ import net.friendly_bets.models.*;
 import net.friendly_bets.repositories.*;
 import net.friendly_bets.services.SeasonsService;
 import org.springframework.data.mongodb.core.MongoTemplate;
-import org.springframework.data.mongodb.core.query.Criteria;
-import org.springframework.data.mongodb.core.query.Query;
-import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -258,57 +255,22 @@ public class SeasonsServiceImpl implements SeasonsService {
 
     // ------------------------------------------------------------------------------------------------------ //
 
-    //    @Override
-    @Transactional
-    public Map<String, String> dbUpdate2() {
-        List<Bet> bets = betsRepository.findAllBySeason_Id("665ddbf7ac235b55b8fa1c7f");
-
-        for (Bet bet : bets) {
-            String gameResultStr = bet.getGameResult();
-            if (gameResultStr != null) {
-                GameResult gameResult = parseGameResult(gameResultStr);
-
-                // Создание объекта Update
-                Update update = new Update();
-
-                // Добавление unset для пустых полей
-                if (gameResult.getOverTime().isBlank()) {
-                    update.unset("overTime");
-                }
-                if (gameResult.getPenalty().isBlank()) {
-                    update.unset("penalty");
-                }
-
-                // Выполнение обновления только если есть изменения
-                if (update.getUpdateObject().size() > 0) {
-                    Query query = new Query(Criteria.where("id").is(bet.getId()));
-                    mongoTemplate.updateFirst(query, update, Bet.class);
-                }
-            }
-        }
-
-        Map<String, String> response = new HashMap<>();
-        response.put("message", "DB update complete");
-        return response;
-    }
-
-
-    //    @Override
+    @Override
     @Transactional
     public Map<String, String> dbUpdate() {
-        List<Bet> bets = betsRepository.findAll();
-
-        for (Bet bet : bets) {
-            String gameResultStr = bet.getGameResult();
-            if (gameResultStr != null) {
-                GameResult gameResult = parseGameResult(gameResultStr);
-
-
-                Update update = new Update().set("gameResult", gameResult);
-                Query query = new Query(Criteria.where("id").is(bet.getId()));
-                mongoTemplate.updateFirst(query, update, Bet.class);
-            }
-        }
+//        List<Bet> bets = betsRepository.findAll();
+//
+//        for (Bet bet : bets) {
+//            String gameResultStr = bet.getGameResult();
+//            if (gameResultStr != null) {
+//                GameResult gameResult = parseGameResult(gameResultStr);
+//
+//
+//                Update update = new Update().set("gameResult", gameResult);
+//                Query query = new Query(Criteria.where("id").is(bet.getId()));
+//                mongoTemplate.updateFirst(query, update, Bet.class);
+//            }
+//        }
 
         Map<String, String> response = new HashMap<>();
         response.put("message", "DB update complete");
@@ -335,7 +297,7 @@ public class SeasonsServiceImpl implements SeasonsService {
                 }
             }
         } else {
-            System.out.println("ERROR! gameResult not valid:" + gameResultStr);
+            throw new BadRequestException("DB update Error");
         }
 
         GameResult.GameResultBuilder builder = GameResult.builder()
@@ -351,7 +313,6 @@ public class SeasonsServiceImpl implements SeasonsService {
 
         return builder.build();
     }
-
 
     // ------------------------------------------------------------------------------------------------------ //
 
