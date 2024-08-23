@@ -3,6 +3,7 @@ package net.friendly_bets.dto;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import net.friendly_bets.models.GameResult;
 
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.NotNull;
@@ -13,8 +14,7 @@ import javax.validation.constraints.NotNull;
 public class BetResult {
 
     @NotNull(message = "{field.isNull}")
-    @NotBlank(message = "{field.bet.blankBetGameResult}")
-    private String gameResult;
+    private GameResult gameResult;
 
     @NotNull(message = "{field.isNull}")
     @NotBlank(message = "{field.bet.blankBetStatus}")

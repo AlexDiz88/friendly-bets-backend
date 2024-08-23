@@ -1,6 +1,7 @@
 package net.friendly_bets.repositories;
 
 import net.friendly_bets.models.Bet;
+import net.friendly_bets.models.GameResult;
 import net.friendly_bets.models.League;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -33,7 +34,7 @@ public interface BetsRepository extends MongoRepository<Bet, String> {
             String betTitle,
             Double betOdds,
             Integer betSize,
-            String gameResult,
+            GameResult gameResult,
             Bet.BetStatus betStatus
     );
 

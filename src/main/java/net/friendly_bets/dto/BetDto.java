@@ -11,6 +11,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import static net.friendly_bets.utils.Constants.WRL_STATUSES;
+
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
@@ -57,8 +59,8 @@ public class BetDto {
     @Schema(description = "время добавления результата ставки", example = "2023-08-15T12:00:00")
     private LocalDateTime betResultAddedAt;
 
-    @Schema(description = "счет матча", example = "2:1 (1:1)")
-    private String gameResult;
+    @Schema(description = "счет матча", example = "{fullTime:'2:1'', firstTime:'1:1'}")
+    private GameResultDto gameResult;
 
     @Schema(description = "статус ставки", example = "OPENED")
     private String betStatus;
@@ -74,9 +76,7 @@ public class BetDto {
 
 
     public static BetDto from(Bet bet) {
-        if (bet.getBetStatus().equals(Bet.BetStatus.WON)
-                || bet.getBetStatus().equals(Bet.BetStatus.RETURNED)
-                || bet.getBetStatus().equals(Bet.BetStatus.LOST)) {
+        if (WRL_STATUSES.contains(bet.getBetStatus())) {
             return BetDto.builder()
                     .id(bet.getId())
                     .seasonId(bet.getSeason().getId())
@@ -91,7 +91,7 @@ public class BetDto {
                     .betOdds(bet.getBetOdds())
                     .betSize(bet.getBetSize())
                     .betResultAddedAt(bet.getBetResultAddedAt())
-                    .gameResult(bet.getGameResult())
+                    .gameResult(GameResultDto.from(bet.getGameResult()))
                     .betStatus(bet.getBetStatus().toString())
                     .balanceChange(bet.getBalanceChange())
                     .updatedAt(bet.getUpdatedAt())

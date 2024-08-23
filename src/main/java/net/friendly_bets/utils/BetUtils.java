@@ -21,7 +21,6 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.regex.Pattern;
 
 import static net.friendly_bets.utils.Constants.COMPLETED_BET_STATUSES;
 import static net.friendly_bets.utils.Constants.WRL_STATUSES;
@@ -30,17 +29,92 @@ import static net.friendly_bets.utils.GetEntityOrThrow.getListOfCalendarNodesByS
 @UtilityClass
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class BetUtils {
-    private static final String SCORE_PATTERN = "^\\d+:\\d+ \\(\\d+:\\d+\\)$";
-    private static final String SCORE_OT_PATTERN = "^\\d+:\\d+ \\(\\d+:\\d+\\) \\[доп\\.\\d+:\\d+\\]$";
-    private static final String SCORE_PENALTY_PATTERN = "^\\d+:\\d+ \\(\\d+:\\d+\\) \\[доп\\.\\d+:\\d+, пен\\.\\d+:\\d+\\]$";
-
-
-    public static void checkGameResult(String score) {
-        if (score == null || score.isBlank()) {
-            throw new BadRequestException("gamescoreIsBlank");
+    public static void checkGameResult(GameResult score) {
+        if (score == null) {
+            throw new BadRequestException("gameResultIsNull");
         }
-        if (!Pattern.matches(SCORE_PATTERN, score) && !Pattern.matches(SCORE_OT_PATTERN, score) && !Pattern.matches(SCORE_PENALTY_PATTERN, score)) {
-            throw new BadRequestException("invalidGamescore");
+        if ((score.getFullTime() == null && score.getFirstTime() == null)
+                || score.getFullTime() == null || score.getFirstTime() == null
+                || score.getFullTime().isBlank() || score.getFirstTime().isBlank()) {
+            throw new BadRequestException("incorrectGameScore");
+        }
+
+        boolean isGameScoreValid = isGameScoreValid(score);
+
+        if (!isGameScoreValid) {
+            throw new BadRequestException("incorrectGameScore");
+        }
+    }
+
+    private static boolean isGameScoreValid(GameResult gameResult) {
+        String fullTime = gameResult.getFullTime();
+        String firstTime = gameResult.getFirstTime();
+        String overTime = gameResult.getOverTime();
+        String penalty = gameResult.getPenalty();
+
+        int[] fullTimeScore = parseScorePart(fullTime);
+        int[] firstTimeScore = parseScorePart(firstTime);
+
+        if (fullTimeScore == null || firstTimeScore == null) {
+            return false;
+        }
+        // Количество голов в 1 тайме не может быть больше голов за весь матч
+        if (fullTimeScore[0] < firstTimeScore[0] || fullTimeScore[1] < firstTimeScore[1]) {
+            return false;
+        }
+
+        if (overTime == null && penalty == null) {
+            return true;
+        }
+        if (overTime != null) {
+            int[] overTimeScore = parseScorePart(overTime);
+
+            if (overTimeScore == null) {
+                return false;
+            }
+            // Если нет пенальти - в дополнительное время не может быть ничьи
+            if (penalty == null) {
+                return overTimeScore[0] != overTimeScore[1];
+            }
+
+            if (penalty != null) {
+                // Если есть пенальти - должна быть ничья в дополнительное время
+                if (overTimeScore[0] != overTimeScore[1]) {
+                    return false;
+                }
+
+                int[] penaltyScore = parseScorePart(penalty);
+                if (penaltyScore == null) {
+                    return false;
+                }
+                // В серии пенальти не может быть ничьи
+                return penaltyScore[0] != penaltyScore[1];
+            }
+        }
+        return false;
+    }
+
+    private static int[] parseScorePart(String score) {
+        if (score == null || score.isEmpty()) {
+            return null;
+        }
+
+        String[] parts = score.split(":");
+        if (parts.length != 2) {
+            return null;
+        }
+
+        try {
+            int home = Integer.parseInt(parts[0]);
+            int away = Integer.parseInt(parts[1]);
+
+            if (home > 50 || away > 50 || (parts[0].length() > 1 && parts[0].startsWith("0")) || (parts[1].length() > 1 && parts[1].startsWith("0"))) {
+                return null;
+            }
+
+            return new int[]{home, away};
+        } catch (NumberFormatException e) {
+            throw new BadRequestException("invalidGameScoreFormat");
         }
     }
 
@@ -164,6 +238,7 @@ public class BetUtils {
     }
 
     public static void processBetResultValues(User moderator, Bet bet, BetResult betResult) {
+
         Bet.BetStatus betStatus = Bet.BetStatus.valueOf(betResult.getBetStatus());
         updateBalanceChange(bet, betStatus, bet.getBetSize(), bet.getBetOdds());
         bet.setBetResultAddedAt(LocalDateTime.now());

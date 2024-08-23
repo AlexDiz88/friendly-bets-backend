@@ -31,8 +31,6 @@ public class BetsServiceImpl implements BetsService {
     BetsRepository betsRepository;
     TeamsRepository teamsRepository;
     UsersRepository usersRepository;
-    PlayerStatsRepository playerStatsRepository;
-    PlayerStatsByTeamsRepository playerStatsByTeamsRepository;
 
     CalendarsServiceImpl calendarsService;
     PlayerStatsService playerStatsService;
@@ -162,6 +160,7 @@ public class BetsServiceImpl implements BetsService {
     public BetDto editBet(String moderatorId, String betId, EditedBetDto editedBet) {
         checkTeams(editedBet.getHomeTeamId(), editedBet.getAwayTeamId());
         checkBetOdds(editedBet.getBetOdds());
+        checkGameResult(editedBet.getGameResult());
 
         User moderator = getUserOrThrow(usersRepository, moderatorId);
         User newUser = getUserOrThrow(usersRepository, editedBet.getUserId());
