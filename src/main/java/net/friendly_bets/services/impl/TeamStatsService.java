@@ -56,7 +56,7 @@ public class TeamStatsService {
     private void modifyTeamStats(TeamStats teamStats, Bet bet, boolean isPlus) {
         updateBetCount(teamStats, isPlus);
         updateBetCountValuesBasedOnBetStatus(teamStats, bet.getBetStatus(), bet.getBetOdds(), isPlus);
-        updateSumOfOddsAndActualBalance(teamStats, bet.getBetOdds(), bet.getBalanceChange(), isPlus);
+        updateSumOfOddsAndActualBalance(teamStats, bet.getBetStatus(), bet.getBetOdds(), bet.getBalanceChange(), isPlus);
         recalculateStats(teamStats);
     }
 

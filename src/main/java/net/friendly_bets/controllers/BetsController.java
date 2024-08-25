@@ -25,10 +25,10 @@ public class BetsController implements BetsApi {
     @PreAuthorize("hasAuthority('ADMIN') || hasAuthority('MODERATOR')")
     @PostMapping("/add")
     public ResponseEntity<BetDto> addBet(@AuthenticationPrincipal AuthenticatedUser currentUser,
-                                         @RequestBody NewBet newBet) {
+                                         @RequestBody NewBet newOpenedBet) {
         String moderatorId = currentUser.getUser().getId();
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(betsService.addBet(moderatorId, newBet));
+                .body(betsService.addOpenedBet(moderatorId, newOpenedBet));
     }
 
     @Override

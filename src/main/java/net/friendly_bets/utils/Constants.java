@@ -8,6 +8,7 @@ import java.util.List;
 @UtilityClass
 public class Constants {
     public static final String TOTAL_ID = "total";
+    public static final String NO_PREVIOUS_CALENDAR_NODE = "noPreviousCalendarNode";
 
     public static final List<Bet.BetStatus> WRL_STATUSES = List.of(
             Bet.BetStatus.WON,

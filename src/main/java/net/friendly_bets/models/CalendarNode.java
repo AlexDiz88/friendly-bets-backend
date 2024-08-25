@@ -41,4 +41,13 @@ public class CalendarNode {
 
     @Field(name = "has_bets")
     private Boolean hasBets;
+
+    @Field(name = "is_finished")
+    private Boolean isFinished;
+
+    @Field(name = "previous_gameweek_id")
+    private String previousGameweekId;
+
+    @Field(name = "gameweek_stats")
+    private List<GameweekStats> gameweekStats;
 }

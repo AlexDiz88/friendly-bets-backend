@@ -35,9 +35,10 @@ public class BetsServiceImpl implements BetsService {
     CalendarsServiceImpl calendarsService;
     PlayerStatsService playerStatsService;
     TeamStatsService teamStatsService;
+    GameweekStatsService gameweekStatsService;
 
     @Override
-    public BetDto addBet(String moderatorId, NewBet newOpenedBet) {
+    public BetDto addOpenedBet(String moderatorId, NewBet newOpenedBet) {
         validateBet(newOpenedBet);
         checkIfBetAlreadyExists(betsRepository, newOpenedBet);
 
@@ -73,6 +74,7 @@ public class BetsServiceImpl implements BetsService {
         updateLeagueCurrentMatchDay(leaguesRepository, betsRepository, season, league);
         calendarsService.addBetToCalendarNode(emptyBet.getId(), newEmptyBet.getCalendarNodeId(), newEmptyBet.getLeagueId());
         playerStatsService.calculateStatsBasedOnEmptyBet(season.getId(), league.getId(), user, newEmptyBet.getBetSize(), true);
+        gameweekStatsService.calculateGameweekStats(newEmptyBet.getCalendarNodeId());
 
         return BetDto.from(emptyBet);
     }
@@ -87,7 +89,7 @@ public class BetsServiceImpl implements BetsService {
             throw new IllegalArgumentException("invalidStatus");
         }
 
-        checkGameResult(betResult.getGameResult());
+        checkGameResult(betResult.getGameResult(), Bet.BetStatus.valueOf(betResult.getBetStatus()));
 
         User moderator = getUserOrThrow(usersRepository, moderatorId);
         Bet bet = getBetOrThrow(betsRepository, betId);
@@ -100,6 +102,7 @@ public class BetsServiceImpl implements BetsService {
 
         playerStatsService.calculateStatsBasedOnBetResult(bet.getSeason().getId(), bet.getLeague().getId(), bet.getUser(), bet, true);
         teamStatsService.calculateStatsByTeams(bet.getSeason().getId(), bet.getLeague().getId(), bet.getUser().getId(), bet, true);
+        gameweekStatsService.calculateGameweekStats(bet.getCalendarNodeId());
 
         return BetDto.from(bet);
     }
@@ -160,7 +163,7 @@ public class BetsServiceImpl implements BetsService {
     public BetDto editBet(String moderatorId, String betId, EditedBetDto editedBet) {
         checkTeams(editedBet.getHomeTeamId(), editedBet.getAwayTeamId());
         checkBetOdds(editedBet.getBetOdds());
-        checkGameResult(editedBet.getGameResult());
+        checkGameResult(editedBet.getGameResult(), Bet.BetStatus.valueOf(editedBet.getBetStatus()));
 
         User moderator = getUserOrThrow(usersRepository, moderatorId);
         User newUser = getUserOrThrow(usersRepository, editedBet.getUserId());
@@ -180,6 +183,7 @@ public class BetsServiceImpl implements BetsService {
         playerStatsService.calculateStatsBasedOnEditedBet(seasonId, leagueId, prevBet.getUser(), prevBet, false);
         teamStatsService.calculateStatsByTeams(seasonId, leagueId, newUser.getId(), bet, true);
         teamStatsService.calculateStatsByTeams(seasonId, leagueId, prevBet.getUser().getId(), prevBet, false);
+        gameweekStatsService.calculateGameweekStats(bet.getCalendarNodeId());
 
         return BetDto.from(bet);
     }

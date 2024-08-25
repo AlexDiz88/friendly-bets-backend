@@ -28,6 +28,7 @@ import static net.friendly_bets.utils.StatsUtils.*;
 @RequiredArgsConstructor
 @Service
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
+@Transactional
 public class StatsServiceImpl implements StatsService {
 
     PlayerStatsRepository playerStatsRepository;
@@ -37,6 +38,7 @@ public class StatsServiceImpl implements StatsService {
 
     PlayerStatsService playerStatsService;
     TeamStatsService teamStatsService;
+    GameweekStatsService gameweekStatsService;
 
     @Override
     public AllPlayersStatsPage getAllPlayersStatsBySeason(String seasonId) {
@@ -92,7 +94,6 @@ public class StatsServiceImpl implements StatsService {
     }
 
     @Override
-    @Transactional
     public AllPlayersStatsPage playersStatsFullRecalculation(String seasonId) {
         playerStatsRepository.deleteAllBySeasonId(seasonId);
         Map<String, PlayerStats> statsMap = new HashMap<>();
@@ -141,14 +142,13 @@ public class StatsServiceImpl implements StatsService {
         if (WRL_STATUSES.contains(betStatus)) {
             updateBetCount(playerStats, true);
             updateBetCountValuesBasedOnBetStatus(playerStats, betStatus, bet.getBetOdds(), true);
-            updateSumOfOddsAndActualBalance(playerStats, bet.getBetOdds(), bet.getBalanceChange(), true);
+            updateSumOfOddsAndActualBalance(playerStats, bet.getBetStatus(), bet.getBetOdds(), bet.getBalanceChange(), true);
         }
 
         recalculateStats(playerStats);
     }
 
     @Override
-    @Transactional
     public void playersStatsByTeamsRecalculation(String seasonId) {
         playerStatsByTeamsRepository.deleteAllBySeasonId(seasonId);
         Map<String, PlayerStatsByTeams> statsMap = new HashMap<>();
@@ -178,5 +178,10 @@ public class StatsServiceImpl implements StatsService {
         for (PlayerStatsByTeams stats : statsMap.values()) {
             playerStatsByTeamsRepository.save(stats);
         }
+    }
+
+    @Override
+    public void recalculateAllGameweekStats(String seasonId) {
+        gameweekStatsService.recalculateAllGameweekStats(seasonId);
     }
 }

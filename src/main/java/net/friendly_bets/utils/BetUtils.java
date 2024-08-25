@@ -29,20 +29,22 @@ import static net.friendly_bets.utils.GetEntityOrThrow.getListOfCalendarNodesByS
 @UtilityClass
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class BetUtils {
-    public static void checkGameResult(GameResult score) {
-        if (score == null) {
-            throw new BadRequestException("gameResultIsNull");
-        }
-        if ((score.getFullTime() == null && score.getFirstTime() == null)
-                || score.getFullTime() == null || score.getFirstTime() == null
-                || score.getFullTime().isBlank() || score.getFirstTime().isBlank()) {
-            throw new BadRequestException("incorrectGameScore");
-        }
+    public static void checkGameResult(GameResult score, Bet.BetStatus betStatus) {
+        if (WRL_STATUSES.contains(betStatus)) {
+            if (score == null) {
+                throw new BadRequestException("gameResultIsNull");
+            }
+            if ((score.getFullTime() == null && score.getFirstTime() == null)
+                    || score.getFullTime() == null || score.getFirstTime() == null
+                    || score.getFullTime().isBlank() || score.getFirstTime().isBlank()) {
+                throw new BadRequestException("incorrectGameScore");
+            }
 
-        boolean isGameScoreValid = isGameScoreValid(score);
+            boolean isGameScoreValid = isGameScoreValid(score);
 
-        if (!isGameScoreValid) {
-            throw new BadRequestException("incorrectGameScore");
+            if (!isGameScoreValid) {
+                throw new BadRequestException("incorrectGameScore");
+            }
         }
     }
 
@@ -269,7 +271,7 @@ public class BetUtils {
         checkIfBetAlreadyEdited(betsRepository, editedBet, betStatus);
 
         if (WRL_STATUSES.contains(bet.getBetStatus())) {
-            checkGameResult(editedBet.getGameResult());
+            checkGameResult(editedBet.getGameResult(), bet.getBetStatus());
             updateBalanceChange(bet, betStatus, editedBet.getBetSize(), editedBet.getBetOdds());
             bet.setGameResult(editedBet.getGameResult());
         }

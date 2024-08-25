@@ -1,14 +1,16 @@
 package net.friendly_bets.controllers;
 
 import lombok.RequiredArgsConstructor;
-import net.friendly_bets.controllers.api.PlayerStatsApi;
+import net.friendly_bets.controllers.api.StatsApi;
 import net.friendly_bets.dto.AllPlayersStatsByLeaguesDto;
 import net.friendly_bets.dto.AllPlayersStatsPage;
 import net.friendly_bets.dto.AllStatsByTeamsInSeasonDto;
 import net.friendly_bets.dto.StatsByTeamsDto;
+import net.friendly_bets.security.details.AuthenticatedUser;
 import net.friendly_bets.services.StatsService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -17,7 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/stats")
-public class PlayerStatsController implements PlayerStatsApi {
+public class StatsController implements StatsApi {
 
     private final StatsService statsService;
 
@@ -64,6 +66,15 @@ public class PlayerStatsController implements PlayerStatsApi {
     @GetMapping("/season/{season-id}/recalculation/teams")
     public ResponseEntity<Void> playersStatsByTeamsRecalculation(@PathVariable("season-id") String seasonId) {
         statsService.playersStatsByTeamsRecalculation(seasonId);
+        return ResponseEntity.ok().build();
+    }
+
+    @Override
+    @PreAuthorize("hasAuthority('ADMIN')")
+    @GetMapping("/season/{season-id}/recalculation/gameweeks")
+    public ResponseEntity<Void> recalculateAllGameweekStats(@AuthenticationPrincipal AuthenticatedUser currentUser,
+                                                            @PathVariable("season-id") String seasonId) {
+        statsService.recalculateAllGameweekStats(seasonId);
         return ResponseEntity.ok().build();
     }
 }

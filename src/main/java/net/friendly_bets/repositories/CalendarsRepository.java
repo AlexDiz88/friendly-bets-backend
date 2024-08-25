@@ -13,4 +13,6 @@ public interface CalendarsRepository extends MongoRepository<CalendarNode, Strin
 
     Optional<List<CalendarNode>> findBySeasonIdAndHasBets(String seasonId, Boolean hasBets);
 
+    Optional<List<CalendarNode>> findBySeasonIdAndIsFinished(String seasonId, Boolean isFinished);
+
 }

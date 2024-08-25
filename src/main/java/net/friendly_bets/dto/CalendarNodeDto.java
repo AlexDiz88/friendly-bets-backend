@@ -36,6 +36,15 @@ public class CalendarNodeDto {
     @Schema(description = "флаг, есть ли ставки в записи календаря", example = "true")
     private Boolean hasBets;
 
+    @Schema(description = "флаг, завершен ли текущий игровой тур календаря", example = "true")
+    private Boolean isFinished;
+
+    @Schema(description = "ID предыдущей записи календаря", example = "true")
+    private String previousGameweekId;
+
+    @Schema(description = "список статистики игрового тура по участникам")
+    private List<GameweekStatsDto> gameweekStats;
+
     public static CalendarNodeDto from(CalendarNode calendarNode, boolean isWithBets) {
         return CalendarNodeDto.builder()
                 .id(calendarNode.getId())
@@ -44,6 +53,9 @@ public class CalendarNodeDto {
                 .endDate(calendarNode.getEndDate())
                 .leagueMatchdayNodes(LeagueMatchdayNodeDto.from(calendarNode.getLeagueMatchdayNodes(), isWithBets))
                 .hasBets(calendarNode.getHasBets())
+                .isFinished(calendarNode.getIsFinished())
+                .previousGameweekId(calendarNode.getPreviousGameweekId())
+                .gameweekStats(GameweekStatsDto.from(calendarNode.getGameweekStats()))
                 .build();
     }
 
