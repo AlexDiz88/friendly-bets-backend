@@ -67,7 +67,7 @@ public class PlayerStatsService {
     public void modifyStatsByBetResult(PlayerStats playerStats, Bet bet, boolean isPlus) {
         updateBetCount(playerStats, isPlus);
         updateBetCountValuesBasedOnBetStatus(playerStats, bet.getBetStatus(), bet.getBetOdds(), isPlus);
-        updateSumOfOddsAndActualBalance(playerStats, bet.getBetOdds(), bet.getBalanceChange(), isPlus);
+        updateSumOfOddsAndActualBalance(playerStats, bet.getBetStatus(), bet.getBetOdds(), bet.getBalanceChange(), isPlus);
         recalculateStats(playerStats);
     }
 
@@ -88,7 +88,7 @@ public class PlayerStatsService {
         updateTotalBets(playerStats, isPlus);
         updateBetCount(playerStats, isPlus);
         updateBetCountValuesBasedOnBetStatus(playerStats, bet.getBetStatus(), bet.getBetOdds(), isPlus);
-        updateSumOfOddsAndActualBalance(playerStats, bet.getBetOdds(), bet.getBalanceChange(), isPlus);
+        updateSumOfOddsAndActualBalance(playerStats, bet.getBetStatus(), bet.getBetOdds(), bet.getBalanceChange(), isPlus);
         recalculateStats(playerStats);
     }
 

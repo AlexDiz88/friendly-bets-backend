@@ -19,4 +19,6 @@ public interface StatsService {
 
     void playersStatsByTeamsRecalculation(String seasonId);
 
+    void recalculateAllGameweekStats(String seasonId);
+
 }

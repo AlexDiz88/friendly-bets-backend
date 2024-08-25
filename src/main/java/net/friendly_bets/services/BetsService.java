@@ -5,7 +5,7 @@ import org.springframework.data.domain.Pageable;
 
 public interface BetsService {
 
-    BetDto addBet(String moderatorId, NewBet newBet);
+    BetDto addOpenedBet(String moderatorId, NewBet newBet);
 
     BetDto addEmptyBet(String moderatorId, NewEmptyBet newEmptyBet);
 

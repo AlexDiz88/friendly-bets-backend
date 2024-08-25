@@ -65,4 +65,10 @@ public class GetEntityOrThrow {
                 calendarsRepository.findBySeasonIdAndHasBets(seasonId, true);
         return calendarNodesListOptional.orElseThrow(() -> new BadRequestException("noCalendarNodesBySeason"));
     }
+
+    public static List<CalendarNode> getListOfCalendarNodesIsFinishedOrThrow(CalendarsRepository calendarsRepository, String seasonId) {
+        Optional<List<CalendarNode>> calendarNodesListOptional =
+                calendarsRepository.findBySeasonIdAndIsFinished(seasonId, true);
+        return calendarNodesListOptional.orElseThrow(() -> new BadRequestException("noCalendarNodesBySeason"));
+    }
 }

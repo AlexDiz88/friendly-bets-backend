@@ -7,6 +7,8 @@ import net.friendly_bets.models.Bet;
 import net.friendly_bets.models.PlayerStats;
 import net.friendly_bets.models.Stats;
 
+import static net.friendly_bets.utils.Constants.WRL_STATUSES;
+
 @UtilityClass
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class StatsUtils {
@@ -45,10 +47,12 @@ public class StatsUtils {
 
     // ------------------------------------------------------------------------------------------------------ //
 
-    public static void updateSumOfOddsAndActualBalance(Stats stats, Double betOdds, Double balanceChange, boolean isPlus) {
-        int modifier = isPlus ? 1 : -1;
-        stats.setSumOfOdds(stats.getSumOfOdds() + betOdds * modifier);
-        stats.setActualBalance(stats.getActualBalance() + balanceChange * modifier);
+    public static void updateSumOfOddsAndActualBalance(Stats stats, Bet.BetStatus betStatus, Double betOdds, Double balanceChange, boolean isPlus) {
+        if (WRL_STATUSES.contains(betStatus)) {
+            int modifier = isPlus ? 1 : -1;
+            stats.setSumOfOdds(stats.getSumOfOdds() + betOdds * modifier);
+            stats.setActualBalance(stats.getActualBalance() + balanceChange * modifier);
+        }
     }
 
     // ------------------------------------------------------------------------------------------------------ //

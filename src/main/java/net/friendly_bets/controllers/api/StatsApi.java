@@ -9,12 +9,13 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.tags.Tags;
 import net.friendly_bets.dto.*;
+import net.friendly_bets.security.details.AuthenticatedUser;
 import org.springframework.http.ResponseEntity;
 
 @Tags(value = {
         @Tag(name = "Player Stats")
 })
-public interface PlayerStatsApi {
+public interface StatsApi {
 
     @Operation(summary = "Общая статистика всех участников турнира в сезоне", description = "Доступно всем")
     @ApiResponses(value = {
@@ -100,5 +101,22 @@ public interface PlayerStatsApi {
             }
     )
     ResponseEntity<Void> playersStatsByTeamsRecalculation(@Parameter(description = "ID сезона") String seasonId);
+
+    // ------------------------------------------------------------------------------------------------------ //
+
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Пересчитанная статистика всех игровых туров календаря"),
+    })
+    @ApiResponse(responseCode = "403", description = "userNotAuthenticated",
+            content = {
+                    @Content(mediaType = "application/json",
+                            schema = @Schema(ref = "StandardResponseDto"))
+            }
+    )
+    ResponseEntity<Void> recalculateAllGameweekStats(@Parameter(hidden = true) AuthenticatedUser currentUser,
+                                                     @Parameter(description = "ID сезона") String seasonId);
+
+    // ------------------------------------------------------------------------------------------------------ //
+
 
 }

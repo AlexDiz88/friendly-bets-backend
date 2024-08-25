@@ -7,7 +7,10 @@ import net.friendly_bets.dto.*;
 import net.friendly_bets.exceptions.BadRequestException;
 import net.friendly_bets.exceptions.ConflictException;
 import net.friendly_bets.exceptions.NotFoundException;
-import net.friendly_bets.models.*;
+import net.friendly_bets.models.League;
+import net.friendly_bets.models.Season;
+import net.friendly_bets.models.Team;
+import net.friendly_bets.models.User;
 import net.friendly_bets.repositories.*;
 import net.friendly_bets.services.SeasonsService;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -276,44 +279,5 @@ public class SeasonsServiceImpl implements SeasonsService {
         response.put("message", "DB update complete");
         return response;
     }
-
-    private GameResult parseGameResult(String gameResultStr) {
-        String cleanedGameResult = gameResultStr.replaceAll("[^0-9: ]", "");
-        String trimmedGameResult = cleanedGameResult.trim().replaceAll("\\s+", " ");
-
-        String[] parts = trimmedGameResult.split(" ");
-
-        String fullTime = "";
-        String firstTime = "";
-        String overTime = "";
-        String penalty = "";
-        if (parts.length == 2 || parts.length == 3 || parts.length == 4) {
-            fullTime = parts[0];
-            firstTime = parts[1];
-            if (parts.length == 3 || parts.length == 4) {
-                overTime = parts[2];
-                if (parts.length == 4) {
-                    penalty = parts[3];
-                }
-            }
-        } else {
-            throw new BadRequestException("DB update Error");
-        }
-
-        GameResult.GameResultBuilder builder = GameResult.builder()
-                .fullTime(fullTime)
-                .firstTime(firstTime);
-
-        if (!overTime.isEmpty()) {
-            builder.overTime(overTime);
-        }
-        if (!penalty.isEmpty()) {
-            builder.penalty(penalty);
-        }
-
-        return builder.build();
-    }
-
-    // ------------------------------------------------------------------------------------------------------ //
 
 }

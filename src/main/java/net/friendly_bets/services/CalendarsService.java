@@ -24,4 +24,5 @@ public interface CalendarsService {
     CalendarNodeDto deleteBetInCalendarNode(String calendarNodeId, String betId);
 
     CalendarNodeDto deleteBetInCalendars(String seasonId, String betId);
+
 }

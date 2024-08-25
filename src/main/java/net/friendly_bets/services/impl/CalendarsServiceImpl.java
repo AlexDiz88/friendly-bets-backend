@@ -36,6 +36,8 @@ public class CalendarsServiceImpl implements CalendarsService {
     BetsRepository betsRepository;
     SeasonsRepository seasonsRepository;
 
+    GameweekStatsService gameweekStatsService;
+
     @Override
     public CalendarNodesPage getAllSeasonCalendarNodes(String seasonId) {
         List<CalendarNode> calendarNodes = getListOfCalendarNodesBySeasonOrThrow(calendarsRepository, seasonId);
@@ -86,6 +88,8 @@ public class CalendarsServiceImpl implements CalendarsService {
                 .endDate(newCalendarNode.getEndDate())
                 .leagueMatchdayNodes(newCalendarNode.getLeagueMatchdayNodes())
                 .hasBets(false)
+                .isFinished(false)
+                .gameweekStats(new ArrayList<>())
                 .build();
 
         calendarsRepository.save(calendarNode);
@@ -174,6 +178,7 @@ public class CalendarsServiceImpl implements CalendarsService {
                 .anyMatch(leagueMatchdayNode -> !leagueMatchdayNode.getBets().isEmpty());
 
         calendarNode.setHasBets(hasBets);
+        calendarNode.setIsFinished(false);
 
         calendarsRepository.save(calendarNode);
 
@@ -209,6 +214,7 @@ public class CalendarsServiceImpl implements CalendarsService {
                 .anyMatch(leagueMatchdayNode -> !leagueMatchdayNode.getBets().isEmpty());
 
         updatedCalendarNode.setHasBets(hasBets);
+        updatedCalendarNode.setIsFinished(false);
 
         calendarsRepository.save(updatedCalendarNode);
 
