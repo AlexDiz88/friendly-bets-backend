@@ -13,6 +13,7 @@ import net.friendly_bets.repositories.CalendarsRepository;
 import net.friendly_bets.repositories.SeasonsRepository;
 import net.friendly_bets.services.CalendarsService;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
@@ -29,14 +30,11 @@ import static net.friendly_bets.utils.GetEntityOrThrow.*;
 @RequiredArgsConstructor
 @Service
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
-@Transactional
 public class CalendarsServiceImpl implements CalendarsService {
 
     CalendarsRepository calendarsRepository;
     BetsRepository betsRepository;
     SeasonsRepository seasonsRepository;
-
-    GameweekStatsService gameweekStatsService;
 
     @Override
     public CalendarNodesPage getAllSeasonCalendarNodes(String seasonId) {
@@ -92,7 +90,7 @@ public class CalendarsServiceImpl implements CalendarsService {
                 .gameweekStats(new ArrayList<>())
                 .build();
 
-        calendarsRepository.save(calendarNode);
+        saveCalendarNode(calendarNode);
 
         return CalendarNodeDto.from(calendarNode, false);
     }
@@ -100,30 +98,20 @@ public class CalendarsServiceImpl implements CalendarsService {
     // ------------------------------------------------------------------------------------------------------ //
 
 
-    @Override
-    public CalendarNodeDto addBetToCalendarNode(String betId, String calendarNodeId, String leagueId) {
+    public CalendarNode addBetToCalendarNode(String betId, String calendarNodeId, String leagueId) {
         CalendarNode calendarNode = getCalendarNodeOrThrow(calendarsRepository, calendarNodeId);
+        LeagueMatchdayNode node = getLeagueMatchdayNodeOrThrow(calendarNode, leagueId);
         Bet bet = getBetOrThrow(betsRepository, betId);
-        List<LeagueMatchdayNode> leagueMatchdayNodes = calendarNode.getLeagueMatchdayNodes();
-        boolean betAdded = false;
-        for (LeagueMatchdayNode node : leagueMatchdayNodes) {
-            if (leagueId != null && leagueId.equals(node.getLeagueId())) {
-                node.getBets().add(bet);
-                betAdded = true;
-                break;
-            }
+
+        node.getBets().add(bet);
+
+        if (!calendarNode.getHasBets()) {
+            calendarNode.setHasBets(true);
         }
 
-        if (betAdded) {
-            if (!calendarNode.getHasBets()) {
-                calendarNode.setHasBets(true);
-            }
-            calendarsRepository.save(calendarNode);
-        } else {
-            throw new BadRequestException("leagueNotFoundInCalendarNode");
-        }
+        saveCalendarNode(calendarNode);
 
-        return CalendarNodeDto.from(calendarNode, false);
+        return calendarNode;
     }
 
     // ------------------------------------------------------------------------------------------------------ //
@@ -146,6 +134,7 @@ public class CalendarsServiceImpl implements CalendarsService {
     // ------------------------------------------------------------------------------------------------------ //
 
     @Override
+    @Transactional(propagation = Propagation.REQUIRED)
     public CalendarNodeDto deleteCalendarNode(String calendarNodeId) {
         CalendarNode calendarNode = getCalendarNodeOrThrow(calendarsRepository, calendarNodeId);
 
@@ -180,7 +169,7 @@ public class CalendarsServiceImpl implements CalendarsService {
         calendarNode.setHasBets(hasBets);
         calendarNode.setIsFinished(false);
 
-        calendarsRepository.save(calendarNode);
+        saveCalendarNode(calendarNode);
 
         return CalendarNodeDto.from(calendarNode, false);
     }
@@ -216,7 +205,7 @@ public class CalendarsServiceImpl implements CalendarsService {
         updatedCalendarNode.setHasBets(hasBets);
         updatedCalendarNode.setIsFinished(false);
 
-        calendarsRepository.save(updatedCalendarNode);
+        saveCalendarNode(updatedCalendarNode);
 
         return CalendarNodeDto.from(updatedCalendarNode, false);
     }
@@ -234,12 +223,19 @@ public class CalendarsServiceImpl implements CalendarsService {
     // ------------------------------------------------------------------------------------------------------ //
 
     public void deleteBetFromCalendar(Bet bet, String calendarNodeId) {
-        // TODO: убрать временное решение. Оставить только deleteBetInCalendarNode
+        // TODO: убрать временное решение после реализации календаря в прошлых сезонах. Оставить только deleteBetInCalendarNode
         if (calendarNodeId == null || calendarNodeId.isBlank()) {
             deleteBetInCalendars(bet.getSeason().getId(), bet.getId());
         } else {
             deleteBetInCalendarNode(calendarNodeId, bet.getId());
         }
+    }
+
+    // ------------------------------------------------------------------------------------------------------ //
+
+    @Transactional
+    private void saveCalendarNode(CalendarNode calendarNode) {
+        calendarsRepository.save(calendarNode);
     }
 
     // ------------------------------------------------------------------------------------------------------ //

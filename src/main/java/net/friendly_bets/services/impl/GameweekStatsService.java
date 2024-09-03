@@ -73,9 +73,10 @@ public class GameweekStatsService {
         Season season = getSeasonOrThrow(seasonsRepository, calendarNode.getSeasonId());
         int totalBetsInGameweek = season.getPlayers().size() * calendarNode.getLeagueMatchdayNodes().size() * season.getBetCountPerMatchDay();
 
-        int completedBetsCount = calendarNode.getLeagueMatchdayNodes().stream()
-                .mapToInt(node -> node.getBets().size())
-                .sum();
+        long completedBetsCount = calendarNode.getLeagueMatchdayNodes().stream()
+                .flatMap(node -> node.getBets().stream())
+                .filter(bet -> COMPLETED_BET_STATUSES.contains(bet.getBetStatus()))
+                .count();
 
         if (completedBetsCount > totalBetsInGameweek) {
             throw new BadRequestException("wrongBetsGameweekCount");

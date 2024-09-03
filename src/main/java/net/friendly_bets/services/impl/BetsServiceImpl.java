@@ -36,6 +36,7 @@ public class BetsServiceImpl implements BetsService {
     PlayerStatsService playerStatsService;
     TeamStatsService teamStatsService;
     GameweekStatsService gameweekStatsService;
+    private final CalendarsRepository calendarsRepository;
 
     @Override
     public BetDto addOpenedBet(String moderatorId, NewBet newOpenedBet) {
@@ -48,15 +49,19 @@ public class BetsServiceImpl implements BetsService {
         League league = getLeagueOrThrow(leaguesRepository, newOpenedBet.getLeagueId());
         Team homeTeam = getTeamOrThrow(teamsRepository, newOpenedBet.getHomeTeamId());
         Team awayTeam = getTeamOrThrow(teamsRepository, newOpenedBet.getAwayTeamId());
+        LeagueMatchdayNode leagueMatchdayNode = getLeagueMatchdayNodeOrThrow(calendarsRepository, newOpenedBet.getCalendarNodeId(), league.getId());
 
-        Bet bet = createNewOpenedBet(newOpenedBet, moderator, user, season, league, homeTeam, awayTeam);
-        betsRepository.save(bet);
+        Bet openedBet = createNewOpenedBet(newOpenedBet, moderator, user, season, league, homeTeam, awayTeam);
+        // TODO: убрать проверку в метод addBetToCalendarNode после реализации Transactional
+        checkLeagueBetLimit(leagueMatchdayNode, user.getId(), season.getBetCountPerMatchDay());
 
+        betsRepository.save(openedBet);
         updateLeagueCurrentMatchDay(leaguesRepository, betsRepository, season, league);
-        calendarsService.addBetToCalendarNode(bet.getId(), newOpenedBet.getCalendarNodeId(), newOpenedBet.getLeagueId());
+
+        calendarsService.addBetToCalendarNode(openedBet.getId(), newOpenedBet.getCalendarNodeId(), newOpenedBet.getLeagueId());
         playerStatsService.calculateStatsBasedOnNewOpenedBet(season.getId(), league.getId(), user, true);
 
-        return BetDto.from(bet);
+        return BetDto.from(openedBet);
     }
 
     // ------------------------------------------------------------------------------------------------------ //
@@ -67,11 +72,15 @@ public class BetsServiceImpl implements BetsService {
         User user = getUserOrThrow(usersRepository, newEmptyBet.getUserId());
         Season season = getSeasonOrThrow(seasonsRepository, newEmptyBet.getSeasonId());
         League league = getLeagueOrThrow(leaguesRepository, newEmptyBet.getLeagueId());
+        LeagueMatchdayNode leagueMatchdayNode = getLeagueMatchdayNodeOrThrow(calendarsRepository, newEmptyBet.getCalendarNodeId(), newEmptyBet.getLeagueId());
 
         Bet emptyBet = createNewEmptyBet(newEmptyBet, moderator, user, season, league);
-        betsRepository.save(emptyBet);
+        // TODO: убрать проверку в метод addBetToCalendarNode после реализации Transactional
+        checkLeagueBetLimit(leagueMatchdayNode, user.getId(), season.getBetCountPerMatchDay());
 
+        betsRepository.save(emptyBet);
         updateLeagueCurrentMatchDay(leaguesRepository, betsRepository, season, league);
+
         calendarsService.addBetToCalendarNode(emptyBet.getId(), newEmptyBet.getCalendarNodeId(), newEmptyBet.getLeagueId());
         playerStatsService.calculateStatsBasedOnEmptyBet(season.getId(), league.getId(), user, newEmptyBet.getBetSize(), true);
         gameweekStatsService.calculateGameweekStats(newEmptyBet.getCalendarNodeId());

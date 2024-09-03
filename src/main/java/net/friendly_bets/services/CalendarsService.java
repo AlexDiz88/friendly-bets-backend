@@ -15,8 +15,6 @@ public interface CalendarsService {
 
     CalendarNodeDto createCalendarNode(NewCalendarNodeDto newCalendarNode);
 
-    CalendarNodeDto addBetToCalendarNode(String betId, String calendarNodeId, String leagueId);
-
     BetsPage getBetsByCalendarNode(String calendarNodeId);
 
     CalendarNodeDto deleteCalendarNode(String calendarNodeId);
