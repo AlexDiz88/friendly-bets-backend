@@ -55,17 +55,6 @@ public class CalendarsController implements CalendarsApi {
     }
 
     @Override
-    @PreAuthorize("hasAuthority('ADMIN') || hasAuthority('MODERATOR')")
-    @PutMapping("/{calendar-id}/leagues/{league-id}/bets/{bet-id}")
-    public ResponseEntity<CalendarNodeDto> addBetToCalendarNode(@AuthenticationPrincipal AuthenticatedUser currentUser,
-                                                                @PathVariable("bet-id") String betId,
-                                                                @PathVariable("calendar-id") String calendarNodeId,
-                                                                @PathVariable("league-id") String leagueId) {
-        return ResponseEntity
-                .ok(calendarsService.addBetToCalendarNode(betId, calendarNodeId, leagueId));
-    }
-
-    @Override
     @GetMapping("/{calendar-id}/bets")
     public ResponseEntity<BetsPage> getBetsByCalendarNode(@PathVariable("calendar-id") String calendarNodeId) {
         return ResponseEntity

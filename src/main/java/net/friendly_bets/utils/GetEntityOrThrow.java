@@ -42,6 +42,21 @@ public class GetEntityOrThrow {
                 () -> new NotFoundException("CalendarNode", calendarNodeId));
     }
 
+    public static LeagueMatchdayNode getLeagueMatchdayNodeOrThrow(CalendarsRepository calendarsRepository, String calendarNodeId, String leagueId) {
+        CalendarNode calendarNode = getCalendarNodeOrThrow(calendarsRepository, calendarNodeId);
+        return calendarNode.getLeagueMatchdayNodes().stream()
+                .filter(node -> leagueId != null && leagueId.equals(node.getLeagueId()))
+                .findFirst()
+                .orElseThrow(() -> new BadRequestException("leagueNotFoundInCalendarNode"));
+    }
+
+    public static LeagueMatchdayNode getLeagueMatchdayNodeOrThrow(CalendarNode calendarNode, String leagueId) {
+        return calendarNode.getLeagueMatchdayNodes().stream()
+                .filter(node -> leagueId != null && leagueId.equals(node.getLeagueId()))
+                .findFirst()
+                .orElseThrow(() -> new BadRequestException("leagueNotFoundInCalendarNode"));
+    }
+
     public static PlayerStats getPlayerStatsOrNull(PlayerStatsRepository playerStatsRepository, String seasonId, String leagueId, User user) {
         Optional<PlayerStats> playerStatsOptional =
                 playerStatsRepository.findBySeasonIdAndLeagueIdAndUser(seasonId, leagueId, user);

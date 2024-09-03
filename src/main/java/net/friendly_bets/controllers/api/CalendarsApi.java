@@ -102,28 +102,6 @@ public interface CalendarsApi {
 
     // ------------------------------------------------------------------------------------------------------ //
 
-    @Operation(summary = "Добавить ставку в запись календаря", description = "Доступно только модератору и администратору")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Обновленная запись календаря",
-                    content = {
-                            @Content(mediaType = "application/json",
-                                    schema = @Schema(implementation = CalendarNodeDto.class))
-                    }
-            ),
-            @ApiResponse(responseCode = "403", description = "userNotAuthenticated",
-                    content = {
-                            @Content(mediaType = "application/json",
-                                    schema = @Schema(ref = "StandardResponseDto"))
-                    }
-            )
-    })
-    ResponseEntity<CalendarNodeDto> addBetToCalendarNode(@Parameter(hidden = true) AuthenticatedUser currentUser,
-                                                         @Parameter(description = "ID ставки") String betId,
-                                                         @Parameter(description = "ID записи календаря") String calendarNodeId,
-                                                         @Parameter(description = "ID лиги") String leagueId);
-
-    // ------------------------------------------------------------------------------------------------------ //
-
     @Operation(summary = "Получить список ставок из записи календаря", description = "Доступно всем")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Список ставок из записи календаря",

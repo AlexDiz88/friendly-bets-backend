@@ -239,6 +239,16 @@ public class BetUtils {
         }
     }
 
+    public static void checkLeagueBetLimit(LeagueMatchdayNode node, String userId, Integer betCountPerMatchDay) {
+        long count = node.getBets().stream()
+                .filter(bet -> bet.getUser().getId().equals(userId))
+                .count();
+
+        if (count >= betCountPerMatchDay) {
+            throw new BadRequestException("exceededLimitBetsFromPlayer");
+        }
+    }
+
     public static void processBetResultValues(User moderator, Bet bet, BetResult betResult) {
 
         Bet.BetStatus betStatus = Bet.BetStatus.valueOf(betResult.getBetStatus());
