@@ -8,12 +8,12 @@ import net.friendly_bets.exceptions.BadRequestException;
 import net.friendly_bets.models.Bet;
 import net.friendly_bets.models.CalendarNode;
 import net.friendly_bets.models.LeagueMatchdayNode;
+import net.friendly_bets.models.Season;
 import net.friendly_bets.repositories.BetsRepository;
 import net.friendly_bets.repositories.CalendarsRepository;
 import net.friendly_bets.repositories.SeasonsRepository;
 import net.friendly_bets.services.CalendarsService;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
@@ -23,8 +23,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
-import static net.friendly_bets.utils.BetUtils.datesRangeValidation;
-import static net.friendly_bets.utils.BetUtils.leagueMatchdaysValidation;
+import static net.friendly_bets.utils.BetUtils.*;
 import static net.friendly_bets.utils.GetEntityOrThrow.*;
 
 @RequiredArgsConstructor
@@ -98,11 +97,13 @@ public class CalendarsServiceImpl implements CalendarsService {
     // ------------------------------------------------------------------------------------------------------ //
 
 
-    public CalendarNode addBetToCalendarNode(String betId, String calendarNodeId, String leagueId) {
+    public void addBetToCalendarNode(String betId, String calendarNodeId, String leagueId) {
         CalendarNode calendarNode = getCalendarNodeOrThrow(calendarsRepository, calendarNodeId);
+        Season season = getSeasonOrThrow(seasonsRepository, calendarNode.getSeasonId());
         LeagueMatchdayNode node = getLeagueMatchdayNodeOrThrow(calendarNode, leagueId);
         Bet bet = getBetOrThrow(betsRepository, betId);
 
+        checkLeagueBetLimit(season, node, bet.getUser().getId());
         node.getBets().add(bet);
 
         if (!calendarNode.getHasBets()) {
@@ -110,8 +111,6 @@ public class CalendarsServiceImpl implements CalendarsService {
         }
 
         saveCalendarNode(calendarNode);
-
-        return calendarNode;
     }
 
     // ------------------------------------------------------------------------------------------------------ //
@@ -134,7 +133,7 @@ public class CalendarsServiceImpl implements CalendarsService {
     // ------------------------------------------------------------------------------------------------------ //
 
     @Override
-    @Transactional(propagation = Propagation.REQUIRED)
+    @Transactional
     public CalendarNodeDto deleteCalendarNode(String calendarNodeId) {
         CalendarNode calendarNode = getCalendarNodeOrThrow(calendarsRepository, calendarNodeId);
 
