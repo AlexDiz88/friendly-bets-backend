@@ -23,7 +23,6 @@ import static net.friendly_bets.utils.GetEntityOrThrow.*;
 @RequiredArgsConstructor
 @Service
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
-@Transactional
 public class BetsServiceImpl implements BetsService {
 
     SeasonsRepository seasonsRepository;
@@ -36,9 +35,9 @@ public class BetsServiceImpl implements BetsService {
     PlayerStatsService playerStatsService;
     TeamStatsService teamStatsService;
     GameweekStatsService gameweekStatsService;
-    private final CalendarsRepository calendarsRepository;
 
     @Override
+    @Transactional
     public BetDto addOpenedBet(String moderatorId, NewBet newOpenedBet) {
         validateBet(newOpenedBet);
         checkIfBetAlreadyExists(betsRepository, newOpenedBet);
@@ -49,15 +48,11 @@ public class BetsServiceImpl implements BetsService {
         League league = getLeagueOrThrow(leaguesRepository, newOpenedBet.getLeagueId());
         Team homeTeam = getTeamOrThrow(teamsRepository, newOpenedBet.getHomeTeamId());
         Team awayTeam = getTeamOrThrow(teamsRepository, newOpenedBet.getAwayTeamId());
-        LeagueMatchdayNode leagueMatchdayNode = getLeagueMatchdayNodeOrThrow(calendarsRepository, newOpenedBet.getCalendarNodeId(), league.getId());
 
         Bet openedBet = createNewOpenedBet(newOpenedBet, moderator, user, season, league, homeTeam, awayTeam);
-        // TODO: убрать проверку в метод addBetToCalendarNode после реализации Transactional
-        checkLeagueBetLimit(leagueMatchdayNode, user.getId(), season.getBetCountPerMatchDay());
 
         betsRepository.save(openedBet);
         updateLeagueCurrentMatchDay(leaguesRepository, betsRepository, season, league);
-
         calendarsService.addBetToCalendarNode(openedBet.getId(), newOpenedBet.getCalendarNodeId(), newOpenedBet.getLeagueId());
         playerStatsService.calculateStatsBasedOnNewOpenedBet(season.getId(), league.getId(), user, true);
 
@@ -67,20 +62,17 @@ public class BetsServiceImpl implements BetsService {
     // ------------------------------------------------------------------------------------------------------ //
 
     @Override
+    @Transactional
     public BetDto addEmptyBet(String moderatorId, NewEmptyBet newEmptyBet) {
         User moderator = getUserOrThrow(usersRepository, moderatorId);
         User user = getUserOrThrow(usersRepository, newEmptyBet.getUserId());
         Season season = getSeasonOrThrow(seasonsRepository, newEmptyBet.getSeasonId());
         League league = getLeagueOrThrow(leaguesRepository, newEmptyBet.getLeagueId());
-        LeagueMatchdayNode leagueMatchdayNode = getLeagueMatchdayNodeOrThrow(calendarsRepository, newEmptyBet.getCalendarNodeId(), newEmptyBet.getLeagueId());
 
         Bet emptyBet = createNewEmptyBet(newEmptyBet, moderator, user, season, league);
-        // TODO: убрать проверку в метод addBetToCalendarNode после реализации Transactional
-        checkLeagueBetLimit(leagueMatchdayNode, user.getId(), season.getBetCountPerMatchDay());
 
         betsRepository.save(emptyBet);
         updateLeagueCurrentMatchDay(leaguesRepository, betsRepository, season, league);
-
         calendarsService.addBetToCalendarNode(emptyBet.getId(), newEmptyBet.getCalendarNodeId(), newEmptyBet.getLeagueId());
         playerStatsService.calculateStatsBasedOnEmptyBet(season.getId(), league.getId(), user, newEmptyBet.getBetSize(), true);
         gameweekStatsService.calculateGameweekStats(newEmptyBet.getCalendarNodeId());
@@ -91,6 +83,7 @@ public class BetsServiceImpl implements BetsService {
     // ------------------------------------------------------------------------------------------------------ //
 
     @Override
+    @Transactional
     public BetDto setBetResult(String moderatorId, String betId, BetResult betResult) {
         try {
             Bet.BetStatus.valueOf(betResult.getBetStatus());
@@ -169,6 +162,7 @@ public class BetsServiceImpl implements BetsService {
     // ------------------------------------------------------------------------------------------------------ //
 
     @Override
+    @Transactional
     public BetDto editBet(String moderatorId, String betId, EditedBetDto editedBet) {
         checkTeams(editedBet.getHomeTeamId(), editedBet.getAwayTeamId());
         checkBetOdds(editedBet.getBetOdds());
@@ -200,6 +194,7 @@ public class BetsServiceImpl implements BetsService {
     // ------------------------------------------------------------------------------------------------------ //
 
     @Override
+    @Transactional
     public BetDto deleteBet(String moderatorId, String betId, DeletedBetDto deletedBetMetaData) {
         Bet bet = getBetOrThrow(betsRepository, betId);
         User moderator = getUserOrThrow(usersRepository, moderatorId);

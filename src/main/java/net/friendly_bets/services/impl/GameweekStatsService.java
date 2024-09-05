@@ -23,7 +23,6 @@ import static net.friendly_bets.utils.GetEntityOrThrow.*;
 @RequiredArgsConstructor
 @Service
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
-@Transactional
 public class GameweekStatsService {
 
     CalendarsRepository calendarsRepository;
@@ -171,6 +170,7 @@ public class GameweekStatsService {
 
     // ------------------------------------------------------------------------------------------------------ //
 
+    @Transactional
     private void saveCalendarNode(CalendarNode calendarNode) {
         calendarsRepository.save(calendarNode);
     }

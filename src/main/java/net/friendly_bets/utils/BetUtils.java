@@ -239,7 +239,8 @@ public class BetUtils {
         }
     }
 
-    public static void checkLeagueBetLimit(LeagueMatchdayNode node, String userId, Integer betCountPerMatchDay) {
+    public static void checkLeagueBetLimit(Season season, LeagueMatchdayNode node, String userId) {
+        Integer betCountPerMatchDay = season.getBetCountPerMatchDay();
         long count = node.getBets().stream()
                 .filter(bet -> bet.getUser().getId().equals(userId))
                 .count();
@@ -250,7 +251,6 @@ public class BetUtils {
     }
 
     public static void processBetResultValues(User moderator, Bet bet, BetResult betResult) {
-
         Bet.BetStatus betStatus = Bet.BetStatus.valueOf(betResult.getBetStatus());
         updateBalanceChange(bet, betStatus, bet.getBetSize(), bet.getBetOdds());
         bet.setBetResultAddedAt(LocalDateTime.now());

@@ -17,7 +17,6 @@ import static net.friendly_bets.utils.StatsUtils.*;
 @RequiredArgsConstructor
 @Service
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
-@Transactional
 public class PlayerStatsService {
 
     PlayerStatsRepository playerStatsRepository;
@@ -101,6 +100,7 @@ public class PlayerStatsService {
 
     // ------------------------------------------------------------------------------------------------------ //
 
+    @Transactional
     private void savePlayerStats(PlayerStats playerStats) {
         playerStatsRepository.save(playerStats);
     }

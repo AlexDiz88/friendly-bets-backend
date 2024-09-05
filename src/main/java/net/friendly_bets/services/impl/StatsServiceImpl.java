@@ -28,7 +28,6 @@ import static net.friendly_bets.utils.StatsUtils.*;
 @RequiredArgsConstructor
 @Service
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
-@Transactional
 public class StatsServiceImpl implements StatsService {
 
     PlayerStatsRepository playerStatsRepository;
@@ -94,6 +93,7 @@ public class StatsServiceImpl implements StatsService {
     }
 
     @Override
+    @Transactional
     public AllPlayersStatsPage playersStatsFullRecalculation(String seasonId) {
         playerStatsRepository.deleteAllBySeasonId(seasonId);
         Map<String, PlayerStats> statsMap = new HashMap<>();
@@ -149,6 +149,7 @@ public class StatsServiceImpl implements StatsService {
     }
 
     @Override
+    @Transactional
     public void playersStatsByTeamsRecalculation(String seasonId) {
         playerStatsByTeamsRepository.deleteAllBySeasonId(seasonId);
         Map<String, PlayerStatsByTeams> statsMap = new HashMap<>();
