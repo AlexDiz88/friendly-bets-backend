@@ -1,6 +1,7 @@
 package net.friendly_bets.services.impl;
 
 import lombok.RequiredArgsConstructor;
+import net.friendly_bets.dto.ImageDto;
 import net.friendly_bets.models.Team;
 import net.friendly_bets.models.User;
 import net.friendly_bets.repositories.TeamsRepository;
@@ -32,19 +33,22 @@ public class FilesServiceImpl implements FilesService {
 
     @Override
     @Transactional
-    public String saveAvatarImage(String currentUserId, MultipartFile image) {
+    public ImageDto saveAvatarImage(String currentUserId, MultipartFile image) {
         User user = usersRepository.findById(currentUserId)
                 .orElseThrow(IllegalArgumentException::new);
         String fileName = user.getId();
         fileName = saveImage(image, fileName, UPLOAD_PATH_AVATARS);
         user.setAvatar(fileName);
         usersRepository.save(user);
-        return fileName;
+        
+        return ImageDto.builder()
+                .filename(fileName)
+                .build();
     }
 
     @Override
     @Transactional
-    public String saveLogoImage(String teamId, MultipartFile image) {
+    public ImageDto saveLogoImage(String teamId, MultipartFile image) {
         Team team = getTeamOrThrow(teamsRepository, teamId);
         // TODO: проработать путь файла (пробелы, нижние подчеркивания)
         String fileName = team.getTitle();
@@ -52,7 +56,10 @@ public class FilesServiceImpl implements FilesService {
         System.out.println(fileName);
         team.setLogo(fileName);
         teamsRepository.save(team);
-        return fileName;
+
+        return ImageDto.builder()
+                .filename(fileName)
+                .build();
     }
 
     private String saveImage(MultipartFile image, String fileName, String uploadPath) {
