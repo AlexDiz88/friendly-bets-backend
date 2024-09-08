@@ -2,6 +2,7 @@ package net.friendly_bets.controllers;
 
 import lombok.RequiredArgsConstructor;
 import net.friendly_bets.controllers.api.FilesApi;
+import net.friendly_bets.dto.ImageDto;
 import net.friendly_bets.security.details.AuthenticatedUser;
 import net.friendly_bets.services.FilesService;
 import org.springframework.http.ResponseEntity;
@@ -19,8 +20,8 @@ public class FilesController implements FilesApi {
 
     @PreAuthorize("hasAuthority('USER') || hasAuthority('MODERATOR')")
     @PostMapping("/avatars")
-    public ResponseEntity<String> saveAvatarImage(@AuthenticationPrincipal AuthenticatedUser authenticatedUser,
-                                                  @RequestParam("image") MultipartFile image) {
+    public ResponseEntity<ImageDto> saveAvatarImage(@AuthenticationPrincipal AuthenticatedUser authenticatedUser,
+                                                    @RequestParam("image") MultipartFile image) {
         String currentUserId = authenticatedUser.getUser().getId();
         return ResponseEntity.status(201)
                 .body(filesService.saveAvatarImage(currentUserId, image));
@@ -28,9 +29,9 @@ public class FilesController implements FilesApi {
 
     @PreAuthorize("hasAuthority('ADMIN')")
     @PostMapping("/logo/{team-id}")
-    public ResponseEntity<String> saveLogoImage(@AuthenticationPrincipal AuthenticatedUser authenticatedUser,
-                                                @PathVariable("team-id") String teamId,
-                                                @RequestParam("image") MultipartFile image) {
+    public ResponseEntity<ImageDto> saveLogoImage(@AuthenticationPrincipal AuthenticatedUser authenticatedUser,
+                                                  @PathVariable("team-id") String teamId,
+                                                  @RequestParam("image") MultipartFile image) {
         return ResponseEntity.status(201)
                 .body(filesService.saveLogoImage(teamId, image));
     }

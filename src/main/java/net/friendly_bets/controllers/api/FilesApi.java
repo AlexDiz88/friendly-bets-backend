@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.tags.Tags;
+import net.friendly_bets.dto.ImageDto;
 import net.friendly_bets.security.details.AuthenticatedUser;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.multipart.MultipartFile;
@@ -22,12 +23,12 @@ public interface FilesApi {
             @ApiResponse(responseCode = "201", description = "Сохранённый/обновленный файл изображения",
                     content = {
                             @Content(mediaType = "application/json",
-                                    schema = @Schema(implementation = String.class))
+                                    schema = @Schema(implementation = ImageDto.class))
                     }
             )
     })
-    ResponseEntity<String> saveAvatarImage(@Parameter(hidden = true) AuthenticatedUser authenticatedUser,
-                                           MultipartFile image);
+    ResponseEntity<ImageDto> saveAvatarImage(@Parameter(hidden = true) AuthenticatedUser authenticatedUser,
+                                             MultipartFile image);
 
 
     @Operation(summary = "Сохранение/изменение логотипа команды", description = "Доступно только администратору")
@@ -35,11 +36,11 @@ public interface FilesApi {
             @ApiResponse(responseCode = "201", description = "Сохранённый/обновленный файл изображения",
                     content = {
                             @Content(mediaType = "application/json",
-                                    schema = @Schema(implementation = String.class))
+                                    schema = @Schema(implementation = ImageDto.class))
                     }
             )
     })
-    ResponseEntity<String> saveLogoImage(@Parameter(hidden = true) AuthenticatedUser authenticatedUser,
-                                         @Parameter(description = "идентификатор карточки помощи") String teamId,
-                                         MultipartFile image);
+    ResponseEntity<ImageDto> saveLogoImage(@Parameter(hidden = true) AuthenticatedUser authenticatedUser,
+                                           @Parameter(description = "идентификатор карточки помощи") String teamId,
+                                           MultipartFile image);
 }
