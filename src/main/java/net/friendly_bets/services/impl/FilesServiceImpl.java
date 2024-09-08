@@ -40,7 +40,7 @@ public class FilesServiceImpl implements FilesService {
         fileName = saveImage(image, fileName, UPLOAD_PATH_AVATARS);
         user.setAvatar(fileName);
         usersRepository.save(user);
-        
+
         return ImageDto.builder()
                 .filename(fileName)
                 .build();
@@ -74,6 +74,7 @@ public class FilesServiceImpl implements FilesService {
 
         fileName = fileName + ".png";
         Path path = uploadDir.toPath().resolve(fileName);
+        System.out.println("Сохранение файла в: " + path);
         try {
             image.transferTo(path);
         } catch (IOException e) {
