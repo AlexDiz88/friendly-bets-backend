@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import net.friendly_bets.models.PlayerStats;
 
+import java.util.Base64;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -17,7 +18,7 @@ import java.util.stream.Collectors;
 @Schema(description = "Статистика игрока")
 public class PlayerStatsDto {
 
-    @Schema(description = "фото участника турнира", example = "путь_к_изображению.png")
+    @Schema(description = "аватар пользователя в формате base64")
     private String avatar;
 
     @Schema(description = "имя участника турнира", example = "Player")
@@ -55,7 +56,8 @@ public class PlayerStatsDto {
 
     public static PlayerStatsDto from(PlayerStats playerStats) {
         return PlayerStatsDto.builder()
-                .avatar(playerStats.getUser().getAvatar())
+                .avatar(playerStats.getUser().getAvatar() != null ?
+                        Base64.getEncoder().encodeToString(playerStats.getUser().getAvatar().getData()) : null)
                 .username(playerStats.getUser().getUsername())
                 .totalBets(playerStats.getTotalBets())
                 .betCount(playerStats.getBetCount())

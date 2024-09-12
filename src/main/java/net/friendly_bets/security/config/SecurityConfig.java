@@ -53,10 +53,10 @@ public class SecurityConfig {
                 .formLogin()
                 .loginProcessingUrl("/api/login")
                 .successHandler((request, response, authentication) -> {
-                    fillResponse(response, HttpStatus.OK.value(), "Успешная авторизация");
+                    fillResponse(response, HttpStatus.OK.value(), "authorizationSuccess");
                 })
                 .failureHandler((request, response, exception) ->
-                        fillResponse(response, HttpStatus.UNAUTHORIZED.value(), "Неверный логин или пароль"))
+                        fillResponse(response, HttpStatus.UNAUTHORIZED.value(), "invalidLoginOrPassword"))
                 .and()
                 .exceptionHandling()
                 .defaultAuthenticationEntryPointFor((request, response, authException) ->
@@ -64,13 +64,12 @@ public class SecurityConfig {
                         new AntPathRequestMatcher("/api/**"))
                 .accessDeniedHandler((request, response, accessDeniedException) -> {
                     Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-                    fillResponse(response, HttpStatus.FORBIDDEN.value(), "Access denied for user with email <" +
-                            authentication.getName() + "> and role " + authentication.getAuthorities());
+                    fillResponse(response, HttpStatus.FORBIDDEN.value(), "accessDenied");
                 })
                 .and()
                 .logout().logoutUrl("/api/logout")
                 .logoutSuccessHandler((request, response, authentication) ->
-                        fillResponse(response, HttpStatus.OK.value(), "Выход выполнен успешно"));
+                        fillResponse(response, HttpStatus.OK.value(), "logoutSuccess"));
 
         return httpSecurity.build();
     }
