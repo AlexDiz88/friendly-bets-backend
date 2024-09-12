@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.tags.Tags;
 import net.friendly_bets.dto.ImageDto;
+import net.friendly_bets.dto.StandardResponseDto;
 import net.friendly_bets.security.details.AuthenticatedUser;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.multipart.MultipartFile;
@@ -23,12 +24,12 @@ public interface FilesApi {
             @ApiResponse(responseCode = "201", description = "Сохранённый/обновленный файл изображения",
                     content = {
                             @Content(mediaType = "application/json",
-                                    schema = @Schema(implementation = ImageDto.class))
+                                    schema = @Schema(implementation = StandardResponseDto.class))
                     }
             )
     })
-    ResponseEntity<ImageDto> saveAvatarImage(@Parameter(hidden = true) AuthenticatedUser authenticatedUser,
-                                             MultipartFile image);
+    ResponseEntity<StandardResponseDto> saveAvatarImage(@Parameter(hidden = true) AuthenticatedUser authenticatedUser,
+                                                        MultipartFile image);
 
 
     @Operation(summary = "Сохранение/изменение логотипа команды", description = "Доступно только администратору")

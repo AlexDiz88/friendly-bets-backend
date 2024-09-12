@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import net.friendly_bets.models.User;
 
+import java.util.Base64;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -23,15 +24,15 @@ public class UserSimpleDto {
     @Schema(description = "имя пользователя", example = "example_name")
     private String username;
 
-    @Schema(description = "аватар пользователя", example = "avatar.jpeg")
+    @Schema(description = "аватар пользователя в формате base64")
     private String avatar;
-
 
     public static UserSimpleDto from(User user) {
         return UserSimpleDto.builder()
                 .id(user.getId())
                 .username(user.getUsername())
-                .avatar(user.getAvatar())
+                .avatar(user.getAvatar() != null ?
+                        Base64.getEncoder().encodeToString(user.getAvatar().getData()) : null)
                 .build();
     }
 
