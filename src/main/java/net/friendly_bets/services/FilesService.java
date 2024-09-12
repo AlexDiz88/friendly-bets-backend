@@ -3,6 +3,7 @@ package net.friendly_bets.services;
 import lombok.RequiredArgsConstructor;
 import net.friendly_bets.dto.ImageDto;
 import net.friendly_bets.dto.StandardResponseDto;
+import net.friendly_bets.exceptions.BadRequestException;
 import net.friendly_bets.models.Team;
 import net.friendly_bets.models.User;
 import net.friendly_bets.repositories.TeamsRepository;
@@ -18,6 +19,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.List;
 
 import static net.friendly_bets.utils.Constants.AWS_AVATARS_FOLDER;
 import static net.friendly_bets.utils.GetEntityOrThrow.getTeamOrThrow;
@@ -46,9 +48,11 @@ public class FilesService {
 
     @Transactional
     public StandardResponseDto saveAvatarImage(String currentUserId, MultipartFile file) {
-        if (file == null) {
-            throw new RuntimeException("imageIsNull");
-        }
+        long maxAvatarSize = 2 * 1024 * 1024; // 2MB
+        List<String> allowedMimeTypes = List.of("image/jpeg", "image/png", "image/webp", "image/heic", "application/octet-stream");
+
+        checkFileParameters(file, maxAvatarSize, allowedMimeTypes);
+
         User user = getUserOrThrow(usersRepository, currentUserId);
 
         try {
@@ -106,5 +110,17 @@ public class FilesService {
             return originalFilename.substring(originalFilename.lastIndexOf('.'));
         }
         return "";
+    }
+
+    private void checkFileParameters(MultipartFile file, long maxAvatarSize, List<String> allowedMimeTypes) {
+        if (file == null) {
+            throw new BadRequestException("imageIsNull");
+        }
+        if (file.getSize() > maxAvatarSize) {
+            throw new BadRequestException("fileSizeLimit");
+        }
+        if (!allowedMimeTypes.contains(file.getContentType())) {
+            throw new BadRequestException("invalidFileFormat");
+        }
     }
 }
