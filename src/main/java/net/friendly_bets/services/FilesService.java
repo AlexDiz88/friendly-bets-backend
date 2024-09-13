@@ -1,6 +1,7 @@
 package net.friendly_bets.services;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import net.friendly_bets.dto.ImageDto;
 import net.friendly_bets.dto.StandardResponseDto;
 import net.friendly_bets.exceptions.BadRequestException;
@@ -16,17 +17,22 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Path;
 import java.util.List;
 
 import static net.friendly_bets.utils.Constants.AWS_AVATARS_FOLDER;
+import static net.friendly_bets.utils.Constants.MAX_AVATAR_DIMENSION;
 import static net.friendly_bets.utils.GetEntityOrThrow.getTeamOrThrow;
 import static net.friendly_bets.utils.GetEntityOrThrow.getUserOrThrow;
 
 @RequiredArgsConstructor
 @Service
+@Slf4j
 public class FilesService {
 
     private final UsersRepository usersRepository;
@@ -122,5 +128,29 @@ public class FilesService {
         if (!allowedMimeTypes.contains(file.getContentType())) {
             throw new BadRequestException("invalidFileFormat");
         }
+
+        InputStream inputStream = null;
+        try {
+            inputStream = file.getInputStream();
+            BufferedImage image = ImageIO.read(inputStream);
+            if (image == null) {
+                throw new BadRequestException("imageIsNull");
+            }
+
+            if (image.getWidth() > MAX_AVATAR_DIMENSION || image.getHeight() > MAX_AVATAR_DIMENSION) {
+                throw new BadRequestException("imageDimensionsLimit");
+            }
+        } catch (IOException e) {
+            throw new BadRequestException("errorReadingImage");
+        } finally {
+            if (inputStream != null) {
+                try {
+                    inputStream.close();
+                } catch (IOException e) {
+                    log.error(e.getMessage());
+                }
+            }
+        }
     }
+
 }

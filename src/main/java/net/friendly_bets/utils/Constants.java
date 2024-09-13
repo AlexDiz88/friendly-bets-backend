@@ -13,6 +13,7 @@ public class Constants {
     public static final String AWS_IMG_FOLDER = "img";
     public static final String AWS_LOCALES_FOLDER = "locales";
     public static final String AWS_LOGO_FOLDER = "logo";
+    public static final int MAX_AVATAR_DIMENSION = 150;
 
     public static final List<Bet.BetStatus> WRL_STATUSES = List.of(
             Bet.BetStatus.WON,

@@ -41,7 +41,7 @@ public class FilesController implements FilesApi {
     @PreAuthorize("hasAuthority('ADMIN') || hasAuthority('MODERATOR')")
     @GetMapping("/download/{filename}")
     public ResponseEntity<byte[]> downloadFile(@PathVariable String filename) {
-        byte[] fileData = s3Service.downloadFile("avatars/" + filename);
+        byte[] fileData = s3Service.downloadFile(filename);
 
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
