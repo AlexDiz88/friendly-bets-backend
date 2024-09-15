@@ -1,4 +1,4 @@
-package net.friendly_bets.services.impl;
+package net.friendly_bets.services;
 
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;

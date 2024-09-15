@@ -5,12 +5,13 @@ import net.friendly_bets.controllers.api.TeamsApi;
 import net.friendly_bets.dto.NewTeamDto;
 import net.friendly_bets.dto.TeamDto;
 import net.friendly_bets.dto.TeamsPage;
-import net.friendly_bets.security.details.AuthenticatedUser;
 import net.friendly_bets.services.TeamsService;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+
+import javax.validation.Valid;
 
 @RestController
 @RequiredArgsConstructor
@@ -22,26 +23,22 @@ public class TeamsController implements TeamsApi {
     @Override
     @PreAuthorize("hasAuthority('ADMIN')")
     @GetMapping
-    public ResponseEntity<TeamsPage> getTeams(@AuthenticationPrincipal AuthenticatedUser currentUser) {
-        return ResponseEntity
-                .ok(teamsService.getAll());
+    public ResponseEntity<TeamsPage> getTeams() {
+        return ResponseEntity.ok(teamsService.getAll());
     }
 
     @Override
     @PreAuthorize("hasAuthority('ADMIN')")
     @GetMapping("/{league-id}")
-    public ResponseEntity<TeamsPage> getLeagueTeams(@AuthenticationPrincipal AuthenticatedUser currentUser,
-                                                    @PathVariable("league-id") String leagueId) {
-        return ResponseEntity
-                .ok(teamsService.getLeagueTeams(leagueId));
+    public ResponseEntity<TeamsPage> getLeagueTeams(@PathVariable("league-id") String leagueId) {
+        return ResponseEntity.ok(teamsService.getLeagueTeams(leagueId));
     }
 
     @Override
     @PreAuthorize("hasAuthority('ADMIN')")
     @PostMapping
-    public ResponseEntity<TeamDto> createTeam(@AuthenticationPrincipal AuthenticatedUser currentUser,
-                                              @RequestBody NewTeamDto newTeam) {
-        return ResponseEntity.status(201)
+    public ResponseEntity<TeamDto> createTeam(@RequestBody @Valid NewTeamDto newTeam) {
+        return ResponseEntity.status(HttpStatus.CREATED)
                 .body(teamsService.createTeam(newTeam));
     }
 

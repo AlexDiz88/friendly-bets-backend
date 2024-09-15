@@ -12,121 +12,77 @@ import net.friendly_bets.dto.BetsPage;
 import net.friendly_bets.dto.CalendarNodeDto;
 import net.friendly_bets.dto.CalendarNodesPage;
 import net.friendly_bets.dto.NewCalendarNodeDto;
-import net.friendly_bets.security.details.AuthenticatedUser;
 import org.springframework.http.ResponseEntity;
 
 import javax.validation.Valid;
+import javax.validation.constraints.NotBlank;
 
 @Tags(value = {
         @Tag(name = "Calendars")
 })
 public interface CalendarsApi {
 
-    @Operation(summary = "Получение календаря всех туров сезона", description = "Доступно всем")
+    @Operation(summary = "Get all season rounds calendar", description = "Accessible to everyone")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Календарь всех туров сезона",
-                    content = {
-                            @Content(mediaType = "application/json",
-                                    schema = @Schema(implementation = CalendarNodesPage.class))
-                    }
-            ),
-            @ApiResponse(responseCode = "403", description = "userNotAuthenticated",
-                    content = {
-                            @Content(mediaType = "application/json",
-                                    schema = @Schema(ref = "StandardResponseDto"))
-                    }
-            )
+            @ApiResponse(responseCode = "200", description = "List of all season rounds for the specified season. The response contains a paginated list of calendar nodes representing each round in the season.",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = CalendarNodesPage.class))),
+            @ApiResponse(responseCode = "403", description = "User not authenticated. Access is restricted to authenticated users.",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto")))
     })
-    ResponseEntity<CalendarNodesPage> getAllSeasonCalendarNodes(@Parameter(hidden = true) AuthenticatedUser currentUser,
-                                                                @Parameter(description = "ID сезона") String seasonId);
+    ResponseEntity<CalendarNodesPage> getAllSeasonCalendarNodes(
+            @Parameter(description = "Season ID") @NotBlank String seasonId);
 
-    // ------------------------------------------------------------------------------------------------------ //
-
-    @Operation(summary = "Получение календаря всех туров сезона в которых есть ставки", description = "Доступно всем")
+    @Operation(summary = "Get season rounds with bets", description = "Accessible to everyone")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Календарь всех туров сезона в которых есть ставки",
-                    content = {
-                            @Content(mediaType = "application/json",
-                                    schema = @Schema(implementation = CalendarNodesPage.class))
-                    }
-            ),
-            @ApiResponse(responseCode = "403", description = "userNotAuthenticated",
-                    content = {
-                            @Content(mediaType = "application/json",
-                                    schema = @Schema(ref = "StandardResponseDto"))
-                    }
-            )
+            @ApiResponse(responseCode = "200", description = "List of season rounds that have associated bets. The response contains a paginated list of calendar nodes with bets for the specified season.",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = CalendarNodesPage.class))),
+            @ApiResponse(responseCode = "403", description = "User not authenticated. Access is restricted to authenticated users.",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto")))
     })
-    ResponseEntity<CalendarNodesPage> getSeasonCalendarHasBetsNodes(@Parameter(hidden = true) AuthenticatedUser currentUser,
-                                                                    @Parameter(description = "ID сезона") String seasonId);
+    ResponseEntity<CalendarNodesPage> getSeasonCalendarHasBetsNodes(
+            @Parameter(description = "Season ID") @NotBlank String seasonId);
 
-    // ------------------------------------------------------------------------------------------------------ //
-
-    @Operation(summary = "Получение актуального тура календаря", description = "Доступно всем")
+    @Operation(summary = "Get current round calendar", description = "Accessible to everyone")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Список ставок за актуальный тур календаря",
-                    content = {
-                            @Content(mediaType = "application/json",
-                                    schema = @Schema(implementation = BetsPage.class))
-                    }
-            ),
-            @ApiResponse(responseCode = "403", description = "userNotAuthenticated",
-                    content = {
-                            @Content(mediaType = "application/json",
-                                    schema = @Schema(ref = "StandardResponseDto"))
-                    }
-            )
+            @ApiResponse(responseCode = "200", description = "List of bets for the current calendar round. The response contains a paginated list of bets that are active for the current round.",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = BetsPage.class))),
+            @ApiResponse(responseCode = "403", description = "User not authenticated. Access is restricted to authenticated users.",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto")))
     })
-    ResponseEntity<BetsPage> getActualCalendarNodeBets(@Parameter(hidden = true) AuthenticatedUser currentUser,
-                                                       @Parameter(description = "ID сезона") String seasonId);
+    ResponseEntity<BetsPage> getActualCalendarNodeBets(
+            @Parameter(description = "Season ID") @NotBlank String seasonId);
 
-    // ------------------------------------------------------------------------------------------------------ //
-
-    @Operation(summary = "Добавить новую запись календаря", description = "Доступно только модератору и администратору")
+    @Operation(summary = "Add new calendar entry", description = "Accessible only to moderators and administrators")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Новая запись календаря",
-                    content = {
-                            @Content(mediaType = "application/json",
-                                    schema = @Schema(implementation = CalendarNodeDto.class))
-                    }
-            ),
-            @ApiResponse(responseCode = "403", description = "userNotAuthenticated",
-                    content = {
-                            @Content(mediaType = "application/json",
-                                    schema = @Schema(ref = "StandardResponseDto"))
-                    }
-            )
+            @ApiResponse(responseCode = "201", description = "New calendar entry created successfully. The response contains the details of the newly created calendar entry.",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = CalendarNodeDto.class))),
+            @ApiResponse(responseCode = "400", description = "Invalid details for the calendar entry. The request may be missing required fields or contain invalid values.",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto"))),
+            @ApiResponse(responseCode = "403", description = "User not authenticated. Access is restricted to authenticated moderators and administrators.",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto")))
     })
-    ResponseEntity<CalendarNodeDto> createCalendarNode(@Parameter(hidden = true) AuthenticatedUser currentUser,
-                                                       @Valid NewCalendarNodeDto newCalendarNode);
+    ResponseEntity<CalendarNodeDto> createCalendarNode(
+            @Parameter(description = "New calendar entry details") @Valid NewCalendarNodeDto newCalendarNode);
 
-    // ------------------------------------------------------------------------------------------------------ //
-
-    @Operation(summary = "Получить список ставок из записи календаря", description = "Доступно всем")
+    @Operation(summary = "Get bets by calendar entry", description = "Accessible to everyone")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Список ставок из записи календаря",
-                    content = {
-                            @Content(mediaType = "application/json",
-                                    schema = @Schema(implementation = BetsPage.class))
-                    }
-            ),
+            @ApiResponse(responseCode = "200", description = "List of bets associated with the specified calendar entry. The response contains a paginated list of bets for the given calendar entry.",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = BetsPage.class))),
+            @ApiResponse(responseCode = "400", description = "Invalid calendar entry ID. The request may be missing required fields or contain invalid values.",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto")))
     })
-    ResponseEntity<BetsPage> getBetsByCalendarNode(@Parameter(description = "ID записи календаря") String calendarNodeId);
+    ResponseEntity<BetsPage> getBetsByCalendarNode(
+            @Parameter(description = "Calendar entry ID") @NotBlank String calendarNodeId);
 
-    // ------------------------------------------------------------------------------------------------------ //
-
-    @Operation(summary = "Удалить запись из календаря", description = "Доступно только модератору и администратору")
+    @Operation(summary = "Delete calendar entry", description = "Accessible only to moderators and administrators")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Удалённая запись календаря",
-                    content = {
-                            @Content(mediaType = "application/json",
-                                    schema = @Schema(implementation = CalendarNodeDto.class))
-                    }
-            ),
+            @ApiResponse(responseCode = "200", description = "Calendar entry successfully deleted. The response contains details of the deleted calendar entry.",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = CalendarNodeDto.class))),
+            @ApiResponse(responseCode = "400", description = "Invalid calendar entry ID. The request may be missing required fields or contain invalid values.",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto"))),
+            @ApiResponse(responseCode = "403", description = "User not authenticated. Access is restricted to authenticated moderators and administrators.",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto")))
     })
-    ResponseEntity<CalendarNodeDto> deleteCalendarNode(@Parameter(hidden = true) AuthenticatedUser currentUser,
-                                                       @Parameter(description = "ID записи календаря") String calendarNodeId);
-
-    // ------------------------------------------------------------------------------------------------------ //
-
+    ResponseEntity<CalendarNodeDto> deleteCalendarNode(
+            @Parameter(description = "Calendar entry ID") @NotBlank String calendarNodeId);
 }
