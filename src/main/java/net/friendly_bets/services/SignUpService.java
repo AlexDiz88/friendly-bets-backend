@@ -14,6 +14,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 
+import static net.friendly_bets.utils.Constants.LANGUAGE_RU;
+
 @RequiredArgsConstructor
 @Service
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
@@ -33,6 +35,7 @@ public class SignUpService {
                 .emailIsConfirmed(false)
                 .hashPassword(passwordEncoder.encode(newUser.getPassword()))
                 .role(User.Role.USER)
+                .language(LANGUAGE_RU)
                 .build();
 
         usersRepository.save(user);

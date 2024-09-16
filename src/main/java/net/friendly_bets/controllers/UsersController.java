@@ -56,4 +56,13 @@ public class UsersController implements UsersApi {
         String currentUserId = currentUser.getUser().getId();
         return ResponseEntity.ok(usersService.editUsername(currentUserId, updatedUsernameDto));
     }
+
+    @Override
+    @PreAuthorize("isAuthenticated()")
+    @PutMapping("/my/profile/language")
+    public ResponseEntity<UserDto> changeLanguage(@AuthenticationPrincipal AuthenticatedUser currentUser,
+                                                  @RequestBody String language) {
+        String currentUserId = currentUser.getUser().getId();
+        return ResponseEntity.ok(usersService.changeLanguage(currentUserId, language));
+    }
 }

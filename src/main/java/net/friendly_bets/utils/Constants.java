@@ -14,6 +14,11 @@ public class Constants {
     public static final String AWS_LOCALES_FOLDER = "locales";
     public static final String AWS_LOGO_FOLDER = "logo";
     public static final int MAX_AVATAR_DIMENSION = 150;
+    public static final String LANGUAGE_EN = "en";
+    public static final String LANGUAGE_DE = "de";
+    public static final String LANGUAGE_RU = "ru";
+    public static final List<String> SUPPORTED_LANGUAGES = List.of(LANGUAGE_EN, LANGUAGE_DE, LANGUAGE_RU);
+
 
     public static final List<Bet.BetStatus> WRL_STATUSES = List.of(
             Bet.BetStatus.WON,

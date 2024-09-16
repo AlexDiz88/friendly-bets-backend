@@ -15,6 +15,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import static net.friendly_bets.utils.Constants.SUPPORTED_LANGUAGES;
 import static net.friendly_bets.utils.GetEntityOrThrow.getUserOrThrow;
 
 @RequiredArgsConstructor
@@ -76,7 +77,6 @@ public class UsersService {
 
     // ------------------------------------------------------------------------------------------------------ //
 
-
     @Transactional
     public UserDto editUsername(String currentUserId, UpdatedUsernameDto updatedUsernameDto) {
         User user = getUserOrThrow(usersRepository, currentUserId);
@@ -88,6 +88,22 @@ public class UsersService {
         }
 
         user.setUsername(updatedUsernameDto.getNewUsername());
+        usersRepository.save(user);
+
+        return UserDto.from(user);
+    }
+
+    // ------------------------------------------------------------------------------------------------------ //
+
+    @Transactional
+    public UserDto changeLanguage(String currentUserId, String language) {
+        User user = getUserOrThrow(usersRepository, currentUserId);
+
+        if (!SUPPORTED_LANGUAGES.contains(language.trim().substring(0, 2).toLowerCase())) {
+            throw new BadRequestException("languageNotSupported");
+        }
+
+        user.setLanguage(language);
         usersRepository.save(user);
 
         return UserDto.from(user);
