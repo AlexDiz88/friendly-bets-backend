@@ -14,6 +14,8 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import javax.validation.Valid;
+
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/bets")
@@ -25,7 +27,7 @@ public class BetsController implements BetsApi {
     @PreAuthorize("hasAuthority('ADMIN') || hasAuthority('MODERATOR')")
     @PostMapping("/add")
     public ResponseEntity<BetDto> addBet(@AuthenticationPrincipal AuthenticatedUser currentUser,
-                                         @RequestBody NewBet newOpenedBet) {
+                                         @RequestBody @Valid NewBet newOpenedBet) {
         String moderatorId = currentUser.getUser().getId();
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(betsService.addOpenedBet(moderatorId, newOpenedBet));
@@ -35,7 +37,7 @@ public class BetsController implements BetsApi {
     @PreAuthorize("hasAuthority('ADMIN') || hasAuthority('MODERATOR')")
     @PostMapping("/add/empty")
     public ResponseEntity<BetDto> addEmptyBet(@AuthenticationPrincipal AuthenticatedUser currentUser,
-                                              @RequestBody NewEmptyBet newEmptyBet) {
+                                              @RequestBody @Valid NewEmptyBet newEmptyBet) {
         String moderatorId = currentUser.getUser().getId();
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(betsService.addEmptyBet(moderatorId, newEmptyBet));
@@ -43,20 +45,18 @@ public class BetsController implements BetsApi {
 
     @Override
     @PreAuthorize("hasAuthority('ADMIN') || hasAuthority('MODERATOR')")
-    @PutMapping("{bet-id}/set-bet-result")
+    @PutMapping("/{bet-id}/set-bet-result")
     public ResponseEntity<BetDto> setBetResult(@AuthenticationPrincipal AuthenticatedUser currentUser,
                                                @PathVariable("bet-id") String betId,
-                                               @RequestBody BetResult betResult) {
+                                               @RequestBody @Valid BetResult betResult) {
         String moderatorId = currentUser.getUser().getId();
-        return ResponseEntity
-                .ok(betsService.setBetResult(moderatorId, betId, betResult));
+        return ResponseEntity.ok(betsService.setBetResult(moderatorId, betId, betResult));
     }
 
     @Override
     @GetMapping("/opened/seasons/{season-id}")
     public ResponseEntity<BetsPage> getOpenedBets(@PathVariable("season-id") String seasonId) {
-        return ResponseEntity
-                .ok(betsService.getOpenedBets(seasonId));
+        return ResponseEntity.ok(betsService.getOpenedBets(seasonId));
     }
 
     @Override
@@ -64,24 +64,22 @@ public class BetsController implements BetsApi {
     public ResponseEntity<BetsPage> getCompletedBets(@PathVariable("season-id") String seasonId,
                                                      @RequestParam(required = false) String playerId,
                                                      @RequestParam(required = false) String leagueId,
-                                                     @RequestParam(required = false, defaultValue = "0") int page,
-                                                     @RequestParam(required = false, defaultValue = "14") int size,
+                                                     @RequestParam(defaultValue = "0") int page,
+                                                     @RequestParam(defaultValue = "14") int size,
                                                      @RequestParam(required = false) String sortBy) {
-        Pageable pageable = PageRequest.of(page, size, sortBy != null ? Sort.by(sortBy) : Sort.by(Sort.Order.desc("betResultAddedAt")));
-        return ResponseEntity
-                .ok(betsService.getCompletedBets(seasonId, playerId, leagueId, pageable));
+        Pageable pageable = PageRequest.of(page, size, Sort.by(sortBy != null ? sortBy : "betResultAddedAt").descending());
+        return ResponseEntity.ok(betsService.getCompletedBets(seasonId, playerId, leagueId, pageable));
     }
 
     @Override
     @PreAuthorize("hasAuthority('ADMIN') || hasAuthority('MODERATOR')")
     @GetMapping("/all/seasons/{season-id}")
     public ResponseEntity<BetsPage> getAllBets(@PathVariable("season-id") String seasonId,
-                                               @RequestParam(required = false, defaultValue = "0") int page,
-                                               @RequestParam(required = false, defaultValue = "10") int size,
+                                               @RequestParam(defaultValue = "0") int page,
+                                               @RequestParam(defaultValue = "10") int size,
                                                @RequestParam(required = false) String sortBy) {
-        Pageable pageable = PageRequest.of(page, size, sortBy != null ? Sort.by(sortBy) : Sort.by(Sort.Order.desc("createdAt")));
-        return ResponseEntity
-                .ok(betsService.getAllBets(seasonId, pageable));
+        Pageable pageable = PageRequest.of(page, size, Sort.by(sortBy != null ? sortBy : "createdAt").descending());
+        return ResponseEntity.ok(betsService.getAllBets(seasonId, pageable));
     }
 
     @Override
@@ -89,10 +87,9 @@ public class BetsController implements BetsApi {
     @PutMapping("/{bet-id}")
     public ResponseEntity<BetDto> editBet(@AuthenticationPrincipal AuthenticatedUser currentUser,
                                           @PathVariable("bet-id") String betId,
-                                          @RequestBody EditedBetDto editedBet) {
+                                          @RequestBody @Valid EditedBetDto editedBet) {
         String moderatorId = currentUser.getUser().getId();
-        return ResponseEntity
-                .ok(betsService.editBet(moderatorId, betId, editedBet));
+        return ResponseEntity.ok(betsService.editBet(moderatorId, betId, editedBet));
     }
 
     @Override
@@ -100,9 +97,8 @@ public class BetsController implements BetsApi {
     @DeleteMapping("/{bet-id}")
     public ResponseEntity<BetDto> deleteBet(@AuthenticationPrincipal AuthenticatedUser currentUser,
                                             @PathVariable("bet-id") String betId,
-                                            @RequestBody DeletedBetDto deletedBetMetaData) {
+                                            @RequestBody @Valid DeletedBetDto deletedBetMetaData) {
         String moderatorId = currentUser.getUser().getId();
-        return ResponseEntity.status(200)
-                .body(betsService.deleteBet(moderatorId, betId, deletedBetMetaData));
+        return ResponseEntity.ok(betsService.deleteBet(moderatorId, betId, deletedBetMetaData));
     }
 }

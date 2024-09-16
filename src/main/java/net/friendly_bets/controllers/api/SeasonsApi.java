@@ -13,6 +13,7 @@ import net.friendly_bets.security.details.AuthenticatedUser;
 import org.springframework.http.ResponseEntity;
 
 import javax.validation.Valid;
+import javax.validation.constraints.NotBlank;
 import java.util.List;
 import java.util.Map;
 
@@ -21,237 +22,153 @@ import java.util.Map;
 })
 public interface SeasonsApi {
 
-    @Operation(summary = "Получение списка всех сезонов", description = "Доступно только аутентифицированному пользователю")
+    @Operation(summary = "Get all seasons", description = "Available to authenticated users only")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Информацию о сезонах",
-                    content = {
-                            @Content(mediaType = "application/json",
-                                    schema = @Schema(implementation = SeasonsPage.class))
-                    }
-            ),
-            @ApiResponse(responseCode = "403", description = "userNotAuthenticated",
-                    content = {
-                            @Content(mediaType = "application/json",
-                                    schema = @Schema(ref = "StandardResponseDto"))
-                    }
-            )
+            @ApiResponse(responseCode = "200", description = "Successfully retrieved seasons",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = SeasonsPage.class))),
+            @ApiResponse(responseCode = "400", description = "Bad request, invalid parameters",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto"))),
+            @ApiResponse(responseCode = "403", description = "User not authenticated",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto")))
     })
-    ResponseEntity<SeasonsPage> getSeasons(@Parameter(hidden = true) AuthenticatedUser currentUser);
+    ResponseEntity<SeasonsPage> getSeasons();
 
-    // ------------------------------------------------------------------------------------------------------ //
-
-    @Operation(summary = "Добавить новый сезон", description = "Доступно только администратору")
+    @Operation(summary = "Add new season", description = "Available to admin only")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Новый сезон",
-                    content = {
-                            @Content(mediaType = "application/json",
-                                    schema = @Schema(implementation = SeasonDto.class))
-                    }
-            ),
-            @ApiResponse(responseCode = "403", description = "userNotAuthenticated",
-                    content = {
-                            @Content(mediaType = "application/json",
-                                    schema = @Schema(ref = "StandardResponseDto"))
-                    }
-            )
+            @ApiResponse(responseCode = "201", description = "Successfully created a new season",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = SeasonDto.class))),
+            @ApiResponse(responseCode = "400", description = "Bad request, invalid season data",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto"))),
+            @ApiResponse(responseCode = "403", description = "User not authenticated or not authorized",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto")))
     })
-    ResponseEntity<SeasonDto> addSeason(@Parameter(hidden = true) AuthenticatedUser currentUser,
-                                        @Parameter(description = "новый сезон")
-                                        @Valid NewSeasonDto newSeason);
+    ResponseEntity<SeasonDto> addSeason(
+            @Parameter(description = "New season") @Valid NewSeasonDto newSeason);
 
-    // ------------------------------------------------------------------------------------------------------ //
-
-    @Operation(summary = "Изменить статус сезона", description = "Доступно только администратору")
+    @Operation(summary = "Change season status", description = "Available to admin only")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Новый сезон",
-                    content = {
-                            @Content(mediaType = "application/json",
-                                    schema = @Schema(implementation = SeasonDto.class))
-                    }
-            ),
-            @ApiResponse(responseCode = "403", description = "userNotAuthenticated",
-                    content = {
-                            @Content(mediaType = "application/json",
-                                    schema = @Schema(ref = "StandardResponseDto"))
-                    }
-            )
+            @ApiResponse(responseCode = "200", description = "Successfully updated season status",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = SeasonDto.class))),
+            @ApiResponse(responseCode = "400", description = "Bad request, invalid season ID or status",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto"))),
+            @ApiResponse(responseCode = "403", description = "User not authenticated or not authorized",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto")))
     })
-    ResponseEntity<SeasonDto> changeSeasonStatus(@Parameter(hidden = true)
-                                                 AuthenticatedUser currentUser,
-                                                 @Parameter(description = "ID сезона")
-                                                 String id,
-                                                 @Parameter(description = "статус сезона")
-                                                 String status);
+    ResponseEntity<SeasonDto> changeSeasonStatus(
+            @Parameter(description = "Season ID") @NotBlank String id,
+            @Parameter(description = "Season status") @NotBlank String status);
 
-    // ------------------------------------------------------------------------------------------------------ //
-
-    @Operation(summary = "Получение списка всех статусов сезона", description = "Доступно только администратору")
+    @Operation(summary = "Get all season statuses", description = "Available to admin only")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Информация о статусах сезона",
-                    content = {
-                            @Content(mediaType = "application/json",
-                                    schema = @Schema(implementation = List.class))
-                    }
-            ),
-            @ApiResponse(responseCode = "403", description = "userNotAuthenticated",
-                    content = {
-                            @Content(mediaType = "application/json",
-                                    schema = @Schema(ref = "StandardResponseDto"))
-                    }
-            )
+            @ApiResponse(responseCode = "200", description = "Successfully retrieved season statuses",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = List.class))),
+            @ApiResponse(responseCode = "400", description = "Bad request, invalid parameters",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto"))),
+            @ApiResponse(responseCode = "403", description = "User not authenticated or not authorized",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto")))
     })
-    ResponseEntity<List<String>> getSeasonStatusList(@Parameter(hidden = true) AuthenticatedUser currentUser);
+    ResponseEntity<List<String>> getSeasonStatusList();
 
-    // ------------------------------------------------------------------------------------------------------ //
-
-    @Operation(summary = "Получение списка всех кодов лиг", description = "Доступно только администратору")
+    @Operation(summary = "Get all league codes", description = "Available to admin only")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Информация о кодах лиг",
-                    content = {
-                            @Content(mediaType = "application/json",
-                                    schema = @Schema(implementation = List.class))
-                    }
-            ),
-            @ApiResponse(responseCode = "403", description = "userNotAuthenticated",
-                    content = {
-                            @Content(mediaType = "application/json",
-                                    schema = @Schema(ref = "StandardResponseDto"))
-                    }
-            )
+            @ApiResponse(responseCode = "200", description = "Successfully retrieved league codes",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = List.class))),
+            @ApiResponse(responseCode = "400", description = "Bad request, invalid parameters",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto"))),
+            @ApiResponse(responseCode = "403", description = "User not authenticated or not authorized",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto")))
     })
-    ResponseEntity<List<String>> getLeagueCodeList(@Parameter(hidden = true) AuthenticatedUser currentUser);
+    ResponseEntity<List<String>> getLeagueCodeList();
 
-    // ------------------------------------------------------------------------------------------------------ //
-
-    @Operation(summary = "Получить текущий (активный) сезон", description = "Доступно только аутентифицированному пользователю")
+    @Operation(summary = "Get current (active) season", description = "Available to everyone")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Текущий сезон",
-                    content = {
-                            @Content(mediaType = "application/json",
-                                    schema = @Schema(implementation = SeasonDto.class))
-                    }
-            ),
+            @ApiResponse(responseCode = "200", description = "Successfully retrieved current season",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = SeasonDto.class))),
+            @ApiResponse(responseCode = "400", description = "Bad request, unable to retrieve current season",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto")))
     })
     ResponseEntity<SeasonDto> getActiveSeason();
 
-    // ------------------------------------------------------------------------------------------------------ //
-
-    @Operation(summary = "Получить ID текущего (активного) сезона", description = "Доступно всем")
+    @Operation(summary = "Get ID of current (active) season", description = "Available to everyone")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "ID текущего сезона",
-                    content = {
-                            @Content(mediaType = "application/json",
-                                    schema = @Schema(implementation = SeasonDto.class))
-                    }
-            ),
+            @ApiResponse(responseCode = "200", description = "Successfully retrieved ID of current season",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ActiveSeasonIdDto.class))),
+            @ApiResponse(responseCode = "400", description = "Bad request, unable to retrieve season ID",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto")))
     })
     ResponseEntity<ActiveSeasonIdDto> getActiveSeasonId();
 
-    // ------------------------------------------------------------------------------------------------------ //
-
-    @Operation(summary = "Получить запланированный (открытый для регистрации) сезон", description = "Доступно только аутентифицированному пользователю")
+    @Operation(summary = "Get scheduled (open for registration) season", description = "Available to authenticated users only")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Запланированный сезон",
-                    content = {
-                            @Content(mediaType = "application/json",
-                                    schema = @Schema(implementation = SeasonDto.class))
-                    }
-            ),
-            @ApiResponse(responseCode = "403", description = "userNotAuthenticated",
-                    content = {
-                            @Content(mediaType = "application/json",
-                                    schema = @Schema(ref = "StandardResponseDto"))
-                    }
-            )
+            @ApiResponse(responseCode = "200", description = "Successfully retrieved scheduled season",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = SeasonDto.class))),
+            @ApiResponse(responseCode = "400", description = "Bad request, unable to retrieve scheduled season",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto"))),
+            @ApiResponse(responseCode = "403", description = "User not authenticated",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto")))
     })
-    ResponseEntity<SeasonDto> getScheduledSeason(@Parameter(hidden = true) AuthenticatedUser currentUser);
+    ResponseEntity<SeasonDto> getScheduledSeason();
 
-    // ------------------------------------------------------------------------------------------------------ //
-
-    @Operation(summary = "Регистрация пользователя в запланированном сезоне", description = "Доступно только аутентифицированному пользователю")
+    @Operation(summary = "Register user in scheduled season", description = "Available to authenticated users only")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Регистрация в запланированном сезоне",
-                    content = {
-                            @Content(mediaType = "application/json",
-                                    schema = @Schema(implementation = SeasonDto.class))
-                    }
-            ),
-            @ApiResponse(responseCode = "403", description = "userNotAuthenticated",
-                    content = {
-                            @Content(mediaType = "application/json",
-                                    schema = @Schema(ref = "StandardResponseDto"))
-                    }
-            )
+            @ApiResponse(responseCode = "200", description = "Successfully registered user in scheduled season",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = SeasonDto.class))),
+            @ApiResponse(responseCode = "400", description = "Bad request, invalid season ID or user registration issue",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto"))),
+            @ApiResponse(responseCode = "403", description = "User not authenticated",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto")))
     })
-    ResponseEntity<SeasonDto> registrationInSeason(@Parameter(hidden = true) AuthenticatedUser currentUser,
-                                                   @Parameter(description = "ID сезона") String seasonId);
+    ResponseEntity<SeasonDto> registrationInSeason(
+            @Parameter(hidden = true) AuthenticatedUser currentUser,
+            @Parameter(description = "Season ID") @NotBlank String seasonId);
 
-    // ------------------------------------------------------------------------------------------------------ //
-
-    @Operation(summary = "Список футбольных лиг сезона", description = "Доступно только аутентифицированному пользователю")
+    @Operation(summary = "List of football leagues for the season", description = "Available to authenticated users only")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Футбольные лиги",
-                    content = {
-                            @Content(mediaType = "application/json",
-                                    schema = @Schema(implementation = LeaguesPage.class))
-                    }
-            ),
-            @ApiResponse(responseCode = "403", description = "userNotAuthenticated",
-                    content = {
-                            @Content(mediaType = "application/json",
-                                    schema = @Schema(ref = "StandardResponseDto"))
-                    }
-            )
+            @ApiResponse(responseCode = "200", description = "Successfully retrieved list of football leagues",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = LeaguesPage.class))),
+            @ApiResponse(responseCode = "400", description = "Bad request, invalid season ID",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto"))),
+            @ApiResponse(responseCode = "403", description = "User not authenticated",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto")))
     })
-    ResponseEntity<LeaguesPage> getLeaguesBySeason(@Parameter(hidden = true) AuthenticatedUser currentUser,
-                                                   @Parameter(description = "ID сезона") String seasonId);
+    ResponseEntity<LeaguesPage> getLeaguesBySeason(
+            @Parameter(description = "Season ID") @NotBlank String seasonId);
 
-    // ------------------------------------------------------------------------------------------------------ //
-
-    @Operation(summary = "Добавить футбольную лигу в сезон", description = "Доступно только администратору")
+    @Operation(summary = "Add football league to season", description = "Available to admin only")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Новая футбольная лига",
-                    content = {
-                            @Content(mediaType = "application/json",
-                                    schema = @Schema(implementation = SeasonDto.class))
-                    }
-            ),
-            @ApiResponse(responseCode = "403", description = "userNotAuthenticated",
-                    content = {
-                            @Content(mediaType = "application/json",
-                                    schema = @Schema(ref = "StandardResponseDto"))
-                    }
-            )
+            @ApiResponse(responseCode = "200", description = "Successfully added a new football league to season",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = SeasonDto.class))),
+            @ApiResponse(responseCode = "400", description = "Bad request, invalid season ID or league data",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto"))),
+            @ApiResponse(responseCode = "403", description = "User not authenticated or not authorized",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto")))
     })
-    ResponseEntity<SeasonDto> addLeagueToSeason(@Parameter(hidden = true) AuthenticatedUser currentUser,
-                                                @Parameter(description = "ID сезона") String seasonId,
-                                                @Parameter(description = "новая лига") @Valid NewLeagueDto newLeague);
+    ResponseEntity<SeasonDto> addLeagueToSeason(
+            @Parameter(description = "Season ID") @NotBlank String seasonId,
+            @Parameter(description = "New league") @Valid NewLeagueDto newLeague);
 
-    // ------------------------------------------------------------------------------------------------------ //
-
-    @Operation(summary = "Добавить команду в лигу сезона", description = "Доступно только администратору")
+    @Operation(summary = "Add team to league in season", description = "Available to admin only")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Команда в лиге",
-                    content = {
-                            @Content(mediaType = "application/json",
-                                    schema = @Schema(implementation = TeamDto.class))
-                    }
-            ),
-            @ApiResponse(responseCode = "403", description = "userNotAuthenticated",
-                    content = {
-                            @Content(mediaType = "application/json",
-                                    schema = @Schema(ref = "StandardResponseDto"))
-                    }
-            )
+            @ApiResponse(responseCode = "200", description = "Successfully added a team to the league in season",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = TeamDto.class))),
+            @ApiResponse(responseCode = "400", description = "Bad request, invalid season ID, league ID, or team ID",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto"))),
+            @ApiResponse(responseCode = "403", description = "User not authenticated or not authorized",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto")))
     })
-    ResponseEntity<TeamDto> addTeamToLeagueInSeason(@Parameter(hidden = true) AuthenticatedUser currentUser,
-                                                    @Parameter(description = "ID сезона") String seasonId,
-                                                    @Parameter(description = "ID лиги") String leagueId,
-                                                    @Parameter(description = "ID команды") String teamId);
+    ResponseEntity<TeamDto> addTeamToLeagueInSeason(
+            @Parameter(description = "Season ID") @NotBlank String seasonId,
+            @Parameter(description = "League ID") @NotBlank String leagueId,
+            @Parameter(description = "Team ID") @NotBlank String teamId);
 
-    // ------------------------------------------------------------------------------------------------------ //
-
-    ResponseEntity<Map<String, String>> dbUpdate(@Parameter(hidden = true) AuthenticatedUser currentUser);
-
-    // ------------------------------------------------------------------------------------------------------ //
+    @Operation(summary = "DB update", description = "Available to admin only")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Successfully updated the database",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = Map.class))),
+            @ApiResponse(responseCode = "400", description = "Bad request, database update issue",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto"))),
+            @ApiResponse(responseCode = "403", description = "User not authenticated or not authorized",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto")))
+    })
+    ResponseEntity<Map<String, String>> dbUpdate();
 }

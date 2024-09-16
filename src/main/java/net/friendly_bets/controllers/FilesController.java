@@ -6,7 +6,7 @@ import net.friendly_bets.dto.ImageDto;
 import net.friendly_bets.dto.StandardResponseDto;
 import net.friendly_bets.security.details.AuthenticatedUser;
 import net.friendly_bets.services.FilesService;
-import net.friendly_bets.services.impl.S3Service;
+import net.friendly_bets.services.S3Service;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -26,6 +26,7 @@ public class FilesController implements FilesApi {
     private final S3Service s3Service;
     private final FilesService filesService;
 
+    @Override
     @PreAuthorize("hasAuthority('USER') || hasAuthority('MODERATOR') || hasAuthority('ADMIN')")
     @PostMapping("/upload/s3/avatars")
     public ResponseEntity<StandardResponseDto> uploadUserAvatar(@AuthenticationPrincipal AuthenticatedUser authenticatedUser,
@@ -38,6 +39,7 @@ public class FilesController implements FilesApi {
                 .build());
     }
 
+    @Override
     @PreAuthorize("hasAuthority('ADMIN') || hasAuthority('MODERATOR')")
     @GetMapping("/download/{filename}")
     public ResponseEntity<byte[]> downloadFile(@PathVariable String filename) {
@@ -49,21 +51,21 @@ public class FilesController implements FilesApi {
                 .body(fileData);
     }
 
+    @Override
     @PreAuthorize("hasAuthority('USER') || hasAuthority('MODERATOR') || hasAuthority('ADMIN')")
     @PostMapping("/upload/avatars")
     public ResponseEntity<StandardResponseDto> saveAvatarImage(@AuthenticationPrincipal AuthenticatedUser authenticatedUser,
                                                                @RequestParam("file") MultipartFile file) {
         String currentUserId = authenticatedUser.getUser().getId();
-        return ResponseEntity.ok()
-                .body(filesService.saveAvatarImage(currentUserId, file));
+        return ResponseEntity.ok(filesService.saveAvatarImage(currentUserId, file));
     }
 
+    @Override
     @PreAuthorize("hasAuthority('ADMIN')")
     @PostMapping("/upload/logo/{team-id}")
-    public ResponseEntity<ImageDto> saveLogoImage(@AuthenticationPrincipal AuthenticatedUser authenticatedUser,
-                                                  @PathVariable("team-id") String teamId,
+    public ResponseEntity<ImageDto> saveLogoImage(@PathVariable("team-id") String teamId,
                                                   @RequestParam("image") MultipartFile image) {
-        return ResponseEntity.status(201)
+        return ResponseEntity.status(HttpStatus.CREATED)
                 .body(filesService.saveLogoImage(teamId, image));
     }
 }

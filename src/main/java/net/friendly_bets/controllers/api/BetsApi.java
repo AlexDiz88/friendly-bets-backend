@@ -13,161 +13,118 @@ import net.friendly_bets.security.details.AuthenticatedUser;
 import org.springframework.http.ResponseEntity;
 
 import javax.validation.Valid;
+import javax.validation.constraints.NotBlank;
 
 @Tags(value = {
         @Tag(name = "Bets")
 })
 public interface BetsApi {
 
-    @Operation(summary = "Добавить новую ставку", description = "Доступно только модератору и администратору (до реализации автоматического приёма ставок)")
+    @Operation(summary = "Add a new bet", description = "Accessible only to moderators and administrators")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "201", description = "Новая ставка",
-                    content = {
-                            @Content(mediaType = "application/json",
-                                    schema = @Schema(implementation = BetDto.class))
-                    }
-            ),
-            @ApiResponse(responseCode = "403", description = "userNotAuthenticated",
-                    content = {
-                            @Content(mediaType = "application/json",
-                                    schema = @Schema(ref = "StandardResponseDto"))
-                    }
-            )
+            @ApiResponse(responseCode = "201", description = "The new bet has been successfully created. The response contains the created bet object with all details.",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = BetDto.class))),
+            @ApiResponse(responseCode = "400", description = "Invalid request data. The request may be missing required fields or contain invalid values.",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto"))),
+            @ApiResponse(responseCode = "403", description = "User not authenticated. Access is restricted to authenticated moderators and administrators.",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto")))
     })
-    ResponseEntity<BetDto> addBet(@Parameter(hidden = true) AuthenticatedUser currentUser,
-                                  @Parameter(description = "новая ставка") @Valid NewBet newBet);
+    ResponseEntity<BetDto> addBet(
+            @Parameter(hidden = true) AuthenticatedUser currentUser,
+            @Parameter(description = "New bet") @Valid NewBet newBet);
 
-    // ------------------------------------------------------------------------------------------------------ //
-
-    @Operation(summary = "Добавить пустую ставку", description = "Доступно только модератору и администратору (до реализации автоматического приёма ставок)")
+    @Operation(summary = "Add an empty bet", description = "Accessible only to moderators and administrators")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "201", description = "Новая пустая ставка",
-                    content = {
-                            @Content(mediaType = "application/json",
-                                    schema = @Schema(implementation = BetDto.class))
-                    }
-            ),
-            @ApiResponse(responseCode = "403", description = "userNotAuthenticated",
-                    content = {
-                            @Content(mediaType = "application/json",
-                                    schema = @Schema(ref = "StandardResponseDto"))
-                    }
-            )
+            @ApiResponse(responseCode = "201", description = "The empty bet has been successfully created. The response contains the created bet object with default values.",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = BetDto.class))),
+            @ApiResponse(responseCode = "400", description = "Invalid request data. The request may be missing required fields or contain invalid values.",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto"))),
+            @ApiResponse(responseCode = "403", description = "User not authenticated. Access is restricted to authenticated moderators and administrators.",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto")))
     })
-    ResponseEntity<BetDto> addEmptyBet(@Parameter(hidden = true) AuthenticatedUser currentUser,
-                                       @Parameter(description = "новая пустая ставка") @Valid NewEmptyBet newEmptyBet);
+    ResponseEntity<BetDto> addEmptyBet(
+            @Parameter(hidden = true) AuthenticatedUser currentUser,
+            @Parameter(description = "New empty bet") @Valid NewEmptyBet newEmptyBet);
 
-    // ------------------------------------------------------------------------------------------------------ //
-
-    @Operation(summary = "Результат ставки (по итогам проверки)", description = "Доступно только модератору и администратору (до реализации автоматического приёма ставок)")
+    @Operation(summary = "Set bet result", description = "Accessible only to moderators and administrators")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Новый статус и результат ставки",
-                    content = {
-                            @Content(mediaType = "application/json",
-                                    schema = @Schema(implementation = BetDto.class))
-                    }
-            ),
-            @ApiResponse(responseCode = "403", description = "userNotAuthenticated",
-                    content = {
-                            @Content(mediaType = "application/json",
-                                    schema = @Schema(ref = "StandardResponseDto"))
-                    }
-            )
+            @ApiResponse(responseCode = "200", description = "The result of the bet has been successfully updated. The response contains the updated bet object reflecting the new result and status.",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = BetDto.class))),
+            @ApiResponse(responseCode = "400", description = "Invalid request data. The request may be missing required fields or contain invalid values.",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto"))),
+            @ApiResponse(responseCode = "403", description = "User not authenticated. Access is restricted to authenticated moderators and administrators.",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto")))
     })
-    ResponseEntity<BetDto> setBetResult(@Parameter(hidden = true) AuthenticatedUser currentUser,
-                                        @Parameter(description = "ID ставки") String betId,
-                                        @Parameter(description = "результат матча и статус ставки") @Valid BetResult betResult);
+    ResponseEntity<BetDto> setBetResult(
+            @Parameter(hidden = true) AuthenticatedUser currentUser,
+            @Parameter(description = "Bet ID") @NotBlank String betId,
+            @Parameter(description = "Bet result and status") @Valid BetResult betResult);
 
-    // ------------------------------------------------------------------------------------------------------ //
-
-    @Operation(summary = "Получить список всех открытых(OPENED) ставок", description = "Доступно всем")
+    @Operation(summary = "Get list of all opened bets", description = "Accessible to everyone")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Список всех открытых(OPENED) ставок",
-                    content = {
-                            @Content(mediaType = "application/json",
-                                    schema = @Schema(implementation = BetsPage.class))
-                    }
-            ),
+            @ApiResponse(responseCode = "200", description = "List of all opened bets. The response contains a paginated list of bets that are currently open.",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = BetsPage.class))),
+            @ApiResponse(responseCode = "400", description = "Invalid request data. The request may be missing required fields or contain invalid values.",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto")))
     })
-    ResponseEntity<BetsPage> getOpenedBets(@Parameter(description = "ID сезона") String seasonId);
+    ResponseEntity<BetsPage> getOpenedBets(
+            @Parameter(description = "Season ID") @NotBlank String seasonId);
 
-    // ------------------------------------------------------------------------------------------------------ //
-
-    @Operation(summary = "Получить список всех завершенных(COMPLETED) ставок", description = "Доступно всем")
+    @Operation(summary = "Get list of all completed bets", description = "Accessible to everyone")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Список всех завершенных(COMPLETED) ставок",
-                    content = {
-                            @Content(mediaType = "application/json",
-                                    schema = @Schema(implementation = BetsPage.class))
-                    }
-            ),
+            @ApiResponse(responseCode = "200", description = "List of all completed bets. The response contains a paginated list of bets that have been completed.",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = BetsPage.class))),
+            @ApiResponse(responseCode = "400", description = "Invalid request data. The request may be missing required fields or contain invalid values.",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto")))
     })
-    ResponseEntity<BetsPage> getCompletedBets(@Parameter(description = "ID сезона") String seasonId,
-                                              @Parameter(description = "параметр фильтрации по игроку") String playerId,
-                                              @Parameter(description = "параметр фильтрации по лиге") String leagueId,
-                                              @Parameter(description = "страница запроса") int page,
-                                              @Parameter(description = "количество элементов запроса") int size,
-                                              @Parameter(description = "поле сортировки") String sortBy);
+    ResponseEntity<BetsPage> getCompletedBets(
+            @Parameter(description = "Season ID") @NotBlank String seasonId,
+            @Parameter(description = "Filter by player ID") String playerId,
+            @Parameter(description = "Filter by league ID") String leagueId,
+            @Parameter(description = "Page number") int page,
+            @Parameter(description = "Page size") int size,
+            @Parameter(description = "Sort field") String sortBy);
 
-    // ------------------------------------------------------------------------------------------------------ //
-
-    @Operation(summary = "Получить список всех ставок (OPENED + COMPLETED)", description = "Доступно только модератору и администратору")
+    @Operation(summary = "Get list of all bets (opened + completed)", description = "Accessible only to moderators and administrators")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Список всех ставок (OPENED + COMPLETED)",
-                    content = {
-                            @Content(mediaType = "application/json",
-                                    schema = @Schema(implementation = BetsPage.class))
-                    }
-            ),
+            @ApiResponse(responseCode = "200", description = "List of all bets, both opened and completed. The response contains a paginated list of bets according to the specified filters.",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = BetsPage.class))),
+            @ApiResponse(responseCode = "400", description = "Invalid request data. The request may be missing required fields or contain invalid values.",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto"))),
+            @ApiResponse(responseCode = "403", description = "User not authenticated. Access is restricted to authenticated moderators and administrators.",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto")))
     })
-    ResponseEntity<BetsPage> getAllBets(@Parameter(description = "ID сезона") String seasonId,
-                                        @Parameter(description = "страница запроса") int page,
-                                        @Parameter(description = "количество элементов запроса") int size,
-                                        @Parameter(description = "поле сортировки") String sortBy);
+    ResponseEntity<BetsPage> getAllBets(
+            @Parameter(description = "Season ID") @NotBlank String seasonId,
+            @Parameter(description = "Page number") int page,
+            @Parameter(description = "Page size") int size,
+            @Parameter(description = "Sort field") String sortBy);
 
-    // ------------------------------------------------------------------------------------------------------ //
-
-    @Operation(summary = "Отредактировать ставку", description = "Доступно только администратору и модератору")
+    @Operation(summary = "Edit a bet", description = "Accessible only to moderators and administrators")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Отредактированная ставка",
-                    content = {
-                            @Content(mediaType = "application/json",
-                                    schema = @Schema(implementation = BetDto.class))
-                    }
-            ),
-            @ApiResponse(responseCode = "403", description = "userNotAuthenticated",
-                    content = {
-                            @Content(mediaType = "application/json",
-                                    schema = @Schema(ref = "StandardResponseDto"))
-                    }
-            )
+            @ApiResponse(responseCode = "200", description = "The bet has been successfully edited. The response contains the updated bet object reflecting the changes.",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = BetDto.class))),
+            @ApiResponse(responseCode = "400", description = "Invalid request data. The request may be missing required fields or contain invalid values.",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto"))),
+            @ApiResponse(responseCode = "403", description = "User not authenticated. Access is restricted to authenticated moderators and administrators.",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto")))
     })
-    ResponseEntity<BetDto> editBet(@Parameter(hidden = true) AuthenticatedUser currentUser,
-                                   @Parameter(description = "ID ставки") String betId,
-                                   @Valid EditedBetDto editedBet);
+    ResponseEntity<BetDto> editBet(
+            @Parameter(hidden = true) AuthenticatedUser currentUser,
+            @Parameter(description = "Bet ID") @NotBlank String betId,
+            @Parameter(description = "Edited bet details") @Valid EditedBetDto editedBet);
 
-    // ------------------------------------------------------------------------------------------------------ //
-
-    @Operation(summary = "Аннулировать ставку", description = "Доступно только администратору и модератору")
+    @Operation(summary = "Delete a bet", description = "Accessible only to moderators and administrators")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Аннулированная ставка",
-                    content = {
-                            @Content(mediaType = "application/json",
-                                    schema = @Schema(implementation = BetDto.class))
-                    }
-            ),
-            @ApiResponse(responseCode = "403", description = "userNotAuthenticated",
-                    content = {
-                            @Content(mediaType = "application/json",
-                                    schema = @Schema(ref = "StandardResponseDto"))
-                    }
-            )
+            @ApiResponse(responseCode = "200", description = "The bet has been successfully deleted. The response contains the deleted bet object with metadata if applicable.",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = BetDto.class))),
+            @ApiResponse(responseCode = "400", description = "Invalid request data. The request may be missing required fields or contain invalid values.",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto"))),
+            @ApiResponse(responseCode = "403", description = "User not authenticated. Access is restricted to authenticated moderators and administrators.",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto")))
     })
-    ResponseEntity<BetDto> deleteBet(@Parameter(hidden = true) AuthenticatedUser currentUser,
-                                     @Parameter(description = "ID ставки") String betId,
-                                     @Valid DeletedBetDto deletedBetMetaData);
-
-    // ------------------------------------------------------------------------------------------------------ //
-
-
+    ResponseEntity<BetDto> deleteBet(
+            @Parameter(hidden = true) AuthenticatedUser currentUser,
+            @Parameter(description = "Bet ID") @NotBlank String betId,
+            @Parameter(description = "Deleted bet metadata") @Valid DeletedBetDto deletedBetMetaData);
 }

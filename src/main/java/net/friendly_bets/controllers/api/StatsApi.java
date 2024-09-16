@@ -9,114 +9,97 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.tags.Tags;
 import net.friendly_bets.dto.*;
-import net.friendly_bets.security.details.AuthenticatedUser;
 import org.springframework.http.ResponseEntity;
+
+import javax.validation.constraints.NotBlank;
 
 @Tags(value = {
         @Tag(name = "Player Stats")
 })
 public interface StatsApi {
 
-    @Operation(summary = "Общая статистика всех участников турнира в сезоне", description = "Доступно всем")
+    @Operation(summary = "Get overall statistics of all tournament participants in a season", description = "Accessible to everyone")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Общая статистика всех участников турнира в сезоне",
-                    content = {
-                            @Content(mediaType = "application/json",
-                                    schema = @Schema(implementation = AllPlayersStatsPage.class))
-                    }
-            ),
+            @ApiResponse(responseCode = "200", description = "Overall statistics of all participants in the season",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = AllPlayersStatsPage.class))),
+            @ApiResponse(responseCode = "400", description = "Invalid season ID provided",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto"))),
+            @ApiResponse(responseCode = "404", description = "Season not found",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto")))
     })
-    ResponseEntity<AllPlayersStatsPage> getAllPlayersStatsBySeason(@Parameter(description = "ID сезона") String seasonId);
+    ResponseEntity<AllPlayersStatsPage> getAllPlayersStatsBySeason(
+            @Parameter(description = "Season ID") @NotBlank String seasonId);
 
-    // ------------------------------------------------------------------------------------------------------ //
-
-    @Operation(summary = "Получить список статистики всех участников сезона по лигам", description = "Доступно всем")
+    @Operation(summary = "Get list of statistics for all participants in the season by leagues", description = "Accessible to everyone")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Статистика всех участников по лигам",
-                    content = {
-                            @Content(mediaType = "application/json",
-                                    schema = @Schema(implementation = AllPlayersStatsByLeaguesDto.class))
-                    }
-            ),
+            @ApiResponse(responseCode = "200", description = "Statistics of all participants by leagues",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = AllPlayersStatsByLeaguesDto.class))),
+            @ApiResponse(responseCode = "400", description = "Invalid season ID provided",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto"))),
+            @ApiResponse(responseCode = "404", description = "Season not found",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto")))
     })
-    ResponseEntity<AllPlayersStatsByLeaguesDto> getAllPlayersStatsByLeagues(@Parameter(description = "ID сезона") String seasonId);
+    ResponseEntity<AllPlayersStatsByLeaguesDto> getAllPlayersStatsByLeagues(
+            @Parameter(description = "Season ID") @NotBlank String seasonId);
 
-    // ------------------------------------------------------------------------------------------------------ //
-
-    @Operation(summary = "Статистика всех участников турнира в сезоне по командам", description = "Доступно всем")
+    @Operation(summary = "Statistics of all tournament participants in a season by teams", description = "Accessible to everyone")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Статистика всех участников турнира в сезоне по командам",
-                    content = {
-                            @Content(mediaType = "application/json",
-                                    schema = @Schema(implementation = AllStatsByTeamsInSeasonDto.class))
-                    }
-            ),
+            @ApiResponse(responseCode = "200", description = "Statistics of all participants in the season by teams",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = AllStatsByTeamsInSeasonDto.class))),
+            @ApiResponse(responseCode = "400", description = "Invalid season ID provided",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto"))),
+            @ApiResponse(responseCode = "404", description = "Season not found",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto")))
     })
-    ResponseEntity<AllStatsByTeamsInSeasonDto> getAllStatsByTeamsInSeason(@Parameter(description = "ID сезона") String seasonId);
+    ResponseEntity<AllStatsByTeamsInSeasonDto> getAllStatsByTeamsInSeason(
+            @Parameter(description = "Season ID") @NotBlank String seasonId);
 
-    // ------------------------------------------------------------------------------------------------------ //
-
-    @Operation(summary = "Статистика по командам", description = "Доступно всем")
+    @Operation(summary = "Team statistics", description = "Accessible to everyone")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Статистика по командам",
-                    content = {
-                            @Content(mediaType = "application/json",
-                                    schema = @Schema(implementation = PlayerStatsByTeamsDto.class))
-                    }
-            ),
+            @ApiResponse(responseCode = "200", description = "Statistics by teams",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = PlayerStatsByTeamsDto.class))),
+            @ApiResponse(responseCode = "400", description = "Invalid season, league, or player ID provided",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto"))),
+            @ApiResponse(responseCode = "404", description = "Season, league, or player not found",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto")))
     })
-    ResponseEntity<StatsByTeamsDto> getStatsByTeams(@Parameter(description = "ID сезона") String seasonId,
-                                                    @Parameter(description = "ID лиги") String leagueId,
-                                                    @Parameter(description = "ID игрока") String userId);
+    ResponseEntity<StatsByTeamsDto> getStatsByTeams(
+            @Parameter(description = "Season ID") @NotBlank String seasonId,
+            @Parameter(description = "League ID") @NotBlank String leagueId,
+            @Parameter(description = "Player ID") @NotBlank String userId);
 
-    // ------------------------------------------------------------------------------------------------------ //
-
-    @Operation(summary = "Полный пересчет всей статистики игроков по сезону", description = "Доступно только администратору")
+    @Operation(summary = "Full recalculation of all player statistics for a season", description = "Accessible only to administrators")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Пересчитанная статистика всех игроков в сезоне",
-                    content = {
-                            @Content(mediaType = "application/json",
-                                    schema = @Schema(implementation = AllPlayersStatsPage.class))
-                    }
-            ),
+            @ApiResponse(responseCode = "200", description = "Recalculated statistics of all players in the season",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = AllPlayersStatsPage.class))),
+            @ApiResponse(responseCode = "403", description = "User not authenticated or not authorized",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto"))),
+            @ApiResponse(responseCode = "404", description = "Season not found",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto")))
     })
-    @ApiResponse(responseCode = "403", description = "userNotAuthenticated",
-            content = {
-                    @Content(mediaType = "application/json",
-                            schema = @Schema(ref = "StandardResponseDto"))
-            }
-    )
-    ResponseEntity<AllPlayersStatsPage> playersStatsFullRecalculation(@Parameter(description = "ID сезона") String seasonId);
+    ResponseEntity<AllPlayersStatsPage> playersStatsFullRecalculation(
+            @Parameter(description = "Season ID") @NotBlank String seasonId);
 
-    // ------------------------------------------------------------------------------------------------------ //
-
-    @Operation(summary = "Полный пересчет всей статистики игроков по командам в сезоне", description = "Доступно только администратору")
+    @Operation(summary = "Full recalculation of team player statistics for a season", description = "Accessible only to administrators")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Пересчитанная статистика всех игроков по командам в сезоне"),
+            @ApiResponse(responseCode = "200", description = "Recalculated statistics of all players by teams in the season"),
+            @ApiResponse(responseCode = "403", description = "User not authenticated or not authorized",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto"))),
+            @ApiResponse(responseCode = "404", description = "Season not found",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto")))
     })
-    @ApiResponse(responseCode = "403", description = "userNotAuthenticated",
-            content = {
-                    @Content(mediaType = "application/json",
-                            schema = @Schema(ref = "StandardResponseDto"))
-            }
-    )
-    ResponseEntity<Void> playersStatsByTeamsRecalculation(@Parameter(description = "ID сезона") String seasonId);
+    ResponseEntity<Void> playersStatsByTeamsRecalculation(
+            @Parameter(description = "Season ID") @NotBlank String seasonId);
 
-    // ------------------------------------------------------------------------------------------------------ //
-
+    @Operation(summary = "Recalculate all gameweek statistics", description = "Accessible only to administrators")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Пересчитанная статистика всех игровых туров календаря"),
+            @ApiResponse(responseCode = "200", description = "Recalculated statistics of all gameweeks"),
+            @ApiResponse(responseCode = "403", description = "User not authenticated or not authorized",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto"))),
+            @ApiResponse(responseCode = "404", description = "Season not found",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto")))
     })
-    @ApiResponse(responseCode = "403", description = "userNotAuthenticated",
-            content = {
-                    @Content(mediaType = "application/json",
-                            schema = @Schema(ref = "StandardResponseDto"))
-            }
-    )
-    ResponseEntity<Void> recalculateAllGameweekStats(@Parameter(hidden = true) AuthenticatedUser currentUser,
-                                                     @Parameter(description = "ID сезона") String seasonId);
-
-    // ------------------------------------------------------------------------------------------------------ //
-
+    ResponseEntity<Void> recalculateAllGameweekStats(
+            @Parameter(description = "Season ID") @NotBlank String seasonId);
 
 }

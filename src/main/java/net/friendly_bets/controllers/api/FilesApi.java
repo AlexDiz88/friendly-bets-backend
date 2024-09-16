@@ -14,34 +14,62 @@ import net.friendly_bets.security.details.AuthenticatedUser;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.multipart.MultipartFile;
 
+import javax.validation.constraints.NotBlank;
+import java.io.IOException;
+
 @Tags(value = {
         @Tag(name = "Files")
 })
 public interface FilesApi {
 
-    @Operation(summary = "Сохранение/изменение изображения пользователя", description = "Доступно только зарегистрированному пользователю")
+    @Operation(summary = "Upload a user avatar to S3", description = "Accessible to users with 'USER', 'MODERATOR', or 'ADMIN' roles")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "201", description = "Сохранённый/обновленный файл изображения",
-                    content = {
-                            @Content(mediaType = "application/json",
-                                    schema = @Schema(implementation = StandardResponseDto.class))
-                    }
-            )
+            @ApiResponse(responseCode = "200", description = "Avatar successfully uploaded",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = StandardResponseDto.class))),
+            @ApiResponse(responseCode = "400", description = "Invalid file data or upload failed",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto"))),
+            @ApiResponse(responseCode = "403", description = "User not authenticated or does not have the required permissions",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto")))
     })
-    ResponseEntity<StandardResponseDto> saveAvatarImage(@Parameter(hidden = true) AuthenticatedUser authenticatedUser,
-                                                        MultipartFile image);
+    ResponseEntity<StandardResponseDto> uploadUserAvatar(
+            @Parameter(description = "Authenticated user details") AuthenticatedUser authenticatedUser,
+            @Parameter(description = "Avatar file to upload") MultipartFile file) throws IOException;
 
-
-    @Operation(summary = "Сохранение/изменение логотипа команды", description = "Доступно только администратору")
+    @Operation(summary = "Download a file from S3", description = "Accessible to users with 'ADMIN' or 'MODERATOR' roles")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "201", description = "Сохранённый/обновленный файл изображения",
-                    content = {
-                            @Content(mediaType = "application/json",
-                                    schema = @Schema(implementation = ImageDto.class))
-                    }
-            )
+            @ApiResponse(responseCode = "200", description = "File successfully downloaded",
+                    content = @Content(mediaType = "application/octet-stream")),
+            @ApiResponse(responseCode = "404", description = "File not found",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto"))),
+            @ApiResponse(responseCode = "403", description = "User not authenticated or does not have the required permissions",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto")))
     })
-    ResponseEntity<ImageDto> saveLogoImage(@Parameter(hidden = true) AuthenticatedUser authenticatedUser,
-                                           @Parameter(description = "идентификатор карточки помощи") String teamId,
-                                           MultipartFile image);
+    ResponseEntity<byte[]> downloadFile(
+            @Parameter(description = "Name of the file to download") @NotBlank String filename);
+
+    @Operation(summary = "Save a user avatar image", description = "Accessible to users with 'USER', 'MODERATOR', or 'ADMIN' roles")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Avatar image successfully saved",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = StandardResponseDto.class))),
+            @ApiResponse(responseCode = "400", description = "Invalid file data or save failed",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto"))),
+            @ApiResponse(responseCode = "403", description = "User not authenticated or does not have the required permissions",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto")))
+    })
+    ResponseEntity<StandardResponseDto> saveAvatarImage(
+            @Parameter(hidden = true) AuthenticatedUser authenticatedUser,
+            @Parameter(description = "Avatar file to save") MultipartFile file);
+
+    @Operation(summary = "Save a team logo image", description = "Accessible to users with 'ADMIN' role")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "201", description = "Team logo image successfully saved",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ImageDto.class))),
+            @ApiResponse(responseCode = "400", description = "Invalid file data or save failed",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto"))),
+            @ApiResponse(responseCode = "403", description = "User not authenticated or does not have the required permissions",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto")))
+    })
+    ResponseEntity<ImageDto> saveLogoImage(
+            @Parameter(description = "ID of the team for which the logo is being saved") @NotBlank String teamId,
+            @Parameter(description = "Logo image file to save") MultipartFile image);
 }

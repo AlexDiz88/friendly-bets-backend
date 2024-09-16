@@ -22,83 +22,53 @@ import javax.validation.Valid;
 })
 public interface UsersApi {
 
-    @Operation(summary = "Получение своего профиля", description = "Доступно только аутентифицированному пользователю")
+    @Operation(summary = "Get your profile", description = "Accessible only to authenticated users")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Информация о профиле",
-                    content = {
-                            @Content(mediaType = "application/json",
-                                    schema = @Schema(implementation = UserDto.class))
-                    }
-            ),
-            @ApiResponse(responseCode = "403", description = "userNotAuthenticated",
-                    content = {
-                            @Content(mediaType = "application/json",
-                                    schema = @Schema(ref = "StandardResponseDto"))
-                    }
-            )
+            @ApiResponse(responseCode = "200", description = "Profile information retrieved successfully",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = UserDto.class))),
+            @ApiResponse(responseCode = "403", description = "User not authenticated or does not have the necessary permissions",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto")))
     })
-    ResponseEntity<UserDto> getProfile(@Parameter(hidden = true) AuthenticatedUser currentUser);
+    ResponseEntity<UserDto> getProfile(
+            @Parameter(hidden = true) AuthenticatedUser currentUser);
 
-    // ------------------------------------------------------------------------------------------------------ //
-
-    @Operation(summary = "Изменить почту профиля", description = "Доступно только аутентифицированному пользователю")
+    @Operation(summary = "Change profile email", description = "Accessible only to authenticated users")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Новая почта профиля",
-                    content = {
-                            @Content(mediaType = "application/json",
-                                    schema = @Schema(implementation = UserDto.class))
-                    }
-            ),
-            @ApiResponse(responseCode = "403", description = "userNotAuthenticated",
-                    content = {
-                            @Content(mediaType = "application/json",
-                                    schema = @Schema(ref = "StandardResponseDto"))
-                    }
-            )
+            @ApiResponse(responseCode = "200", description = "Profile email updated successfully",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = UserDto.class))),
+            @ApiResponse(responseCode = "400", description = "Invalid email data provided; ensure the email format is correct and not already in use",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto"))),
+            @ApiResponse(responseCode = "403", description = "User not authenticated or does not have permission to change the email",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto")))
     })
-    ResponseEntity<UserDto> editEmail(@Parameter(hidden = true) AuthenticatedUser currentUser,
-                                      @Parameter(description = "новая почта пользователя") @Valid UpdatedEmailDto updatedEmailDto);
+    ResponseEntity<UserDto> editEmail(
+            @Parameter(hidden = true) AuthenticatedUser currentUser,
+            @Parameter(description = "New email address for the user") @Valid UpdatedEmailDto updatedEmailDto);
 
-    // ------------------------------------------------------------------------------------------------------ //
-
-    @Operation(summary = "Изменить пароль профиля", description = "Доступно только аутентифицированному пользователю")
+    @Operation(summary = "Change profile password", description = "Accessible only to authenticated users")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Новый пароль профиля",
-                    content = {
-                            @Content(mediaType = "application/json",
-                                    schema = @Schema(implementation = UserDto.class))
-                    }
-            ),
-            @ApiResponse(responseCode = "403", description = "userNotAuthenticated",
-                    content = {
-                            @Content(mediaType = "application/json",
-                                    schema = @Schema(ref = "StandardResponseDto"))
-                    }
-            )
+            @ApiResponse(responseCode = "200", description = "Profile password updated successfully",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = UserDto.class))),
+            @ApiResponse(responseCode = "400", description = "Invalid password data provided; ensure the current password is correct and the new password meets the required criteria",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto"))),
+            @ApiResponse(responseCode = "403", description = "User not authenticated or does not have permission to change the password",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto")))
     })
-    ResponseEntity<UserDto> editPassword(@Parameter(hidden = true) AuthenticatedUser currentUser,
-                                         @Parameter(description = "текущий и новый пароль пользователя") @Valid UpdatedPasswordDto updatedPasswordDto);
+    ResponseEntity<UserDto> editPassword(
+            @Parameter(hidden = true) AuthenticatedUser currentUser,
+            @Parameter(description = "Current password and new password for the user") @Valid UpdatedPasswordDto updatedPasswordDto);
 
-    // ------------------------------------------------------------------------------------------------------ //
-
-    @Operation(summary = "Изменить имя профиля", description = "Доступно только аутентифицированному пользователю")
+    @Operation(summary = "Change profile username", description = "Accessible only to authenticated users")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Новое имя профиля",
-                    content = {
-                            @Content(mediaType = "application/json",
-                                    schema = @Schema(implementation = UserDto.class))
-                    }
-            ),
-            @ApiResponse(responseCode = "403", description = "userNotAuthenticated",
-                    content = {
-                            @Content(mediaType = "application/json",
-                                    schema = @Schema(ref = "StandardResponseDto"))
-                    }
-            )
+            @ApiResponse(responseCode = "200", description = "Profile username updated successfully",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = UserDto.class))),
+            @ApiResponse(responseCode = "400", description = "Invalid username data provided; ensure the username is not already in use and meets the required criteria",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto"))),
+            @ApiResponse(responseCode = "403", description = "User not authenticated or does not have permission to change the username",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto")))
     })
-    ResponseEntity<UserDto> editUsername(@Parameter(hidden = true) AuthenticatedUser currentUser,
-                                         @Parameter(description = "новое имя пользователя") @Valid UpdatedUsernameDto updatedUsernameDto);
-
-    // ------------------------------------------------------------------------------------------------------ //
+    ResponseEntity<UserDto> editUsername(
+            @Parameter(hidden = true) AuthenticatedUser currentUser,
+            @Parameter(description = "New username for the user") @Valid UpdatedUsernameDto updatedUsernameDto);
 
 }
