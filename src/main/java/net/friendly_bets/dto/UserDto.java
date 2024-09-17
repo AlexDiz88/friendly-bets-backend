@@ -30,8 +30,12 @@ public class UserDto {
     @Schema(description = "имя пользователя", example = "example_name")
     private String username;
 
+    @Schema(description = "язык пользователя", example = "ru")
+    private String language;
+
     @Schema(description = "аватар пользователя в формате base64")
     private String avatar;
+
 
     public static UserDto from(User user) {
         return UserDto.builder()
@@ -39,6 +43,7 @@ public class UserDto {
                 .email(user.getEmail())
                 .role(user.getRole().toString())
                 .username(user.getUsername())
+                .language(user.getLanguage())
                 .avatar(user.getAvatar() != null ?
                         Base64.getEncoder().encodeToString(user.getAvatar().getData()) : null)
                 .build();

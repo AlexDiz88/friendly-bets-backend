@@ -16,6 +16,7 @@ import net.friendly_bets.security.details.AuthenticatedUser;
 import org.springframework.http.ResponseEntity;
 
 import javax.validation.Valid;
+import javax.validation.constraints.NotBlank;
 
 @Tags(value = {
         @Tag(name = "Users")
@@ -70,5 +71,19 @@ public interface UsersApi {
     ResponseEntity<UserDto> editUsername(
             @Parameter(hidden = true) AuthenticatedUser currentUser,
             @Parameter(description = "New username for the user") @Valid UpdatedUsernameDto updatedUsernameDto);
+
+    @Operation(summary = "Change profile language", description = "Accessible only to authenticated users")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Profile language updated successfully",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = UserDto.class))),
+            @ApiResponse(responseCode = "400", description = "Invalid language data provided; ensure the language code is valid",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto"))),
+            @ApiResponse(responseCode = "403", description = "User not authenticated",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto")))
+    })
+    ResponseEntity<UserDto> changeLanguage(
+            @Parameter(hidden = true) AuthenticatedUser currentUser,
+            @Parameter(description = "Selected language for the user's website interface") @NotBlank String language);
+
 
 }

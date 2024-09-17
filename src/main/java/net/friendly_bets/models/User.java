@@ -46,4 +46,7 @@ public class User {
 
     @Field(name = "avatar")
     private Binary avatar;
+
+    @Field(name = "language")
+    private String language;
 }
