@@ -2,7 +2,6 @@ package net.friendly_bets.controllers;
 
 import lombok.RequiredArgsConstructor;
 import net.friendly_bets.controllers.api.FilesApi;
-import net.friendly_bets.dto.ImageDto;
 import net.friendly_bets.dto.StandardResponseDto;
 import net.friendly_bets.security.details.AuthenticatedUser;
 import net.friendly_bets.services.FilesService;
@@ -60,12 +59,4 @@ public class FilesController implements FilesApi {
         return ResponseEntity.ok(filesService.saveAvatarImage(currentUserId, file));
     }
 
-    @Override
-    @PreAuthorize("hasAuthority('ADMIN')")
-    @PostMapping("/upload/logo/{team-id}")
-    public ResponseEntity<ImageDto> saveLogoImage(@PathVariable("team-id") String teamId,
-                                                  @RequestParam("image") MultipartFile image) {
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(filesService.saveLogoImage(teamId, image));
-    }
 }

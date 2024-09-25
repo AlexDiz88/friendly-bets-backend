@@ -9,7 +9,6 @@ import net.friendly_bets.models.*;
 import net.friendly_bets.repositories.BetsRepository;
 import net.friendly_bets.repositories.PlayerStatsByTeamsRepository;
 import net.friendly_bets.repositories.PlayerStatsRepository;
-import net.friendly_bets.repositories.SeasonsRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,7 +20,6 @@ import java.util.stream.Collectors;
 
 import static net.friendly_bets.utils.Constants.TOTAL_ID;
 import static net.friendly_bets.utils.Constants.WRL_STATUSES;
-import static net.friendly_bets.utils.GetEntityOrThrow.*;
 import static net.friendly_bets.utils.StatsUtils.*;
 
 @RequiredArgsConstructor
@@ -31,19 +29,19 @@ public class StatsService {
 
     PlayerStatsRepository playerStatsRepository;
     PlayerStatsByTeamsRepository playerStatsByTeamsRepository;
-    SeasonsRepository seasonsRepository;
     BetsRepository betsRepository;
 
     PlayerStatsService playerStatsService;
     TeamStatsService teamStatsService;
     GameweekStatsService gameweekStatsService;
+    GetEntityService getEntityService;
 
 
     public AllPlayersStatsPage getAllPlayersStatsBySeason(String seasonId) {
-        Season season = getSeasonOrThrow(seasonsRepository, seasonId);
+        Season season = getEntityService.getSeasonOrThrow(seasonId);
 
         List<PlayerStats> resultStats = season.getPlayers().stream()
-                .map(user -> getPlayerStatsOrNull(playerStatsRepository, seasonId, TOTAL_ID, user))
+                .map(user -> getEntityService.getPlayerStatsOrNull(seasonId, TOTAL_ID, user))
                 .filter(playerStats -> playerStats != null && playerStats.getTotalBets() > 0)
                 .collect(Collectors.toList());
 
@@ -52,7 +50,7 @@ public class StatsService {
 
 
     public AllPlayersStatsByLeaguesDto getAllPlayersStatsByLeagues(String seasonId) {
-        Season season = getSeasonOrThrow(seasonsRepository, seasonId);
+        Season season = getEntityService.getSeasonOrThrow(seasonId);
         List<PlayerStats> allStatsBySeasonId = playerStatsRepository.findAllBySeasonId(seasonId);
 
         Map<String, List<PlayerStats>> statsByLeague = allStatsBySeasonId.stream()
@@ -85,7 +83,7 @@ public class StatsService {
 
 
     public StatsByTeamsDto getStatsByTeams(String seasonId, String leagueId, String userId) {
-        PlayerStatsByTeams statsByTeams = getPlayerStatsByTeamsOrThrow(playerStatsByTeamsRepository, seasonId, leagueId, userId);
+        PlayerStatsByTeams statsByTeams = getEntityService.getPlayerStatsByTeamsOrThrow(seasonId, leagueId, userId);
 
         return new StatsByTeamsDto(PlayerStatsByTeamsDto.from(statsByTeams));
     }

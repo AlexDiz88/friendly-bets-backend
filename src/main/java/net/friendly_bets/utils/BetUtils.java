@@ -11,8 +11,8 @@ import net.friendly_bets.exceptions.BadRequestException;
 import net.friendly_bets.exceptions.ConflictException;
 import net.friendly_bets.models.*;
 import net.friendly_bets.repositories.BetsRepository;
-import net.friendly_bets.repositories.CalendarsRepository;
 import net.friendly_bets.repositories.LeaguesRepository;
+import net.friendly_bets.services.GetEntityService;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
@@ -24,11 +24,12 @@ import java.util.Set;
 
 import static net.friendly_bets.utils.Constants.COMPLETED_BET_STATUSES;
 import static net.friendly_bets.utils.Constants.WRL_STATUSES;
-import static net.friendly_bets.utils.GetEntityOrThrow.getListOfCalendarNodesBySeasonOrThrow;
 
 @UtilityClass
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class BetUtils {
+    GetEntityService getEntityService;
+
     public static void checkGameResult(GameResult score, Bet.BetStatus betStatus) {
         if (WRL_STATUSES.contains(betStatus)) {
             if (score == null) {
@@ -315,9 +316,9 @@ public class BetUtils {
         }
     }
 
-    public static void leagueMatchdaysValidation(CalendarsRepository calendarsRepository, List<LeagueMatchdayNode> matchdayNodes, String seasonId) {
+    public static void leagueMatchdaysValidation(List<LeagueMatchdayNode> matchdayNodes, String seasonId) {
         Set<String> uniqueCombinations = new HashSet<>();
-        List<CalendarNode> calendarNodes = getListOfCalendarNodesBySeasonOrThrow(calendarsRepository, seasonId);
+        List<CalendarNode> calendarNodes = getEntityService.getListOfCalendarNodesBySeasonOrThrow(seasonId);
 
         for (CalendarNode calendarNode : calendarNodes) {
             List<LeagueMatchdayNode> leagueMatchdayNodes = calendarNode.getLeagueMatchdayNodes();

@@ -9,9 +9,7 @@ import net.friendly_bets.models.Bet;
 import net.friendly_bets.models.CalendarNode;
 import net.friendly_bets.models.LeagueMatchdayNode;
 import net.friendly_bets.models.Season;
-import net.friendly_bets.repositories.BetsRepository;
 import net.friendly_bets.repositories.CalendarsRepository;
-import net.friendly_bets.repositories.SeasonsRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,7 +21,6 @@ import java.util.Comparator;
 import java.util.List;
 
 import static net.friendly_bets.utils.BetUtils.*;
-import static net.friendly_bets.utils.GetEntityOrThrow.*;
 
 @RequiredArgsConstructor
 @Service
@@ -31,12 +28,11 @@ import static net.friendly_bets.utils.GetEntityOrThrow.*;
 public class CalendarsService {
 
     CalendarsRepository calendarsRepository;
-    BetsRepository betsRepository;
-    SeasonsRepository seasonsRepository;
+    GetEntityService getEntityService;
 
 
     public CalendarNodesPage getAllSeasonCalendarNodes(String seasonId) {
-        List<CalendarNode> calendarNodes = getListOfCalendarNodesBySeasonOrThrow(calendarsRepository, seasonId);
+        List<CalendarNode> calendarNodes = getEntityService.getListOfCalendarNodesBySeasonOrThrow(seasonId);
         calendarNodes.sort(Comparator.comparing(CalendarNode::getStartDate).reversed());
 
         return CalendarNodesPage.builder()
@@ -48,7 +44,7 @@ public class CalendarsService {
 
 
     public CalendarNodesPage getSeasonCalendarHasBetsNodes(String seasonId) {
-        List<CalendarNode> calendarNodes = getListOfCalendarNodesWithBetsBySeasonOrThrow(calendarsRepository, seasonId);
+        List<CalendarNode> calendarNodes = getEntityService.getListOfCalendarNodesWithBetsBySeasonOrThrow(seasonId);
         calendarNodes.sort(Comparator.comparing(CalendarNode::getStartDate).reversed());
 
         return CalendarNodesPage.builder()
@@ -60,7 +56,7 @@ public class CalendarsService {
 
 
     public BetsPage getActualCalendarNodeBets(String seasonId) {
-        List<CalendarNode> calendarNodes = getListOfCalendarNodesWithBetsBySeasonOrThrow(calendarsRepository, seasonId);
+        List<CalendarNode> calendarNodes = getEntityService.getListOfCalendarNodesWithBetsBySeasonOrThrow(seasonId);
 
         CalendarNode closestNode = calendarNodes.stream()
                 .min(Comparator.comparing(node -> Math.abs(ChronoUnit.DAYS.between(LocalDate.now(), node.getStartDate()))))
@@ -73,9 +69,9 @@ public class CalendarsService {
 
 
     public CalendarNodeDto createCalendarNode(NewCalendarNodeDto newCalendarNode) {
-        getSeasonOrThrow(seasonsRepository, newCalendarNode.getSeasonId());
+        getEntityService.getSeasonOrThrow(newCalendarNode.getSeasonId());
         datesRangeValidation(newCalendarNode.getStartDate(), newCalendarNode.getEndDate());
-        leagueMatchdaysValidation(calendarsRepository, newCalendarNode.getLeagueMatchdayNodes(), newCalendarNode.getSeasonId());
+        leagueMatchdaysValidation(newCalendarNode.getLeagueMatchdayNodes(), newCalendarNode.getSeasonId());
 
         CalendarNode calendarNode = CalendarNode.builder()
                 .createdAt(LocalDateTime.now())
@@ -97,10 +93,10 @@ public class CalendarsService {
 
 
     public void addBetToCalendarNode(String betId, String calendarNodeId, String leagueId) {
-        CalendarNode calendarNode = getCalendarNodeOrThrow(calendarsRepository, calendarNodeId);
-        Season season = getSeasonOrThrow(seasonsRepository, calendarNode.getSeasonId());
-        LeagueMatchdayNode node = getLeagueMatchdayNodeOrThrow(calendarNode, leagueId);
-        Bet bet = getBetOrThrow(betsRepository, betId);
+        CalendarNode calendarNode = getEntityService.getCalendarNodeOrThrow(calendarNodeId);
+        Season season = getEntityService.getSeasonOrThrow(calendarNode.getSeasonId());
+        LeagueMatchdayNode node = getLeagueMatchdayNode(calendarNode, leagueId);
+        Bet bet = getEntityService.getBetOrThrow(betId);
 
         checkLeagueBetLimit(season, node, bet.getUser().getId());
         node.getBets().add(bet);
@@ -116,7 +112,7 @@ public class CalendarsService {
 
 
     public BetsPage getBetsByCalendarNode(String calendarNodeId) {
-        CalendarNode calendarNode = getCalendarNodeOrThrow(calendarsRepository, calendarNodeId);
+        CalendarNode calendarNode = getEntityService.getCalendarNodeOrThrow(calendarNodeId);
 
         List<Bet> bets = new ArrayList<>();
         for (LeagueMatchdayNode leagueMatchdayNode : calendarNode.getLeagueMatchdayNodes()) {
@@ -134,7 +130,7 @@ public class CalendarsService {
 
     @Transactional
     public CalendarNodeDto deleteCalendarNode(String calendarNodeId) {
-        CalendarNode calendarNode = getCalendarNodeOrThrow(calendarsRepository, calendarNodeId);
+        CalendarNode calendarNode = getEntityService.getCalendarNodeOrThrow(calendarNodeId);
 
         if (calendarNode.getHasBets()) {
             throw new BadRequestException("cannotDeleteCalendarNodeWithBets");
@@ -149,7 +145,7 @@ public class CalendarsService {
 
 
     public CalendarNodeDto deleteBetInCalendarNode(String calendarNodeId, String betId) {
-        CalendarNode calendarNode = getCalendarNodeOrThrow(calendarsRepository, calendarNodeId);
+        CalendarNode calendarNode = getEntityService.getCalendarNodeOrThrow(calendarNodeId);
         boolean betFound = false;
 
         for (LeagueMatchdayNode leagueMatchdayNode : calendarNode.getLeagueMatchdayNodes()) {
@@ -177,7 +173,7 @@ public class CalendarsService {
     // TODO: удалить метод после рефакторинга базы данных (добавление calendarNodeId в ставки в старых сезонах)
 
     public CalendarNodeDto deleteBetInCalendars(String seasonId, String betId) {
-        List<CalendarNode> calendarNodes = getListOfCalendarNodesBySeasonOrThrow(calendarsRepository, seasonId);
+        List<CalendarNode> calendarNodes = getEntityService.getListOfCalendarNodesBySeasonOrThrow(seasonId);
 
         CalendarNode updatedCalendarNode = null;
         boolean betFound = false;
@@ -227,6 +223,17 @@ public class CalendarsService {
         } else {
             deleteBetInCalendarNode(calendarNodeId, bet.getId());
         }
+    }
+
+    // ------------------------------------------------------------------------------------------------------ //
+
+    public LeagueMatchdayNode getLeagueMatchdayNode(String calendarNodeId, String leagueId) {
+        CalendarNode calendarNode = getEntityService.getCalendarNodeOrThrow(calendarNodeId);
+        return getEntityService.getLeagueMatchdayNodeOrThrow(calendarNode, leagueId);
+    }
+
+    public LeagueMatchdayNode getLeagueMatchdayNode(CalendarNode calendarNode, String leagueId) {
+        return getEntityService.getLeagueMatchdayNodeOrThrow(calendarNode, leagueId);
     }
 
     // ------------------------------------------------------------------------------------------------------ //

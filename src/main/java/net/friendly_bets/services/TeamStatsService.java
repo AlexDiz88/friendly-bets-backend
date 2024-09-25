@@ -25,7 +25,6 @@ public class TeamStatsService {
 
     PlayerStatsByTeamsRepository playerStatsByTeamsRepository;
 
-
     public void calculateStatsByTeams(String seasonId, String leagueId, String userId, Bet bet, boolean isPlus) {
         processStatsByTeams(seasonId, leagueId, userId, bet, isPlus);
         processStatsByTeams(seasonId, leagueId, TOTAL_ID, bet, isPlus);

@@ -9,7 +9,6 @@ import net.friendly_bets.dto.TeamsPage;
 import net.friendly_bets.exceptions.ConflictException;
 import net.friendly_bets.models.League;
 import net.friendly_bets.models.Team;
-import net.friendly_bets.repositories.LeaguesRepository;
 import net.friendly_bets.repositories.TeamsRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,16 +16,13 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 
-import static net.friendly_bets.utils.GetEntityOrThrow.getLeagueOrThrow;
-
 @RequiredArgsConstructor
 @Service
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class TeamsService {
 
     TeamsRepository teamsRepository;
-    LeaguesRepository leaguesRepository;
-
+    GetEntityService getEntityService;
 
     public TeamsPage getAll() {
         List<Team> allTeams = teamsRepository.findAll();
@@ -37,9 +33,8 @@ public class TeamsService {
 
     // ------------------------------------------------------------------------------------------------------ //
 
-
     public TeamsPage getLeagueTeams(String leagueId) {
-        League league = getLeagueOrThrow(leaguesRepository, leagueId);
+        League league = getEntityService.getLeagueOrThrow(leagueId);
         List<Team> allTeams = league.getTeams();
         return TeamsPage.builder()
                 .teams(TeamDto.from(allTeams))
@@ -47,7 +42,6 @@ public class TeamsService {
     }
 
     // ------------------------------------------------------------------------------------------------------ //
-
 
     @Transactional
     public TeamDto createTeam(NewTeamDto newTeam) {
