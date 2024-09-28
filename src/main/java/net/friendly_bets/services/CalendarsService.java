@@ -69,9 +69,9 @@ public class CalendarsService {
 
 
     public CalendarNodeDto createCalendarNode(NewCalendarNodeDto newCalendarNode) {
-        getEntityService.getSeasonOrThrow(newCalendarNode.getSeasonId());
+        List<CalendarNode> calendarNodes = getEntityService.getListOfCalendarNodesBySeasonOrThrow(newCalendarNode.getSeasonId());
         datesRangeValidation(newCalendarNode.getStartDate(), newCalendarNode.getEndDate());
-        leagueMatchdaysValidation(newCalendarNode.getLeagueMatchdayNodes(), newCalendarNode.getSeasonId());
+        leagueMatchdaysValidation(calendarNodes, newCalendarNode.getLeagueMatchdayNodes());
 
         CalendarNode calendarNode = CalendarNode.builder()
                 .createdAt(LocalDateTime.now())
