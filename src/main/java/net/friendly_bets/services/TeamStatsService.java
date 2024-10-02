@@ -30,7 +30,7 @@ public class TeamStatsService {
         processStatsByTeams(seasonId, leagueId, TOTAL_ID, bet, isPlus);
     }
 
-    public void processStatsByTeams(String seasonId, String leagueId, String userId, Bet bet, boolean isPlus) {
+    private void processStatsByTeams(String seasonId, String leagueId, String userId, Bet bet, boolean isPlus) {
         PlayerStatsByTeams playerStatsByTeams = getStatsByTeamsOrCreateNew(seasonId, leagueId, userId);
         processTeamsStats(playerStatsByTeams, bet, isPlus);
         if (!playerStatsByTeams.getTeamStats().isEmpty()) {
@@ -83,7 +83,7 @@ public class TeamStatsService {
 
     // ------------------------------------------------------------------------------------------------------ //
 
-    public PlayerStatsByTeams getStatsByTeamsOrCreateNew(String seasonId, String leagueId, String userId) {
+    private PlayerStatsByTeams getStatsByTeamsOrCreateNew(String seasonId, String leagueId, String userId) {
         return playerStatsByTeamsRepository
                 .findBySeasonIdAndLeagueIdAndUserId(seasonId, leagueId, userId)
                 .orElseGet(() -> createNewStatsByTeams(seasonId, leagueId, userId));
@@ -115,7 +115,7 @@ public class TeamStatsService {
 
     // ------------------------------------------------------------------------------------------------------ //
 
-    private TeamStats createNewTeamStats(Team team) {
+    public TeamStats createNewTeamStats(Team team) {
         return TeamStats.builder()
                 .team(team)
                 .betCount(0)
