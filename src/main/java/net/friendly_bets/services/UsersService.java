@@ -16,7 +16,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import static net.friendly_bets.utils.Constants.SUPPORTED_LANGUAGES;
-import static net.friendly_bets.utils.GetEntityOrThrow.getUserOrThrow;
 
 @RequiredArgsConstructor
 @Service
@@ -25,19 +24,18 @@ public class UsersService {
 
     UsersRepository usersRepository;
     PasswordEncoder passwordEncoder;
-
+    GetEntityService getEntityService;
 
     public UserDto getProfile(String currentUserId) {
-        User user = getUserOrThrow(usersRepository, currentUserId);
+        User user = getEntityService.getUserOrThrow(currentUserId);
         return UserDto.from(user);
     }
 
     // ------------------------------------------------------------------------------------------------------ //
 
-
     @Transactional
     public UserDto editEmail(String currentUserId, UpdatedEmailDto updatedEmailDto) {
-        User user = getUserOrThrow(usersRepository, currentUserId);
+        User user = getEntityService.getUserOrThrow(currentUserId);
         if (user.getEmail().equals(updatedEmailDto.getNewEmail().toLowerCase())) {
             throw new ConflictException("newAndOldEmailsAreSame");
         }
@@ -53,14 +51,13 @@ public class UsersService {
 
     // ------------------------------------------------------------------------------------------------------ //
 
-
     @Transactional
     public UserDto editPassword(String currentUserId, UpdatedPasswordDto updatedPasswordDto) {
         if (updatedPasswordDto.getNewPassword().equals(updatedPasswordDto.getCurrentPassword())) {
             throw new BadRequestException("enteredPasswordsAreSame");
         }
 
-        User user = getUserOrThrow(usersRepository, currentUserId);
+        User user = getEntityService.getUserOrThrow(currentUserId);
 
         if (!passwordEncoder.matches(updatedPasswordDto.getCurrentPassword(), user.getHashPassword())) {
             throw new BadRequestException("actualPasswordNotCorrect");
@@ -79,7 +76,7 @@ public class UsersService {
 
     @Transactional
     public UserDto editUsername(String currentUserId, UpdatedUsernameDto updatedUsernameDto) {
-        User user = getUserOrThrow(usersRepository, currentUserId);
+        User user = getEntityService.getUserOrThrow(currentUserId);
         if (user.getUsername() != null && user.getUsername().equals(updatedUsernameDto.getNewUsername())) {
             throw new BadRequestException("newAndOldUsernamesAreSame");
         }
@@ -97,9 +94,9 @@ public class UsersService {
 
     @Transactional
     public UserDto changeLanguage(String currentUserId, String language) {
-        User user = getUserOrThrow(usersRepository, currentUserId);
+        User user = getEntityService.getUserOrThrow(currentUserId);
 
-        if (!SUPPORTED_LANGUAGES.contains(language.trim().substring(0, 2).toLowerCase())) {
+        if (!SUPPORTED_LANGUAGES.contains(language.trim().toLowerCase())) {
             throw new BadRequestException("languageNotSupported");
         }
 

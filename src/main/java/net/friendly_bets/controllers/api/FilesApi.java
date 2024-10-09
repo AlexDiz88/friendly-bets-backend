@@ -8,7 +8,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.tags.Tags;
-import net.friendly_bets.dto.ImageDto;
 import net.friendly_bets.dto.StandardResponseDto;
 import net.friendly_bets.security.details.AuthenticatedUser;
 import org.springframework.http.ResponseEntity;
@@ -60,16 +59,4 @@ public interface FilesApi {
             @Parameter(hidden = true) AuthenticatedUser authenticatedUser,
             @Parameter(description = "Avatar file to save") MultipartFile file);
 
-    @Operation(summary = "Save a team logo image", description = "Accessible to users with 'ADMIN' role")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "201", description = "Team logo image successfully saved",
-                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ImageDto.class))),
-            @ApiResponse(responseCode = "400", description = "Invalid file data or save failed",
-                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto"))),
-            @ApiResponse(responseCode = "403", description = "User not authenticated or does not have the required permissions",
-                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto")))
-    })
-    ResponseEntity<ImageDto> saveLogoImage(
-            @Parameter(description = "ID of the team for which the logo is being saved") @NotBlank String teamId,
-            @Parameter(description = "Logo image file to save") MultipartFile image);
 }

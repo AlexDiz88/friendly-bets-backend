@@ -11,15 +11,13 @@ import net.friendly_bets.models.League;
 import net.friendly_bets.models.Season;
 import net.friendly_bets.models.Team;
 import net.friendly_bets.models.User;
-import net.friendly_bets.repositories.*;
-import org.springframework.data.mongodb.core.MongoTemplate;
+import net.friendly_bets.repositories.LeaguesRepository;
+import net.friendly_bets.repositories.SeasonsRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.*;
-
-import static net.friendly_bets.utils.GetEntityOrThrow.*;
 
 @RequiredArgsConstructor
 @Service
@@ -27,12 +25,9 @@ import static net.friendly_bets.utils.GetEntityOrThrow.*;
 public class SeasonsService {
 
     SeasonsRepository seasonsRepository;
-    UsersRepository usersRepository;
     LeaguesRepository leaguesRepository;
-    TeamsRepository teamsRepository;
-    BetsRepository betsRepository;
-    MongoTemplate mongoTemplate;
 
+    GetEntityService getEntityService;
 
     @Transactional
     public SeasonsPage getAll() {
@@ -79,7 +74,7 @@ public class SeasonsService {
             throw new BadRequestException("invalidStatus");
         }
 
-        Season season = getSeasonOrThrow(seasonsRepository, seasonId);
+        Season season = getEntityService.getSeasonOrThrow(seasonId);
 
         if (season.getStatus().toString().equals(status)) {
             throw new ConflictException("seasonAlreadyHasSameStatus");
@@ -162,8 +157,8 @@ public class SeasonsService {
 
     @Transactional
     public SeasonDto registrationInSeason(String userId, String seasonId) {
-        Season season = getSeasonOrThrow(seasonsRepository, seasonId);
-        User user = getUserOrThrow(usersRepository, userId);
+        Season season = getEntityService.getSeasonOrThrow(seasonId);
+        User user = getEntityService.getUserOrThrow(userId);
         if (user.getUsername() == null || user.getUsername().isBlank()) {
             throw new BadRequestException("fillUsernameInProfile");
         }
@@ -183,7 +178,7 @@ public class SeasonsService {
 
 
     public LeaguesPage getLeaguesBySeason(String seasonId) {
-        Season season = getSeasonOrThrow(seasonsRepository, seasonId);
+        Season season = getEntityService.getSeasonOrThrow(seasonId);
         return LeaguesPage.builder()
                 .leagues(LeagueDto.from(season.getLeagues()))
                 .build();
@@ -194,7 +189,7 @@ public class SeasonsService {
 
     @Transactional
     public SeasonDto addLeagueToSeason(String seasonId, NewLeagueDto newLeague) {
-        Season season = getSeasonOrThrow(seasonsRepository, seasonId);
+        Season season = getEntityService.getSeasonOrThrow(seasonId);
         League.LeagueCode leagueCode;
 
         try {
@@ -236,8 +231,8 @@ public class SeasonsService {
         if (seasonId == null || seasonId.isBlank()) {
             throw new BadRequestException("seasonIdIsNull");
         }
-        Season season = getSeasonOrThrow(seasonsRepository, seasonId);
-        Team team = getTeamOrThrow(teamsRepository, teamId);
+        Season season = getEntityService.getSeasonOrThrow(seasonId);
+        Team team = getEntityService.getTeamOrThrow(teamId);
 
         Optional<League> optionalLeague = season.getLeagues().stream().filter(l -> l.getId().equals(leagueId)).findFirst();
         if (optionalLeague.isEmpty()) {

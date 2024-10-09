@@ -6,7 +6,6 @@ import lombok.experimental.FieldDefaults;
 import net.friendly_bets.exceptions.BadRequestException;
 import net.friendly_bets.models.*;
 import net.friendly_bets.repositories.CalendarsRepository;
-import net.friendly_bets.repositories.SeasonsRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,7 +16,6 @@ import java.util.List;
 
 import static net.friendly_bets.utils.Constants.COMPLETED_BET_STATUSES;
 import static net.friendly_bets.utils.Constants.NO_PREVIOUS_CALENDAR_NODE;
-import static net.friendly_bets.utils.GetEntityOrThrow.*;
 
 
 @RequiredArgsConstructor
@@ -26,10 +24,10 @@ import static net.friendly_bets.utils.GetEntityOrThrow.*;
 public class GameweekStatsService {
 
     CalendarsRepository calendarsRepository;
-    SeasonsRepository seasonsRepository;
+    GetEntityService getEntityService;
 
     public void recalculateAllGameweekStats(String seasonId) {
-        List<CalendarNode> calendarNodeList = getListOfCalendarNodesWithBetsBySeasonOrThrow(calendarsRepository, seasonId);
+        List<CalendarNode> calendarNodeList = getEntityService.getListOfCalendarNodesWithBetsBySeasonOrThrow(seasonId);
         calendarNodeList.sort(Comparator.comparing(CalendarNode::getStartDate));
 
         for (CalendarNode node : calendarNodeList) {
@@ -38,7 +36,7 @@ public class GameweekStatsService {
     }
 
     public void calculateGameweekStats(String calendarNodeId) {
-        CalendarNode calendarNode = getCalendarNodeOrThrow(calendarsRepository, calendarNodeId);
+        CalendarNode calendarNode = getEntityService.getCalendarNodeOrThrow(calendarNodeId);
         updateGameweekFinishedStatus(calendarNode);
 
         if (calendarNode.getIsFinished()) {
@@ -69,7 +67,7 @@ public class GameweekStatsService {
     // ------------------------------------------------------------------------------------------------------ //
 
     public void updateGameweekFinishedStatus(CalendarNode calendarNode) {
-        Season season = getSeasonOrThrow(seasonsRepository, calendarNode.getSeasonId());
+        Season season = getEntityService.getSeasonOrThrow(calendarNode.getSeasonId());
         int totalBetsInGameweek = season.getPlayers().size() * calendarNode.getLeagueMatchdayNodes().size() * season.getBetCountPerMatchDay();
 
         long completedBetsCount = calendarNode.getLeagueMatchdayNodes().stream()
@@ -87,7 +85,7 @@ public class GameweekStatsService {
     // ------------------------------------------------------------------------------------------------------ //
 
     private void updatePreviousGameweekId(CalendarNode calendarNode) {
-        List<CalendarNode> finishedCalendarNodes = getListOfCalendarNodesIsFinishedOrThrow(calendarsRepository, calendarNode.getSeasonId());
+        List<CalendarNode> finishedCalendarNodes = getEntityService.getListOfCalendarNodesIsFinishedOrThrow(calendarNode.getSeasonId());
         CalendarNode closestPreviousNode = null;
         LocalDate currentNodeDate = calendarNode.getStartDate();
 
@@ -118,7 +116,7 @@ public class GameweekStatsService {
         if (prevCalendarNodeId.equals(NO_PREVIOUS_CALENDAR_NODE)) {
             currentGameweekStats.setTotalBalance(currentGameweekStats.getBalanceChange());
         } else {
-            CalendarNode prevCalendarNode = getCalendarNodeOrThrow(calendarsRepository, prevCalendarNodeId);
+            CalendarNode prevCalendarNode = getEntityService.getCalendarNodeOrThrow(prevCalendarNodeId);
             List<GameweekStats> prevGameweekStats = prevCalendarNode.getGameweekStats();
 
             for (GameweekStats prevStats : prevGameweekStats) {
@@ -150,7 +148,7 @@ public class GameweekStatsService {
                 position++;
             }
         } else {
-            CalendarNode prevCalendarNode = getCalendarNodeOrThrow(calendarsRepository, prevCalendarNodeId);
+            CalendarNode prevCalendarNode = getEntityService.getCalendarNodeOrThrow(prevCalendarNodeId);
             List<GameweekStats> prevGameweekStats = prevCalendarNode.getGameweekStats();
 
             for (GameweekStats currentStats : currentGameweekStats) {

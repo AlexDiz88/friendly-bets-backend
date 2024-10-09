@@ -7,7 +7,8 @@ import net.friendly_bets.dto.*;
 import net.friendly_bets.exceptions.BadRequestException;
 import net.friendly_bets.exceptions.ConflictException;
 import net.friendly_bets.models.*;
-import net.friendly_bets.repositories.*;
+import net.friendly_bets.repositories.BetsRepository;
+import net.friendly_bets.repositories.LeaguesRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -17,19 +18,16 @@ import java.util.List;
 
 import static net.friendly_bets.utils.BetUtils.*;
 import static net.friendly_bets.utils.Constants.*;
-import static net.friendly_bets.utils.GetEntityOrThrow.*;
 
 @RequiredArgsConstructor
 @Service
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class BetsService {
 
-    SeasonsRepository seasonsRepository;
     LeaguesRepository leaguesRepository;
     BetsRepository betsRepository;
-    TeamsRepository teamsRepository;
-    UsersRepository usersRepository;
 
+    GetEntityService getEntityService;
     CalendarsService calendarsService;
     PlayerStatsService playerStatsService;
     TeamStatsService teamStatsService;
@@ -41,12 +39,12 @@ public class BetsService {
         validateBet(newOpenedBet);
         checkIfBetAlreadyExists(betsRepository, newOpenedBet);
 
-        User moderator = getUserOrThrow(usersRepository, moderatorId);
-        User user = getUserOrThrow(usersRepository, newOpenedBet.getUserId());
-        Season season = getSeasonOrThrow(seasonsRepository, newOpenedBet.getSeasonId());
-        League league = getLeagueOrThrow(leaguesRepository, newOpenedBet.getLeagueId());
-        Team homeTeam = getTeamOrThrow(teamsRepository, newOpenedBet.getHomeTeamId());
-        Team awayTeam = getTeamOrThrow(teamsRepository, newOpenedBet.getAwayTeamId());
+        User moderator = getEntityService.getUserOrThrow(moderatorId);
+        User user = getEntityService.getUserOrThrow(newOpenedBet.getUserId());
+        Season season = getEntityService.getSeasonOrThrow(newOpenedBet.getSeasonId());
+        League league = getEntityService.getLeagueOrThrow(newOpenedBet.getLeagueId());
+        Team homeTeam = getEntityService.getTeamOrThrow(newOpenedBet.getHomeTeamId());
+        Team awayTeam = getEntityService.getTeamOrThrow(newOpenedBet.getAwayTeamId());
 
         Bet openedBet = createNewOpenedBet(newOpenedBet, moderator, user, season, league, homeTeam, awayTeam);
 
@@ -63,10 +61,10 @@ public class BetsService {
 
     @Transactional
     public BetDto addEmptyBet(String moderatorId, NewEmptyBet newEmptyBet) {
-        User moderator = getUserOrThrow(usersRepository, moderatorId);
-        User user = getUserOrThrow(usersRepository, newEmptyBet.getUserId());
-        Season season = getSeasonOrThrow(seasonsRepository, newEmptyBet.getSeasonId());
-        League league = getLeagueOrThrow(leaguesRepository, newEmptyBet.getLeagueId());
+        User moderator = getEntityService.getUserOrThrow(moderatorId);
+        User user = getEntityService.getUserOrThrow(newEmptyBet.getUserId());
+        Season season = getEntityService.getSeasonOrThrow(newEmptyBet.getSeasonId());
+        League league = getEntityService.getLeagueOrThrow(newEmptyBet.getLeagueId());
 
         Bet emptyBet = createNewEmptyBet(newEmptyBet, moderator, user, season, league);
 
@@ -92,8 +90,8 @@ public class BetsService {
 
         checkGameResult(betResult.getGameResult(), Bet.BetStatus.valueOf(betResult.getBetStatus()));
 
-        User moderator = getUserOrThrow(usersRepository, moderatorId);
-        Bet bet = getBetOrThrow(betsRepository, betId);
+        User moderator = getEntityService.getUserOrThrow(moderatorId);
+        Bet bet = getEntityService.getBetOrThrow(betId);
         if (!bet.getBetStatus().equals(Bet.BetStatus.OPENED)) {
             throw new ConflictException("betAlreadyProcessed");
         }
@@ -167,11 +165,11 @@ public class BetsService {
         checkBetOdds(editedBet.getBetOdds());
         checkGameResult(editedBet.getGameResult(), Bet.BetStatus.valueOf(editedBet.getBetStatus()));
 
-        User moderator = getUserOrThrow(usersRepository, moderatorId);
-        User newUser = getUserOrThrow(usersRepository, editedBet.getUserId());
-        Bet bet = getBetOrThrow(betsRepository, betId);
-        Team newHomeTeam = getTeamOrThrow(teamsRepository, editedBet.getHomeTeamId());
-        Team newAwayTeam = getTeamOrThrow(teamsRepository, editedBet.getAwayTeamId());
+        User moderator = getEntityService.getUserOrThrow(moderatorId);
+        User newUser = getEntityService.getUserOrThrow(editedBet.getUserId());
+        Bet bet = getEntityService.getBetOrThrow(betId);
+        Team newHomeTeam = getEntityService.getTeamOrThrow(editedBet.getHomeTeamId());
+        Team newAwayTeam = getEntityService.getTeamOrThrow(editedBet.getAwayTeamId());
 
         String seasonId = editedBet.getSeasonId();
         String leagueId = editedBet.getLeagueId();
@@ -195,8 +193,8 @@ public class BetsService {
 
     @Transactional
     public BetDto deleteBet(String moderatorId, String betId, DeletedBetDto deletedBetMetaData) {
-        Bet bet = getBetOrThrow(betsRepository, betId);
-        User moderator = getUserOrThrow(usersRepository, moderatorId);
+        Bet bet = getEntityService.getBetOrThrow(betId);
+        User moderator = getEntityService.getUserOrThrow(moderatorId);
         Bet.BetStatus betStatus = bet.getBetStatus();
         String seasonId = deletedBetMetaData.getSeasonId();
         String leagueId = deletedBetMetaData.getLeagueId();

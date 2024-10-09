@@ -1,7 +1,5 @@
 package net.friendly_bets.utils;
 
-import lombok.AccessLevel;
-import lombok.experimental.FieldDefaults;
 import lombok.experimental.UtilityClass;
 import net.friendly_bets.dto.BetResult;
 import net.friendly_bets.dto.EditedBetDto;
@@ -11,7 +9,6 @@ import net.friendly_bets.exceptions.BadRequestException;
 import net.friendly_bets.exceptions.ConflictException;
 import net.friendly_bets.models.*;
 import net.friendly_bets.repositories.BetsRepository;
-import net.friendly_bets.repositories.CalendarsRepository;
 import net.friendly_bets.repositories.LeaguesRepository;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,26 +21,25 @@ import java.util.Set;
 
 import static net.friendly_bets.utils.Constants.COMPLETED_BET_STATUSES;
 import static net.friendly_bets.utils.Constants.WRL_STATUSES;
-import static net.friendly_bets.utils.GetEntityOrThrow.getListOfCalendarNodesBySeasonOrThrow;
 
 @UtilityClass
-@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class BetUtils {
-    public static void checkGameResult(GameResult score, Bet.BetStatus betStatus) {
+
+    public static void checkGameResult(GameResult gameResult, Bet.BetStatus betStatus) {
         if (WRL_STATUSES.contains(betStatus)) {
-            if (score == null) {
+            if (gameResult == null) {
                 throw new BadRequestException("gameResultIsNull");
             }
-            if ((score.getFullTime() == null && score.getFirstTime() == null)
-                    || score.getFullTime() == null || score.getFirstTime() == null
-                    || score.getFullTime().isBlank() || score.getFirstTime().isBlank()) {
-                throw new BadRequestException("incorrectGameScore");
+            if ((gameResult.getFullTime() == null && gameResult.getFirstTime() == null)
+                    || gameResult.getFullTime() == null || gameResult.getFirstTime() == null
+                    || gameResult.getFullTime().isBlank() || gameResult.getFirstTime().isBlank()) {
+                throw new BadRequestException("incorrectGameResult");
             }
 
-            boolean isGameScoreValid = isGameScoreValid(score);
+            boolean isGameScoreValid = isGameScoreValid(gameResult);
 
             if (!isGameScoreValid) {
-                throw new BadRequestException("incorrectGameScore");
+                throw new BadRequestException("incorrectGameResult");
             }
         }
     }
@@ -90,7 +86,13 @@ public class BetUtils {
                     return false;
                 }
                 // В серии пенальти не может быть ничьи
-                return penaltyScore[0] != penaltyScore[1];
+                if (penaltyScore[0] == penaltyScore[1]) {
+                    return false;
+                }
+
+                // Разница в счете по пенальти не может быть больше 3
+                int scoreDifference = Math.abs(penaltyScore[0] - penaltyScore[1]);
+                return scoreDifference <= 3;
             }
         }
         return false;
@@ -116,7 +118,7 @@ public class BetUtils {
 
             return new int[]{home, away};
         } catch (NumberFormatException e) {
-            throw new BadRequestException("invalidGameScoreFormat");
+            throw new BadRequestException("incorrectGameResult");
         }
     }
 
@@ -259,7 +261,7 @@ public class BetUtils {
         bet.setGameResult(betResult.getGameResult());
     }
 
-    public static void updateBalanceChange(Bet bet, Bet.BetStatus betStatus, Integer betSize, Double betOdds) {
+    private static void updateBalanceChange(Bet bet, Bet.BetStatus betStatus, Integer betSize, Double betOdds) {
         if (betStatus == Bet.BetStatus.WON) {
             bet.setBalanceChange(betOdds * betSize - betSize);
         }
@@ -271,12 +273,13 @@ public class BetUtils {
         }
     }
 
-    public static void updateEditedBetValues(BetsRepository betsRepo, Bet bet, EditedBetDto editedBet, User moderator, User user, Team homeTeam, Team awayTeam) {
+    public static void updateEditedBetValues(BetsRepository betsRepo, Bet bet, EditedBetDto editedBet,
+                                             User moderator, User user, Team homeTeam, Team awayTeam) {
         updateBalanceChangeAndGameResultAndBetStatus(betsRepo, bet, editedBet);
         updateBetDetails(bet, moderator, user, editedBet, homeTeam, awayTeam);
     }
 
-    public static void updateBalanceChangeAndGameResultAndBetStatus(BetsRepository betsRepository, Bet bet, EditedBetDto editedBet) {
+    private static void updateBalanceChangeAndGameResultAndBetStatus(BetsRepository betsRepository, Bet bet, EditedBetDto editedBet) {
         Bet.BetStatus betStatus = Bet.BetStatus.valueOf(editedBet.getBetStatus());
         checkIfBetAlreadyEdited(betsRepository, editedBet, betStatus);
 
@@ -289,7 +292,7 @@ public class BetUtils {
         bet.setBetStatus(betStatus);
     }
 
-    public static void updateBetDetails(Bet bet, User moderator, User user, EditedBetDto editedBet, Team homeTeam, Team awayTeam) {
+    private static void updateBetDetails(Bet bet, User moderator, User user, EditedBetDto editedBet, Team homeTeam, Team awayTeam) {
         bet.setUpdatedAt(LocalDateTime.now());
         bet.setUpdatedBy(moderator);
         bet.setUser(user);
@@ -315,9 +318,8 @@ public class BetUtils {
         }
     }
 
-    public static void leagueMatchdaysValidation(CalendarsRepository calendarsRepository, List<LeagueMatchdayNode> matchdayNodes, String seasonId) {
+    public static void leagueMatchdaysValidation(List<CalendarNode> calendarNodes, List<LeagueMatchdayNode> matchdayNodes) {
         Set<String> uniqueCombinations = new HashSet<>();
-        List<CalendarNode> calendarNodes = getListOfCalendarNodesBySeasonOrThrow(calendarsRepository, seasonId);
 
         for (CalendarNode calendarNode : calendarNodes) {
             List<LeagueMatchdayNode> leagueMatchdayNodes = calendarNode.getLeagueMatchdayNodes();
