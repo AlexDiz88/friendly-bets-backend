@@ -50,7 +50,7 @@ public class BetsService {
 
         betsRepository.save(openedBet);
         updateLeagueCurrentMatchDay(leaguesRepository, betsRepository, season, league);
-        calendarsService.addBetToCalendarNode(openedBet.getId(), newOpenedBet.getCalendarNodeId(), newOpenedBet.getLeagueId());
+        calendarsService.addBetToCalendarNode(openedBet.getId(), newOpenedBet.getCalendarNodeId(), newOpenedBet.getLeagueId(), newOpenedBet.getMatchDay());
         playerStatsService.calculateStatsBasedOnNewOpenedBet(season.getId(), league.getId(), user, true);
 
         return BetDto.from(openedBet);
@@ -70,7 +70,7 @@ public class BetsService {
 
         betsRepository.save(emptyBet);
         updateLeagueCurrentMatchDay(leaguesRepository, betsRepository, season, league);
-        calendarsService.addBetToCalendarNode(emptyBet.getId(), newEmptyBet.getCalendarNodeId(), newEmptyBet.getLeagueId());
+        calendarsService.addBetToCalendarNode(emptyBet.getId(), newEmptyBet.getCalendarNodeId(), newEmptyBet.getLeagueId(), newEmptyBet.getMatchDay());
         playerStatsService.calculateStatsBasedOnEmptyBet(season.getId(), league.getId(), user, newEmptyBet.getBetSize(), true);
         gameweekStatsService.calculateGameweekStats(newEmptyBet.getCalendarNodeId());
 

@@ -92,10 +92,10 @@ public class CalendarsService {
     // ------------------------------------------------------------------------------------------------------ //
 
 
-    public void addBetToCalendarNode(String betId, String calendarNodeId, String leagueId) {
+    public void addBetToCalendarNode(String betId, String calendarNodeId, String leagueId, String matchday) {
         CalendarNode calendarNode = getEntityService.getCalendarNodeOrThrow(calendarNodeId);
         Season season = getEntityService.getSeasonOrThrow(calendarNode.getSeasonId());
-        LeagueMatchdayNode node = getLeagueMatchdayNode(calendarNode, leagueId);
+        LeagueMatchdayNode node = getLeagueMatchdayNode(calendarNode, leagueId, matchday);
         Bet bet = getEntityService.getBetOrThrow(betId);
 
         checkLeagueBetLimit(season, node, bet.getUser().getId());
@@ -210,7 +210,7 @@ public class CalendarsService {
         if (!editedBet.getCalendarNodeId().equals(editedBet.getPrevCalendarNodeId())) {
             deleteBetFromCalendar(bet, editedBet.getPrevCalendarNodeId());
             bet.setCalendarNodeId(editedBet.getCalendarNodeId());
-            addBetToCalendarNode(bet.getId(), editedBet.getCalendarNodeId(), editedBet.getLeagueId());
+            addBetToCalendarNode(bet.getId(), editedBet.getCalendarNodeId(), editedBet.getLeagueId(), editedBet.getMatchDay());
         }
     }
 
@@ -227,13 +227,13 @@ public class CalendarsService {
 
     // ------------------------------------------------------------------------------------------------------ //
 
-    public LeagueMatchdayNode getLeagueMatchdayNode(String calendarNodeId, String leagueId) {
+    public LeagueMatchdayNode getLeagueMatchdayNode(String calendarNodeId, String leagueId, String matchday) {
         CalendarNode calendarNode = getEntityService.getCalendarNodeOrThrow(calendarNodeId);
-        return getEntityService.getLeagueMatchdayNodeOrThrow(calendarNode, leagueId);
+        return getEntityService.getLeagueMatchdayNodeOrThrow(calendarNode, leagueId, matchday);
     }
 
-    public LeagueMatchdayNode getLeagueMatchdayNode(CalendarNode calendarNode, String leagueId) {
-        return getEntityService.getLeagueMatchdayNodeOrThrow(calendarNode, leagueId);
+    public LeagueMatchdayNode getLeagueMatchdayNode(CalendarNode calendarNode, String leagueId, String matchday) {
+        return getEntityService.getLeagueMatchdayNodeOrThrow(calendarNode, leagueId, matchday);
     }
 
     // ------------------------------------------------------------------------------------------------------ //

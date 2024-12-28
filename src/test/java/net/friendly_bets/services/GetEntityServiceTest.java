@@ -163,16 +163,19 @@ class GetEntityServiceTest {
     @DisplayName("Should return LeagueMatchdayNode when leagueId matches")
     void getLeagueMatchdayNodeOrThrow_ShouldReturnLeagueMatchdayNode_WhenLeagueIdMatches() {
         // given
+        String matchday = "matchday";
         LeagueMatchdayNode expectedNode = LeagueMatchdayNode.builder()
                 .leagueId(leagueId)
+                .matchDay(matchday)
                 .build();
 
         CalendarNode calendarNode = CalendarNode.builder()
                 .leagueMatchdayNodes(List.of(expectedNode))
                 .build();
 
+
         // when
-        LeagueMatchdayNode actualNode = getEntityService.getLeagueMatchdayNodeOrThrow(calendarNode, leagueId);
+        LeagueMatchdayNode actualNode = getEntityService.getLeagueMatchdayNodeOrThrow(calendarNode, leagueId, matchday);
 
         // then
         assertNotNull(actualNode);
@@ -182,24 +185,28 @@ class GetEntityServiceTest {
     @ParameterizedTest
     @MethodSource("provideInvalidCalendarNodeInputs")
     @DisplayName("Should throw BadRequestException for various invalid inputs")
-    void getLeagueMatchdayNodeOrThrow_ShouldThrowBadRequestException_ForInvalidInputs(CalendarNode calendarNode, String leagueId) {
+    void getLeagueMatchdayNodeOrThrow_ShouldThrowBadRequestException_ForInvalidInputs(CalendarNode calendarNode, String leagueId, String matchday) {
         // when + then
         BadRequestException exception = assertThrows(BadRequestException.class, () ->
-                getEntityService.getLeagueMatchdayNodeOrThrow(calendarNode, leagueId));
+                getEntityService.getLeagueMatchdayNodeOrThrow(calendarNode, leagueId, matchday));
         assertEquals("leagueNotFoundInCalendarNode", exception.getMessage());
     }
 
     private static Stream<Arguments> provideInvalidCalendarNodeInputs() {
         String leagueId = "leagueId";
+        String matchday = "matchday";
         return Stream.of(
                 arguments(CalendarNode.builder().leagueMatchdayNodes(List.of(LeagueMatchdayNode.builder().leagueId("leagueId-not-match").build()))
-                        .build(), leagueId),
+                        .build(), leagueId, matchday),
 
                 arguments(CalendarNode.builder().leagueMatchdayNodes(List.of())
-                        .build(), leagueId),
+                        .build(), leagueId, matchday),
 
                 arguments(CalendarNode.builder().leagueMatchdayNodes(List.of(LeagueMatchdayNode.builder().leagueId(leagueId).build()))
-                        .build(), null)
+                        .build(), null, matchday),
+
+                arguments(CalendarNode.builder().leagueMatchdayNodes(List.of(LeagueMatchdayNode.builder().leagueId(leagueId).build()))
+                        .build(), leagueId, null)
         );
     }
 
