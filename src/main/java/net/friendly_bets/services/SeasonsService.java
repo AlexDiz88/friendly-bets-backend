@@ -7,10 +7,8 @@ import net.friendly_bets.dto.*;
 import net.friendly_bets.exceptions.BadRequestException;
 import net.friendly_bets.exceptions.ConflictException;
 import net.friendly_bets.exceptions.NotFoundException;
-import net.friendly_bets.models.League;
-import net.friendly_bets.models.Season;
-import net.friendly_bets.models.Team;
-import net.friendly_bets.models.User;
+import net.friendly_bets.models.*;
+import net.friendly_bets.repositories.CalendarsRepository;
 import net.friendly_bets.repositories.LeaguesRepository;
 import net.friendly_bets.repositories.SeasonsRepository;
 import org.springframework.stereotype.Service;
@@ -28,6 +26,7 @@ public class SeasonsService {
     LeaguesRepository leaguesRepository;
 
     GetEntityService getEntityService;
+    private final CalendarsRepository calendarsRepository;
 
     @Transactional
     public SeasonsPage getAll() {
@@ -255,19 +254,28 @@ public class SeasonsService {
 
     @Transactional
     public Map<String, String> dbUpdate() {
-//        List<Bet> bets = betsRepository.findAll();
-//
-//        for (Bet bet : bets) {
-//            String gameResultStr = bet.getGameResult();
-//            if (gameResultStr != null) {
-//                GameResult gameResult = parseGameResult(gameResultStr);
-//
-//
+        List<CalendarNode> calendarNodes = calendarsRepository.findAll();
+        for (CalendarNode calendarNode : calendarNodes) {
+            List<LeagueMatchdayNode> leagueMatchdayNodes = calendarNode.getLeagueMatchdayNodes();
+
+            if (leagueMatchdayNodes != null) {
+                boolean changed = false;
+
+                for (LeagueMatchdayNode leagueMatchdayNode : leagueMatchdayNodes) {
+                    if (leagueMatchdayNode.getBetCountLimit() == null) {
+                        leagueMatchdayNode.setBetCountLimit(2);
+                        changed = true;
+                    }
+                }
+
+                if (changed) {
+                    calendarsRepository.save(calendarNode);
+                }
+            }
+        }
 //                Update update = new Update().set("gameResult", gameResult);
 //                Query query = new Query(Criteria.where("id").is(bet.getId()));
 //                mongoTemplate.updateFirst(query, update, Bet.class);
-//            }
-//        }
 
         Map<String, String> response = new HashMap<>();
         response.put("message", "DB update complete");

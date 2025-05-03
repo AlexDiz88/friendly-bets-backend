@@ -530,11 +530,8 @@ class BetUtilsTest {
         String userId = "userId";
         User user = User.builder().id(userId).build();
 
-        Season season = Season.builder()
-                .betCountPerMatchDay(2)
-                .build();
-
         LeagueMatchdayNode node = LeagueMatchdayNode.builder()
+                .betCountLimit(2)
                 .bets(Arrays.asList(
                         Bet.builder().user(user).build(),
                         Bet.builder().user(user).build()))
@@ -542,7 +539,7 @@ class BetUtilsTest {
 
         // when + then
         BadRequestException exception = assertThrows(BadRequestException.class,
-                () -> BetUtils.checkLeagueBetLimit(season, node, userId));
+                () -> BetUtils.checkLeagueBetLimit(node, userId));
 
         assertEquals("exceededLimitBetsFromPlayer", exception.getMessage());
     }
@@ -554,16 +551,13 @@ class BetUtilsTest {
         String userId = "userId";
         User user = User.builder().id(userId).build();
 
-        Season season = Season.builder()
-                .betCountPerMatchDay(2)
-                .build();
-
         LeagueMatchdayNode node = LeagueMatchdayNode.builder()
+                .betCountLimit(2)
                 .bets(Collections.singletonList(Bet.builder().user(user).build()))
                 .build();
 
         // when + then
-        assertDoesNotThrow(() -> BetUtils.checkLeagueBetLimit(season, node, userId));
+        assertDoesNotThrow(() -> BetUtils.checkLeagueBetLimit(node, userId));
     }
 
     // ------------------------------------------------------------------------------------------------------ //

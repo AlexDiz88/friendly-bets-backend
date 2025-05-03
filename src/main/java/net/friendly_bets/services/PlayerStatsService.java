@@ -10,6 +10,7 @@ import net.friendly_bets.repositories.PlayerStatsRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import static net.friendly_bets.utils.Constants.COMPLETED_BET_STATUSES;
 import static net.friendly_bets.utils.Constants.TOTAL_ID;
 import static net.friendly_bets.utils.StatsUtils.*;
 
@@ -85,7 +86,9 @@ public class PlayerStatsService {
 
     public void modifyEditedBetValues(PlayerStats playerStats, Bet bet, boolean isPlus) {
         updateTotalBets(playerStats, isPlus);
-        updateBetCount(playerStats, isPlus);
+        if (COMPLETED_BET_STATUSES.contains(bet.getBetStatus())) {
+            updateBetCount(playerStats, isPlus);
+        }
         updateBetCountValuesBasedOnBetStatus(playerStats, bet.getBetStatus(), bet.getBetOdds(), isPlus);
         updateSumOfOddsAndActualBalance(playerStats, bet.getBetStatus(), bet.getBetOdds(), bet.getBalanceChange(), isPlus);
         recalculateStats(playerStats);
