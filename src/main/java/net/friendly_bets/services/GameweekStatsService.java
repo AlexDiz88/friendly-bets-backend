@@ -68,7 +68,13 @@ public class GameweekStatsService {
 
     public void updateGameweekFinishedStatus(CalendarNode calendarNode) {
         Season season = getEntityService.getSeasonOrThrow(calendarNode.getSeasonId());
-        int totalBetsInGameweek = season.getPlayers().size() * calendarNode.getLeagueMatchdayNodes().size() * season.getBetCountPerMatchDay();
+        List<LeagueMatchdayNode> leagueMatchdayNodes = calendarNode.getLeagueMatchdayNodes();
+        int gameweekBetLimit = 0;
+        for (LeagueMatchdayNode leagueMatchdayNode : leagueMatchdayNodes) {
+            Integer betCountLimit = leagueMatchdayNode.getBetCountLimit();
+            gameweekBetLimit += betCountLimit;
+        }
+        int totalBetsInGameweek = season.getPlayers().size() * gameweekBetLimit;
 
         long completedBetsCount = calendarNode.getLeagueMatchdayNodes().stream()
                 .flatMap(node -> node.getBets().stream())

@@ -241,13 +241,12 @@ public class BetUtils {
         }
     }
 
-    public static void checkLeagueBetLimit(Season season, LeagueMatchdayNode node, String userId) {
-        Integer betCountPerMatchDay = season.getBetCountPerMatchDay();
+    public static void checkLeagueBetLimit(LeagueMatchdayNode node, String userId) {
         long count = node.getBets().stream()
                 .filter(bet -> bet.getUser().getId().equals(userId))
                 .count();
 
-        if (count >= betCountPerMatchDay) {
+        if (count >= node.getBetCountLimit()) {
             throw new BadRequestException("exceededLimitBetsFromPlayer");
         }
     }

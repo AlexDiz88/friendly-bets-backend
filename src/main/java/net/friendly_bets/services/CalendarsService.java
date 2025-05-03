@@ -8,7 +8,6 @@ import net.friendly_bets.exceptions.BadRequestException;
 import net.friendly_bets.models.Bet;
 import net.friendly_bets.models.CalendarNode;
 import net.friendly_bets.models.LeagueMatchdayNode;
-import net.friendly_bets.models.Season;
 import net.friendly_bets.repositories.CalendarsRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -94,11 +93,10 @@ public class CalendarsService {
 
     public void addBetToCalendarNode(String betId, String calendarNodeId, String leagueId, String matchday) {
         CalendarNode calendarNode = getEntityService.getCalendarNodeOrThrow(calendarNodeId);
-        Season season = getEntityService.getSeasonOrThrow(calendarNode.getSeasonId());
         LeagueMatchdayNode node = getLeagueMatchdayNode(calendarNode, leagueId, matchday);
         Bet bet = getEntityService.getBetOrThrow(betId);
 
-        checkLeagueBetLimit(season, node, bet.getUser().getId());
+        checkLeagueBetLimit(node, bet.getUser().getId());
         node.getBets().add(bet);
 
         if (!calendarNode.getHasBets()) {
@@ -207,10 +205,17 @@ public class CalendarsService {
     // ------------------------------------------------------------------------------------------------------ //
 
     public void updateCalendar(Bet bet, EditedBetDto editedBet) {
-        if (!editedBet.getCalendarNodeId().equals(editedBet.getPrevCalendarNodeId())) {
-            deleteBetFromCalendar(bet, editedBet.getPrevCalendarNodeId());
-            bet.setCalendarNodeId(editedBet.getCalendarNodeId());
-            addBetToCalendarNode(bet.getId(), editedBet.getCalendarNodeId(), editedBet.getLeagueId(), editedBet.getMatchDay());
+        String newCalendarNodeId = editedBet.getCalendarNodeId();
+        String prevCalendarNodeId = editedBet.getPrevCalendarNodeId();
+
+        if (newCalendarNodeId.equals(prevCalendarNodeId)) {
+            CalendarNode calendarNode = getEntityService.getCalendarNodeOrThrow(newCalendarNodeId);
+            LeagueMatchdayNode node = getLeagueMatchdayNode(calendarNode, editedBet.getLeagueId(), editedBet.getMatchDay());
+            checkLeagueBetLimit(node, editedBet.getUserId());
+        } else {
+            deleteBetFromCalendar(bet, prevCalendarNodeId);
+            bet.setCalendarNodeId(newCalendarNodeId);
+            addBetToCalendarNode(bet.getId(), newCalendarNodeId, editedBet.getLeagueId(), editedBet.getMatchDay());
         }
     }
 
