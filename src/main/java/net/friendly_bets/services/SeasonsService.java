@@ -254,6 +254,9 @@ public class SeasonsService {
 
     @Transactional
     public Map<String, String> dbUpdate() {
+
+        // TODO: при миграции BetTitles не забыть учесть " - нет"
+        // TODO: ошибка с лимитом ставок при редактировании по прежнему не решена
         List<CalendarNode> calendarNodes = calendarsRepository.findAll();
         for (CalendarNode calendarNode : calendarNodes) {
             List<LeagueMatchdayNode> leagueMatchdayNodes = calendarNode.getLeagueMatchdayNodes();

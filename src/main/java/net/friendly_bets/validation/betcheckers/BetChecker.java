@@ -5,5 +5,5 @@ import net.friendly_bets.models.Bet;
 import net.friendly_bets.models.GameResult;
 
 public interface BetChecker {
-    Bet.BetStatus check(GameResult result, short code);
+    Bet.BetStatus check(GameResult result, BetTitleCode code);
 }

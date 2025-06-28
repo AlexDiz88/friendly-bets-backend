@@ -6,12 +6,10 @@ import net.friendly_bets.models.GameResult;
 
 import static net.friendly_bets.models.Bet.BetStatus.WON;
 
-public class PlayoffChecker implements BetChecker{
-
-
+public class PlayoffChecker implements BetChecker {
 
     @Override
-    public Bet.BetStatus check(GameResult result, short code) {
+    public Bet.BetStatus check(GameResult result, BetTitleCode code) {
         return WON;
     }
 }

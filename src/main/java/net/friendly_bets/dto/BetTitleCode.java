@@ -1,11 +1,10 @@
 package net.friendly_bets.dto;
 
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
 import net.friendly_bets.models.Bet;
 import net.friendly_bets.models.GameResult;
-import net.friendly_bets.validation.betcheckers.BetChecker;
-import net.friendly_bets.validation.betcheckers.GameResultChecker;
-import net.friendly_bets.validation.betcheckers.PlayoffChecker;
+import net.friendly_bets.validation.betcheckers.*;
 
 import java.util.Arrays;
 import java.util.Map;
@@ -17,391 +16,435 @@ import java.util.stream.Collectors;
 @AllArgsConstructor
 public enum BetTitleCode {
 
-    //========== 1. Обычный исход (gameResult) — коды 100–199 ==========
-    RESULT_HOME_WIN((short) 100, new GameResultChecker(GameWinner.HOME)),          // «П1»
-    RESULT_DRAW((short) 101),              // «Х»
-    RESULT_AWAY_WIN((short) 102),          // «П2»
-    DOUBLE_CHANCE_HOME_OR_DRAW((short) 103),   // «1Х»
-    DOUBLE_CHANCE_HOME_OR_AWAY((short) 104),   // «12»
-    DOUBLE_CHANCE_DRAW_OR_AWAY((short) 105),   // «Х2»
+    //========== 101–200. Обычный исход (gameResult) ==========
+    RESULT_HOME_WIN((short) 101, new GameResultChecker()),          // «П1»
+    RESULT_DRAW((short) 102, new GameResultChecker()),              // «Х»
+    RESULT_AWAY_WIN((short) 103, new GameResultChecker()),          // «П2»
+    DOUBLE_CHANCE_HOME_OR_DRAW((short) 104, new GameResultChecker()),   // «1Х»
+    DOUBLE_CHANCE_HOME_OR_AWAY((short) 105, new GameResultChecker()),   // «12»
+    DOUBLE_CHANCE_DRAW_OR_AWAY((short) 106, new GameResultChecker()),   // «Х2»
 
-    //========== 2. П1 + Тотал меньше (Home win + Goals UNDER) — коды 200–299 ==========
-    HOME_WIN_AND_UNDER_1_5((short) 200),   // «П1 + ТМ 1,5»
-    HOME_WIN_AND_UNDER_2_0((short) 201),   // «П1 + ТМ 2»
-    HOME_WIN_AND_UNDER_2_5((short) 202),   // «П1 + ТМ 2,5»
-    HOME_WIN_AND_UNDER_3_0((short) 203),   // «П1 + ТМ 3»
-    HOME_WIN_AND_UNDER_3_5((short) 204),   // «П1 + ТМ 3,5»
-    HOME_WIN_AND_UNDER_4_0((short) 205),   // «П1 + ТМ 4»
-    HOME_WIN_AND_UNDER_4_5((short) 206),   // «П1 + ТМ 4,5»
-    HOME_WIN_AND_UNDER_5_0((short) 207),   // «П1 + ТМ 5»
-    HOME_WIN_AND_UNDER_5_5((short) 208),   // «П1 + ТМ 5,5»
-    HOME_WIN_AND_UNDER_6_0((short) 209),   // «П1 + ТМ 6»
+    //========== 201–250. П1 + Тотал меньше (Home win + Goals UNDER) ==========
+    HOME_WIN_AND_UNDER_1_0((short) 201, new GameResultWithTotalChecker()),   // «П1 + ТМ 1»
+    HOME_WIN_AND_UNDER_1_5((short) 202, new GameResultWithTotalChecker()),   // «П1 + ТМ 1,5»
+    HOME_WIN_AND_UNDER_2_0((short) 203, new GameResultWithTotalChecker()),   // «П1 + ТМ 2»
+    HOME_WIN_AND_UNDER_2_5((short) 204, new GameResultWithTotalChecker()),   // «П1 + ТМ 2,5»
+    HOME_WIN_AND_UNDER_3_0((short) 205, new GameResultWithTotalChecker()),   // «П1 + ТМ 3»
+    HOME_WIN_AND_UNDER_3_5((short) 206, new GameResultWithTotalChecker()),   // «П1 + ТМ 3,5»
+    HOME_WIN_AND_UNDER_4_0((short) 207, new GameResultWithTotalChecker()),   // «П1 + ТМ 4»
+    HOME_WIN_AND_UNDER_4_5((short) 208, new GameResultWithTotalChecker()),   // «П1 + ТМ 4,5»
+    HOME_WIN_AND_UNDER_5_0((short) 209, new GameResultWithTotalChecker()),   // «П1 + ТМ 5»
+    HOME_WIN_AND_UNDER_5_5((short) 210, new GameResultWithTotalChecker()),   // «П1 + ТМ 5,5»
+    HOME_WIN_AND_UNDER_6_0((short) 211, new GameResultWithTotalChecker()),   // «П1 + ТМ 6»
 
-    //========== 3. П1 + Тотал больше (Home win + Goals OVER) — коды 300–399 ==========
-    HOME_WIN_AND_OVER_1_5((short) 300),    // «П1 + ТБ 1,5»
-    HOME_WIN_AND_OVER_2_0((short) 301),    // «П1 + ТБ 2»
-    HOME_WIN_AND_OVER_2_5((short) 302),    // «П1 + ТБ 2,5»
-    HOME_WIN_AND_OVER_3_0((short) 303),    // «П1 + ТБ 3»
-    HOME_WIN_AND_OVER_3_5((short) 304),    // «П1 + ТБ 3,5»
-    HOME_WIN_AND_OVER_4_0((short) 305),    // «П1 + ТБ 4»
-    HOME_WIN_AND_OVER_4_5((short) 306),    // «П1 + ТБ 4,5»
-    HOME_WIN_AND_OVER_5_0((short) 307),    // «П1 + ТБ 5»
-    HOME_WIN_AND_OVER_5_5((short) 308),    // «П1 + ТБ 5,5»
-    HOME_WIN_AND_OVER_6_0((short) 309),    // «П1 + ТБ 6»
+    //========== 251–300. П1 + Тотал больше (Home win + Goals OVER) ==========
+    HOME_WIN_AND_OVER_1_0((short) 251, new GameResultWithTotalChecker()),    // «П1 + ТБ 1»
+    HOME_WIN_AND_OVER_1_5((short) 252, new GameResultWithTotalChecker()),    // «П1 + ТБ 1,5»
+    HOME_WIN_AND_OVER_2_0((short) 253, new GameResultWithTotalChecker()),    // «П1 + ТБ 2»
+    HOME_WIN_AND_OVER_2_5((short) 254, new GameResultWithTotalChecker()),    // «П1 + ТБ 2,5»
+    HOME_WIN_AND_OVER_3_0((short) 255, new GameResultWithTotalChecker()),    // «П1 + ТБ 3»
+    HOME_WIN_AND_OVER_3_5((short) 256, new GameResultWithTotalChecker()),    // «П1 + ТБ 3,5»
+    HOME_WIN_AND_OVER_4_0((short) 257, new GameResultWithTotalChecker()),    // «П1 + ТБ 4»
+    HOME_WIN_AND_OVER_4_5((short) 258, new GameResultWithTotalChecker()),    // «П1 + ТБ 4,5»
+    HOME_WIN_AND_OVER_5_0((short) 259, new GameResultWithTotalChecker()),    // «П1 + ТБ 5»
+    HOME_WIN_AND_OVER_5_5((short) 260, new GameResultWithTotalChecker()),    // «П1 + ТБ 5,5»
+    HOME_WIN_AND_OVER_6_0((short) 261, new GameResultWithTotalChecker()),    // «П1 + ТБ 6»
 
-    //========== 4. 1Х + Тотал меньше (Home win or Draw (1X) + UNDER) — коды 400–499 ==========
-    HOME_OR_DRAW_AND_UNDER_1_5((short) 400), // «1Х + ТМ 1,5»
-    HOME_OR_DRAW_AND_UNDER_2_0((short) 401), // «1Х + ТМ 2»
-    HOME_OR_DRAW_AND_UNDER_2_5((short) 402), // «1Х + ТМ 2,5»
-    HOME_OR_DRAW_AND_UNDER_3_0((short) 403), // «1Х + ТМ 3»
-    HOME_OR_DRAW_AND_UNDER_3_5((short) 404), // «1Х + ТМ 3,5»
-    HOME_OR_DRAW_AND_UNDER_4_0((short) 405), // «1Х + ТМ 4»
-    HOME_OR_DRAW_AND_UNDER_4_5((short) 406), // «1Х + ТМ 4,5»
-    HOME_OR_DRAW_AND_UNDER_5_0((short) 407), // «1Х + ТМ 5»
-    HOME_OR_DRAW_AND_UNDER_5_5((short) 408), // «1Х + ТМ 5,5»
-    HOME_OR_DRAW_AND_UNDER_6_0((short) 409), // «1Х + ТМ 6»
+    //========== 301–350. 1Х + Тотал меньше (Home win or Draw (1X) + Goals UNDER) ==========
+    HOME_OR_DRAW_AND_UNDER_1_0((short) 301, new GameResultWithTotalChecker()), // «1Х + ТМ 1»
+    HOME_OR_DRAW_AND_UNDER_1_5((short) 302, new GameResultWithTotalChecker()), // «1Х + ТМ 1,5»
+    HOME_OR_DRAW_AND_UNDER_2_0((short) 303, new GameResultWithTotalChecker()), // «1Х + ТМ 2»
+    HOME_OR_DRAW_AND_UNDER_2_5((short) 304, new GameResultWithTotalChecker()), // «1Х + ТМ 2,5»
+    HOME_OR_DRAW_AND_UNDER_3_0((short) 305, new GameResultWithTotalChecker()), // «1Х + ТМ 3»
+    HOME_OR_DRAW_AND_UNDER_3_5((short) 306, new GameResultWithTotalChecker()), // «1Х + ТМ 3,5»
+    HOME_OR_DRAW_AND_UNDER_4_0((short) 307, new GameResultWithTotalChecker()), // «1Х + ТМ 4»
+    HOME_OR_DRAW_AND_UNDER_4_5((short) 308, new GameResultWithTotalChecker()), // «1Х + ТМ 4,5»
+    HOME_OR_DRAW_AND_UNDER_5_0((short) 309, new GameResultWithTotalChecker()), // «1Х + ТМ 5»
+    HOME_OR_DRAW_AND_UNDER_5_5((short) 310, new GameResultWithTotalChecker()), // «1Х + ТМ 5,5»
+    HOME_OR_DRAW_AND_UNDER_6_0((short) 311, new GameResultWithTotalChecker()), // «1Х + ТМ 6»
 
-    //========== 5. 1Х + Тотал больше (Home win or Draw (1X) + OVER) — коды 500–599 ==========
-    HOME_OR_DRAW_AND_OVER_1_5((short) 500),  // «1Х + ТБ 1,5»
-    HOME_OR_DRAW_AND_OVER_2_0((short) 501),  // «1Х + ТБ 2»
-    HOME_OR_DRAW_AND_OVER_2_5((short) 502),  // «1Х + ТБ 2,5»
-    HOME_OR_DRAW_AND_OVER_3_0((short) 503),  // «1Х + ТБ 3»
-    HOME_OR_DRAW_AND_OVER_3_5((short) 504),  // «1Х + ТБ 3,5»
-    HOME_OR_DRAW_AND_OVER_4_0((short) 505),  // «1Х + ТБ 4»
-    HOME_OR_DRAW_AND_OVER_4_5((short) 506),  // «1Х + ТБ 4,5»
-    HOME_OR_DRAW_AND_OVER_5_0((short) 507),  // «1Х + ТБ 5»
-    HOME_OR_DRAW_AND_OVER_5_5((short) 508),  // «1Х + ТБ 5,5»
-    HOME_OR_DRAW_AND_OVER_6_0((short) 509),  // «1Х + ТБ 6»
+    //========== 351–400. 1Х + Тотал больше (Home win or Draw (1X) + Goals OVER) ==========
+    HOME_OR_DRAW_AND_OVER_1_0((short) 351, new GameResultWithTotalChecker()),  // «1Х + ТБ 1»
+    HOME_OR_DRAW_AND_OVER_1_5((short) 352, new GameResultWithTotalChecker()),  // «1Х + ТБ 1,5»
+    HOME_OR_DRAW_AND_OVER_2_0((short) 353, new GameResultWithTotalChecker()),  // «1Х + ТБ 2»
+    HOME_OR_DRAW_AND_OVER_2_5((short) 354, new GameResultWithTotalChecker()),  // «1Х + ТБ 2,5»
+    HOME_OR_DRAW_AND_OVER_3_0((short) 355, new GameResultWithTotalChecker()),  // «1Х + ТБ 3»
+    HOME_OR_DRAW_AND_OVER_3_5((short) 356, new GameResultWithTotalChecker()),  // «1Х + ТБ 3,5»
+    HOME_OR_DRAW_AND_OVER_4_0((short) 357, new GameResultWithTotalChecker()),  // «1Х + ТБ 4»
+    HOME_OR_DRAW_AND_OVER_4_5((short) 358, new GameResultWithTotalChecker()),  // «1Х + ТБ 4,5»
+    HOME_OR_DRAW_AND_OVER_5_0((short) 359, new GameResultWithTotalChecker()),  // «1Х + ТБ 5»
+    HOME_OR_DRAW_AND_OVER_5_5((short) 360, new GameResultWithTotalChecker()),  // «1Х + ТБ 5,5»
+    HOME_OR_DRAW_AND_OVER_6_0((short) 361, new GameResultWithTotalChecker()),  // «1Х + ТБ 6»
 
-    //========== 6. Х + Тотал голов (Draw (X) + goals total) — коды 600–699 ==========
-    DRAW_AND_UNDER_1_0((short) 600),  // «Х + ТМ 1»
-    DRAW_AND_UNDER_1_5((short) 601),  // «Х + ТМ 1,5»
-    DRAW_AND_UNDER_2_0((short) 602),  // «Х + ТМ 2»
-    DRAW_AND_UNDER_2_5((short) 603),  // «Х + ТМ 2,5»
-    DRAW_AND_UNDER_3_0((short) 604),  // «Х + ТМ 3»
-    DRAW_AND_UNDER_3_5((short) 605),  // «Х + ТМ 3,5»
-    DRAW_AND_UNDER_4_0((short) 606),  // «Х + ТМ 4»
-    DRAW_AND_UNDER_4_5((short) 607),  // «Х + ТМ 4,5»
-    DRAW_AND_UNDER_5_0((short) 608),  // «Х + ТМ 5»
-    DRAW_AND_UNDER_5_5((short) 609),  // «Х + ТМ 5,5»
-    DRAW_AND_UNDER_6_0((short) 610),  // «Х + ТМ 6»
+    //========== 401–450. Х + Тотал меньше (Draw (X) + Goals UNDER) ==========
+    DRAW_AND_UNDER_1_0((short) 401, new GameResultWithTotalChecker()),  // «Х + ТМ 1»
+    DRAW_AND_UNDER_1_5((short) 402, new GameResultWithTotalChecker()),  // «Х + ТМ 1,5»
+    DRAW_AND_UNDER_2_0((short) 403, new GameResultWithTotalChecker()),  // «Х + ТМ 2»
+    DRAW_AND_UNDER_2_5((short) 404, new GameResultWithTotalChecker()),  // «Х + ТМ 2,5»
+    DRAW_AND_UNDER_3_0((short) 405, new GameResultWithTotalChecker()),  // «Х + ТМ 3»
+    DRAW_AND_UNDER_3_5((short) 406, new GameResultWithTotalChecker()),  // «Х + ТМ 3,5»
+    DRAW_AND_UNDER_4_0((short) 407, new GameResultWithTotalChecker()),  // «Х + ТМ 4»
+    DRAW_AND_UNDER_4_5((short) 408, new GameResultWithTotalChecker()),  // «Х + ТМ 4,5»
+    DRAW_AND_UNDER_5_0((short) 409, new GameResultWithTotalChecker()),  // «Х + ТМ 5»
+    DRAW_AND_UNDER_5_5((short) 410, new GameResultWithTotalChecker()),  // «Х + ТМ 5,5»
+    DRAW_AND_UNDER_6_0((short) 411, new GameResultWithTotalChecker()),  // «Х + ТМ 6»
 
-    DRAW_AND_OVER_1_0((short) 650),  // «Х + ТБ 1»
-    DRAW_AND_OVER_1_5((short) 651),  // «Х + ТБ 1,5»
-    DRAW_AND_OVER_2_0((short) 652),  // «Х + ТБ 2»
-    DRAW_AND_OVER_2_5((short) 653),  // «Х + ТБ 2,5»
-    DRAW_AND_OVER_3_0((short) 654),  // «Х + ТБ 3»
-    DRAW_AND_OVER_3_5((short) 655),  // «Х + ТБ 3,5»
-    DRAW_AND_OVER_4_0((short) 656),  // «Х + ТБ 4»
-    DRAW_AND_OVER_4_5((short) 657),  // «Х + ТБ 4,5»
-    DRAW_AND_OVER_5_0((short) 658),  // «Х + ТБ 5»
-    DRAW_AND_OVER_5_5((short) 659),  // «Х + ТБ 5,5»
-    DRAW_AND_OVER_6_0((short) 660),  // «Х + ТБ 6»
+    //========== 451–500. Х + Тотал больше (Draw (X) + Goals OVER) ==========
+    DRAW_AND_OVER_1_0((short) 451, new GameResultWithTotalChecker()),  // «Х + ТБ 1»
+    DRAW_AND_OVER_1_5((short) 452, new GameResultWithTotalChecker()),  // «Х + ТБ 1,5»
+    DRAW_AND_OVER_2_0((short) 453, new GameResultWithTotalChecker()),  // «Х + ТБ 2»
+    DRAW_AND_OVER_2_5((short) 454, new GameResultWithTotalChecker()),  // «Х + ТБ 2,5»
+    DRAW_AND_OVER_3_0((short) 455, new GameResultWithTotalChecker()),  // «Х + ТБ 3»
+    DRAW_AND_OVER_3_5((short) 456, new GameResultWithTotalChecker()),  // «Х + ТБ 3,5»
+    DRAW_AND_OVER_4_0((short) 457, new GameResultWithTotalChecker()),  // «Х + ТБ 4»
+    DRAW_AND_OVER_4_5((short) 458, new GameResultWithTotalChecker()),  // «Х + ТБ 4,5»
+    DRAW_AND_OVER_5_0((short) 459, new GameResultWithTotalChecker()),  // «Х + ТБ 5»
+    DRAW_AND_OVER_5_5((short) 460, new GameResultWithTotalChecker()),  // «Х + ТБ 5,5»
+    DRAW_AND_OVER_6_0((short) 461, new GameResultWithTotalChecker()),  // «Х + ТБ 6»
 
-    //========== 7. П2 + Тотал меньше (Away win + Goals UNDER) — коды 700–799 ==========
-    AWAY_WIN_AND_UNDER_1_5((short) 700),   // «П2 + ТМ 1,5»
-    AWAY_WIN_AND_UNDER_2_0((short) 701),   // «П2 + ТМ 2»
-    AWAY_WIN_AND_UNDER_2_5((short) 702),   // «П2 + ТМ 2,5»
-    AWAY_WIN_AND_UNDER_3_0((short) 703),   // «П2 + ТМ 3»
-    AWAY_WIN_AND_UNDER_3_5((short) 704),   // «П2 + ТМ 3,5»
-    AWAY_WIN_AND_UNDER_4_0((short) 705),   // «П2 + ТМ 4»
-    AWAY_WIN_AND_UNDER_4_5((short) 706),   // «П2 + ТМ 4,5»
-    AWAY_WIN_AND_UNDER_5_0((short) 707),   // «П2 + ТМ 5»
-    AWAY_WIN_AND_UNDER_5_5((short) 708),   // «П2 + ТМ 5,5»
-    AWAY_WIN_AND_UNDER_6_0((short) 709),   // «П2 + ТМ 6»
+    //========== 501–550. П2 + Тотал меньше (Away win + Goals UNDER) ==========
+    AWAY_WIN_AND_UNDER_1_0((short) 501, new GameResultWithTotalChecker()),   // «П2 + ТМ 1»
+    AWAY_WIN_AND_UNDER_1_5((short) 502, new GameResultWithTotalChecker()),   // «П2 + ТМ 1,5»
+    AWAY_WIN_AND_UNDER_2_0((short) 503, new GameResultWithTotalChecker()),   // «П2 + ТМ 2»
+    AWAY_WIN_AND_UNDER_2_5((short) 504, new GameResultWithTotalChecker()),   // «П2 + ТМ 2,5»
+    AWAY_WIN_AND_UNDER_3_0((short) 505, new GameResultWithTotalChecker()),   // «П2 + ТМ 3»
+    AWAY_WIN_AND_UNDER_3_5((short) 506, new GameResultWithTotalChecker()),   // «П2 + ТМ 3,5»
+    AWAY_WIN_AND_UNDER_4_0((short) 507, new GameResultWithTotalChecker()),   // «П2 + ТМ 4»
+    AWAY_WIN_AND_UNDER_4_5((short) 508, new GameResultWithTotalChecker()),   // «П2 + ТМ 4,5»
+    AWAY_WIN_AND_UNDER_5_0((short) 509, new GameResultWithTotalChecker()),   // «П2 + ТМ 5»
+    AWAY_WIN_AND_UNDER_5_5((short) 510, new GameResultWithTotalChecker()),   // «П2 + ТМ 5,5»
+    AWAY_WIN_AND_UNDER_6_0((short) 511, new GameResultWithTotalChecker()),   // «П2 + ТМ 6»
 
-    //========== 8. П2 + Тотал больше (Away win + Goals OVER) — коды 800–899 ==========
-    AWAY_WIN_AND_OVER_1_5((short) 800),    // «П2 + ТБ 1,5»
-    AWAY_WIN_AND_OVER_2_0((short) 801),    // «П2 + ТБ 2»
-    AWAY_WIN_AND_OVER_2_5((short) 802),    // «П2 + ТБ 2,5»
-    AWAY_WIN_AND_OVER_3_0((short) 803),    // «П2 + ТБ 3»
-    AWAY_WIN_AND_OVER_3_5((short) 804),    // «П2 + ТБ 3,5»
-    AWAY_WIN_AND_OVER_4_0((short) 805),    // «П2 + ТБ 4»
-    AWAY_WIN_AND_OVER_4_5((short) 806),    // «П2 + ТБ 4,5»
-    AWAY_WIN_AND_OVER_5_0((short) 807),    // «П2 + ТБ 5»
-    AWAY_WIN_AND_OVER_5_5((short) 808),    // «П2 + ТБ 5,5»
-    AWAY_WIN_AND_OVER_6_0((short) 809),    // «П2 + ТБ 6»
+    //========== 551-600. П2 + Тотал больше (Away win + Goals OVER) ==========
+    AWAY_WIN_AND_OVER_1_0((short) 551, new GameResultWithTotalChecker()),    // «П2 + ТБ 1»
+    AWAY_WIN_AND_OVER_1_5((short) 552, new GameResultWithTotalChecker()),    // «П2 + ТБ 1,5»
+    AWAY_WIN_AND_OVER_2_0((short) 553, new GameResultWithTotalChecker()),    // «П2 + ТБ 2»
+    AWAY_WIN_AND_OVER_2_5((short) 554, new GameResultWithTotalChecker()),    // «П2 + ТБ 2,5»
+    AWAY_WIN_AND_OVER_3_0((short) 555, new GameResultWithTotalChecker()),    // «П2 + ТБ 3»
+    AWAY_WIN_AND_OVER_3_5((short) 556, new GameResultWithTotalChecker()),    // «П2 + ТБ 3,5»
+    AWAY_WIN_AND_OVER_4_0((short) 557, new GameResultWithTotalChecker()),    // «П2 + ТБ 4»
+    AWAY_WIN_AND_OVER_4_5((short) 558, new GameResultWithTotalChecker()),    // «П2 + ТБ 4,5»
+    AWAY_WIN_AND_OVER_5_0((short) 559, new GameResultWithTotalChecker()),    // «П2 + ТБ 5»
+    AWAY_WIN_AND_OVER_5_5((short) 560, new GameResultWithTotalChecker()),    // «П2 + ТБ 5,5»
+    AWAY_WIN_AND_OVER_6_0((short) 561, new GameResultWithTotalChecker()),    // «П2 + ТБ 6»
 
-    //========== 9. Х2 + Тотал меньше (Draw or Away win + UNDER) — коды 900–999 ==========
-    DRAW_OR_AWAY_AND_UNDER_1_5((short) 900), // «Х2 + ТМ 1,5»
-    DRAW_OR_AWAY_AND_UNDER_2_0((short) 901), // «Х2 + ТМ 2»
-    DRAW_OR_AWAY_AND_UNDER_2_5((short) 902), // «Х2 + ТМ 2,5»
-    DRAW_OR_AWAY_AND_UNDER_3_0((short) 903), // «Х2 + ТМ 3»
-    DRAW_OR_AWAY_AND_UNDER_3_5((short) 904), // «Х2 + ТМ 3,5»
-    DRAW_OR_AWAY_AND_UNDER_4_0((short) 905), // «Х2 + ТМ 4»
-    DRAW_OR_AWAY_AND_UNDER_4_5((short) 906), // «Х2 + ТМ 4,5»
-    DRAW_OR_AWAY_AND_UNDER_5_0((short) 907), // «Х2 + ТМ 5»
-    DRAW_OR_AWAY_AND_UNDER_5_5((short) 908), // «Х2 + ТМ 5,5»
-    DRAW_OR_AWAY_AND_UNDER_6_0((short) 909), // «Х2 + ТМ 6»
+    //========== 601-650. Х2 + Тотал меньше (Draw or Away win + Goals UNDER) ==========
+    DRAW_OR_AWAY_AND_UNDER_1_0((short) 601, new GameResultWithTotalChecker()), // «Х2 + ТМ 1»
+    DRAW_OR_AWAY_AND_UNDER_1_5((short) 602, new GameResultWithTotalChecker()), // «Х2 + ТМ 1,5»
+    DRAW_OR_AWAY_AND_UNDER_2_0((short) 603, new GameResultWithTotalChecker()), // «Х2 + ТМ 2»
+    DRAW_OR_AWAY_AND_UNDER_2_5((short) 604, new GameResultWithTotalChecker()), // «Х2 + ТМ 2,5»
+    DRAW_OR_AWAY_AND_UNDER_3_0((short) 605, new GameResultWithTotalChecker()), // «Х2 + ТМ 3»
+    DRAW_OR_AWAY_AND_UNDER_3_5((short) 606, new GameResultWithTotalChecker()), // «Х2 + ТМ 3,5»
+    DRAW_OR_AWAY_AND_UNDER_4_0((short) 607, new GameResultWithTotalChecker()), // «Х2 + ТМ 4»
+    DRAW_OR_AWAY_AND_UNDER_4_5((short) 608, new GameResultWithTotalChecker()), // «Х2 + ТМ 4,5»
+    DRAW_OR_AWAY_AND_UNDER_5_0((short) 609, new GameResultWithTotalChecker()), // «Х2 + ТМ 5»
+    DRAW_OR_AWAY_AND_UNDER_5_5((short) 610, new GameResultWithTotalChecker()), // «Х2 + ТМ 5,5»
+    DRAW_OR_AWAY_AND_UNDER_6_0((short) 611, new GameResultWithTotalChecker()), // «Х2 + ТМ 6»
 
-    //========== 10. Х2 + Тотал больше (Draw or Away win + OVER) — коды 1000–1099 ==========
-    DRAW_OR_AWAY_AND_OVER_1_5((short) 1000),  // «Х2 + ТБ 1,5»
-    DRAW_OR_AWAY_AND_OVER_2_0((short) 1001),  // «Х2 + ТБ 2»
-    DRAW_OR_AWAY_AND_OVER_2_5((short) 1002),  // «Х2 + ТБ 2,5»
-    DRAW_OR_AWAY_AND_OVER_3_0((short) 1003),  // «Х2 + ТБ 3»
-    DRAW_OR_AWAY_AND_OVER_3_5((short) 1004),  // «Х2 + ТБ 3,5»
-    DRAW_OR_AWAY_AND_OVER_4_0((short) 1005),  // «Х2 + ТБ 4»
-    DRAW_OR_AWAY_AND_OVER_4_5((short) 1006),  // «Х2 + ТБ 4,5»
-    DRAW_OR_AWAY_AND_OVER_5_0((short) 1007),  // «Х2 + ТБ 5»
-    DRAW_OR_AWAY_AND_OVER_5_5((short) 1008),  // «Х2 + ТБ 5,5»
-    DRAW_OR_AWAY_AND_OVER_6_0((short) 1009),  // «Х2 + ТБ 6»
+    //========== 651-700. Х2 + Тотал больше (Draw or Away win + Goals OVER) ==========
+    DRAW_OR_AWAY_AND_OVER_1_0((short) 651, new GameResultWithTotalChecker()),  // «Х2 + ТБ 1»
+    DRAW_OR_AWAY_AND_OVER_1_5((short) 652, new GameResultWithTotalChecker()),  // «Х2 + ТБ 1,5»
+    DRAW_OR_AWAY_AND_OVER_2_0((short) 653, new GameResultWithTotalChecker()),  // «Х2 + ТБ 2»
+    DRAW_OR_AWAY_AND_OVER_2_5((short) 654, new GameResultWithTotalChecker()),  // «Х2 + ТБ 2,5»
+    DRAW_OR_AWAY_AND_OVER_3_0((short) 655, new GameResultWithTotalChecker()),  // «Х2 + ТБ 3»
+    DRAW_OR_AWAY_AND_OVER_3_5((short) 656, new GameResultWithTotalChecker()),  // «Х2 + ТБ 3,5»
+    DRAW_OR_AWAY_AND_OVER_4_0((short) 657, new GameResultWithTotalChecker()),  // «Х2 + ТБ 4»
+    DRAW_OR_AWAY_AND_OVER_4_5((short) 658, new GameResultWithTotalChecker()),  // «Х2 + ТБ 4,5»
+    DRAW_OR_AWAY_AND_OVER_5_0((short) 659, new GameResultWithTotalChecker()),  // «Х2 + ТБ 5»
+    DRAW_OR_AWAY_AND_OVER_5_5((short) 660, new GameResultWithTotalChecker()),  // «Х2 + ТБ 5,5»
+    DRAW_OR_AWAY_AND_OVER_6_0((short) 661, new GameResultWithTotalChecker()),  // «Х2 + ТБ 6»
 
-    //========== 11. 12 + Тотал меньше (Home or Away win + UNDER) — коды 1100–1199 ==========
-    HOME_OR_AWAY_AND_UNDER_1_5((short) 1100), // «12 + ТМ 1,5»
-    HOME_OR_AWAY_AND_UNDER_2_0((short) 1101), // «12 + ТМ 2»
-    HOME_OR_AWAY_AND_UNDER_2_5((short) 1102), // «12 + ТМ 2,5»
-    HOME_OR_AWAY_AND_UNDER_3_0((short) 1103), // «12 + ТМ 3»
-    HOME_OR_AWAY_AND_UNDER_3_5((short) 1104), // «12 + ТМ 3,5»
-    HOME_OR_AWAY_AND_UNDER_4_0((short) 1105), // «12 + ТМ 4»
-    HOME_OR_AWAY_AND_UNDER_4_5((short) 1106), // «12 + ТМ 4,5»
-    HOME_OR_AWAY_AND_UNDER_5_0((short) 1107), // «12 + ТМ 5»
-    HOME_OR_AWAY_AND_UNDER_5_5((short) 1108), // «12 + ТМ 5,5»
-    HOME_OR_AWAY_AND_UNDER_6_0((short) 1109), // «12 + ТМ 6»
+    //========== 701-750. 12 + Тотал меньше (Home or Away win + Goals UNDER) ==========
+    HOME_OR_AWAY_AND_UNDER_1_0((short) 701, new GameResultWithTotalChecker()), // «12 + ТМ 1»
+    HOME_OR_AWAY_AND_UNDER_1_5((short) 702, new GameResultWithTotalChecker()), // «12 + ТМ 1,5»
+    HOME_OR_AWAY_AND_UNDER_2_0((short) 703, new GameResultWithTotalChecker()), // «12 + ТМ 2»
+    HOME_OR_AWAY_AND_UNDER_2_5((short) 704, new GameResultWithTotalChecker()), // «12 + ТМ 2,5»
+    HOME_OR_AWAY_AND_UNDER_3_0((short) 705, new GameResultWithTotalChecker()), // «12 + ТМ 3»
+    HOME_OR_AWAY_AND_UNDER_3_5((short) 706, new GameResultWithTotalChecker()), // «12 + ТМ 3,5»
+    HOME_OR_AWAY_AND_UNDER_4_0((short) 707, new GameResultWithTotalChecker()), // «12 + ТМ 4»
+    HOME_OR_AWAY_AND_UNDER_4_5((short) 708, new GameResultWithTotalChecker()), // «12 + ТМ 4,5»
+    HOME_OR_AWAY_AND_UNDER_5_0((short) 709, new GameResultWithTotalChecker()), // «12 + ТМ 5»
+    HOME_OR_AWAY_AND_UNDER_5_5((short) 710, new GameResultWithTotalChecker()), // «12 + ТМ 5,5»
+    HOME_OR_AWAY_AND_UNDER_6_0((short) 711, new GameResultWithTotalChecker()), // «12 + ТМ 6»
 
-    //========== 12. 12 + Тотал больше (Home or Away win + OVER) — коды 1200–1299 ==========
-    HOME_OR_AWAY_AND_OVER_1_5((short) 1200),  // «12 + ТБ 1,5»
-    HOME_OR_AWAY_AND_OVER_2_0((short) 1201),  // «12 + ТБ 2»
-    HOME_OR_AWAY_AND_OVER_2_5((short) 1202),  // «12 + ТБ 2,5»
-    HOME_OR_AWAY_AND_OVER_3_0((short) 1203),  // «12 + ТБ 3»
-    HOME_OR_AWAY_AND_OVER_3_5((short) 1204),  // «12 + ТБ 3,5»
-    HOME_OR_AWAY_AND_OVER_4_0((short) 1205),  // «12 + ТБ 4»
-    HOME_OR_AWAY_AND_OVER_4_5((short) 1206),  // «12 + ТБ 4,5»
-    HOME_OR_AWAY_AND_OVER_5_0((short) 1207),  // «12 + ТБ 5»
-    HOME_OR_AWAY_AND_OVER_5_5((short) 1208),  // «12 + ТБ 5,5»
-    HOME_OR_AWAY_AND_OVER_6_0((short) 1209),  // «12 + ТБ 6»
+    //========== 751-800. 12 + Тотал больше (Home or Away win + Goals OVER) ==========
+    HOME_OR_AWAY_AND_OVER_1_0((short) 751, new GameResultWithTotalChecker()),  // «12 + ТБ 1»
+    HOME_OR_AWAY_AND_OVER_1_5((short) 752, new GameResultWithTotalChecker()),  // «12 + ТБ 1,5»
+    HOME_OR_AWAY_AND_OVER_2_0((short) 753, new GameResultWithTotalChecker()),  // «12 + ТБ 2»
+    HOME_OR_AWAY_AND_OVER_2_5((short) 754, new GameResultWithTotalChecker()),  // «12 + ТБ 2,5»
+    HOME_OR_AWAY_AND_OVER_3_0((short) 755, new GameResultWithTotalChecker()),  // «12 + ТБ 3»
+    HOME_OR_AWAY_AND_OVER_3_5((short) 756, new GameResultWithTotalChecker()),  // «12 + ТБ 3,5»
+    HOME_OR_AWAY_AND_OVER_4_0((short) 757, new GameResultWithTotalChecker()),  // «12 + ТБ 4»
+    HOME_OR_AWAY_AND_OVER_4_5((short) 758, new GameResultWithTotalChecker()),  // «12 + ТБ 4,5»
+    HOME_OR_AWAY_AND_OVER_5_0((short) 759, new GameResultWithTotalChecker()),  // «12 + ТБ 5»
+    HOME_OR_AWAY_AND_OVER_5_5((short) 760, new GameResultWithTotalChecker()),  // «12 + ТБ 5,5»
+    HOME_OR_AWAY_AND_OVER_6_0((short) 761, new GameResultWithTotalChecker()),  // «12 + ТБ 6»
 
-    //========== 13. Тотал голов Меньше (Total goals under) — коды 1300–1399 ==========
-    TOTAL_UNDER_1_0((short) 1300),        // «ТМ 1»
-    TOTAL_UNDER_1_5((short) 1301),        // «ТМ 1,5»
-    TOTAL_UNDER_2_0((short) 1302),        // «ТМ 2»
-    TOTAL_UNDER_2_5((short) 1303),        // «ТМ 2,5»
-    TOTAL_UNDER_3_0((short) 1304),        // «ТМ 3»
-    TOTAL_UNDER_3_5((short) 1305),        // «ТМ 3,5»
-    TOTAL_UNDER_4_0((short) 1306),        // «ТМ 4»
-    TOTAL_UNDER_4_5((short) 1307),        // «ТМ 4,5»
-    TOTAL_UNDER_5_0((short) 1308),        // «ТМ 5»
-    TOTAL_UNDER_5_5((short) 1309),        // «ТМ 5,5»
-    TOTAL_UNDER_6_0((short) 1310),        // «ТМ 6»
-    TOTAL_UNDER_6_5((short) 1311),        // «ТМ 6,5»
+    //========== 801-850. Тотал голов Меньше (Total goals UNDER) ==========
+    TOTAL_UNDER_1_0((short) 801, new TotalChecker()),        // «ТМ 1»
+    TOTAL_UNDER_1_5((short) 802, new TotalChecker()),        // «ТМ 1,5»
+    TOTAL_UNDER_2_0((short) 803, new TotalChecker()),        // «ТМ 2»
+    TOTAL_UNDER_2_5((short) 804, new TotalChecker()),        // «ТМ 2,5»
+    TOTAL_UNDER_3_0((short) 805, new TotalChecker()),        // «ТМ 3»
+    TOTAL_UNDER_3_5((short) 806, new TotalChecker()),        // «ТМ 3,5»
+    TOTAL_UNDER_4_0((short) 807, new TotalChecker()),        // «ТМ 4»
+    TOTAL_UNDER_4_5((short) 808, new TotalChecker()),        // «ТМ 4,5»
+    TOTAL_UNDER_5_0((short) 809, new TotalChecker()),        // «ТМ 5»
+    TOTAL_UNDER_5_5((short) 810, new TotalChecker()),        // «ТМ 5,5»
+    TOTAL_UNDER_6_0((short) 811, new TotalChecker()),        // «ТМ 6»
+    TOTAL_UNDER_6_5((short) 812, new TotalChecker()),        // «ТМ 6,5»
 
-    //========== 14. Тотал голов Больше (Total goals over) — коды 1400–1499 ==========
-    TOTAL_OVER_1_0((short) 1400),         // «ТБ 1»
-    TOTAL_OVER_1_5((short) 1401),         // «ТБ 1,5»
-    TOTAL_OVER_2_0((short) 1402),         // «ТБ 2»
-    TOTAL_OVER_2_5((short) 1403),         // «ТБ 2,5»
-    TOTAL_OVER_3_0((short) 1404),         // «ТБ 3»
-    TOTAL_OVER_3_5((short) 1405),         // «ТБ 3,5»
-    TOTAL_OVER_4_0((short) 1406),         // «ТБ 4»
-    TOTAL_OVER_4_5((short) 1407),         // «ТБ 4,5»
-    TOTAL_OVER_5_0((short) 1408),         // «ТБ 5»
-    TOTAL_OVER_5_5((short) 1409),         // «ТБ 5,5»
-    TOTAL_OVER_6_0((short) 1410),         // «ТБ 6»
-    TOTAL_OVER_6_5((short) 1411),         // «ТБ 6,5»
+    //========== 851-900. Тотал голов Больше (Total goals OVER) ==========
+    TOTAL_OVER_1_0((short) 851, new TotalChecker()),         // «ТБ 1»
+    TOTAL_OVER_1_5((short) 852, new TotalChecker()),         // «ТБ 1,5»
+    TOTAL_OVER_2_0((short) 853, new TotalChecker()),         // «ТБ 2»
+    TOTAL_OVER_2_5((short) 854, new TotalChecker()),         // «ТБ 2,5»
+    TOTAL_OVER_3_0((short) 855, new TotalChecker()),         // «ТБ 3»
+    TOTAL_OVER_3_5((short) 856, new TotalChecker()),         // «ТБ 3,5»
+    TOTAL_OVER_4_0((short) 857, new TotalChecker()),         // «ТБ 4»
+    TOTAL_OVER_4_5((short) 858, new TotalChecker()),         // «ТБ 4,5»
+    TOTAL_OVER_5_0((short) 859, new TotalChecker()),         // «ТБ 5»
+    TOTAL_OVER_5_5((short) 860, new TotalChecker()),         // «ТБ 5,5»
+    TOTAL_OVER_6_0((short) 861, new TotalChecker()),         // «ТБ 6»
+    TOTAL_OVER_6_5((short) 862, new TotalChecker()),         // «ТБ 6,5»
 
-    //========== 15. Хозяева ИТМ (Home team Under) — коды 1500–1599 ==========
-    HOME_TEAM_UNDER_1_0((short) 1500),    // «Хозяева ИТМ 1»
-    HOME_TEAM_UNDER_1_5((short) 1501),    // «Хозяева ИТМ 1,5»
-    HOME_TEAM_UNDER_2_0((short) 1502),    // «Хозяева ИТМ 2»
-    HOME_TEAM_UNDER_2_5((short) 1503),    // «Хозяева ИТМ 2,5»
-    HOME_TEAM_UNDER_3_0((short) 1504),    // «Хозяева ИТМ 3»
-    HOME_TEAM_UNDER_3_5((short) 1505),    // «Хозяева ИТМ 3,5»
-    HOME_TEAM_UNDER_4_0((short) 1506),    // «Хозяева ИТМ 4»
-    HOME_TEAM_UNDER_4_5((short) 1507),    // «Хозяева ИТМ 4,5»
-    HOME_TEAM_UNDER_5_0((short) 1508),    // «Хозяева ИТМ 5»
-    HOME_TEAM_UNDER_5_5((short) 1509),    // «Хозяева ИТМ 5,5»
-    HOME_TEAM_UNDER_6_0((short) 1510),    // «Хозяева ИТМ 6»
-    HOME_TEAM_UNDER_6_5((short) 1511),    // «Хозяева ИТМ 6,5»
+    //========== 901-950. Хозяева ИТМ (Home team UNDER) ==========
+    HOME_TEAM_UNDER_1_0((short) 901, new TotalChecker()),    // «Хозяева ИТМ 1»
+    HOME_TEAM_UNDER_1_5((short) 902, new TotalChecker()),    // «Хозяева ИТМ 1,5»
+    HOME_TEAM_UNDER_2_0((short) 903, new TotalChecker()),    // «Хозяева ИТМ 2»
+    HOME_TEAM_UNDER_2_5((short) 904, new TotalChecker()),    // «Хозяева ИТМ 2,5»
+    HOME_TEAM_UNDER_3_0((short) 905, new TotalChecker()),    // «Хозяева ИТМ 3»
+    HOME_TEAM_UNDER_3_5((short) 906, new TotalChecker()),    // «Хозяева ИТМ 3,5»
+    HOME_TEAM_UNDER_4_0((short) 907, new TotalChecker()),    // «Хозяева ИТМ 4»
+    HOME_TEAM_UNDER_4_5((short) 908, new TotalChecker()),    // «Хозяева ИТМ 4,5»
+    HOME_TEAM_UNDER_5_0((short) 909, new TotalChecker()),    // «Хозяева ИТМ 5»
+    HOME_TEAM_UNDER_5_5((short) 910, new TotalChecker()),    // «Хозяева ИТМ 5,5»
+    HOME_TEAM_UNDER_6_0((short) 911, new TotalChecker()),    // «Хозяева ИТМ 6»
+    HOME_TEAM_UNDER_6_5((short) 912, new TotalChecker()),    // «Хозяева ИТМ 6,5»
 
-    //========== 16. Хозяева ИТБ (Home team Over) — коды 1600–1699 ==========
-    HOME_TEAM_OVER_1_0((short) 1600),     // «Хозяева ИТБ 1»
-    HOME_TEAM_OVER_1_5((short) 1601),     // «Хозяева ИТБ 1,5»
-    HOME_TEAM_OVER_2_0((short) 1602),     // «Хозяева ИТБ 2»
-    HOME_TEAM_OVER_2_5((short) 1603),     // «Хозяева ИТБ 2,5»
-    HOME_TEAM_OVER_3_0((short) 1604),     // «Хозяева ИТБ 3»
-    HOME_TEAM_OVER_3_5((short) 1605),     // «Хозяева ИТБ 3,5»
-    HOME_TEAM_OVER_4_0((short) 1606),     // «Хозяева ИТБ 4»
-    HOME_TEAM_OVER_4_5((short) 1607),     // «Хозяева ИТБ 4,5»
-    HOME_TEAM_OVER_5_0((short) 1608),     // «Хозяева ИТБ 5»
-    HOME_TEAM_OVER_5_5((short) 1609),     // «Хозяева ИТБ 5,5»
-    HOME_TEAM_OVER_6_0((short) 1610),     // «Хозяева ИТБ 6»
-    HOME_TEAM_OVER_6_5((short) 1611),     // «Хозяева ИТБ 6,5»
+    //========== 951-1000. Хозяева ИТБ (Home team OVER) ==========
+    HOME_TEAM_OVER_1_0((short) 951, new TotalChecker()),     // «Хозяева ИТБ 1»
+    HOME_TEAM_OVER_1_5((short) 952, new TotalChecker()),     // «Хозяева ИТБ 1,5»
+    HOME_TEAM_OVER_2_0((short) 953, new TotalChecker()),     // «Хозяева ИТБ 2»
+    HOME_TEAM_OVER_2_5((short) 954, new TotalChecker()),     // «Хозяева ИТБ 2,5»
+    HOME_TEAM_OVER_3_0((short) 955, new TotalChecker()),     // «Хозяева ИТБ 3»
+    HOME_TEAM_OVER_3_5((short) 956, new TotalChecker()),     // «Хозяева ИТБ 3,5»
+    HOME_TEAM_OVER_4_0((short) 957, new TotalChecker()),     // «Хозяева ИТБ 4»
+    HOME_TEAM_OVER_4_5((short) 958, new TotalChecker()),     // «Хозяева ИТБ 4,5»
+    HOME_TEAM_OVER_5_0((short) 959, new TotalChecker()),     // «Хозяева ИТБ 5»
+    HOME_TEAM_OVER_5_5((short) 960, new TotalChecker()),     // «Хозяева ИТБ 5,5»
+    HOME_TEAM_OVER_6_0((short) 961, new TotalChecker()),     // «Хозяева ИТБ 6»
+    HOME_TEAM_OVER_6_5((short) 962, new TotalChecker()),     // «Хозяева ИТБ 6,5»
 
-    //========== 17. Гости ИТМ (Away team Under) — коды 1700–1799 ==========
-    AWAY_TEAM_UNDER_1_0((short) 1700),    // «Гости ИТМ 1»
-    AWAY_TEAM_UNDER_1_5((short) 1701),    // «Гости ИТМ 1,5»
-    AWAY_TEAM_UNDER_2_0((short) 1702),    // «Гости ИТМ 2»
-    AWAY_TEAM_UNDER_2_5((short) 1703),    // «Гости ИТМ 2,5»
-    AWAY_TEAM_UNDER_3_0((short) 1704),    // «Гости ИТМ 3»
-    AWAY_TEAM_UNDER_3_5((short) 1705),    // «Гости ИТМ 3,5»
-    AWAY_TEAM_UNDER_4_0((short) 1706),    // «Гости ИТМ 4»
-    AWAY_TEAM_UNDER_4_5((short) 1707),    // «Гости ИТМ 4,5»
-    AWAY_TEAM_UNDER_5_0((short) 1708),    // «Гости ИТМ 5»
-    AWAY_TEAM_UNDER_5_5((short) 1709),    // «Гости ИТМ 5,5»
-    AWAY_TEAM_UNDER_6_0((short) 1710),    // «Гости ИТМ 6»
-    AWAY_TEAM_UNDER_6_5((short) 1711),    // «Гости ИТМ 6,5»
+    //========== 1001-1050. Гости ИТМ (Away team UNDER) ==========
+    AWAY_TEAM_UNDER_1_0((short) 1001, new TotalChecker()),    // «Гости ИТМ 1»
+    AWAY_TEAM_UNDER_1_5((short) 1002, new TotalChecker()),    // «Гости ИТМ 1,5»
+    AWAY_TEAM_UNDER_2_0((short) 1003, new TotalChecker()),    // «Гости ИТМ 2»
+    AWAY_TEAM_UNDER_2_5((short) 1004, new TotalChecker()),    // «Гости ИТМ 2,5»
+    AWAY_TEAM_UNDER_3_0((short) 1005, new TotalChecker()),    // «Гости ИТМ 3»
+    AWAY_TEAM_UNDER_3_5((short) 1006, new TotalChecker()),    // «Гости ИТМ 3,5»
+    AWAY_TEAM_UNDER_4_0((short) 1007, new TotalChecker()),    // «Гости ИТМ 4»
+    AWAY_TEAM_UNDER_4_5((short) 1008, new TotalChecker()),    // «Гости ИТМ 4,5»
+    AWAY_TEAM_UNDER_5_0((short) 1009, new TotalChecker()),    // «Гости ИТМ 5»
+    AWAY_TEAM_UNDER_5_5((short) 1010, new TotalChecker()),    // «Гости ИТМ 5,5»
+    AWAY_TEAM_UNDER_6_0((short) 1011, new TotalChecker()),    // «Гости ИТМ 6»
+    AWAY_TEAM_UNDER_6_5((short) 1012, new TotalChecker()),    // «Гости ИТМ 6,5»
 
-    //========== 18. Гости ИТБ (Away team Over) — коды 1800–1899 ==========
-    AWAY_TEAM_OVER_1_0((short) 1800),     // «Гости ИТБ 1»
-    AWAY_TEAM_OVER_1_5((short) 1801),     // «Гости ИТБ 1,5»
-    AWAY_TEAM_OVER_2_0((short) 1802),     // «Гости ИТБ 2»
-    AWAY_TEAM_OVER_2_5((short) 1803),     // «Гости ИТБ 2,5»
-    AWAY_TEAM_OVER_3_0((short) 1804),     // «Гости ИТБ 3»
-    AWAY_TEAM_OVER_3_5((short) 1805),     // «Гости ИТБ 3,5»
-    AWAY_TEAM_OVER_4_0((short) 1806),     // «Гости ИТБ 4»
-    AWAY_TEAM_OVER_4_5((short) 1807),     // «Гости ИТБ 4,5»
-    AWAY_TEAM_OVER_5_0((short) 1808),     // «Гости ИТБ 5»
-    AWAY_TEAM_OVER_5_5((short) 1809),     // «Гости ИТБ 5,5»
-    AWAY_TEAM_OVER_6_0((short) 1810),     // «Гости ИТБ 6»
-    AWAY_TEAM_OVER_6_5((short) 1811),     // «Гости ИТБ 6,5»
+    //========== 1051-1100. Гости ИТБ (Away team OVER) ==========
+    AWAY_TEAM_OVER_1_0((short) 1051, new TotalChecker()),     // «Гости ИТБ 1»
+    AWAY_TEAM_OVER_1_5((short) 1052, new TotalChecker()),     // «Гости ИТБ 1,5»
+    AWAY_TEAM_OVER_2_0((short) 1053, new TotalChecker()),     // «Гости ИТБ 2»
+    AWAY_TEAM_OVER_2_5((short) 1054, new TotalChecker()),     // «Гости ИТБ 2,5»
+    AWAY_TEAM_OVER_3_0((short) 1055, new TotalChecker()),     // «Гости ИТБ 3»
+    AWAY_TEAM_OVER_3_5((short) 1056, new TotalChecker()),     // «Гости ИТБ 3,5»
+    AWAY_TEAM_OVER_4_0((short) 1057, new TotalChecker()),     // «Гости ИТБ 4»
+    AWAY_TEAM_OVER_4_5((short) 1058, new TotalChecker()),     // «Гости ИТБ 4,5»
+    AWAY_TEAM_OVER_5_0((short) 1059, new TotalChecker()),     // «Гости ИТБ 5»
+    AWAY_TEAM_OVER_5_5((short) 1060, new TotalChecker()),     // «Гости ИТБ 5,5»
+    AWAY_TEAM_OVER_6_0((short) 1061, new TotalChecker()),     // «Гости ИТБ 6»
+    AWAY_TEAM_OVER_6_5((short) 1062, new TotalChecker()),     // «Гости ИТБ 6,5»
 
-    //========== 19. Фора хозяев (Home team handicap) — коды 1900–1999 ==========
-    HANDICAP_HOME_0((short) 1900),        // «Ф1(0)»
-    HANDICAP_HOME_MINUS_1((short) 1901),  // «Ф1(-1)»
-    HANDICAP_HOME_PLUS_1((short) 1902),   // «Ф1(+1)»
-    HANDICAP_HOME_MINUS_1_5((short) 1903),// «Ф1(-1,5)»
-    HANDICAP_HOME_PLUS_1_5((short) 1904), // «Ф1(+1,5)»
-    HANDICAP_HOME_MINUS_2((short) 1905),  // «Ф1(-2)»
-    HANDICAP_HOME_PLUS_2((short) 1906),   // «Ф1(+2)»
-    HANDICAP_HOME_MINUS_2_5((short) 1907),// «Ф1(-2,5)»
-    HANDICAP_HOME_PLUS_2_5((short) 1908), // «Ф1(+2,5)»
-    HANDICAP_HOME_MINUS_3((short) 1909),  // «Ф1(-3)»
-    HANDICAP_HOME_PLUS_3((short) 1910),   // «Ф1(+3)»
-    HANDICAP_HOME_MINUS_3_5((short) 1911),// «Ф1(-3,5)»
-    HANDICAP_HOME_PLUS_3_5((short) 1912), // «Ф1(+3,5)»
-    HANDICAP_HOME_MINUS_4((short) 1913),  // «Ф1(-4)»
-    HANDICAP_HOME_PLUS_4((short) 1914),   // «Ф1(+4)»
-    HANDICAP_HOME_MINUS_4_5((short) 1915),// «Ф1(-4,5)»
-    HANDICAP_HOME_PLUS_4_5((short) 1916), // «Ф1(+4,5)»
-    HANDICAP_HOME_MINUS_5((short) 1917),  // «Ф1(-5)»
-    HANDICAP_HOME_PLUS_5((short) 1918),   // «Ф1(+5)»
-    HANDICAP_HOME_MINUS_5_5((short) 1919),// «Ф1(-5,5)»
-    HANDICAP_HOME_PLUS_5_5((short) 1920), // «Ф1(+5,5)»
-    HANDICAP_HOME_MINUS_6((short) 1921),  // «Ф1(-6)»
-    HANDICAP_HOME_PLUS_6((short) 1922),   // «Ф1(+6)»
+    //========== 1101-1150. Фора хозяев (Home team handicap) ==========
+    HANDICAP_HOME_0((short) 1101, new HandicapChecker()),        // «Ф1(0)»
+    HANDICAP_HOME_MINUS_1_0((short) 1102, new HandicapChecker()),  // «Ф1(-1)»
+    HANDICAP_HOME_PLUS_1_0((short) 1103, new HandicapChecker()),   // «Ф1(+1)»
+    HANDICAP_HOME_MINUS_1_5((short) 1104, new HandicapChecker()),// «Ф1(-1,5)»
+    HANDICAP_HOME_PLUS_1_5((short) 1105, new HandicapChecker()), // «Ф1(+1,5)»
+    HANDICAP_HOME_MINUS_2_0((short) 1106, new HandicapChecker()),  // «Ф1(-2)»
+    HANDICAP_HOME_PLUS_2_0((short) 1107, new HandicapChecker()),   // «Ф1(+2)»
+    HANDICAP_HOME_MINUS_2_5((short) 1108, new HandicapChecker()),// «Ф1(-2,5)»
+    HANDICAP_HOME_PLUS_2_5((short) 1109, new HandicapChecker()), // «Ф1(+2,5)»
+    HANDICAP_HOME_MINUS_3_0((short) 1110, new HandicapChecker()),  // «Ф1(-3)»
+    HANDICAP_HOME_PLUS_3_0((short) 1111, new HandicapChecker()),   // «Ф1(+3)»
+    HANDICAP_HOME_MINUS_3_5((short) 1112, new HandicapChecker()),// «Ф1(-3,5)»
+    HANDICAP_HOME_PLUS_3_5((short) 1113, new HandicapChecker()), // «Ф1(+3,5)»
+    HANDICAP_HOME_MINUS_4_0((short) 1114, new HandicapChecker()),  // «Ф1(-4)»
+    HANDICAP_HOME_PLUS_4_0((short) 1115, new HandicapChecker()),   // «Ф1(+4)»
+    HANDICAP_HOME_MINUS_4_5((short) 1116, new HandicapChecker()),// «Ф1(-4,5)»
+    HANDICAP_HOME_PLUS_4_5((short) 1117, new HandicapChecker()), // «Ф1(+4,5)»
+    HANDICAP_HOME_MINUS_5_0((short) 1118, new HandicapChecker()),  // «Ф1(-5)»
+    HANDICAP_HOME_PLUS_5_0((short) 1119, new HandicapChecker()),   // «Ф1(+5)»
+    HANDICAP_HOME_MINUS_5_5((short) 1120, new HandicapChecker()),// «Ф1(-5,5)»
+    HANDICAP_HOME_PLUS_5_5((short) 1121, new HandicapChecker()), // «Ф1(+5,5)»
+    HANDICAP_HOME_MINUS_6_0((short) 1122, new HandicapChecker()),  // «Ф1(-6)»
+    HANDICAP_HOME_PLUS_6_0((short) 1123, new HandicapChecker()),   // «Ф1(+6)»
 
-    //========== 20. Фора гостей (Away team handicap) — коды 2000–2099 ==========
-    HANDICAP_AWAY_0((short) 2000),        // «Ф2(0)»
-    HANDICAP_AWAY_MINUS_1((short) 2001),  // «Ф2(-1)»
-    HANDICAP_AWAY_PLUS_1((short) 2002),   // «Ф2(+1)»
-    HANDICAP_AWAY_MINUS_1_5((short) 2003),// «Ф2(-1.5)»
-    HANDICAP_AWAY_PLUS_1_5((short) 2004), // «Ф2(+1.5)»
-    HANDICAP_AWAY_MINUS_2((short) 2005),  // «Ф2(-2)»
-    HANDICAP_AWAY_PLUS_2((short) 2006),   // «Ф2(+2)»
-    HANDICAP_AWAY_MINUS_2_5((short) 2007),// «Ф2(-2.5)»
-    HANDICAP_AWAY_PLUS_2_5((short) 2008), // «Ф2(+2.5)»
-    HANDICAP_AWAY_MINUS_3((short) 2009),  // «Ф2(-3)»
-    HANDICAP_AWAY_PLUS_3((short) 2010),   // «Ф2(+3)»
-    HANDICAP_AWAY_MINUS_3_5((short) 2011),// «Ф2(-3.5)»
-    HANDICAP_AWAY_PLUS_3_5((short) 2012), // «Ф2(+3.5)»
-    HANDICAP_AWAY_MINUS_4((short) 2013),  // «Ф2(-4)»
-    HANDICAP_AWAY_PLUS_4((short) 2014),   // «Ф2(+4)»
-    HANDICAP_AWAY_MINUS_4_5((short) 2015),// «Ф2(-4.5)»
-    HANDICAP_AWAY_PLUS_4_5((short) 2016), // «Ф2(+4.5)»
-    HANDICAP_AWAY_MINUS_5((short) 2017),  // «Ф2(-5)»
-    HANDICAP_AWAY_PLUS_5((short) 2018),   // «Ф2(+5)»
-    HANDICAP_AWAY_MINUS_5_5((short) 2019),// «Ф2(-5.5)»
-    HANDICAP_AWAY_PLUS_5_5((short) 2020), // «Ф2(+5.5)»
-    HANDICAP_AWAY_MINUS_6((short) 2021),  // «Ф2(-6)»
-    HANDICAP_AWAY_PLUS_6((short) 2022),   // «Ф2(+6)»
+    //========== 1151-1200. Фора гостей (Away team handicap) ==========
+    HANDICAP_AWAY_0((short) 1151, new HandicapChecker()),        // «Ф2(0)»
+    HANDICAP_AWAY_MINUS_1_0((short) 1152, new HandicapChecker()),  // «Ф2(-1)»
+    HANDICAP_AWAY_PLUS_1_0((short) 1153, new HandicapChecker()),   // «Ф2(+1)»
+    HANDICAP_AWAY_MINUS_1_5((short) 1154, new HandicapChecker()),// «Ф2(-1.5)»
+    HANDICAP_AWAY_PLUS_1_5((short) 1155, new HandicapChecker()), // «Ф2(+1.5)»
+    HANDICAP_AWAY_MINUS_2_0((short) 1156, new HandicapChecker()),  // «Ф2(-2)»
+    HANDICAP_AWAY_PLUS_2_0((short) 1157, new HandicapChecker()),   // «Ф2(+2)»
+    HANDICAP_AWAY_MINUS_2_5((short) 1158, new HandicapChecker()),// «Ф2(-2.5)»
+    HANDICAP_AWAY_PLUS_2_5((short) 1159, new HandicapChecker()), // «Ф2(+2.5)»
+    HANDICAP_AWAY_MINUS_3_0((short) 1160, new HandicapChecker()),  // «Ф2(-3)»
+    HANDICAP_AWAY_PLUS_3_0((short) 1161, new HandicapChecker()),   // «Ф2(+3)»
+    HANDICAP_AWAY_MINUS_3_5((short) 1162, new HandicapChecker()),// «Ф2(-3.5)»
+    HANDICAP_AWAY_PLUS_3_5((short) 1163, new HandicapChecker()), // «Ф2(+3.5)»
+    HANDICAP_AWAY_MINUS_4_0((short) 1164, new HandicapChecker()),  // «Ф2(-4)»
+    HANDICAP_AWAY_PLUS_4_0((short) 1165, new HandicapChecker()),   // «Ф2(+4)»
+    HANDICAP_AWAY_MINUS_4_5((short) 1166, new HandicapChecker()),// «Ф2(-4.5)»
+    HANDICAP_AWAY_PLUS_4_5((short) 1167, new HandicapChecker()), // «Ф2(+4.5)»
+    HANDICAP_AWAY_MINUS_5_0((short) 1168, new HandicapChecker()),  // «Ф2(-5)»
+    HANDICAP_AWAY_PLUS_5_0((short) 1169, new HandicapChecker()),   // «Ф2(+5)»
+    HANDICAP_AWAY_MINUS_5_5((short) 1170, new HandicapChecker()),// «Ф2(-5.5)»
+    HANDICAP_AWAY_PLUS_5_5((short) 1171, new HandicapChecker()), // «Ф2(+5.5)»
+    HANDICAP_AWAY_MINUS_6_0((short) 1172, new HandicapChecker()),  // «Ф2(-6)»
+    HANDICAP_AWAY_PLUS_6_0((short) 1173, new HandicapChecker()),   // «Ф2(+6)»
 
-    //========== 21. Счёт игры (Game Score) — коды 2100–2199 ==========
-    GAME_SCORE_0_0((short) 2100),  // «Счёт 0:0»
-    GAME_SCORE_1_0((short) 2101),  // «Счёт 1:0»
-    GAME_SCORE_2_0((short) 2102),  // «Счёт 2:0»
-    GAME_SCORE_3_0((short) 2103),  // «Счёт 3:0»
-    GAME_SCORE_0_1((short) 2104),  // «Счёт 0:1»
-    GAME_SCORE_1_1((short) 2105),  // «Счёт 1:1»
-    GAME_SCORE_2_1((short) 2106),  // «Счёт 2:1»
-    GAME_SCORE_3_1((short) 2107),  // «Счёт 3:1»
-    GAME_SCORE_0_2((short) 2108),  // «Счёт 0:2»
-    GAME_SCORE_1_2((short) 2109),  // «Счёт 1:2»
-    GAME_SCORE_2_2((short) 2110),  // «Счёт 2:2»
-    GAME_SCORE_3_2((short) 2111),  // «Счёт 3:2»
-    GAME_SCORE_0_3((short) 2112),  // «Счёт 0:3»
-    GAME_SCORE_1_3((short) 2113),  // «Счёт 1:3»
-    GAME_SCORE_2_3((short) 2114),  // «Счёт 2:3»
-    GAME_SCORE_3_3((short) 2115),  // «Счёт 3:3»
+    //========== 1201-1300. Счёт игры (Game Score) ==========
+    GAME_SCORE_0_0((short) 1201, new GameScoreChecker()),  // «Счёт 0:0»
+    GAME_SCORE_1_0((short) 1202, new GameScoreChecker()),  // «Счёт 1:0»
+    GAME_SCORE_2_0((short) 1203, new GameScoreChecker()),  // «Счёт 2:0»
+    GAME_SCORE_3_0((short) 1204, new GameScoreChecker()),  // «Счёт 3:0»
+    GAME_SCORE_0_1((short) 1205, new GameScoreChecker()),  // «Счёт 0:1»
+    GAME_SCORE_1_1((short) 1206, new GameScoreChecker()),  // «Счёт 1:1»
+    GAME_SCORE_2_1((short) 1207, new GameScoreChecker()),  // «Счёт 2:1»
+    GAME_SCORE_3_1((short) 1208, new GameScoreChecker()),  // «Счёт 3:1»
+    GAME_SCORE_0_2((short) 1209, new GameScoreChecker()),  // «Счёт 0:2»
+    GAME_SCORE_1_2((short) 1210, new GameScoreChecker()),  // «Счёт 1:2»
+    GAME_SCORE_2_2((short) 1211, new GameScoreChecker()),  // «Счёт 2:2»
+    GAME_SCORE_3_2((short) 1212, new GameScoreChecker()),  // «Счёт 3:2»
+    GAME_SCORE_0_3((short) 1213, new GameScoreChecker()),  // «Счёт 0:3»
+    GAME_SCORE_1_3((short) 1214, new GameScoreChecker()),  // «Счёт 1:3»
+    GAME_SCORE_2_3((short) 1215, new GameScoreChecker()),  // «Счёт 2:3»
+    GAME_SCORE_3_3((short) 1216, new GameScoreChecker()),  // «Счёт 3:3»
 
-    GAME_SCORE_0_4((short) 2150),  // «Счёт 0:4»
-    GAME_SCORE_4_0((short) 2151),  // «Счёт 4:0»
-    GAME_SCORE_0_5((short) 2152),  // «Счёт 0:5»
-    GAME_SCORE_5_0((short) 2153),  // «Счёт 5:0»
-    GAME_SCORE_1_4((short) 2154),  // «Счёт 1:4»
-    GAME_SCORE_4_1((short) 2155),  // «Счёт 4:1»
-    GAME_SCORE_1_5((short) 2156),  // «Счёт 1:5»
-    GAME_SCORE_5_1((short) 2157),  // «Счёт 5:1»
-    GAME_SCORE_2_4((short) 2158),  // «Счёт 2:4»
-    GAME_SCORE_4_2((short) 2159),  // «Счёт 4:2»
-    GAME_SCORE_2_5((short) 2160),  // «Счёт 2:5»
-    GAME_SCORE_5_2((short) 2161),  // «Счёт 5:2»
-    GAME_SCORE_3_4((short) 2162),  // «Счёт 3:4»
-    GAME_SCORE_4_3((short) 2163),  // «Счёт 4:3»
-    GAME_SCORE_3_5((short) 2164),  // «Счёт 3:5»
-    GAME_SCORE_5_3((short) 2165),  // «Счёт 5:3»
-    GAME_SCORE_4_4((short) 2166),  // «Счёт 4:4»
-    GAME_SCORE_4_5((short) 2167),  // «Счёт 4:5»
-    GAME_SCORE_5_4((short) 2168),  // «Счёт 5:4»
-    GAME_SCORE_5_5((short) 2169),  // «Счёт 5:5»
+    // Полный список от 0:4 до 7:7
+    GAME_SCORE_0_4((short) 1251, new GameScoreChecker()),  // «Счёт 0:4»
+    GAME_SCORE_1_4((short) 1252, new GameScoreChecker()),  // «Счёт 1:4»
+    GAME_SCORE_2_4((short) 1253, new GameScoreChecker()),  // «Счёт 2:4»
+    GAME_SCORE_3_4((short) 1254, new GameScoreChecker()),  // «Счёт 3:4»
+    GAME_SCORE_4_0((short) 1255, new GameScoreChecker()),  // «Счёт 4:0»
+    GAME_SCORE_4_1((short) 1256, new GameScoreChecker()),  // «Счёт 4:1»
+    GAME_SCORE_4_2((short) 1257, new GameScoreChecker()),  // «Счёт 4:2»
+    GAME_SCORE_4_3((short) 1258, new GameScoreChecker()),  // «Счёт 4:3»
+    GAME_SCORE_4_4((short) 1259, new GameScoreChecker()),  // «Счёт 4:4»
+    GAME_SCORE_0_5((short) 1260, new GameScoreChecker()),  // «Счёт 0:5»
+    GAME_SCORE_1_5((short) 1261, new GameScoreChecker()),  // «Счёт 1:5»
+    GAME_SCORE_2_5((short) 1262, new GameScoreChecker()),  // «Счёт 2:5»
+    GAME_SCORE_3_5((short) 1263, new GameScoreChecker()),  // «Счёт 3:5»
+    GAME_SCORE_4_5((short) 1264, new GameScoreChecker()),  // «Счёт 4:5»
+    GAME_SCORE_5_0((short) 1265, new GameScoreChecker()),  // «Счёт 5:0»
+    GAME_SCORE_5_1((short) 1266, new GameScoreChecker()),  // «Счёт 5:1»
+    GAME_SCORE_5_2((short) 1267, new GameScoreChecker()),  // «Счёт 5:2»
+    GAME_SCORE_5_3((short) 1268, new GameScoreChecker()),  // «Счёт 5:3»
+    GAME_SCORE_5_4((short) 1269, new GameScoreChecker()),  // «Счёт 5:4»
+    GAME_SCORE_5_5((short) 1270, new GameScoreChecker()),  // «Счёт 5:5»
+    GAME_SCORE_0_6((short) 1271, new GameScoreChecker()),  // «Счёт 0:6»
+    GAME_SCORE_1_6((short) 1272, new GameScoreChecker()),  // «Счёт 1:6»
+    GAME_SCORE_2_6((short) 1273, new GameScoreChecker()),  // «Счёт 2:6»
+    GAME_SCORE_3_6((short) 1274, new GameScoreChecker()),  // «Счёт 3:6»
+    GAME_SCORE_4_6((short) 1275, new GameScoreChecker()),  // «Счёт 4:6»
+    GAME_SCORE_5_6((short) 1276, new GameScoreChecker()),  // «Счёт 5:6»
+    GAME_SCORE_6_0((short) 1277, new GameScoreChecker()),  // «Счёт 6:0»
+    GAME_SCORE_6_1((short) 1278, new GameScoreChecker()),  // «Счёт 6:1»
+    GAME_SCORE_6_2((short) 1279, new GameScoreChecker()),  // «Счёт 6:2»
+    GAME_SCORE_6_3((short) 1280, new GameScoreChecker()),  // «Счёт 6:3»
+    GAME_SCORE_6_4((short) 1281, new GameScoreChecker()),  // «Счёт 6:4»
+    GAME_SCORE_6_5((short) 1282, new GameScoreChecker()),  // «Счёт 6:5»
+    GAME_SCORE_6_6((short) 1283, new GameScoreChecker()),  // «Счёт 6:6»
+    GAME_SCORE_0_7((short) 1284, new GameScoreChecker()),  // «Счёт 0:7»
+    GAME_SCORE_1_7((short) 1285, new GameScoreChecker()),  // «Счёт 1:7»
+    GAME_SCORE_2_7((short) 1286, new GameScoreChecker()),  // «Счёт 2:7»
+    GAME_SCORE_3_7((short) 1287, new GameScoreChecker()),  // «Счёт 3:7»
+    GAME_SCORE_4_7((short) 1288, new GameScoreChecker()),  // «Счёт 4:7»
+    GAME_SCORE_5_7((short) 1289, new GameScoreChecker()),  // «Счёт 5:7»
+    GAME_SCORE_6_7((short) 1290, new GameScoreChecker()),  // «Счёт 6:7»
+    GAME_SCORE_7_0((short) 1291, new GameScoreChecker()),  // «Счёт 7:0»
+    GAME_SCORE_7_1((short) 1292, new GameScoreChecker()),  // «Счёт 7:1»
+    GAME_SCORE_7_2((short) 1293, new GameScoreChecker()),  // «Счёт 7:2»
+    GAME_SCORE_7_3((short) 1294, new GameScoreChecker()),  // «Счёт 7:3»
+    GAME_SCORE_7_4((short) 1295, new GameScoreChecker()),  // «Счёт 7:4»
+    GAME_SCORE_7_5((short) 1296, new GameScoreChecker()),  // «Счёт 7:5»
+    GAME_SCORE_7_6((short) 1297, new GameScoreChecker()),  // «Счёт 7:6»
+    GAME_SCORE_7_7((short) 1298, new GameScoreChecker()),  // «Счёт 7:7»
 
-    //========== 22. Голы (Goals) — коды 2200–2299 ==========
-    BOTH_TEAMS_SCORE((short) 2200),          // «Обе забьют»
-    HOME_TEAM_SCORES((short) 2201),          // «Хозяева забьют»
-    AWAY_TEAM_SCORES((short) 2202),          // «Гости забьют»
+    //========== 1301-1350. Голы (Goals) ==========
+    BOTH_TEAMS_SCORE((short) 1301, new GoalsChecker()),    // «Обе забьют»
+    HOME_TEAM_SCORES((short) 1302, new GoalsChecker()),    // «Хозяева забьют»
+    AWAY_TEAM_SCORES((short) 1303, new GoalsChecker()),    // «Гости забьют»
 
-    //========== 23. Голы по таймам (Goals by halftimes) — коды 2300–2399 ==========
-    HOME_SCORES_1ST_HALF((short) 2300),         // «Хозяева забьют в 1 тайме»
-    HOME_SCORES_2ND_HALF((short) 2301),         // «Хозяева забьют во 2 тайме»
-    AWAY_SCORES_1ST_HALF((short) 2302),         // «Гости забьют в 1 тайме»
-    AWAY_SCORES_2ND_HALF((short) 2303),         // «Гости забьют во 2 тайме»
-    HOME_SCORES_BOTH_HALVES((short) 2304),      // «Хозяева забьют в обоих таймах»
-    AWAY_SCORES_BOTH_HALVES((short) 2305),      // «Гости забьют в обоих таймах»
-    BOTH_TEAMS_SCORE_1ST_HALF((short) 2306),    // «Обе забьют в 1 тайме»
-    BOTH_TEAMS_SCORE_2ND_HALF((short) 2307),    // «Обе забьют во 2 тайме»
-    BOTH_TEAMS_SCORE_BOTH_HALVES((short) 2308), // «Обе забьют в обоих таймах»
-    GOALS_IN_BOTH_HALVES((short) 2309),         // «Голы в обоих таймах»
+    //========== 1351-1400. Голы по таймам (Goals by halftimes) ==========
+    HOME_SCORES_1ST_HALF((short) 1351, new GoalsChecker()),         // «Хозяева забьют в 1 тайме»
+    HOME_SCORES_2ND_HALF((short) 1352, new GoalsChecker()),         // «Хозяева забьют во 2 тайме»
+    AWAY_SCORES_1ST_HALF((short) 1353, new GoalsChecker()),         // «Гости забьют в 1 тайме»
+    AWAY_SCORES_2ND_HALF((short) 1354, new GoalsChecker()),         // «Гости забьют во 2 тайме»
+    HOME_SCORES_BOTH_HALVES((short) 1355, new GoalsChecker()),      // «Хозяева забьют в обоих таймах»
+    AWAY_SCORES_BOTH_HALVES((short) 1356, new GoalsChecker()),      // «Гости забьют в обоих таймах»
+    BOTH_TEAMS_SCORE_1ST_HALF((short) 1357, new GoalsChecker()),    // «Обе забьют в 1 тайме»
+    BOTH_TEAMS_SCORE_2ND_HALF((short) 1358, new GoalsChecker()),    // «Обе забьют во 2 тайме»
+    BOTH_TEAMS_SCORE_BOTH_HALVES((short) 1359, new GoalsChecker()), // «Обе забьют в обоих таймах»
+    GOALS_IN_BOTH_HALVES((short) 1360, new GoalsChecker()),         // «Голы в обоих таймах»
 
-    //========== 24. Результат матча + Обе забьют (Game result + Both team score) — коды 2400–2499 ==========
-    HOME_WIN_AND_BOTH_TEAMS_SCORE((short) 2400),     // «П1 + Обе забьют»
-    AWAY_WIN_AND_BOTH_TEAMS_SCORE((short) 2401),     // «П2 + Обе забьют»
-    HOME_OR_DRAW_AND_BOTH_TEAMS_SCORE((short) 2402), // «1Х + Обе забьют»
-    AWAY_OR_DRAW_AND_BOTH_TEAMS_SCORE((short) 2403), // «Х2 + Обе забьют»
-    DRAW_AND_BOTH_TEAMS_SCORE((short) 2404),         // «Х + Обе забьют»
-    HOME_OR_AWAY_AND_BOTH_TEAMS_SCORE((short) 2405), // «12 + Обе забьют»
+    //========== 1401-1450. Результат матча + Обе забьют (Game result + Both team score) ==========
+    HOME_WIN_AND_BOTH_TEAMS_SCORE((short) 1401, new GoalsChecker()),     // «П1 + Обе забьют»
+    AWAY_WIN_AND_BOTH_TEAMS_SCORE((short) 1402, new GoalsChecker()),     // «П2 + Обе забьют»
+    HOME_OR_DRAW_AND_BOTH_TEAMS_SCORE((short) 1403, new GoalsChecker()), // «1Х + Обе забьют»
+    AWAY_OR_DRAW_AND_BOTH_TEAMS_SCORE((short) 1404, new GoalsChecker()), // «Х2 + Обе забьют»
+    DRAW_AND_BOTH_TEAMS_SCORE((short) 1405, new GoalsChecker()),         // «Х + Обе забьют»
+    HOME_OR_AWAY_AND_BOTH_TEAMS_SCORE((short) 1406, new GoalsChecker()), // «12 + Обе забьют»
 
-    //========== 25. Обе забьют + тотал меньше (Both Team Score + Goals Amount (Under)) — коды 2500–2599 ==========
-    BOTH_TEAMS_SCORE_AND_UNDER_1_5((short) 2500),  // «ОЗ +  ТМ 1,5»
-    BOTH_TEAMS_SCORE_AND_UNDER_2((short) 2501),    // «ОЗ +  ТМ 2»
-    BOTH_TEAMS_SCORE_AND_UNDER_2_5((short) 2502),  // «ОЗ +  ТМ 2,5»
-    BOTH_TEAMS_SCORE_AND_UNDER_3((short) 2503),    // «ОЗ +  ТМ 3»
-    BOTH_TEAMS_SCORE_AND_UNDER_3_5((short) 2504),  // «ОЗ +  ТМ 3,5»
-    BOTH_TEAMS_SCORE_AND_UNDER_4((short) 2505),    // «ОЗ +  ТМ 4»
-    BOTH_TEAMS_SCORE_AND_UNDER_4_5((short) 2506),  // «ОЗ +  ТМ 4,5»
-    BOTH_TEAMS_SCORE_AND_UNDER_5((short) 2507),    // «ОЗ +  ТМ 5»
-    BOTH_TEAMS_SCORE_AND_UNDER_5_5((short) 2508),  // «ОЗ +  ТМ 5,5»
+    //========== 1451-1500. Любая забьет больше чем (Scores More Than) ==========
+    ANY_TEAM_SCORES_2_OR_MORE((short) 1451, new GoalsChecker()), // «Любая команда забьет 2 и больше голов»
+    ANY_TEAM_SCORES_3_OR_MORE((short) 1452, new GoalsChecker()), // «Любая команда забьет 3 и больше голов»
+    ANY_TEAM_SCORES_4_OR_MORE((short) 1453, new GoalsChecker()), // «Любая команда забьет 4 и больше голов»
+    ANY_TEAM_SCORES_5_OR_MORE((short) 1454, new GoalsChecker()), // «Любая команда забьет 5 и больше голов»
 
-    //========== 26. Обе забьют + тотал больше (Both Team Score + Goals Amount (Over)) — коды 2600–2699 ==========
-    BOTH_TEAMS_SCORE_AND_OVER_1_5((short) 2600),   // «ОЗ +  ТБ 1,5»
-    BOTH_TEAMS_SCORE_AND_OVER_2((short) 2601),     // «ОЗ +  ТБ 2»
-    BOTH_TEAMS_SCORE_AND_OVER_2_5((short) 2602),   // «ОЗ +  ТБ 2,5»
-    BOTH_TEAMS_SCORE_AND_OVER_3((short) 2603),     // «ОЗ +  ТБ 3»
-    BOTH_TEAMS_SCORE_AND_OVER_3_5((short) 2604),   // «ОЗ +  ТБ 3,5»
-    BOTH_TEAMS_SCORE_AND_OVER_4((short) 2605),     // «ОЗ +  ТБ 4»
-    BOTH_TEAMS_SCORE_AND_OVER_4_5((short) 2606),   // «ОЗ +  ТБ 4,5»
-    BOTH_TEAMS_SCORE_AND_OVER_5((short) 2607),     // «ОЗ +  ТБ 5»
-    BOTH_TEAMS_SCORE_AND_OVER_5_5((short) 2608),   // «ОЗ +  ТБ 5,5»
+    //========== 1501-1550. Обе забьют + тотал меньше (Both Team Score + Goals Amount (Under)) ==========
+    BOTH_TEAMS_SCORE_AND_UNDER_1_5((short) 1501, new GoalsChecker()),  // «ОЗ +  ТМ 1,5»
+    BOTH_TEAMS_SCORE_AND_UNDER_2_0((short) 1502, new GoalsChecker()),    // «ОЗ +  ТМ 2»
+    BOTH_TEAMS_SCORE_AND_UNDER_2_5((short) 1503, new GoalsChecker()),  // «ОЗ +  ТМ 2,5»
+    BOTH_TEAMS_SCORE_AND_UNDER_3_0((short) 1504, new GoalsChecker()),    // «ОЗ +  ТМ 3»
+    BOTH_TEAMS_SCORE_AND_UNDER_3_5((short) 1505, new GoalsChecker()),  // «ОЗ +  ТМ 3,5»
+    BOTH_TEAMS_SCORE_AND_UNDER_4_0((short) 1506, new GoalsChecker()),    // «ОЗ +  ТМ 4»
+    BOTH_TEAMS_SCORE_AND_UNDER_4_5((short) 1507, new GoalsChecker()),  // «ОЗ +  ТМ 4,5»
+    BOTH_TEAMS_SCORE_AND_UNDER_5_0((short) 1508, new GoalsChecker()),    // «ОЗ +  ТМ 5»
+    BOTH_TEAMS_SCORE_AND_UNDER_5_5((short) 1509, new GoalsChecker()),  // «ОЗ +  ТМ 5,5»
+    BOTH_TEAMS_SCORE_AND_UNDER_6_0((short) 1510, new GoalsChecker()),  // «ОЗ +  ТМ 6»
+    BOTH_TEAMS_SCORE_AND_UNDER_6_5((short) 1511, new GoalsChecker()),  // «ОЗ +  ТМ 6,5»
 
-    //========== 27. Любая забьет больше чем (Scores More Than) — коды 2700–2799 ==========
-    ANY_TEAM_SCORES_2_OR_MORE((short) 2700), // «Любая команда забьет 2 и больше голов»
-    ANY_TEAM_SCORES_3_OR_MORE((short) 2701), // «Любая команда забьет 3 и больше голов»
-    ANY_TEAM_SCORES_4_OR_MORE((short) 2702), // «Любая команда забьет 4 и больше голов»
-    ANY_TEAM_SCORES_5_OR_MORE((short) 2703), // «Любая команда забьет 5 и больше голов»
+    //========== 1551-1600. Обе забьют + тотал больше (Both Team Score + Goals Amount (Over)) ==========
+    BOTH_TEAMS_SCORE_AND_OVER_1_5((short) 1551, new GoalsChecker()),   // «ОЗ +  ТБ 1,5»
+    BOTH_TEAMS_SCORE_AND_OVER_2_0((short) 1552, new GoalsChecker()),     // «ОЗ +  ТБ 2»
+    BOTH_TEAMS_SCORE_AND_OVER_2_5((short) 1553, new GoalsChecker()),   // «ОЗ +  ТБ 2,5»
+    BOTH_TEAMS_SCORE_AND_OVER_3_0((short) 1554, new GoalsChecker()),     // «ОЗ +  ТБ 3»
+    BOTH_TEAMS_SCORE_AND_OVER_3_5((short) 1555, new GoalsChecker()),   // «ОЗ +  ТБ 3,5»
+    BOTH_TEAMS_SCORE_AND_OVER_4_0((short) 1556, new GoalsChecker()),     // «ОЗ +  ТБ 4»
+    BOTH_TEAMS_SCORE_AND_OVER_4_5((short) 1557, new GoalsChecker()),   // «ОЗ +  ТБ 4,5»
+    BOTH_TEAMS_SCORE_AND_OVER_5_0((short) 1558, new GoalsChecker()),     // «ОЗ +  ТБ 5»
+    BOTH_TEAMS_SCORE_AND_OVER_5_5((short) 1559, new GoalsChecker()),   // «ОЗ +  ТБ 5,5»
+    BOTH_TEAMS_SCORE_AND_OVER_6_0((short) 1560, new GoalsChecker()),   // «ОЗ +  ТБ 6»
+    BOTH_TEAMS_SCORE_AND_OVER_6_5((short) 1561, new GoalsChecker()),   // «ОЗ +  ТБ 6,5»
 
     // =================================================================================================
     // Ставки на таймы являются отдельной крупной группой,
     // поэтому под них выделен особый диапазон кодов, начиная с 3000
     // =================================================================================================
 
-    //========== 30. Результаты по таймам (Half-time Results) — коды 3000–3099 ==========
+    //========== 30. Результаты по таймам (Half-time Results) ==========
     FIRST_HALF_HOME_WIN((short) 3000),          // «1й тайм: П1»
     FIRST_HALF_DRAW((short) 3001),              // «1й тайм: Х»
     FIRST_HALF_AWAY_WIN((short) 3002),          // «1й тайм: П2»
@@ -850,6 +893,9 @@ public enum BetTitleCode {
     private final short code;
     private final BetChecker checker;
 
+    private static final Map<Short, BetTitleCode> CODE_MAP = Arrays.stream(values())
+            .collect(Collectors.toMap(BetTitleCode::getCode, Function.identity()));
+
     /**
      * Найти enum по его числовому коду.
      *
@@ -857,30 +903,21 @@ public enum BetTitleCode {
      * @return соответствующий BetTitleCode или null, если не найден
      */
     public static BetTitleCode fromCode(short code) {
-        for (BetTitleCode bt : values()) {
-            if (bt.code == code) {
-                return bt;
-            }
-        }
-        return null;
+        return CODE_MAP.get(code);
     }
 
-    public Bet.BetStatus evaluate(GameResult result) {
+    public Bet.BetStatus evaluate(GameResult gameResult) {
         if (checker == null) {
             throw new IllegalStateException("No BetChecker defined for code " + code);
         }
-        return checker.check(result, code);
+        return checker.check(gameResult, this);
     }
 
-    private static final Map<Short, BetTitleCode> CODE_MAP = Arrays.stream(values())
-            .collect(Collectors.toMap(BetTitleCode::getCode, Function.identity()));
-
-    public static Bet.BetStatus evaluateByCode(short code, GameResult result) {
-        BetTitleCode bet = CODE_MAP.get(code);
+    public static Bet.BetStatus evaluateByCode(short code, GameResult gameResult) {
+        BetTitleCode bet = fromCode(code);
         if (bet == null) {
             throw new IllegalArgumentException("Unknown bet code: " + code);
         }
-        return bet.evaluate(result);
+        return bet.evaluate(gameResult);
     }
-
 }
