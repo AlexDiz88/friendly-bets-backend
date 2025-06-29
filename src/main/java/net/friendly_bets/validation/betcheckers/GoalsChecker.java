@@ -43,11 +43,11 @@ public class GoalsChecker implements BetChecker {
             case GOALS_IN_BOTH_HALVES -> (home1st > 0 || away1st > 0) && (home2nd > 0 || away2nd > 0) ? BetStatus.WON : BetStatus.LOST;
 
             case HOME_WIN_AND_BOTH_TEAMS_SCORE -> evaluate(HOME_WIN, home, away);
+            case DRAW_AND_BOTH_TEAMS_SCORE -> evaluate(DRAW, home, away);
             case AWAY_WIN_AND_BOTH_TEAMS_SCORE -> evaluate(AWAY_WIN, home, away);
             case HOME_OR_DRAW_AND_BOTH_TEAMS_SCORE -> evaluate(HOME_WIN_OR_DRAW, home, away);
-            case AWAY_OR_DRAW_AND_BOTH_TEAMS_SCORE -> evaluate(AWAY_WIN_OR_DRAW, home, away);
-            case DRAW_AND_BOTH_TEAMS_SCORE -> evaluate(DRAW, home, away);
             case HOME_OR_AWAY_AND_BOTH_TEAMS_SCORE -> evaluate(HOME_OR_AWAY_WIN, home, away);
+            case AWAY_OR_DRAW_AND_BOTH_TEAMS_SCORE -> evaluate(AWAY_WIN_OR_DRAW, home, away);
 
             case ANY_TEAM_SCORES_2_OR_MORE -> evaluate(home, away, 2);
             case ANY_TEAM_SCORES_3_OR_MORE -> evaluate(home, away, 3);
@@ -77,6 +77,21 @@ public class GoalsChecker implements BetChecker {
             case BOTH_TEAMS_SCORE_AND_OVER_5_5 -> evaluate(bothScores, total, OVER, 5.5);
             case BOTH_TEAMS_SCORE_AND_OVER_6_0 -> evaluate(bothScores, total, OVER, 6.0);
             case BOTH_TEAMS_SCORE_AND_OVER_6_5 -> evaluate(bothScores, total, OVER, 6.5);
+
+            case FIRST_HALF_BOTH_SCORE_AND_HOME_WIN -> evaluate(HOME_WIN, home1st, away1st);
+            case FIRST_HALF_BOTH_SCORE_AND_DRAW -> evaluate(DRAW, home1st, away1st);
+            case FIRST_HALF_BOTH_SCORE_AND_AWAY_WIN -> evaluate(AWAY_WIN, home1st, away1st);
+            case FIRST_HALF_BOTH_SCORE_AND_HOME_OR_DRAW -> evaluate(HOME_WIN_OR_DRAW, home1st, away1st);
+            case FIRST_HALF_BOTH_SCORE_AND_HOME_OR_AWAY -> evaluate(HOME_OR_AWAY_WIN, home1st, away1st);
+            case FIRST_HALF_BOTH_SCORE_AND_AWAY_OR_DRAW -> evaluate(AWAY_WIN_OR_DRAW, home1st, away1st);
+
+            case SECOND_HALF_BOTH_SCORE_AND_HOME_WIN -> evaluate(HOME_WIN, home2nd, away2nd);
+            case SECOND_HALF_BOTH_SCORE_AND_DRAW -> evaluate(DRAW, home2nd, away2nd);
+            case SECOND_HALF_BOTH_SCORE_AND_AWAY_WIN -> evaluate(AWAY_WIN, home2nd, away2nd);
+            case SECOND_HALF_BOTH_SCORE_AND_HOME_OR_DRAW -> evaluate(HOME_WIN_OR_DRAW, home2nd, away2nd);
+            case SECOND_HALF_BOTH_SCORE_AND_HOME_OR_AWAY -> evaluate(HOME_OR_AWAY_WIN, home2nd, away2nd);
+            case SECOND_HALF_BOTH_SCORE_AND_AWAY_OR_DRAW -> evaluate(AWAY_WIN_OR_DRAW, home2nd, away2nd);
+
 
             default -> throw new IllegalArgumentException("Unsupported code: " + code);
         };

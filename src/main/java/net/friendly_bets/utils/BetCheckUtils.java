@@ -7,8 +7,8 @@ import net.friendly_bets.models.GameResult;
 @UtilityClass
 public class BetCheckUtils {
 
-    public enum TeamLine {
-        HOME_TEAM, AWAY_TEAM, BOTH_TEAMS
+    public enum CompareSign {
+        LESS, EQUAL, MORE
     }
 
     public enum TotalType {
@@ -21,10 +21,6 @@ public class BetCheckUtils {
 
     public enum MatchResult {
         HOME_WIN, DRAW, AWAY_WIN, HOME_WIN_OR_DRAW, AWAY_WIN_OR_DRAW, HOME_OR_AWAY_WIN
-    }
-
-    public MatchResult determineMatchResult(double home, double away) {
-        return home > away ? MatchResult.HOME_WIN : home < away ? MatchResult.AWAY_WIN : MatchResult.DRAW;
     }
 
     public GameScores parse(GameResult result) {
@@ -40,14 +36,17 @@ public class BetCheckUtils {
                 .build();
     }
 
+    /**
+     * Returns -1 if score is null, improperly formatted or non-numeric.
+     */
     private int parseGoals(String score, int index) {
-        if (score == null || !score.contains(":")) return 0;
+        if (score == null || !score.contains(":")) return -1;
         String[] parts = score.split(":");
         if (parts.length != 2) return 0;
         try {
             return Integer.parseInt(parts[index].trim());
         } catch (NumberFormatException e) {
-            return 0;
+            return -1;
         }
     }
 

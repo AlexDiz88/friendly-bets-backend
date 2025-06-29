@@ -19,7 +19,11 @@ public class HandicapChecker implements BetChecker {
     public BetStatus check(GameResult gameResult, BetTitleCode code) {
         GameScores gameScores = BetCheckUtils.parse(gameResult);
         double home = gameScores.getHomeFullTime();
+        double home1st = gameScores.getHomeFirstHalf();
+        double home2nd = home - home1st;
         double away = gameScores.getAwayFullTime();
+        double away1st = gameScores.getAwayFirstHalf();
+        double away2nd = away - away1st;
 
         return switch (code) {
             case HANDICAP_HOME_0 -> evaluate(home, away, HOME_WIN, PLUS, 0.0);
@@ -69,6 +73,62 @@ public class HandicapChecker implements BetChecker {
             case HANDICAP_AWAY_PLUS_5_5 -> evaluate(home, away, AWAY_WIN, PLUS, 5.5);
             case HANDICAP_AWAY_MINUS_6_0 -> evaluate(home, away, AWAY_WIN, MINUS, 6.0);
             case HANDICAP_AWAY_PLUS_6_0 -> evaluate(home, away, AWAY_WIN, PLUS, 6.0);
+
+            case FIRST_HALF_HANDICAP_HOME_0 -> evaluate(home1st, away1st, HOME_WIN, PLUS, 0.0);
+            case FIRST_HALF_HANDICAP_HOME_MINUS_1_0 -> evaluate(home1st, away1st, HOME_WIN, MINUS, 1.0);
+            case FIRST_HALF_HANDICAP_HOME_PLUS_1_0 -> evaluate(home1st, away1st, HOME_WIN, PLUS, 1.0);
+            case FIRST_HALF_HANDICAP_HOME_MINUS_1_5 -> evaluate(home1st, away1st, HOME_WIN, MINUS, 1.5);
+            case FIRST_HALF_HANDICAP_HOME_PLUS_1_5 -> evaluate(home1st, away1st, HOME_WIN, PLUS, 1.5);
+            case FIRST_HALF_HANDICAP_HOME_MINUS_2_0 -> evaluate(home1st, away1st, HOME_WIN, MINUS, 2.0);
+            case FIRST_HALF_HANDICAP_HOME_PLUS_2_0 -> evaluate(home1st, away1st, HOME_WIN, PLUS, 2.0);
+            case FIRST_HALF_HANDICAP_HOME_MINUS_2_5 -> evaluate(home1st, away1st, HOME_WIN, MINUS, 2.5);
+            case FIRST_HALF_HANDICAP_HOME_PLUS_2_5 -> evaluate(home1st, away1st, HOME_WIN, PLUS, 2.5);
+            case FIRST_HALF_HANDICAP_HOME_MINUS_3_0 -> evaluate(home1st, away1st, HOME_WIN, MINUS, 3.0);
+            case FIRST_HALF_HANDICAP_HOME_PLUS_3_0 -> evaluate(home1st, away1st, HOME_WIN, PLUS, 3.0);
+            case FIRST_HALF_HANDICAP_HOME_MINUS_3_5 -> evaluate(home1st, away1st, HOME_WIN, MINUS, 3.5);
+            case FIRST_HALF_HANDICAP_HOME_PLUS_3_5 -> evaluate(home1st, away1st, HOME_WIN, PLUS, 3.5);
+
+            case FIRST_HALF_HANDICAP_AWAY_0 -> evaluate(home1st, away1st, AWAY_WIN, PLUS, 0.0);
+            case FIRST_HALF_HANDICAP_AWAY_MINUS_1_0 -> evaluate(home1st, away1st, AWAY_WIN, MINUS, 1.0);
+            case FIRST_HALF_HANDICAP_AWAY_PLUS_1_0 -> evaluate(home1st, away1st, AWAY_WIN, PLUS, 1.0);
+            case FIRST_HALF_HANDICAP_AWAY_MINUS_1_5 -> evaluate(home1st, away1st, AWAY_WIN, MINUS, 1.5);
+            case FIRST_HALF_HANDICAP_AWAY_PLUS_1_5 -> evaluate(home1st, away1st, AWAY_WIN, PLUS, 1.5);
+            case FIRST_HALF_HANDICAP_AWAY_MINUS_2_0 -> evaluate(home1st, away1st, AWAY_WIN, MINUS, 2.0);
+            case FIRST_HALF_HANDICAP_AWAY_PLUS_2_0 -> evaluate(home1st, away1st, AWAY_WIN, PLUS, 2.0);
+            case FIRST_HALF_HANDICAP_AWAY_MINUS_2_5 -> evaluate(home1st, away1st, AWAY_WIN, MINUS, 2.5);
+            case FIRST_HALF_HANDICAP_AWAY_PLUS_2_5 -> evaluate(home1st, away1st, AWAY_WIN, PLUS, 2.5);
+            case FIRST_HALF_HANDICAP_AWAY_MINUS_3_0 -> evaluate(home1st, away1st, AWAY_WIN, MINUS, 3.0);
+            case FIRST_HALF_HANDICAP_AWAY_PLUS_3_0 -> evaluate(home1st, away1st, AWAY_WIN, PLUS, 3.0);
+            case FIRST_HALF_HANDICAP_AWAY_MINUS_3_5 -> evaluate(home1st, away1st, AWAY_WIN, MINUS, 3.5);
+            case FIRST_HALF_HANDICAP_AWAY_PLUS_3_5 -> evaluate(home1st, away1st, AWAY_WIN, PLUS, 3.5);
+
+            case SECOND_HALF_HANDICAP_HOME_0 -> evaluate(home2nd, away2nd, HOME_WIN, PLUS, 0.0);
+            case SECOND_HALF_HANDICAP_HOME_MINUS_1_0 -> evaluate(home2nd, away2nd, HOME_WIN, MINUS, 1.0);
+            case SECOND_HALF_HANDICAP_HOME_PLUS_1_0 -> evaluate(home2nd, away2nd, HOME_WIN, PLUS, 1.0);
+            case SECOND_HALF_HANDICAP_HOME_MINUS_1_5 -> evaluate(home2nd, away2nd, HOME_WIN, MINUS, 1.5);
+            case SECOND_HALF_HANDICAP_HOME_PLUS_1_5 -> evaluate(home2nd, away2nd, HOME_WIN, PLUS, 1.5);
+            case SECOND_HALF_HANDICAP_HOME_MINUS_2_0 -> evaluate(home2nd, away2nd, HOME_WIN, MINUS, 2.0);
+            case SECOND_HALF_HANDICAP_HOME_PLUS_2_0 -> evaluate(home2nd, away2nd, HOME_WIN, PLUS, 2.0);
+            case SECOND_HALF_HANDICAP_HOME_MINUS_2_5 -> evaluate(home2nd, away2nd, HOME_WIN, MINUS, 2.5);
+            case SECOND_HALF_HANDICAP_HOME_PLUS_2_5 -> evaluate(home2nd, away2nd, HOME_WIN, PLUS, 2.5);
+            case SECOND_HALF_HANDICAP_HOME_MINUS_3_0 -> evaluate(home2nd, away2nd, HOME_WIN, MINUS, 3.0);
+            case SECOND_HALF_HANDICAP_HOME_PLUS_3_0 -> evaluate(home2nd, away2nd, HOME_WIN, PLUS, 3.0);
+            case SECOND_HALF_HANDICAP_HOME_MINUS_3_5 -> evaluate(home2nd, away2nd, HOME_WIN, MINUS, 3.5);
+            case SECOND_HALF_HANDICAP_HOME_PLUS_3_5 -> evaluate(home2nd, away2nd, HOME_WIN, PLUS, 3.5);
+
+            case SECOND_HALF_HANDICAP_AWAY_0 -> evaluate(home2nd, away2nd, AWAY_WIN, PLUS, 0.0);
+            case SECOND_HALF_HANDICAP_AWAY_MINUS_1_0 -> evaluate(home2nd, away2nd, AWAY_WIN, MINUS, 1.0);
+            case SECOND_HALF_HANDICAP_AWAY_PLUS_1_0 -> evaluate(home2nd, away2nd, AWAY_WIN, PLUS, 1.0);
+            case SECOND_HALF_HANDICAP_AWAY_MINUS_1_5 -> evaluate(home2nd, away2nd, AWAY_WIN, MINUS, 1.5);
+            case SECOND_HALF_HANDICAP_AWAY_PLUS_1_5 -> evaluate(home2nd, away2nd, AWAY_WIN, PLUS, 1.5);
+            case SECOND_HALF_HANDICAP_AWAY_MINUS_2_0 -> evaluate(home2nd, away2nd, AWAY_WIN, MINUS, 2.0);
+            case SECOND_HALF_HANDICAP_AWAY_PLUS_2_0 -> evaluate(home2nd, away2nd, AWAY_WIN, PLUS, 2.0);
+            case SECOND_HALF_HANDICAP_AWAY_MINUS_2_5 -> evaluate(home2nd, away2nd, AWAY_WIN, MINUS, 2.5);
+            case SECOND_HALF_HANDICAP_AWAY_PLUS_2_5 -> evaluate(home2nd, away2nd, AWAY_WIN, PLUS, 2.5);
+            case SECOND_HALF_HANDICAP_AWAY_MINUS_3_0 -> evaluate(home2nd, away2nd, AWAY_WIN, MINUS, 3.0);
+            case SECOND_HALF_HANDICAP_AWAY_PLUS_3_0 -> evaluate(home2nd, away2nd, AWAY_WIN, PLUS, 3.0);
+            case SECOND_HALF_HANDICAP_AWAY_MINUS_3_5 -> evaluate(home2nd, away2nd, AWAY_WIN, MINUS, 3.5);
+            case SECOND_HALF_HANDICAP_AWAY_PLUS_3_5 -> evaluate(home2nd, away2nd, AWAY_WIN, PLUS, 3.5);
 
             default -> throw new IllegalArgumentException("Unsupported code: " + code);
         };

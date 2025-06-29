@@ -12,7 +12,11 @@ public class GameScoreChecker implements BetChecker {
     public BetStatus check(GameResult gameResult, BetTitleCode code) {
         GameScores gameScores = BetCheckUtils.parse(gameResult);
         double home = gameScores.getHomeFullTime();
+        double home1st = gameScores.getHomeFirstHalf();
+        double home2nd = home - home1st;
         double away = gameScores.getAwayFullTime();
+        double away1st = gameScores.getAwayFirstHalf();
+        double away2nd = away - away1st;
 
         return switch (code) {
             case GAME_SCORE_0_0 -> evaluate(home, away, 0, 0);
@@ -80,6 +84,40 @@ public class GameScoreChecker implements BetChecker {
             case GAME_SCORE_7_5 -> evaluate(home, away, 7, 5);
             case GAME_SCORE_7_6 -> evaluate(home, away, 7, 6);
             case GAME_SCORE_7_7 -> evaluate(home, away, 7, 7);
+
+            case FIRST_HALF_SCORE_0_0 -> evaluate(home1st, away1st, 0, 0);
+            case FIRST_HALF_SCORE_1_0 -> evaluate(home1st, away1st, 1, 0);
+            case FIRST_HALF_SCORE_2_0 -> evaluate(home1st, away1st, 2, 0);
+            case FIRST_HALF_SCORE_3_0 -> evaluate(home1st, away1st, 3, 0);
+            case FIRST_HALF_SCORE_0_1 -> evaluate(home1st, away1st, 0, 1);
+            case FIRST_HALF_SCORE_1_1 -> evaluate(home1st, away1st, 1, 1);
+            case FIRST_HALF_SCORE_2_1 -> evaluate(home1st, away1st, 2, 1);
+            case FIRST_HALF_SCORE_3_1 -> evaluate(home1st, away1st, 3, 1);
+            case FIRST_HALF_SCORE_0_2 -> evaluate(home1st, away1st, 0, 2);
+            case FIRST_HALF_SCORE_1_2 -> evaluate(home1st, away1st, 1, 2);
+            case FIRST_HALF_SCORE_2_2 -> evaluate(home1st, away1st, 2, 2);
+            case FIRST_HALF_SCORE_3_2 -> evaluate(home1st, away1st, 3, 2);
+            case FIRST_HALF_SCORE_0_3 -> evaluate(home1st, away1st, 0, 3);
+            case FIRST_HALF_SCORE_1_3 -> evaluate(home1st, away1st, 1, 3);
+            case FIRST_HALF_SCORE_2_3 -> evaluate(home1st, away1st, 2, 3);
+            case FIRST_HALF_SCORE_3_3 -> evaluate(home1st, away1st, 3, 3);
+
+            case SECOND_HALF_SCORE_0_0 -> evaluate(home2nd, away2nd, 0, 0);
+            case SECOND_HALF_SCORE_1_0 -> evaluate(home2nd, away2nd, 1, 0);
+            case SECOND_HALF_SCORE_2_0 -> evaluate(home2nd, away2nd, 2, 0);
+            case SECOND_HALF_SCORE_3_0 -> evaluate(home2nd, away2nd, 3, 0);
+            case SECOND_HALF_SCORE_0_1 -> evaluate(home2nd, away2nd, 0, 1);
+            case SECOND_HALF_SCORE_1_1 -> evaluate(home2nd, away2nd, 1, 1);
+            case SECOND_HALF_SCORE_2_1 -> evaluate(home2nd, away2nd, 2, 1);
+            case SECOND_HALF_SCORE_3_1 -> evaluate(home2nd, away2nd, 3, 1);
+            case SECOND_HALF_SCORE_0_2 -> evaluate(home2nd, away2nd, 0, 2);
+            case SECOND_HALF_SCORE_1_2 -> evaluate(home2nd, away2nd, 1, 2);
+            case SECOND_HALF_SCORE_2_2 -> evaluate(home2nd, away2nd, 2, 2);
+            case SECOND_HALF_SCORE_3_2 -> evaluate(home2nd, away2nd, 3, 2);
+            case SECOND_HALF_SCORE_0_3 -> evaluate(home2nd, away2nd, 0, 3);
+            case SECOND_HALF_SCORE_1_3 -> evaluate(home2nd, away2nd, 1, 3);
+            case SECOND_HALF_SCORE_2_3 -> evaluate(home2nd, away2nd, 2, 3);
+            case SECOND_HALF_SCORE_3_3 -> evaluate(home2nd, away2nd, 3, 3);
 
             default -> throw new IllegalArgumentException("Unsupported code: " + code);
         };
