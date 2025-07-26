@@ -35,7 +35,7 @@ public class BetsService {
 
 
     @Transactional
-    public BetDto addOpenedBet(String moderatorId, NewBet newOpenedBet) {
+    public BetDto addOpenedBet(String moderatorId, NewBetDto newOpenedBet) {
         validateBet(newOpenedBet);
         checkIfBetAlreadyExists(betsRepository, newOpenedBet);
 

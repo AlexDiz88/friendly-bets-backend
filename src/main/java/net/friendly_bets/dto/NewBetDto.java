@@ -14,7 +14,7 @@ import javax.validation.constraints.NotNull;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class NewBet {
+public class NewBetDto {
 
     @NotNull(message = "{field.isNull}")
     @NotBlank(message = "{field.isBlank}")
@@ -41,7 +41,6 @@ public class NewBet {
     private String awayTeamId;
 
     @NotNull(message = "{field.isNull}")
-    @NotBlank(message = "{field.bet.blankBetTitle}")
     private BetTitle betTitle;
 
     @NotNull(message = "{field.bet.betOddsIsNull}")

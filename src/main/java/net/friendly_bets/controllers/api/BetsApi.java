@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.tags.Tags;
 import net.friendly_bets.dto.*;
+import net.friendly_bets.models.BetResult;
 import net.friendly_bets.security.details.AuthenticatedUser;
 import org.springframework.http.ResponseEntity;
 
@@ -32,7 +33,7 @@ public interface BetsApi {
     })
     ResponseEntity<BetDto> addBet(
             @Parameter(hidden = true) AuthenticatedUser currentUser,
-            @Parameter(description = "New bet") @Valid NewBet newBet);
+            @Parameter(description = "New bet") @Valid NewBetDto newBetDto);
 
     @Operation(summary = "Add an empty bet", description = "Accessible only to moderators and administrators")
     @ApiResponses(value = {

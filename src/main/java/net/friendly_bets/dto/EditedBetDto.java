@@ -42,7 +42,6 @@ public class EditedBetDto {
     private String awayTeamId;
 
     @NotNull(message = "{field.isNull}")
-    @NotBlank(message = "{field.bet.blankBetTitle}")
     private BetTitle betTitle;
 
     @NotNull(message = "{field.bet.betOddsIsNull}")

@@ -3,6 +3,7 @@ package net.friendly_bets.controllers;
 import lombok.RequiredArgsConstructor;
 import net.friendly_bets.controllers.api.BetsApi;
 import net.friendly_bets.dto.*;
+import net.friendly_bets.models.BetResult;
 import net.friendly_bets.models.BetTitleCode;
 import net.friendly_bets.security.details.AuthenticatedUser;
 import net.friendly_bets.services.BetsService;
@@ -29,7 +30,7 @@ public class BetsController implements BetsApi {
     @PreAuthorize("hasAuthority('ADMIN') || hasAuthority('MODERATOR')")
     @PostMapping("/add")
     public ResponseEntity<BetDto> addBet(@AuthenticationPrincipal AuthenticatedUser currentUser,
-                                         @RequestBody @Valid NewBet newOpenedBet) {
+                                         @RequestBody @Valid NewBetDto newOpenedBet) {
         String moderatorId = currentUser.getUser().getId();
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(betsService.addOpenedBet(moderatorId, newOpenedBet));
