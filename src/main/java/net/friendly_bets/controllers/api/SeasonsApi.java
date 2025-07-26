@@ -170,5 +170,5 @@ public interface SeasonsApi {
             @ApiResponse(responseCode = "403", description = "User not authenticated or not authorized",
                     content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto")))
     })
-    ResponseEntity<Map<String, String>> dbUpdate();
+    ResponseEntity<Map<String, Object>> dbUpdate();
 }

@@ -1,8 +1,8 @@
 package net.friendly_bets.validation.betcheckers;
 
-import net.friendly_bets.dto.BetTitleCode;
 import net.friendly_bets.dto.GameScores;
 import net.friendly_bets.models.Bet.BetStatus;
+import net.friendly_bets.models.BetTitleCode;
 import net.friendly_bets.models.GameResult;
 import net.friendly_bets.utils.BetCheckUtils;
 import net.friendly_bets.utils.BetCheckUtils.MatchResult;
@@ -22,6 +22,7 @@ public class GameResultChecker implements BetChecker {
         int away2nd = away - away1st;
 
         return switch (code) {
+            case EMPTY_BET_TITLE -> BetStatus.EMPTY;
             case HOME_WIN -> evaluate(home, away, HOME_WIN);
             case DRAW -> evaluate(home, away, DRAW);
             case AWAY_WIN -> evaluate(home, away, AWAY_WIN);
