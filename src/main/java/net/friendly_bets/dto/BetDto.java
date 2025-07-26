@@ -6,6 +6,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import net.friendly_bets.models.Bet;
+import net.friendly_bets.models.BetTitle;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -47,8 +48,8 @@ public class BetDto {
     @Schema(description = "команда гостей", example = "{Команда2}")
     private TeamDto awayTeam;
 
-    @Schema(description = "ставка", example = "П1 + ТМ3,5")
-    private String betTitle;
+    @Schema(description = "код ставки, ее наименование и флаг 'нет'", example = "{245, П1 + ТМ3.5, false}")
+    private BetTitle betTitle;
 
     @Schema(description = "коэффициент ставки", example = "2,14")
     private Double betOdds;

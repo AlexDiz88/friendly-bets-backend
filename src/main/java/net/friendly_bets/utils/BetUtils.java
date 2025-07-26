@@ -156,14 +156,15 @@ public class BetUtils {
     }
 
     public static void checkIfBetAlreadyEdited(BetsRepository betsRepo, EditedBetDto editedBet, Bet.BetStatus betStatus) {
-        if (betsRepo.existsBySeason_IdAndLeague_IdAndUser_IdAndMatchDayAndHomeTeam_IdAndAwayTeam_IdAndBetTitleAndBetOddsAndBetSizeAndGameResultAndBetStatus(
+        if (betsRepo.existsBySeason_IdAndLeague_IdAndUser_IdAndMatchDayAndHomeTeam_IdAndAwayTeam_IdAndBetTitle_CodeAndBetTitle_IsNotAndBetOddsAndBetSizeAndGameResultAndBetStatus(
                 editedBet.getSeasonId(),
                 editedBet.getLeagueId(),
                 editedBet.getUserId(),
                 editedBet.getMatchDay(),
                 editedBet.getHomeTeamId(),
                 editedBet.getAwayTeamId(),
-                editedBet.getBetTitle(),
+                editedBet.getBetTitle().getCode(),
+                editedBet.getBetTitle().isNot(),
                 editedBet.getBetOdds(),
                 editedBet.getBetSize(),
                 editedBet.getGameResult(),

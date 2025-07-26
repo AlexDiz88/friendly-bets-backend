@@ -264,10 +264,12 @@ class BetUtilsTest {
     void checkIfBetAlreadyEdited_ShouldThrowConflictException_WhenBetExists() {
         // given
         EditedBetDto editedBet = new EditedBetDto();
+        BetTitle betTitle = new BetTitle();
+        editedBet.setBetTitle(betTitle);
         Bet.BetStatus betStatus = Bet.BetStatus.OPENED;
 
-        when(betsRepository.existsBySeason_IdAndLeague_IdAndUser_IdAndMatchDayAndHomeTeam_IdAndAwayTeam_IdAndBetTitleAndBetOddsAndBetSizeAndGameResultAndBetStatus(
-                any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+        when(betsRepository.existsBySeason_IdAndLeague_IdAndUser_IdAndMatchDayAndHomeTeam_IdAndAwayTeam_IdAndBetTitle_CodeAndBetTitle_IsNotAndBetOddsAndBetSizeAndGameResultAndBetStatus(
+                any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(true);
 
         // when + then
@@ -282,10 +284,12 @@ class BetUtilsTest {
     void checkIfBetAlreadyEdited_ShouldNotThrow_WhenBetDoesNotExist() {
         // given
         EditedBetDto editedBet = new EditedBetDto();
+        BetTitle betTitle = new BetTitle();
+        editedBet.setBetTitle(betTitle);
         Bet.BetStatus betStatus = Bet.BetStatus.OPENED;
 
-        when(betsRepository.existsBySeason_IdAndLeague_IdAndUser_IdAndMatchDayAndHomeTeam_IdAndAwayTeam_IdAndBetTitleAndBetOddsAndBetSizeAndGameResultAndBetStatus(
-                any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+        when(betsRepository.existsBySeason_IdAndLeague_IdAndUser_IdAndMatchDayAndHomeTeam_IdAndAwayTeam_IdAndBetTitle_CodeAndBetTitle_IsNotAndBetOddsAndBetSizeAndGameResultAndBetStatus(
+                any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(false);
 
         // when + then
@@ -299,7 +303,11 @@ class BetUtilsTest {
     void createNewOpenedBet_ShouldCreateBet_WhenValidParametersProvided() {
         // given
         String expectedMatchDay = "matchDay";
-        String expectedBetTitle = "betTitle";
+        BetTitle expectedBetTitle = BetTitle.builder()
+                .code((short) 101)
+                .label("betLabel")
+                .isNot(false)
+                .build();
         double expectedBetOdds = 2.5;
         int expectedBetSize = 10;
         String expectedCalendarNodeId = "calendarNodeId";
@@ -401,12 +409,18 @@ class BetUtilsTest {
     @DisplayName("Should return a new bet with previous state when bet status is not EMPTY or DELETED")
     void getPreviousStateOfBet_ShouldReturnPreviousStateBet_WhenBetStatusValid() {
         // given
+        BetTitle originalBetTitle = BetTitle.builder()
+                .code((short) 101)
+                .label("betLabel")
+                .isNot(false)
+                .build();
+
         Bet originalBet = Bet.builder()
                 .user(new User())
                 .matchDay("matchDay")
                 .homeTeam(new Team())
                 .awayTeam(new Team())
-                .betTitle("betTitle")
+                .betTitle(originalBetTitle)
                 .betOdds(1.75)
                 .betSize(10)
                 .betStatus(Bet.BetStatus.WON)
@@ -612,6 +626,7 @@ class BetUtilsTest {
         League league = League.builder().id("leagueId").build();
         User moderator = new User();
 
+
         Bet bet = Bet.builder()
                 .id(expectedBetId)
                 .season(season)
@@ -620,7 +635,7 @@ class BetUtilsTest {
                 .matchDay("previousMatchday")
                 .homeTeam(new Team())
                 .awayTeam(new Team())
-                .betTitle("previousBetTitle")
+                .betTitle(new BetTitle())
                 .betSize(10)
                 .betOdds(2.2)
                 .gameResult(new GameResult())
@@ -632,7 +647,11 @@ class BetUtilsTest {
         Team newAwayTeam = Team.builder().id("newAwayTeamId").build();
 
         String newMatchday = "newMatchday";
-        String newBetTitle = "newBetTitle";
+        BetTitle newBetTitle = BetTitle.builder()
+                .code((short) 101)
+                .label("betLabel")
+                .isNot(true)
+                .build();
         GameResult newGameResult = GameResult.builder().fullTime("2:2").firstTime("1:1").build();
 
         EditedBetDto editedBet = EditedBetDto.builder()
@@ -694,7 +713,7 @@ class BetUtilsTest {
                 .matchDay("previousMatchday")
                 .homeTeam(new Team())
                 .awayTeam(new Team())
-                .betTitle("previousBetTitle")
+                .betTitle(new BetTitle())
                 .betStatus(Bet.BetStatus.OPENED)
                 .build();
 
@@ -703,7 +722,11 @@ class BetUtilsTest {
         Team newAwayTeam = Team.builder().id("newAwayTeamId").build();
 
         String newMatchday = "newMatchday";
-        String newBetTitle = "newBetTitle";
+        BetTitle newBetTitle = BetTitle.builder()
+                .code((short) 101)
+                .label("betLabel")
+                .isNot(true)
+                .build();
 
         EditedBetDto editedBet = EditedBetDto.builder()
                 .matchDay(newMatchday)

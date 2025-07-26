@@ -4,6 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import net.friendly_bets.models.BetTitle;
 import net.friendly_bets.models.GameResult;
 
 import javax.validation.constraints.Min;
@@ -42,7 +43,7 @@ public class EditedBetDto {
 
     @NotNull(message = "{field.isNull}")
     @NotBlank(message = "{field.bet.blankBetTitle}")
-    private String betTitle;
+    private BetTitle betTitle;
 
     @NotNull(message = "{field.bet.betOddsIsNull}")
     private Double betOdds;

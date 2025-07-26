@@ -14,6 +14,7 @@ import org.springframework.http.ResponseEntity;
 
 import javax.validation.Valid;
 import javax.validation.constraints.NotBlank;
+import java.util.Map;
 
 @Tags(value = {
         @Tag(name = "Bets")
@@ -127,4 +128,13 @@ public interface BetsApi {
             @Parameter(hidden = true) AuthenticatedUser currentUser,
             @Parameter(description = "Bet ID") @NotBlank String betId,
             @Parameter(description = "Deleted bet metadata") @Valid DeletedBetDto deletedBetMetaData);
+
+    @Operation(summary = "Get all bet title codes with labels", description = "Accessible only to moderators and administrators")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "The collection of code:label has been successfully loaded.",
+                    content = @Content(mediaType = "application/json")),
+            @ApiResponse(responseCode = "403", description = "User not authenticated. Access is restricted to authenticated moderators and administrators.",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto")))
+    })
+    ResponseEntity<Map<Short, String>> getBetTitleCodeLabelMap();
 }

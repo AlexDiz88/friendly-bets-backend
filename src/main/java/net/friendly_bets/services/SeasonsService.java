@@ -285,7 +285,7 @@ public class SeasonsService {
         int not2Count = 0;
 
         for (Bet bet : allBets) {
-            String originalTitle = bet.getBetTitle();
+            String originalTitle = bet.getBetTitle().getLabel();
             String betId = bet.getId();
 
             if (originalTitle == null || originalTitle.isBlank()) {

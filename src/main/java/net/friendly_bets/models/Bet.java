@@ -56,7 +56,7 @@ public class Bet {
     private Team awayTeam;
 
     @Field(name = "bet_title")
-    private String betTitle;
+    private BetTitle betTitle;
 
     @Field(name = "bet_odds")
     private Double betOdds;

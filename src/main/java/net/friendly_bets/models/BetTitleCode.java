@@ -896,8 +896,11 @@ public enum BetTitleCode {
     private final BetChecker checker;
     private final String label;
 
-    private static final Map<Short, BetTitleCode> CODE_MAP = Arrays.stream(values())
+    private static final Map<Short, BetTitleCode> CODE_CHECKER_MAP = Arrays.stream(values())
             .collect(Collectors.toMap(BetTitleCode::getCode, Function.identity()));
+
+    public static final Map<Short, String> CODE_LABEL_MAP = Arrays.stream(values())
+            .collect(Collectors.toMap(BetTitleCode::getCode, BetTitleCode::getLabel));
 
     /**
      * Найти enum по его числовому коду.
@@ -906,7 +909,7 @@ public enum BetTitleCode {
      * @return соответствующий BetTitleCode или null, если не найден
      */
     public static BetTitleCode fromCode(short code) {
-        return CODE_MAP.get(code);
+        return CODE_CHECKER_MAP.get(code);
     }
 
     public Bet.BetStatus evaluate(GameResult gameResult) {
