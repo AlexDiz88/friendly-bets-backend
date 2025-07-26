@@ -262,17 +262,22 @@ public class SeasonsService {
 
     // ------------------------------------------------------------------------------------------------------ //
 
-    // TODO: ошибка с лимитом ставок на тур при редактировании ставки
-    @Transactional(readOnly = true)
     public Map<String, Object> dbUpdate() {
+        boolean execute = false;
+
+        //noinspection ConstantConditions
+        return execute ? dbUpdateExecution() : null;
+    }
+
+    // TODO: ошибка с лимитом ставок на тур при редактировании ставки
+    @Transactional
+    public Map<String, Object> dbUpdateExecution() {
         List<Bet> allBets = betsRepository.findAll();
 
         Map<String, BetTitleCode> labelToCodeMap = Arrays.stream(BetTitleCode.values())
                 .collect(Collectors.toMap(BetTitleCode::getLabel, Function.identity()));
 
         Map<String, Object> failedConversions = new LinkedHashMap<>();
-        Map<String, Object> emptyConversions = new LinkedHashMap<>();
-        Map<String, Object> notConversions = new LinkedHashMap<>();
         int successCount = 0;
         int fallbackCount = 0;
         int emptyCount = 0;
@@ -290,11 +295,10 @@ public class SeasonsService {
                         .isNot(false)
                         .label(BetTitleCode.EMPTY_BET_TITLE.getLabel())
                         .build();
-                emptyConversions.put(bet.getId(), emptyTitle);
 
                 Update update = new Update().set("bet_title", emptyTitle);
                 Query query = new Query(Criteria.where("id").is(betId));
-                mongoTemplate.updateFirst(query, update, Bet.class); // [REAL RUN: закомментировано]
+//                mongoTemplate.updateFirst(query, update, Bet.class); // [REAL RUN]
 
                 emptyCount++;
                 continue;
@@ -307,12 +311,10 @@ public class SeasonsService {
             if (title.endsWith(" - нет")) {
                 title = title.substring(0, title.length() - " - нет".length()).trim();
                 isNot = true;
-                notConversions.put(betId, originalTitle);
                 notCount++;
             } else if (title.endsWith("- нет")) {
                 title = title.substring(0, title.length() - "- нет".length()).trim();
                 isNot = true;
-                notConversions.put(betId, originalTitle);
                 not2Count++;
             }
 
@@ -324,7 +326,7 @@ public class SeasonsService {
                         .set("bet_title_temp", originalTitle);
                 Query fallbackQuery = new Query(Criteria.where("id").is(betId));
 
-                mongoTemplate.updateFirst(fallbackQuery, fallbackUpdate, Bet.class); // [REAL RUN: закомментировано]
+//                mongoTemplate.updateFirst(fallbackQuery, fallbackUpdate, Bet.class); // [REAL RUN]
 
                 log.warn("⚠️ Failed to convert betId={}, betTitle='{}', betStatus={}", betId, originalTitle, bet.getBetStatus());
                 failedConversions.put(betId, originalTitle);
@@ -341,7 +343,7 @@ public class SeasonsService {
             Update update = new Update().set("bet_title", newBetTitle);
             Query query = new Query(Criteria.where("id").is(betId));
 
-            mongoTemplate.updateFirst(query, update, Bet.class); // [REAL RUN: закомментировано]
+//            mongoTemplate.updateFirst(query, update, Bet.class); // [REAL RUN]
 
             successCount++;
         }
@@ -353,7 +355,6 @@ public class SeasonsService {
         response.put(" - нет", notCount);
         response.put("- нет", not2Count);
         response.put("emptyCount", emptyCount);
-//        response.put("emptyConversions", emptyConversions);
         response.put("fallbackCount", fallbackCount);
         response.put("failedItems", failedConversions);
 
