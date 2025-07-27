@@ -1,9 +1,8 @@
 package net.friendly_bets.utils;
 
 import lombok.experimental.UtilityClass;
-import net.friendly_bets.dto.BetResult;
 import net.friendly_bets.dto.EditedBetDto;
-import net.friendly_bets.dto.NewBet;
+import net.friendly_bets.dto.NewBetDto;
 import net.friendly_bets.dto.NewEmptyBet;
 import net.friendly_bets.exceptions.BadRequestException;
 import net.friendly_bets.exceptions.ConflictException;
@@ -122,7 +121,7 @@ public class BetUtils {
         }
     }
 
-    public static void validateBet(NewBet newBet) {
+    public static void validateBet(NewBetDto newBet) {
         checkTeams(newBet.getHomeTeamId(), newBet.getAwayTeamId());
         checkBetOdds(newBet.getBetOdds());
     }
@@ -142,7 +141,7 @@ public class BetUtils {
         }
     }
 
-    public static void checkIfBetAlreadyExists(BetsRepository betsRepo, NewBet newBet) {
+    public static void checkIfBetAlreadyExists(BetsRepository betsRepo, NewBetDto newBet) {
         if (betsRepo.existsBySeason_IdAndLeague_IdAndUser_IdAndMatchDayAndHomeTeam_IdAndAwayTeam_IdAndBetStatusIn(
                 newBet.getSeasonId(),
                 newBet.getLeagueId(),
@@ -156,14 +155,15 @@ public class BetUtils {
     }
 
     public static void checkIfBetAlreadyEdited(BetsRepository betsRepo, EditedBetDto editedBet, Bet.BetStatus betStatus) {
-        if (betsRepo.existsBySeason_IdAndLeague_IdAndUser_IdAndMatchDayAndHomeTeam_IdAndAwayTeam_IdAndBetTitleAndBetOddsAndBetSizeAndGameResultAndBetStatus(
+        if (betsRepo.existsBySeason_IdAndLeague_IdAndUser_IdAndMatchDayAndHomeTeam_IdAndAwayTeam_IdAndBetTitle_CodeAndBetTitle_IsNotAndBetOddsAndBetSizeAndGameResultAndBetStatus(
                 editedBet.getSeasonId(),
                 editedBet.getLeagueId(),
                 editedBet.getUserId(),
                 editedBet.getMatchDay(),
                 editedBet.getHomeTeamId(),
                 editedBet.getAwayTeamId(),
-                editedBet.getBetTitle(),
+                editedBet.getBetTitle().getCode(),
+                editedBet.getBetTitle().isNot(),
                 editedBet.getBetOdds(),
                 editedBet.getBetSize(),
                 editedBet.getGameResult(),
@@ -172,7 +172,10 @@ public class BetUtils {
         }
     }
 
-    public static Bet createNewOpenedBet(NewBet newOpenedBet, User moderator, User user, Season season, League league, Team homeTeam, Team awayTeam) {
+    public static Bet createNewOpenedBet(NewBetDto newOpenedBet, User moderator, User user, Season season, League league, Team homeTeam, Team awayTeam) {
+        if (newOpenedBet.getBetTitle().getCode() == BetTitleCode.EMPTY_BET_TITLE.getCode()) {
+            throw new BadRequestException("openedBetCantBeWithEmptyBet");
+        }
         return Bet.builder()
                 .createdAt(LocalDateTime.now())
                 .createdBy(moderator)
@@ -198,6 +201,11 @@ public class BetUtils {
                 .season(season)
                 .league(league)
                 .matchDay(newEmptyBet.getMatchDay())
+                .betTitle(BetTitle.builder()
+                        .code(BetTitleCode.EMPTY_BET_TITLE.getCode())
+                        .label(BetTitleCode.EMPTY_BET_TITLE.getLabel())
+                        .isNot(false)
+                        .build())
                 .betSize(newEmptyBet.getBetSize())
                 .betResultAddedAt(LocalDateTime.now())
                 .betStatus(Bet.BetStatus.EMPTY)
@@ -211,16 +219,26 @@ public class BetUtils {
             throw new BadRequestException("emptyAndDeletedBetsCannotBeEdited");
         }
         return Bet.builder()
+                .id(bet.getId())
+                .createdAt(bet.getCreatedAt())
+                .createdBy(bet.getCreatedBy())
                 .user(bet.getUser())
+                .season(bet.getSeason())
+                .league(bet.getLeague())
                 .matchDay(bet.getMatchDay())
                 .homeTeam(bet.getHomeTeam())
                 .awayTeam(bet.getAwayTeam())
                 .betTitle(bet.getBetTitle())
                 .betOdds(bet.getBetOdds())
                 .betSize(bet.getBetSize())
-                .betStatus(bet.getBetStatus())
+                .betResultAddedAt(bet.getBetResultAddedAt())
+                .betResultAddedBy(bet.getBetResultAddedBy())
                 .gameResult(bet.getGameResult())
+                .betStatus(bet.getBetStatus())
                 .balanceChange(bet.getBalanceChange())
+                .updatedAt(bet.getUpdatedAt())
+                .updatedBy(bet.getUpdatedBy())
+                .calendarNodeId(bet.getCalendarNodeId())
                 .build();
     }
 
@@ -301,6 +319,7 @@ public class BetUtils {
         bet.setBetTitle(editedBet.getBetTitle());
         bet.setBetOdds(editedBet.getBetOdds());
         bet.setBetSize(editedBet.getBetSize());
+        bet.setCalendarNodeId(editedBet.getCalendarNodeId());
     }
 
     public static void updateDeletedBetValues(Bet bet, User moderator) {

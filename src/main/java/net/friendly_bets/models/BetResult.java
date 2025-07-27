@@ -1,10 +1,9 @@
-package net.friendly_bets.dto;
+package net.friendly_bets.models;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import net.friendly_bets.models.GameResult;
 
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.NotNull;

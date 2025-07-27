@@ -91,17 +91,14 @@ public class CalendarsService {
     // ------------------------------------------------------------------------------------------------------ //
 
 
-    public void addBetToCalendarNode(String betId, String calendarNodeId, String leagueId, String matchday) {
+    public void addBetToCalendarNode(Bet bet, String calendarNodeId, String leagueId, String matchday) {
         CalendarNode calendarNode = getEntityService.getCalendarNodeOrThrow(calendarNodeId);
         LeagueMatchdayNode node = getLeagueMatchdayNode(calendarNode, leagueId, matchday);
-        Bet bet = getEntityService.getBetOrThrow(betId);
 
         checkLeagueBetLimit(node, bet.getUser().getId());
-        node.getBets().add(bet);
 
-        if (!calendarNode.getHasBets()) {
-            calendarNode.setHasBets(true);
-        }
+        node.getBets().add(bet);
+        calendarNode.setHasBets(true);
 
         saveCalendarNode(calendarNode);
     }
@@ -204,19 +201,46 @@ public class CalendarsService {
 
     // ------------------------------------------------------------------------------------------------------ //
 
-    public void updateCalendar(Bet bet, EditedBetDto editedBet) {
-        String newCalendarNodeId = editedBet.getCalendarNodeId();
-        String prevCalendarNodeId = editedBet.getPrevCalendarNodeId();
+    public void updateCalendar(Bet prevBet, Bet newBet) {
+        String prevCalendarNodeId = prevBet.getCalendarNodeId();
+        String newCalendarNodeId = newBet.getCalendarNodeId();
+        String prevMatchDay = prevBet.getMatchDay();
+        String newMatchDay = newBet.getMatchDay();
+        String prevUserId = prevBet.getUser().getId();
+        String newUserId = newBet.getUser().getId();
 
-        if (newCalendarNodeId.equals(prevCalendarNodeId)) {
-            CalendarNode calendarNode = getEntityService.getCalendarNodeOrThrow(newCalendarNodeId);
-            LeagueMatchdayNode node = getLeagueMatchdayNode(calendarNode, editedBet.getLeagueId(), editedBet.getMatchDay());
-            checkLeagueBetLimit(node, editedBet.getUserId());
-        } else {
-            deleteBetFromCalendar(bet, prevCalendarNodeId);
-            bet.setCalendarNodeId(newCalendarNodeId);
-            addBetToCalendarNode(bet.getId(), newCalendarNodeId, editedBet.getLeagueId(), editedBet.getMatchDay());
+        boolean sameMatchDay = newMatchDay.equals(prevMatchDay);
+        boolean sameUser = newUserId.equals(prevUserId);
+
+        // Given: LeagueMatchdayNodes АПЛ1, АПЛ2, АПЛ3, БЛ1.
+        // Given: CalendarNode1 (содержит АПЛ1, АПЛ2), CalendarNode2 (содержит АПЛ3, БЛ1).
+        // Во время редактирования лигу изменить невозможно. Но можно поменять matchDay той же лиги, например АПЛ1 -> АПЛ2, либо поменять user.
+        // Любое из этих двух изменений могут повлиять на CalendarNode и LeagueMatchdayNode!
+
+        // 1. Если редактирование внутри одной CalendarNode (напр. CalendarNode1) и одной LeagueMatchdayNode (АПЛ1), т.е. тот же matchDay:
+        // 1.1. Изменились любые параметры кроме user -> Просто редактируем, НЕ проверяя лимит и ничего не удаляем.
+        // 1.2. Изменился user -> проверяем лимит для нового юзера в этой LeagueMatchdayNode (АПЛ1) для CalendarNode1.
+        // Если проверка пройдена - добавляем для нового user ставку в LeagueMatchdayNode(АПЛ1) и удаляем старую ставку из LeagueMatchdayNode(АПЛ1) для предыдущего user.
+
+        // 2. Если редактирование внутри одной CalendarNode, но другой LeagueMatchdayNode (АПЛ1 -> АПЛ2), т.е.поменялся matchDay:
+        // 2.1 Помимо matchDay изменились любые параметры кроме user -> проверяем лимит для этого юзера в новой LeagueMatchdayNode (АПЛ2) для CalendarNode1
+        // Если проверка пройдена - добавляем ставку в новую LeagueMatchdayNode(АПЛ2) и удаляем старую ставку из LeagueMatchdayNode(АПЛ1) для этого user.
+        // 2.2 Изменился user -> проверяем лимит для нового юзера в новой LeagueMatchdayNode (АПЛ2) для CalendarNode1
+        // Если проверка пройдена - добавляем для нового user ставку в LeagueMatchdayNode(АПЛ2) и удаляем старую ставку из LeagueMatchdayNode(АПЛ1) для предыдущего user.
+
+        // 3. Если редактирование в другой CalendarNode и разумеется как следствие другой LeagueMatchdayNode (АПЛ1 -> АПЛ3), т.е.поменялся matchDay:
+        // 3.1 Помимо matchDay изменились любые параметры кроме user -> проверяем лимит для этого юзера в новой LeagueMatchdayNode (АПЛ3) для CalendarNode2
+        // Если проверка пройдена - добавляем ставку в новую LeagueMatchdayNode(АПЛ3) в CalendarNode2 и удаляем старую ставку из LeagueMatchdayNode(АПЛ1) в CalendarNode1 для этого user.
+        // 3.2 Изменился user -> проверяем лимит для нового юзера в новой LeagueMatchdayNode (АПЛ3) для CalendarNode2
+        // Если проверка пройдена - добавляем для нового user ставку в LeagueMatchdayNode(АПЛ3) в CalendarNode2 и удаляем старую ставку из LeagueMatchdayNode(АПЛ1) в CalendarNode1 для предыдущего user.
+
+        if (sameMatchDay && sameUser) {
+            return; // 1.1 Никаких изменений или проверок, так как изменения при редактировании не касаются CalendarNode
         }
+        // далее - все случаи кроме 1.1
+        deleteBetFromCalendar(prevBet, prevCalendarNodeId);  // Удаление старой ставки из LeagueMatchdayNode
+        addBetToCalendarNode(newBet, newCalendarNodeId, newBet.getLeague().getId(), newMatchDay); // checkLeagueBetLimit и добавление новой ставки в LeagueMatchdayNode
+        newBet.setCalendarNodeId(newCalendarNodeId);  // Обновление ссылки на ID календаря
     }
 
     // ------------------------------------------------------------------------------------------------------ //
@@ -239,6 +263,10 @@ public class CalendarsService {
 
     public LeagueMatchdayNode getLeagueMatchdayNode(CalendarNode calendarNode, String leagueId, String matchday) {
         return getEntityService.getLeagueMatchdayNodeOrThrow(calendarNode, leagueId, matchday);
+    }
+
+    public LeagueMatchdayNode getLeagueMatchdayNodeInSeason(String seasonId, String leagueId, String matchday) {
+        return getEntityService.getLeagueMatchdayNodeFromSeasonOrThrow(seasonId, leagueId, matchday);
     }
 
     // ------------------------------------------------------------------------------------------------------ //

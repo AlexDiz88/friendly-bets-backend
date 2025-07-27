@@ -1,8 +1,7 @@
 package net.friendly_bets.utils;
 
-import net.friendly_bets.dto.BetResult;
 import net.friendly_bets.dto.EditedBetDto;
-import net.friendly_bets.dto.NewBet;
+import net.friendly_bets.dto.NewBetDto;
 import net.friendly_bets.dto.NewEmptyBet;
 import net.friendly_bets.exceptions.BadRequestException;
 import net.friendly_bets.exceptions.ConflictException;
@@ -169,7 +168,7 @@ class BetUtilsTest {
     @DisplayName("Should not throw exception when valid bet is provided")
     void validateBet_ShouldPass_WhenValidBetProvided() {
         // given
-        NewBet validBet = NewBet.builder()
+        NewBetDto validBet = NewBetDto.builder()
                 .homeTeamId("teamId-1")
                 .awayTeamId("teamId-2")
                 .betOdds(2.25)
@@ -183,7 +182,7 @@ class BetUtilsTest {
     @DisplayName("Should throw BadRequestException when home team is the same as away team")
     void validateBet_ShouldFail_WhenHomeTeamIsEqualToAwayTeam() {
         // given
-        NewBet invalidBet = NewBet.builder()
+        NewBetDto invalidBet = NewBetDto.builder()
                 .homeTeamId("teamId")
                 .awayTeamId("teamId")
                 .betOdds(2.25)
@@ -199,7 +198,7 @@ class BetUtilsTest {
     @ParameterizedTest
     @MethodSource("invalidBetOddsProvider")
     @DisplayName("Should throw exception when bet odds are invalid")
-    void validateBet_ShouldFail_WhenBetOddsAreInvalid(NewBet invalidBet, String expectedErrorMessage) {
+    void validateBet_ShouldFail_WhenBetOddsAreInvalid(NewBetDto invalidBet, String expectedErrorMessage) {
         // when + then
         BadRequestException exception = assertThrows(BadRequestException.class,
                 () -> BetUtils.validateBet(invalidBet));
@@ -209,16 +208,16 @@ class BetUtilsTest {
 
     private static Stream<Arguments> invalidBetOddsProvider() {
         return Stream.of(
-                Arguments.of(NewBet.builder()
+                Arguments.of(NewBetDto.builder()
                         .homeTeamId("1").awayTeamId("2")
                         .betOdds(Double.NaN).build(), "betCoefIsNotNumber"),
-                Arguments.of(NewBet.builder()
+                Arguments.of(NewBetDto.builder()
                         .homeTeamId("1").awayTeamId("2")
                         .betOdds(1.0).build(), "betCoefCannotBeLessThan"),
-                Arguments.of(NewBet.builder()
+                Arguments.of(NewBetDto.builder()
                         .homeTeamId("1").awayTeamId("2")
                         .betOdds(0.5).build(), "betCoefCannotBeLessThan"),
-                Arguments.of(NewBet.builder()
+                Arguments.of(NewBetDto.builder()
                         .homeTeamId("1").awayTeamId("2")
                         .betOdds(-2.25).build(), "betCoefCannotBeLessThan")
         );
@@ -230,7 +229,7 @@ class BetUtilsTest {
     @DisplayName("Should throw ConflictException when bet already exists")
     void checkIfBetAlreadyExists_ShouldThrowConflictException_WhenBetExists() {
         // given
-        NewBet newBet = new NewBet();
+        NewBetDto newBetDto = new NewBetDto();
 
         when(betsRepository.existsBySeason_IdAndLeague_IdAndUser_IdAndMatchDayAndHomeTeam_IdAndAwayTeam_IdAndBetStatusIn(
                 any(), any(), any(), any(), any(), any(), any()))
@@ -238,7 +237,7 @@ class BetUtilsTest {
 
         // when + then
         ConflictException exception = assertThrows(ConflictException.class,
-                () -> BetUtils.checkIfBetAlreadyExists(betsRepository, newBet));
+                () -> BetUtils.checkIfBetAlreadyExists(betsRepository, newBetDto));
 
         assertEquals("betAlreadyAdded", exception.getMessage());
     }
@@ -247,14 +246,14 @@ class BetUtilsTest {
     @DisplayName("Should not throw exception when bet does not exist")
     void checkIfBetAlreadyExists_ShouldNotThrow_WhenBetDoesNotExist() {
         // given
-        NewBet newBet = new NewBet();
+        NewBetDto newBetDto = new NewBetDto();
 
         when(betsRepository.existsBySeason_IdAndLeague_IdAndUser_IdAndMatchDayAndHomeTeam_IdAndAwayTeam_IdAndBetStatusIn(
                 any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(false);
 
         // when + then
-        assertDoesNotThrow(() -> BetUtils.checkIfBetAlreadyExists(betsRepository, newBet));
+        assertDoesNotThrow(() -> BetUtils.checkIfBetAlreadyExists(betsRepository, newBetDto));
     }
 
     // ------------------------------------------------------------------------------------------------------ //
@@ -264,10 +263,12 @@ class BetUtilsTest {
     void checkIfBetAlreadyEdited_ShouldThrowConflictException_WhenBetExists() {
         // given
         EditedBetDto editedBet = new EditedBetDto();
+        BetTitle betTitle = new BetTitle();
+        editedBet.setBetTitle(betTitle);
         Bet.BetStatus betStatus = Bet.BetStatus.OPENED;
 
-        when(betsRepository.existsBySeason_IdAndLeague_IdAndUser_IdAndMatchDayAndHomeTeam_IdAndAwayTeam_IdAndBetTitleAndBetOddsAndBetSizeAndGameResultAndBetStatus(
-                any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+        when(betsRepository.existsBySeason_IdAndLeague_IdAndUser_IdAndMatchDayAndHomeTeam_IdAndAwayTeam_IdAndBetTitle_CodeAndBetTitle_IsNotAndBetOddsAndBetSizeAndGameResultAndBetStatus(
+                any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(true);
 
         // when + then
@@ -282,10 +283,12 @@ class BetUtilsTest {
     void checkIfBetAlreadyEdited_ShouldNotThrow_WhenBetDoesNotExist() {
         // given
         EditedBetDto editedBet = new EditedBetDto();
+        BetTitle betTitle = new BetTitle();
+        editedBet.setBetTitle(betTitle);
         Bet.BetStatus betStatus = Bet.BetStatus.OPENED;
 
-        when(betsRepository.existsBySeason_IdAndLeague_IdAndUser_IdAndMatchDayAndHomeTeam_IdAndAwayTeam_IdAndBetTitleAndBetOddsAndBetSizeAndGameResultAndBetStatus(
-                any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+        when(betsRepository.existsBySeason_IdAndLeague_IdAndUser_IdAndMatchDayAndHomeTeam_IdAndAwayTeam_IdAndBetTitle_CodeAndBetTitle_IsNotAndBetOddsAndBetSizeAndGameResultAndBetStatus(
+                any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(false);
 
         // when + then
@@ -299,13 +302,17 @@ class BetUtilsTest {
     void createNewOpenedBet_ShouldCreateBet_WhenValidParametersProvided() {
         // given
         String expectedMatchDay = "matchDay";
-        String expectedBetTitle = "betTitle";
+        BetTitle expectedBetTitle = BetTitle.builder()
+                .code((short) 101)
+                .label("betLabel")
+                .isNot(false)
+                .build();
         double expectedBetOdds = 2.5;
         int expectedBetSize = 10;
         String expectedCalendarNodeId = "calendarNodeId";
         Bet.BetStatus expectedBetStatus = Bet.BetStatus.OPENED;
 
-        NewBet newOpenedBet = NewBet.builder()
+        NewBetDto newOpenedBet = NewBetDto.builder()
                 .matchDay(expectedMatchDay)
                 .betTitle(expectedBetTitle)
                 .betOdds(expectedBetOdds)
@@ -401,12 +408,18 @@ class BetUtilsTest {
     @DisplayName("Should return a new bet with previous state when bet status is not EMPTY or DELETED")
     void getPreviousStateOfBet_ShouldReturnPreviousStateBet_WhenBetStatusValid() {
         // given
+        BetTitle originalBetTitle = BetTitle.builder()
+                .code((short) 101)
+                .label("betLabel")
+                .isNot(false)
+                .build();
+
         Bet originalBet = Bet.builder()
                 .user(new User())
                 .matchDay("matchDay")
                 .homeTeam(new Team())
                 .awayTeam(new Team())
-                .betTitle("betTitle")
+                .betTitle(originalBetTitle)
                 .betOdds(1.75)
                 .betSize(10)
                 .betStatus(Bet.BetStatus.WON)
@@ -612,6 +625,7 @@ class BetUtilsTest {
         League league = League.builder().id("leagueId").build();
         User moderator = new User();
 
+
         Bet bet = Bet.builder()
                 .id(expectedBetId)
                 .season(season)
@@ -620,7 +634,7 @@ class BetUtilsTest {
                 .matchDay("previousMatchday")
                 .homeTeam(new Team())
                 .awayTeam(new Team())
-                .betTitle("previousBetTitle")
+                .betTitle(new BetTitle())
                 .betSize(10)
                 .betOdds(2.2)
                 .gameResult(new GameResult())
@@ -632,7 +646,11 @@ class BetUtilsTest {
         Team newAwayTeam = Team.builder().id("newAwayTeamId").build();
 
         String newMatchday = "newMatchday";
-        String newBetTitle = "newBetTitle";
+        BetTitle newBetTitle = BetTitle.builder()
+                .code((short) 101)
+                .label("betLabel")
+                .isNot(true)
+                .build();
         GameResult newGameResult = GameResult.builder().fullTime("2:2").firstTime("1:1").build();
 
         EditedBetDto editedBet = EditedBetDto.builder()
@@ -694,7 +712,7 @@ class BetUtilsTest {
                 .matchDay("previousMatchday")
                 .homeTeam(new Team())
                 .awayTeam(new Team())
-                .betTitle("previousBetTitle")
+                .betTitle(new BetTitle())
                 .betStatus(Bet.BetStatus.OPENED)
                 .build();
 
@@ -703,7 +721,11 @@ class BetUtilsTest {
         Team newAwayTeam = Team.builder().id("newAwayTeamId").build();
 
         String newMatchday = "newMatchday";
-        String newBetTitle = "newBetTitle";
+        BetTitle newBetTitle = BetTitle.builder()
+                .code((short) 101)
+                .label("betLabel")
+                .isNot(true)
+                .build();
 
         EditedBetDto editedBet = EditedBetDto.builder()
                 .matchDay(newMatchday)
@@ -879,5 +901,8 @@ class BetUtilsTest {
                 arguments(List.of(newNode4, newNode3), false, null)
         );
     }
+
+    // ------------------------------------------------------------------------------------------------------ //
+
 
 }

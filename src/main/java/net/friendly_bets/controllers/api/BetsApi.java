@@ -9,11 +9,13 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.tags.Tags;
 import net.friendly_bets.dto.*;
+import net.friendly_bets.models.BetResult;
 import net.friendly_bets.security.details.AuthenticatedUser;
 import org.springframework.http.ResponseEntity;
 
 import javax.validation.Valid;
 import javax.validation.constraints.NotBlank;
+import java.util.Map;
 
 @Tags(value = {
         @Tag(name = "Bets")
@@ -31,7 +33,7 @@ public interface BetsApi {
     })
     ResponseEntity<BetDto> addBet(
             @Parameter(hidden = true) AuthenticatedUser currentUser,
-            @Parameter(description = "New bet") @Valid NewBet newBet);
+            @Parameter(description = "New bet") @Valid NewBetDto newBetDto);
 
     @Operation(summary = "Add an empty bet", description = "Accessible only to moderators and administrators")
     @ApiResponses(value = {
@@ -111,7 +113,7 @@ public interface BetsApi {
     })
     ResponseEntity<BetDto> editBet(
             @Parameter(hidden = true) AuthenticatedUser currentUser,
-            @Parameter(description = "Bet ID") @NotBlank String betId,
+            @Parameter(description = "Edited bet ID") @NotBlank String editedBetId,
             @Parameter(description = "Edited bet details") @Valid EditedBetDto editedBet);
 
     @Operation(summary = "Delete a bet", description = "Accessible only to moderators and administrators")
@@ -127,4 +129,13 @@ public interface BetsApi {
             @Parameter(hidden = true) AuthenticatedUser currentUser,
             @Parameter(description = "Bet ID") @NotBlank String betId,
             @Parameter(description = "Deleted bet metadata") @Valid DeletedBetDto deletedBetMetaData);
+
+    @Operation(summary = "Get all bet title codes with labels", description = "Accessible only to moderators and administrators")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "The collection of code:label has been successfully loaded.",
+                    content = @Content(mediaType = "application/json")),
+            @ApiResponse(responseCode = "403", description = "User not authenticated. Access is restricted to authenticated moderators and administrators.",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto")))
+    })
+    ResponseEntity<Map<Short, String>> getBetTitleCodeLabelMap();
 }

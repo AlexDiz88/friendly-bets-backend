@@ -24,14 +24,15 @@ public interface BetsRepository extends MongoRepository<Bet, String> {
             List<Bet.BetStatus> betStatuses
     );
 
-    boolean existsBySeason_IdAndLeague_IdAndUser_IdAndMatchDayAndHomeTeam_IdAndAwayTeam_IdAndBetTitleAndBetOddsAndBetSizeAndGameResultAndBetStatus(
+    boolean existsBySeason_IdAndLeague_IdAndUser_IdAndMatchDayAndHomeTeam_IdAndAwayTeam_IdAndBetTitle_CodeAndBetTitle_IsNotAndBetOddsAndBetSizeAndGameResultAndBetStatus(
             String seasonId,
             String leagueId,
             String userId,
             String matchDay,
             String homeTeamId,
             String awayTeamId,
-            String betTitle,
+            Short code,
+            Boolean isNot,
             Double betOdds,
             Integer betSize,
             GameResult gameResult,

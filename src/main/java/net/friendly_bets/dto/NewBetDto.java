@@ -4,6 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import net.friendly_bets.models.BetTitle;
 
 import javax.validation.constraints.Min;
 import javax.validation.constraints.NotBlank;
@@ -13,7 +14,7 @@ import javax.validation.constraints.NotNull;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class NewBet {
+public class NewBetDto {
 
     @NotNull(message = "{field.isNull}")
     @NotBlank(message = "{field.isBlank}")
@@ -40,8 +41,7 @@ public class NewBet {
     private String awayTeamId;
 
     @NotNull(message = "{field.isNull}")
-    @NotBlank(message = "{field.bet.blankBetTitle}")
-    private String betTitle;
+    private BetTitle betTitle;
 
     @NotNull(message = "{field.bet.betOddsIsNull}")
     private Double betOdds;

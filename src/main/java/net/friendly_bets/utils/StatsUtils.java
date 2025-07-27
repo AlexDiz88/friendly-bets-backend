@@ -10,7 +10,6 @@ import net.friendly_bets.models.Stats;
 import static net.friendly_bets.utils.Constants.WRL_STATUSES;
 
 @UtilityClass
-@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class StatsUtils {
 
 

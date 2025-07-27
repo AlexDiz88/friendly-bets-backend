@@ -3,6 +3,8 @@ package net.friendly_bets.controllers;
 import lombok.RequiredArgsConstructor;
 import net.friendly_bets.controllers.api.BetsApi;
 import net.friendly_bets.dto.*;
+import net.friendly_bets.models.BetResult;
+import net.friendly_bets.models.BetTitleCode;
 import net.friendly_bets.security.details.AuthenticatedUser;
 import net.friendly_bets.services.BetsService;
 import org.springframework.data.domain.PageRequest;
@@ -15,6 +17,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
+import java.util.Map;
 
 @RestController
 @RequiredArgsConstructor
@@ -27,7 +30,7 @@ public class BetsController implements BetsApi {
     @PreAuthorize("hasAuthority('ADMIN') || hasAuthority('MODERATOR')")
     @PostMapping("/add")
     public ResponseEntity<BetDto> addBet(@AuthenticationPrincipal AuthenticatedUser currentUser,
-                                         @RequestBody @Valid NewBet newOpenedBet) {
+                                         @RequestBody @Valid NewBetDto newOpenedBet) {
         String moderatorId = currentUser.getUser().getId();
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(betsService.addOpenedBet(moderatorId, newOpenedBet));
@@ -86,10 +89,10 @@ public class BetsController implements BetsApi {
     @PreAuthorize("hasAuthority('ADMIN') || hasAuthority('MODERATOR')")
     @PutMapping("/{bet-id}")
     public ResponseEntity<BetDto> editBet(@AuthenticationPrincipal AuthenticatedUser currentUser,
-                                          @PathVariable("bet-id") String betId,
+                                          @PathVariable("bet-id") String editedBetId,
                                           @RequestBody @Valid EditedBetDto editedBet) {
         String moderatorId = currentUser.getUser().getId();
-        return ResponseEntity.ok(betsService.editBet(moderatorId, betId, editedBet));
+        return ResponseEntity.ok(betsService.editBet(moderatorId, editedBetId, editedBet));
     }
 
     @Override
@@ -100,5 +103,12 @@ public class BetsController implements BetsApi {
                                             @RequestBody @Valid DeletedBetDto deletedBetMetaData) {
         String moderatorId = currentUser.getUser().getId();
         return ResponseEntity.ok(betsService.deleteBet(moderatorId, betId, deletedBetMetaData));
+    }
+
+    @Override
+    @PreAuthorize("hasAuthority('ADMIN') || hasAuthority('MODERATOR')")
+    @GetMapping("/betTitleCodeLabelMap")
+    public ResponseEntity<Map<Short, String>> getBetTitleCodeLabelMap() {
+        return ResponseEntity.ok(BetTitleCode.CODE_LABEL_MAP);
     }
 }

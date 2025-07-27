@@ -3,30 +3,41 @@ package net.friendly_bets.services;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import lombok.extern.slf4j.Slf4j;
 import net.friendly_bets.dto.*;
 import net.friendly_bets.exceptions.BadRequestException;
 import net.friendly_bets.exceptions.ConflictException;
 import net.friendly_bets.exceptions.NotFoundException;
 import net.friendly_bets.models.*;
+import net.friendly_bets.repositories.BetsRepository;
 import net.friendly_bets.repositories.CalendarsRepository;
 import net.friendly_bets.repositories.LeaguesRepository;
 import net.friendly_bets.repositories.SeasonsRepository;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @RequiredArgsConstructor
 @Service
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
+@Slf4j
 public class SeasonsService {
 
+    MongoTemplate mongoTemplate;
     SeasonsRepository seasonsRepository;
     LeaguesRepository leaguesRepository;
-
     GetEntityService getEntityService;
-    private final CalendarsRepository calendarsRepository;
+
+    CalendarsRepository calendarsRepository;
+    BetsRepository betsRepository;
 
     @Transactional
     public SeasonsPage getAll() {
@@ -251,34 +262,102 @@ public class SeasonsService {
 
     // ------------------------------------------------------------------------------------------------------ //
 
+    public Map<String, Object> dbUpdate() {
+        boolean execute = false;
 
+        //noinspection ConstantConditions
+        return execute ? dbUpdateExecution() : null;
+    }
+
+    // TODO: ошибка с лимитом ставок на тур при редактировании ставки
     @Transactional
-    public Map<String, String> dbUpdate() {
-        List<CalendarNode> calendarNodes = calendarsRepository.findAll();
-        for (CalendarNode calendarNode : calendarNodes) {
-            List<LeagueMatchdayNode> leagueMatchdayNodes = calendarNode.getLeagueMatchdayNodes();
+    public Map<String, Object> dbUpdateExecution() {
+        List<Bet> allBets = betsRepository.findAll();
 
-            if (leagueMatchdayNodes != null) {
-                boolean changed = false;
+        Map<String, BetTitleCode> labelToCodeMap = Arrays.stream(BetTitleCode.values())
+                .collect(Collectors.toMap(BetTitleCode::getLabel, Function.identity()));
 
-                for (LeagueMatchdayNode leagueMatchdayNode : leagueMatchdayNodes) {
-                    if (leagueMatchdayNode.getBetCountLimit() == null) {
-                        leagueMatchdayNode.setBetCountLimit(2);
-                        changed = true;
-                    }
-                }
+        Map<String, Object> failedConversions = new LinkedHashMap<>();
+        int successCount = 0;
+        int fallbackCount = 0;
+        int emptyCount = 0;
+        int notCount = 0;
+        int not2Count = 0;
 
-                if (changed) {
-                    calendarsRepository.save(calendarNode);
-                }
+        for (Bet bet : allBets) {
+            String originalTitle = bet.getBetTitle().getLabel();
+            String betId = bet.getId();
+
+            if (originalTitle == null || originalTitle.isBlank()) {
+                // Пустая или удалённая ставка — помечаем как EMPTY
+                BetTitle emptyTitle = BetTitle.builder()
+                        .code(BetTitleCode.EMPTY_BET_TITLE.getCode())
+                        .isNot(false)
+                        .label(BetTitleCode.EMPTY_BET_TITLE.getLabel())
+                        .build();
+
+                Update update = new Update().set("bet_title", emptyTitle);
+                Query query = new Query(Criteria.where("id").is(betId));
+//                mongoTemplate.updateFirst(query, update, Bet.class); // [REAL RUN]
+
+                emptyCount++;
+                continue;
             }
-        }
-//                Update update = new Update().set("gameResult", gameResult);
-//                Query query = new Query(Criteria.where("id").is(bet.getId()));
-//                mongoTemplate.updateFirst(query, update, Bet.class);
 
-        Map<String, String> response = new HashMap<>();
-        response.put("message", "DB update complete");
+            boolean isNot = false;
+            String title = originalTitle.trim();
+            title = title.replaceAll("(\\d+),(\\d+)", "$1.$2"); // меняем запятые на точки
+
+            if (title.endsWith(" - нет")) {
+                title = title.substring(0, title.length() - " - нет".length()).trim();
+                isNot = true;
+                notCount++;
+            } else if (title.endsWith("- нет")) {
+                title = title.substring(0, title.length() - "- нет".length()).trim();
+                isNot = true;
+                not2Count++;
+            }
+
+            BetTitleCode betTitleCode = labelToCodeMap.get(title);
+            if (betTitleCode == null) {
+                // Ошибка конвертации: очищаем основное поле, сохраняем исходную строку
+                Update fallbackUpdate = new Update()
+                        .set("bet_title", null)
+                        .set("bet_title_temp", originalTitle);
+                Query fallbackQuery = new Query(Criteria.where("id").is(betId));
+
+//                mongoTemplate.updateFirst(fallbackQuery, fallbackUpdate, Bet.class); // [REAL RUN]
+
+                log.warn("⚠️ Failed to convert betId={}, betTitle='{}', betStatus={}", betId, originalTitle, bet.getBetStatus());
+                failedConversions.put(betId, originalTitle);
+                fallbackCount++;
+                continue;
+            }
+
+            BetTitle newBetTitle = BetTitle.builder()
+                    .code(betTitleCode.getCode())
+                    .isNot(isNot)
+                    .label(betTitleCode.getLabel())
+                    .build();
+
+            Update update = new Update().set("bet_title", newBetTitle);
+            Query query = new Query(Criteria.where("id").is(betId));
+
+//            mongoTemplate.updateFirst(query, update, Bet.class); // [REAL RUN]
+
+            successCount++;
+        }
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("mode", "dry-run");
+        response.put("totalBets", allBets.size());
+        response.put("successCount", successCount);
+        response.put(" - нет", notCount);
+        response.put("- нет", not2Count);
+        response.put("emptyCount", emptyCount);
+        response.put("fallbackCount", fallbackCount);
+        response.put("failedItems", failedConversions);
+
         return response;
     }
 
