@@ -219,16 +219,26 @@ public class BetUtils {
             throw new BadRequestException("emptyAndDeletedBetsCannotBeEdited");
         }
         return Bet.builder()
+                .id(bet.getId())
+                .createdAt(bet.getCreatedAt())
+                .createdBy(bet.getCreatedBy())
                 .user(bet.getUser())
+                .season(bet.getSeason())
+                .league(bet.getLeague())
                 .matchDay(bet.getMatchDay())
                 .homeTeam(bet.getHomeTeam())
                 .awayTeam(bet.getAwayTeam())
                 .betTitle(bet.getBetTitle())
                 .betOdds(bet.getBetOdds())
                 .betSize(bet.getBetSize())
-                .betStatus(bet.getBetStatus())
+                .betResultAddedAt(bet.getBetResultAddedAt())
+                .betResultAddedBy(bet.getBetResultAddedBy())
                 .gameResult(bet.getGameResult())
+                .betStatus(bet.getBetStatus())
                 .balanceChange(bet.getBalanceChange())
+                .updatedAt(bet.getUpdatedAt())
+                .updatedBy(bet.getUpdatedBy())
+                .calendarNodeId(bet.getCalendarNodeId())
                 .build();
     }
 
@@ -309,6 +319,7 @@ public class BetUtils {
         bet.setBetTitle(editedBet.getBetTitle());
         bet.setBetOdds(editedBet.getBetOdds());
         bet.setBetSize(editedBet.getBetSize());
+        bet.setCalendarNodeId(editedBet.getCalendarNodeId());
     }
 
     public static void updateDeletedBetValues(Bet bet, User moderator) {

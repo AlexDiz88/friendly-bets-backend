@@ -64,6 +64,19 @@ public class GetEntityService {
                 .orElseThrow(() -> new BadRequestException("leagueNotFoundInCalendarNode"));
     }
 
+    public LeagueMatchdayNode getLeagueMatchdayNodeFromSeasonOrThrow(String seasonId, String leagueId, String matchday) {
+        List<CalendarNode> calendarNodes = calendarsRepository.findBySeasonId(seasonId)
+                .orElseThrow(() -> new BadRequestException("calendarNodesNotFoundForSeason"));
+
+        return calendarNodes.stream()
+                .flatMap(calendarNode -> calendarNode.getLeagueMatchdayNodes().stream())
+                .filter(node -> leagueId != null && leagueId.equals(node.getLeagueId())
+                        && matchday != null && matchday.equals(node.getMatchDay()))
+                .findFirst()
+                .orElseThrow(() -> new BadRequestException("leagueNotFoundInSeasonCalendar"));
+    }
+
+
     public PlayerStats getPlayerStatsOrNull(String seasonId, String leagueId, User user) {
         Optional<PlayerStats> playerStatsOptional =
                 playerStatsRepository.findBySeasonIdAndLeagueIdAndUser(seasonId, leagueId, user);

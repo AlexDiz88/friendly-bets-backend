@@ -89,10 +89,10 @@ public class BetsController implements BetsApi {
     @PreAuthorize("hasAuthority('ADMIN') || hasAuthority('MODERATOR')")
     @PutMapping("/{bet-id}")
     public ResponseEntity<BetDto> editBet(@AuthenticationPrincipal AuthenticatedUser currentUser,
-                                          @PathVariable("bet-id") String betId,
+                                          @PathVariable("bet-id") String editedBetId,
                                           @RequestBody @Valid EditedBetDto editedBet) {
         String moderatorId = currentUser.getUser().getId();
-        return ResponseEntity.ok(betsService.editBet(moderatorId, betId, editedBet));
+        return ResponseEntity.ok(betsService.editBet(moderatorId, editedBetId, editedBet));
     }
 
     @Override

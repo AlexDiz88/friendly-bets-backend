@@ -113,7 +113,7 @@ public interface BetsApi {
     })
     ResponseEntity<BetDto> editBet(
             @Parameter(hidden = true) AuthenticatedUser currentUser,
-            @Parameter(description = "Bet ID") @NotBlank String betId,
+            @Parameter(description = "Edited bet ID") @NotBlank String editedBetId,
             @Parameter(description = "Edited bet details") @Valid EditedBetDto editedBet);
 
     @Operation(summary = "Delete a bet", description = "Accessible only to moderators and administrators")

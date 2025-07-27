@@ -50,7 +50,7 @@ public class BetsService {
 
         betsRepository.save(openedBet);
         updateLeagueCurrentMatchDay(leaguesRepository, betsRepository, season, league);
-        calendarsService.addBetToCalendarNode(openedBet.getId(), newOpenedBet.getCalendarNodeId(), newOpenedBet.getLeagueId(), newOpenedBet.getMatchDay());
+        calendarsService.addBetToCalendarNode(openedBet, newOpenedBet.getCalendarNodeId(), newOpenedBet.getLeagueId(), newOpenedBet.getMatchDay());
         playerStatsService.calculateStatsBasedOnNewOpenedBet(season.getId(), league.getId(), user, true);
 
         return BetDto.from(openedBet);
@@ -70,7 +70,7 @@ public class BetsService {
 
         betsRepository.save(emptyBet);
         updateLeagueCurrentMatchDay(leaguesRepository, betsRepository, season, league);
-        calendarsService.addBetToCalendarNode(emptyBet.getId(), newEmptyBet.getCalendarNodeId(), newEmptyBet.getLeagueId(), newEmptyBet.getMatchDay());
+        calendarsService.addBetToCalendarNode(emptyBet, newEmptyBet.getCalendarNodeId(), newEmptyBet.getLeagueId(), newEmptyBet.getMatchDay());
         playerStatsService.calculateStatsBasedOnEmptyBet(season.getId(), league.getId(), user, newEmptyBet.getBetSize(), true);
         gameweekStatsService.calculateGameweekStats(newEmptyBet.getCalendarNodeId());
 
@@ -160,29 +160,29 @@ public class BetsService {
 
 
     @Transactional
-    public BetDto editBet(String moderatorId, String betId, EditedBetDto editedBet) {
+    public BetDto editBet(String moderatorId, String editedBetId, EditedBetDto editedBet) {
         checkTeams(editedBet.getHomeTeamId(), editedBet.getAwayTeamId());
         checkBetOdds(editedBet.getBetOdds());
         checkGameResult(editedBet.getGameResult(), Bet.BetStatus.valueOf(editedBet.getBetStatus()));
 
         User moderator = getEntityService.getUserOrThrow(moderatorId);
         User newUser = getEntityService.getUserOrThrow(editedBet.getUserId());
-        Bet bet = getEntityService.getBetOrThrow(betId);
+        Bet bet = getEntityService.getBetOrThrow(editedBetId);
+        Bet prevBetState = getPreviousStateOfBet(bet); // сохраняем изначальное состояние ставки до редактирования
         Team newHomeTeam = getEntityService.getTeamOrThrow(editedBet.getHomeTeamId());
         Team newAwayTeam = getEntityService.getTeamOrThrow(editedBet.getAwayTeamId());
 
         String seasonId = editedBet.getSeasonId();
         String leagueId = editedBet.getLeagueId();
-        Bet prevBet = getPreviousStateOfBet(bet);
 
         updateEditedBetValues(betsRepository, bet, editedBet, moderator, newUser, newHomeTeam, newAwayTeam);
-        calendarsService.updateCalendar(bet, editedBet);
+        calendarsService.updateCalendar(prevBetState, bet);
         betsRepository.save(bet);
 
         playerStatsService.calculateStatsBasedOnEditedBet(seasonId, leagueId, newUser, bet, true);
-        playerStatsService.calculateStatsBasedOnEditedBet(seasonId, leagueId, prevBet.getUser(), prevBet, false);
+        playerStatsService.calculateStatsBasedOnEditedBet(seasonId, leagueId, prevBetState.getUser(), prevBetState, false);
         teamStatsService.calculateStatsByTeams(seasonId, leagueId, newUser.getId(), bet, true);
-        teamStatsService.calculateStatsByTeams(seasonId, leagueId, prevBet.getUser().getId(), prevBet, false);
+        teamStatsService.calculateStatsByTeams(seasonId, leagueId, prevBetState.getUser().getId(), prevBetState, false);
         gameweekStatsService.calculateGameweekStats(bet.getCalendarNodeId());
 
         return BetDto.from(bet);
