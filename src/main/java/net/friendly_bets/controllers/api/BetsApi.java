@@ -62,6 +62,19 @@ public interface BetsApi {
             @Parameter(description = "Bet ID") @NotBlank String betId,
             @Parameter(description = "Bet result and status") @Valid BetResult betResult);
 
+    @Operation(summary = "Set bet results based on game results", description = "Accessible only to moderators and administrators")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Results of bets have been successfully updated. The response contains list of processed bets.",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = BetsPage.class))),
+            @ApiResponse(responseCode = "400", description = "Invalid request data. The request may be missing required fields or contain invalid values.",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto"))),
+            @ApiResponse(responseCode = "403", description = "User not authenticated. Access is restricted to authenticated moderators and administrators.",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto")))
+    })
+    ResponseEntity<BetsPage> setBetResults(
+            @Parameter(hidden = true) AuthenticatedUser currentUser,
+            @Parameter(description = "Game results") @Valid GameResultsRequest request);
+
     @Operation(summary = "Get list of all opened bets", description = "Accessible to everyone")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "List of all opened bets. The response contains a paginated list of bets that are currently open.",

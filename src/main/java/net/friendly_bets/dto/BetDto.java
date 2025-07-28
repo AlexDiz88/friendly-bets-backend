@@ -7,7 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import net.friendly_bets.models.Bet;
 import net.friendly_bets.models.BetTitle;
-import net.friendly_bets.models.GameResult;
+import net.friendly_bets.models.GameScore;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -62,7 +62,7 @@ public class BetDto {
     private LocalDateTime betResultAddedAt;
 
     @Schema(description = "счет матча", example = "{fullTime:'2:1'', firstTime:'1:1'}")
-    private GameResult gameResult;
+    private GameScore gameScore;
 
     @Schema(description = "статус ставки", example = "OPENED")
     private String betStatus;
@@ -93,7 +93,7 @@ public class BetDto {
                     .betOdds(bet.getBetOdds())
                     .betSize(bet.getBetSize())
                     .betResultAddedAt(bet.getBetResultAddedAt())
-                    .gameResult(bet.getGameResult())
+                    .gameScore(bet.getGameScore())
                     .betStatus(bet.getBetStatus().toString())
                     .balanceChange(bet.getBalanceChange())
                     .updatedAt(bet.getUpdatedAt())

@@ -3,7 +3,7 @@ package net.friendly_bets.validation.betcheckers;
 import net.friendly_bets.dto.GameScores;
 import net.friendly_bets.models.Bet.BetStatus;
 import net.friendly_bets.models.BetTitleCode;
-import net.friendly_bets.models.GameResult;
+import net.friendly_bets.models.GameScore;
 import net.friendly_bets.utils.BetCheckUtils;
 import net.friendly_bets.utils.BetCheckUtils.CompareSign;
 import net.friendly_bets.utils.BetCheckUtils.TotalType;
@@ -15,8 +15,8 @@ import static net.friendly_bets.utils.BetCheckUtils.TotalType.UNDER;
 public class TotalChecker implements BetChecker {
 
     @Override
-    public BetStatus check(GameResult gameResult, BetTitleCode code) {
-        GameScores gameScores = BetCheckUtils.parse(gameResult);
+    public BetStatus check(GameScore gameScore, BetTitleCode code) {
+        GameScores gameScores = BetCheckUtils.parse(gameScore);
         double home = gameScores.getHomeFullTime();
         double home1st = gameScores.getHomeFirstHalf();
         double home2nd = home - home1st;

@@ -14,7 +14,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static net.friendly_bets.utils.BetUtils.*;
 import static net.friendly_bets.utils.Constants.*;
@@ -79,6 +81,39 @@ public class BetsService {
 
     // ------------------------------------------------------------------------------------------------------ //
 
+    @Transactional
+    public BetsPage setBetResults(String moderatorId, String seasonId, List<GameResult> gameResults) {
+        List<Bet> openedBets = betsRepository.findAllBySeason_IdAndBetStatus(seasonId, Bet.BetStatus.OPENED);
+        List<Bet> processedBets = new ArrayList<>();
+
+        for (GameResult gameResult : gameResults) {
+            List<Bet> matchingBets = findMatchingBets(openedBets, gameResult);
+
+            for (Bet bet : matchingBets) {
+                short betTitleCodeNumber = bet.getBetTitle().getCode();
+                BetTitleCode betTitleCode = BetTitleCode.fromCode(betTitleCodeNumber);
+                GameScore gameScore = gameResult.getGameScore();
+                Bet.BetStatus betStatus = betTitleCode.getChecker().check(gameScore, betTitleCode);
+
+                boolean isNot = bet.getBetTitle().isNot(); // инверсия BetStatus, если установлен флаг "нет"
+                if (isNot) {
+                    betStatus = invertBetStatus(betStatus);
+                }
+
+                BetResult betResult = BetResult.builder()
+                        .gameScore(gameScore)
+                        .betStatus(betStatus.name())
+                        .build();
+
+                setBetResult(moderatorId, bet.getId(), betResult);
+                processedBets.add(bet);
+            }
+        }
+
+        return BetsPage.builder()
+                .bets(BetDto.from(processedBets))
+                .build();
+    }
 
     @Transactional
     public BetDto setBetResult(String moderatorId, String betId, BetResult betResult) {
@@ -88,7 +123,7 @@ public class BetsService {
             throw new IllegalArgumentException("invalidStatus");
         }
 
-        checkGameResult(betResult.getGameResult(), Bet.BetStatus.valueOf(betResult.getBetStatus()));
+        checkGameResult(betResult.getGameScore(), Bet.BetStatus.valueOf(betResult.getBetStatus()));
 
         User moderator = getEntityService.getUserOrThrow(moderatorId);
         Bet bet = getEntityService.getBetOrThrow(betId);
@@ -104,6 +139,16 @@ public class BetsService {
         gameweekStatsService.calculateGameweekStats(bet.getCalendarNodeId());
 
         return BetDto.from(bet);
+    }
+
+    private List<Bet> findMatchingBets(List<Bet> bets, GameResult gameResult) {
+        return bets.stream()
+                .filter(bet ->
+                        bet.getLeague().getId().equals(gameResult.getLeagueId()) &&
+                                bet.getHomeTeam().getId().equals(gameResult.getHomeTeamId()) &&
+                                bet.getAwayTeam().getId().equals(gameResult.getAwayTeamId())
+                )
+                .collect(Collectors.toList());
     }
 
     // ------------------------------------------------------------------------------------------------------ //
@@ -163,7 +208,7 @@ public class BetsService {
     public BetDto editBet(String moderatorId, String editedBetId, EditedBetDto editedBet) {
         checkTeams(editedBet.getHomeTeamId(), editedBet.getAwayTeamId());
         checkBetOdds(editedBet.getBetOdds());
-        checkGameResult(editedBet.getGameResult(), Bet.BetStatus.valueOf(editedBet.getBetStatus()));
+        checkGameResult(editedBet.getGameScore(), Bet.BetStatus.valueOf(editedBet.getBetStatus()));
 
         User moderator = getEntityService.getUserOrThrow(moderatorId);
         User newUser = getEntityService.getUserOrThrow(editedBet.getUserId());

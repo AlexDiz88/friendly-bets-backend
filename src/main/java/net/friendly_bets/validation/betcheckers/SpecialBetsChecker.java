@@ -3,14 +3,14 @@ package net.friendly_bets.validation.betcheckers;
 import net.friendly_bets.dto.GameScores;
 import net.friendly_bets.models.Bet.BetStatus;
 import net.friendly_bets.models.BetTitleCode;
-import net.friendly_bets.models.GameResult;
+import net.friendly_bets.models.GameScore;
 import net.friendly_bets.utils.BetCheckUtils;
 
 public class SpecialBetsChecker implements BetChecker {
 
     @Override
-    public BetStatus check(GameResult gameResult, BetTitleCode code) {
-        GameScores gameScores = BetCheckUtils.parse(gameResult);
+    public BetStatus check(GameScore gameScore, BetTitleCode code) {
+        GameScores gameScores = BetCheckUtils.parse(gameScore);
         int home = gameScores.getHomeFullTime();
         int homeOvertime = gameScores.getHomeOverTime();
         int homePenalty = gameScores.getHomePenalty();
@@ -19,8 +19,8 @@ public class SpecialBetsChecker implements BetChecker {
         int awayOvertime = gameScores.getAwayOverTime();
         int awayPenalty = gameScores.getAwayPenalty();
 
-        boolean isOverTime = checkExtraTime(gameResult.getOverTime());
-        boolean isPenalty = checkExtraTime(gameResult.getPenalty());
+        boolean isOverTime = checkExtraTime(gameScore.getOverTime());
+        boolean isPenalty = checkExtraTime(gameScore.getPenalty());
         boolean homeAny = home > away || homeOvertime > awayOvertime || homePenalty > awayPenalty;
         boolean awayAny = home < away || homeOvertime < awayOvertime || homePenalty < awayPenalty;
 

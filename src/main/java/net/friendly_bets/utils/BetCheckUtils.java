@@ -2,7 +2,7 @@ package net.friendly_bets.utils;
 
 import lombok.experimental.UtilityClass;
 import net.friendly_bets.dto.GameScores;
-import net.friendly_bets.models.GameResult;
+import net.friendly_bets.models.GameScore;
 
 @UtilityClass
 public class BetCheckUtils {
@@ -23,7 +23,7 @@ public class BetCheckUtils {
         HOME_WIN, DRAW, AWAY_WIN, HOME_WIN_OR_DRAW, AWAY_WIN_OR_DRAW, HOME_OR_AWAY_WIN
     }
 
-    public GameScores parse(GameResult result) {
+    public GameScores parse(GameScore result) {
         return GameScores.builder()
                 .homeFullTime(parseGoals(result.getFullTime(), 0))
                 .awayFullTime(parseGoals(result.getFullTime(), 1))

@@ -15,7 +15,7 @@ import javax.validation.constraints.NotNull;
 public class BetResult {
 
     @NotNull(message = "{field.isNull}")
-    private GameResult gameResult;
+    private GameScore gameScore;
 
     @NotNull(message = "{field.isNull}")
     @NotBlank(message = "{field.bet.blankBetStatus}")

@@ -912,18 +912,18 @@ public enum BetTitleCode {
         return CODE_CHECKER_MAP.get(code);
     }
 
-    public Bet.BetStatus evaluate(GameResult gameResult) {
+    public Bet.BetStatus evaluate(GameScore gameScore) {
         if (checker == null) {
             throw new IllegalStateException("No BetChecker defined for code: " + code);
         }
-        return checker.check(gameResult, this);
+        return checker.check(gameScore, this);
     }
 
-    public static Bet.BetStatus evaluateByCode(short code, GameResult gameResult) {
+    public static Bet.BetStatus evaluateByCode(short code, GameScore gameScore) {
         BetTitleCode bet = fromCode(code);
         if (bet == null) {
             throw new IllegalArgumentException("Unknown bet code: " + code);
         }
-        return bet.evaluate(gameResult);
+        return bet.evaluate(gameScore);
     }
 }

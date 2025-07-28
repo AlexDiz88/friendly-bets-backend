@@ -57,6 +57,16 @@ public class BetsController implements BetsApi {
     }
 
     @Override
+    @PreAuthorize("hasAuthority('ADMIN') || hasAuthority('MODERATOR')")
+    @PostMapping("/set-auto-bet-results")
+    public ResponseEntity<BetsPage> setBetResults(@AuthenticationPrincipal AuthenticatedUser currentUser,
+                                                  @RequestBody @Valid GameResultsRequest request) {
+        System.out.println(request);
+        String moderatorId = currentUser.getUser().getId();
+        return ResponseEntity.ok(betsService.setBetResults(moderatorId, request.getSeasonId(), request.getGameResults()));
+    }
+
+    @Override
     @GetMapping("/opened/seasons/{season-id}")
     public ResponseEntity<BetsPage> getOpenedBets(@PathVariable("season-id") String seasonId) {
         return ResponseEntity.ok(betsService.getOpenedBets(seasonId));

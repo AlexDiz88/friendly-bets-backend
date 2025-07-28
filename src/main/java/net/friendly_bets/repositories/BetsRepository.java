@@ -1,7 +1,7 @@
 package net.friendly_bets.repositories;
 
 import net.friendly_bets.models.Bet;
-import net.friendly_bets.models.GameResult;
+import net.friendly_bets.models.GameScore;
 import net.friendly_bets.models.League;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -24,7 +24,7 @@ public interface BetsRepository extends MongoRepository<Bet, String> {
             List<Bet.BetStatus> betStatuses
     );
 
-    boolean existsBySeason_IdAndLeague_IdAndUser_IdAndMatchDayAndHomeTeam_IdAndAwayTeam_IdAndBetTitle_CodeAndBetTitle_IsNotAndBetOddsAndBetSizeAndGameResultAndBetStatus(
+    boolean existsBySeason_IdAndLeague_IdAndUser_IdAndMatchDayAndHomeTeam_IdAndAwayTeam_IdAndBetTitle_CodeAndBetTitle_IsNotAndBetOddsAndBetSizeAndGameScoreAndBetStatus(
             String seasonId,
             String leagueId,
             String userId,
@@ -35,7 +35,7 @@ public interface BetsRepository extends MongoRepository<Bet, String> {
             Boolean isNot,
             Double betOdds,
             Integer betSize,
-            GameResult gameResult,
+            GameScore gameScore,
             Bet.BetStatus betStatus
     );
 
