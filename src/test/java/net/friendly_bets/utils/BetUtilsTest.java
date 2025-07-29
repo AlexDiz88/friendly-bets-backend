@@ -52,45 +52,45 @@ class BetUtilsTest {
     @ParameterizedTest
     @EnumSource(value = Bet.BetStatus.class, names = {"OPENED", "EMPTY", "DELETED"})
     @DisplayName("Should do nothing when bet status is not in WRL_STATUSES")
-    void checkGameResult_ShouldDoNothing_WhenBetStatusIsNotWRLStatus(Bet.BetStatus betStatus) {
+    void checkGameScore_ShouldDoNothing_WhenBetStatusIsNotWRLStatus(Bet.BetStatus betStatus) {
         // given
         GameScore nullGameScore = null;
         GameScore normalGameScore = new GameScore("2:1", "1:0", null, null);
 
         // when + then
-        assertDoesNotThrow(() -> BetUtils.checkGameResult(nullGameScore, betStatus));
-        assertDoesNotThrow(() -> BetUtils.checkGameResult(normalGameScore, betStatus));
+        assertDoesNotThrow(() -> BetUtils.checkGameScore(nullGameScore, betStatus));
+        assertDoesNotThrow(() -> BetUtils.checkGameScore(normalGameScore, betStatus));
     }
 
     @ParameterizedTest
     @EnumSource(value = Bet.BetStatus.class, names = {"WON", "RETURNED", "LOST"})
-    @DisplayName("Should throw BadRequestException when game result is null and bet status is in WRL_STATUSES")
-    void checkGameResult_ShouldThrowException_WhenGameResultIsNullAndBetStatusIsWRLStatus(Bet.BetStatus betStatus) {
+    @DisplayName("Should throw BadRequestException when GameScore is null and bet status is in WRL_STATUSES")
+    void checkGameScore_ShouldThrowException_WhenGameScoreIsNullAndBetStatusIsWRLStatus(Bet.BetStatus betStatus) {
         // given
         GameScore gameScore = null;
 
         // when + then
         BadRequestException exception = assertThrows(BadRequestException.class,
-                () -> BetUtils.checkGameResult(gameScore, betStatus));
+                () -> BetUtils.checkGameScore(gameScore, betStatus));
 
-        assertEquals("gameResultIsNull", exception.getMessage());
+        assertEquals("gameScoreIsNull", exception.getMessage());
     }
 
     @ParameterizedTest
-    @MethodSource("provideInvalidGameResults")
-    @DisplayName("Should throw BadRequestException when GameResult has invalid fullTime or firstTime")
-    void checkGameResult_ShouldThrowException_WhenGameResultIsInvalid(GameScore gameScore) {
+    @MethodSource("provideInvalidGameScores")
+    @DisplayName("Should throw BadRequestException when GameScore has invalid fullTime or firstTime")
+    void checkGameScore_ShouldThrowException_WhenGameScoreIsInvalid(GameScore gameScore) {
         // given
         Bet.BetStatus betStatus = Bet.BetStatus.WON;
 
         // when + then
         BadRequestException exception = assertThrows(BadRequestException.class,
-                () -> BetUtils.checkGameResult(gameScore, betStatus));
+                () -> BetUtils.checkGameScore(gameScore, betStatus));
 
-        assertEquals("incorrectGameResult", exception.getMessage());
+        assertEquals("incorrectGameScore", exception.getMessage());
     }
 
-    private static Stream<GameScore> provideInvalidGameResults() {
+    private static Stream<GameScore> provideInvalidGameScores() {
         return Stream.of(
                 GameScore.builder().fullTime(null).firstTime(null).build(),
                 GameScore.builder().fullTime("1-0").firstTime(null).build(),
@@ -102,15 +102,15 @@ class BetUtilsTest {
     }
 
     @ParameterizedTest
-    @MethodSource("validGameResultsProvider")
-    @DisplayName("Should not throw exception when valid game result and valid bet status are provided")
-    void checkGameResult_ShouldPass_WhenValidGameResultAndValidBetStatusAreProvided(GameScore validGameScore) {
+    @MethodSource("validGameScoreProvider")
+    @DisplayName("Should not throw exception when valid GameScore and valid bet status are provided")
+    void checkGameScore_ShouldPass_WhenValidGameScoreAndValidBetStatusAreProvided(GameScore validGameScore) {
         Bet.BetStatus betStatus = Bet.BetStatus.WON;
 
-        assertDoesNotThrow(() -> BetUtils.checkGameResult(validGameScore, betStatus));
+        assertDoesNotThrow(() -> BetUtils.checkGameScore(validGameScore, betStatus));
     }
 
-    private static Stream<GameScore> validGameResultsProvider() {
+    private static Stream<GameScore> validGameScoreProvider() {
         return Stream.of(
                 new GameScore("3:1", "1:1", null, null),
                 new GameScore("2:2", "2:2", null, null),
@@ -128,20 +128,20 @@ class BetUtilsTest {
     }
 
     @ParameterizedTest
-    @MethodSource("invalidGameResultsProvider")
-    @DisplayName("Should throw BadRequestException when invalid game result and valid bet status")
+    @MethodSource("invalidGameScoreProvider")
+    @DisplayName("Should throw BadRequestException when invalid GameScore and valid bet status")
     void shouldFail_WhenFirstHalfScoreHigherThanFullTimeScore(GameScore invalidGameScore) {
         // given
         Bet.BetStatus betStatus = Bet.BetStatus.WON;
 
         // when + then
         BadRequestException exception = assertThrows(BadRequestException.class,
-                () -> BetUtils.checkGameResult(invalidGameScore, betStatus));
+                () -> BetUtils.checkGameScore(invalidGameScore, betStatus));
 
-        assertEquals("incorrectGameResult", exception.getMessage());
+        assertEquals("incorrectGameScore", exception.getMessage());
     }
 
-    private static Stream<GameScore> invalidGameResultsProvider() {
+    private static Stream<GameScore> invalidGameScoreProvider() {
         return Stream.of(
                 new GameScore("1 1", "1:1", null, null),
                 new GameScore("1-1", "1:1", null, null),
@@ -696,8 +696,8 @@ class BetUtilsTest {
 
     @ParameterizedTest
     @MethodSource("provideNonWrlBetValues")
-    @DisplayName("Should update edited bet values correctly but not update balance and game result for non-WRL bet statuses")
-    void updateEditedBetValues_ShouldNotUpdateBalanceOrGameResultForNonWrlStatuses(Integer newBetSize, Double newBetOdds, Bet.BetStatus newBetStatus) {
+    @DisplayName("Should update edited bet values correctly but not update balance and GameScore for non-WRL bet statuses")
+    void updateEditedBetValues_ShouldNotUpdateBalanceOrGameScoreForNonWrlStatuses(Integer newBetSize, Double newBetOdds, Bet.BetStatus newBetStatus) {
         // given
         String expectedBetId = "betId";
         Season season = Season.builder().id("seasonId").build();

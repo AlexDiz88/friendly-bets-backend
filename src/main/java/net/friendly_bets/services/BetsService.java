@@ -123,7 +123,7 @@ public class BetsService {
             throw new IllegalArgumentException("invalidStatus");
         }
 
-        checkGameResult(betResult.getGameScore(), Bet.BetStatus.valueOf(betResult.getBetStatus()));
+        checkGameScore(betResult.getGameScore(), Bet.BetStatus.valueOf(betResult.getBetStatus()));
 
         User moderator = getEntityService.getUserOrThrow(moderatorId);
         Bet bet = getEntityService.getBetOrThrow(betId);
@@ -208,7 +208,7 @@ public class BetsService {
     public BetDto editBet(String moderatorId, String editedBetId, EditedBetDto editedBet) {
         checkTeams(editedBet.getHomeTeamId(), editedBet.getAwayTeamId());
         checkBetOdds(editedBet.getBetOdds());
-        checkGameResult(editedBet.getGameScore(), Bet.BetStatus.valueOf(editedBet.getBetStatus()));
+        checkGameScore(editedBet.getGameScore(), Bet.BetStatus.valueOf(editedBet.getBetStatus()));
 
         User moderator = getEntityService.getUserOrThrow(moderatorId);
         User newUser = getEntityService.getUserOrThrow(editedBet.getUserId());

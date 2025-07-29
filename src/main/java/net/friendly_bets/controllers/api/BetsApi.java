@@ -60,7 +60,7 @@ public interface BetsApi {
     ResponseEntity<BetDto> setBetResult(
             @Parameter(hidden = true) AuthenticatedUser currentUser,
             @Parameter(description = "Bet ID") @NotBlank String betId,
-            @Parameter(description = "Bet result and status") @Valid BetResult betResult);
+            @Parameter(description = "Game score and bet status") @Valid BetResult betResult);
 
     @Operation(summary = "Set bet results based on game results", description = "Accessible only to moderators and administrators")
     @ApiResponses(value = {

@@ -24,21 +24,21 @@ import static net.friendly_bets.utils.Constants.WRL_STATUSES;
 @UtilityClass
 public class BetUtils {
 
-    public static void checkGameResult(GameScore gameScore, Bet.BetStatus betStatus) {
+    public static void checkGameScore(GameScore gameScore, Bet.BetStatus betStatus) {
         if (WRL_STATUSES.contains(betStatus)) {
             if (gameScore == null) {
-                throw new BadRequestException("gameResultIsNull");
+                throw new BadRequestException("gameScoreIsNull");
             }
             if ((gameScore.getFullTime() == null && gameScore.getFirstTime() == null)
                     || gameScore.getFullTime() == null || gameScore.getFirstTime() == null
                     || gameScore.getFullTime().isBlank() || gameScore.getFirstTime().isBlank()) {
-                throw new BadRequestException("incorrectGameResult");
+                throw new BadRequestException("incorrectGameScore");
             }
 
             boolean isGameScoreValid = isGameScoreValid(gameScore);
 
             if (!isGameScoreValid) {
-                throw new BadRequestException("incorrectGameResult");
+                throw new BadRequestException("incorrectGameScore");
             }
         }
     }
@@ -117,7 +117,7 @@ public class BetUtils {
 
             return new int[]{home, away};
         } catch (NumberFormatException e) {
-            throw new BadRequestException("incorrectGameResult");
+            throw new BadRequestException("incorrectGameScore");
         }
     }
 
@@ -301,7 +301,7 @@ public class BetUtils {
         checkIfBetAlreadyEdited(betsRepository, editedBet, betStatus);
 
         if (WRL_STATUSES.contains(bet.getBetStatus())) {
-            checkGameResult(editedBet.getGameScore(), bet.getBetStatus());
+            checkGameScore(editedBet.getGameScore(), bet.getBetStatus());
             updateBalanceChange(bet, betStatus, editedBet.getBetSize(), editedBet.getBetOdds());
             bet.setGameScore(editedBet.getGameScore());
         }
