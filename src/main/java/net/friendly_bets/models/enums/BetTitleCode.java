@@ -1,7 +1,9 @@
-package net.friendly_bets.models;
+package net.friendly_bets.models.enums;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+import net.friendly_bets.models.Bet;
+import net.friendly_bets.models.GameScore;
 import net.friendly_bets.validation.betcheckers.*;
 
 import java.util.Arrays;

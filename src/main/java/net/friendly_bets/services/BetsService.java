@@ -7,6 +7,7 @@ import net.friendly_bets.dto.*;
 import net.friendly_bets.exceptions.BadRequestException;
 import net.friendly_bets.exceptions.ConflictException;
 import net.friendly_bets.models.*;
+import net.friendly_bets.models.enums.BetTitleCode;
 import net.friendly_bets.repositories.BetsRepository;
 import net.friendly_bets.repositories.LeaguesRepository;
 import org.springframework.data.domain.Page;
@@ -82,6 +83,32 @@ public class BetsService {
     // ------------------------------------------------------------------------------------------------------ //
 
     @Transactional
+    public BetDto setBetResult(String moderatorId, String betId, BetResult betResult) {
+        try {
+            Bet.BetStatus.valueOf(betResult.getBetStatus());
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("invalidStatus");
+        }
+
+        checkGameScore(betResult.getGameScore(), Bet.BetStatus.valueOf(betResult.getBetStatus()));
+
+        User moderator = getEntityService.getUserOrThrow(moderatorId);
+        Bet bet = getEntityService.getBetOrThrow(betId);
+        if (!bet.getBetStatus().equals(Bet.BetStatus.OPENED)) {
+            throw new ConflictException("betAlreadyProcessed");
+        }
+
+        processBetResultValues(moderator, bet, betResult);
+        betsRepository.save(bet);
+
+        playerStatsService.calculateStatsBasedOnBetResult(bet.getSeason().getId(), bet.getLeague().getId(), bet.getUser(), bet, true);
+        teamStatsService.calculateStatsByTeams(bet.getSeason().getId(), bet.getLeague().getId(), bet.getUser().getId(), bet, true);
+        gameweekStatsService.calculateGameweekStats(bet.getCalendarNodeId());
+
+        return BetDto.from(bet);
+    }
+
+    @Transactional
     public BetsPage setBetResults(String moderatorId, String seasonId, List<GameResult> gameResults) {
         List<Bet> openedBets = betsRepository.findAllBySeason_IdAndBetStatus(seasonId, Bet.BetStatus.OPENED);
         List<Bet> processedBets = new ArrayList<>();
@@ -113,32 +140,6 @@ public class BetsService {
         return BetsPage.builder()
                 .bets(BetDto.from(processedBets))
                 .build();
-    }
-
-    @Transactional
-    public BetDto setBetResult(String moderatorId, String betId, BetResult betResult) {
-        try {
-            Bet.BetStatus.valueOf(betResult.getBetStatus());
-        } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("invalidStatus");
-        }
-
-        checkGameScore(betResult.getGameScore(), Bet.BetStatus.valueOf(betResult.getBetStatus()));
-
-        User moderator = getEntityService.getUserOrThrow(moderatorId);
-        Bet bet = getEntityService.getBetOrThrow(betId);
-        if (!bet.getBetStatus().equals(Bet.BetStatus.OPENED)) {
-            throw new ConflictException("betAlreadyProcessed");
-        }
-
-        processBetResultValues(moderator, bet, betResult);
-        betsRepository.save(bet);
-
-        playerStatsService.calculateStatsBasedOnBetResult(bet.getSeason().getId(), bet.getLeague().getId(), bet.getUser(), bet, true);
-        teamStatsService.calculateStatsByTeams(bet.getSeason().getId(), bet.getLeague().getId(), bet.getUser().getId(), bet, true);
-        gameweekStatsService.calculateGameweekStats(bet.getCalendarNodeId());
-
-        return BetDto.from(bet);
     }
 
     private List<Bet> findMatchingBets(List<Bet> bets, GameResult gameResult) {

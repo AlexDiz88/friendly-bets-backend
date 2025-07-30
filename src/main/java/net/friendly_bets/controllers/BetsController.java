@@ -4,7 +4,7 @@ import lombok.RequiredArgsConstructor;
 import net.friendly_bets.controllers.api.BetsApi;
 import net.friendly_bets.dto.*;
 import net.friendly_bets.models.BetResult;
-import net.friendly_bets.models.BetTitleCode;
+import net.friendly_bets.models.enums.BetTitleCode;
 import net.friendly_bets.security.details.AuthenticatedUser;
 import net.friendly_bets.services.BetsService;
 import org.springframework.data.domain.PageRequest;
