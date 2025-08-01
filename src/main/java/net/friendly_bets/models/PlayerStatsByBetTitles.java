@@ -21,7 +21,6 @@ public class PlayerStatsByBetTitles {
     @Field(name = "_id")
     private String id;
     private String seasonId;
-    private String leagueId;
     private String userId;
     private List<BetTitleCategoryStats> betTitleCategoryStats;
 }

@@ -35,7 +35,7 @@ public class BetsService {
     PlayerStatsService playerStatsService;
     TeamStatsService teamStatsService;
     GameweekStatsService gameweekStatsService;
-
+    BetTitleStatsService betTitleStatsService;
 
     @Transactional
     public BetDto addOpenedBet(String moderatorId, NewBetDto newOpenedBet) {
@@ -101,9 +101,14 @@ public class BetsService {
         processBetResultValues(moderator, bet, betResult);
         betsRepository.save(bet);
 
-        playerStatsService.calculateStatsBasedOnBetResult(bet.getSeason().getId(), bet.getLeague().getId(), bet.getUser(), bet, true);
-        teamStatsService.calculateStatsByTeams(bet.getSeason().getId(), bet.getLeague().getId(), bet.getUser().getId(), bet, true);
+        String seasonId = bet.getSeason().getId();
+        String leagueId = bet.getLeague().getId();
+        String userId = bet.getUser().getId();
+
+        playerStatsService.calculateStatsBasedOnBetResult(seasonId, leagueId, bet.getUser(), bet, true);
+        teamStatsService.calculateStatsByTeams(seasonId, leagueId, userId, bet, true);
         gameweekStatsService.calculateGameweekStats(bet.getCalendarNodeId());
+        betTitleStatsService.calculateStatsByBetTitle(seasonId, userId, bet, true);
 
         return BetDto.from(bet);
     }
@@ -230,6 +235,8 @@ public class BetsService {
         teamStatsService.calculateStatsByTeams(seasonId, leagueId, newUser.getId(), bet, true);
         teamStatsService.calculateStatsByTeams(seasonId, leagueId, prevBetState.getUser().getId(), prevBetState, false);
         gameweekStatsService.calculateGameweekStats(bet.getCalendarNodeId());
+        betTitleStatsService.calculateStatsByBetTitle(seasonId, newUser.getId(), bet, true);
+        betTitleStatsService.calculateStatsByBetTitle(seasonId, prevBetState.getUser().getId(), prevBetState, false);
 
         return BetDto.from(bet);
     }
@@ -255,6 +262,7 @@ public class BetsService {
         if (WRL_STATUSES.contains(betStatus)) {
             playerStatsService.calculateStatsBasedOnEditedBet(seasonId, leagueId, user, bet, false);
             teamStatsService.calculateStatsByTeams(seasonId, leagueId, user.getId(), bet, false);
+            betTitleStatsService.calculateStatsByBetTitle(seasonId, user.getId(), bet, false);
         }
 
         updateDeletedBetValues(bet, moderator);

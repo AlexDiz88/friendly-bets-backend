@@ -7,6 +7,7 @@ import net.friendly_bets.dto.*;
 import net.friendly_bets.exceptions.NotFoundException;
 import net.friendly_bets.models.*;
 import net.friendly_bets.repositories.BetsRepository;
+import net.friendly_bets.repositories.PlayerStatsByBetTitlesRepository;
 import net.friendly_bets.repositories.PlayerStatsByTeamsRepository;
 import net.friendly_bets.repositories.PlayerStatsRepository;
 import org.springframework.stereotype.Service;
@@ -29,6 +30,7 @@ public class StatsService {
 
     PlayerStatsRepository playerStatsRepository;
     PlayerStatsByTeamsRepository playerStatsByTeamsRepository;
+    PlayerStatsByBetTitlesRepository playerStatsByBetTitlesRepository;
     BetsRepository betsRepository;
 
     PlayerStatsService playerStatsService;
@@ -79,6 +81,13 @@ public class StatsService {
                 () -> new NotFoundException("Season", seasonId));
 
         return new AllStatsByTeamsInSeasonDto(PlayerStatsByTeamsDto.from(allStatsByTeams));
+    }
+
+    public AllStatsByBetTitlesInSeasonDto getAllStatsByBetTitlesInSeason(String seasonId) {
+        List<PlayerStatsByBetTitles> allStatsByBetTitles = playerStatsByBetTitlesRepository.findAllBySeasonId(seasonId).orElseThrow(
+                () -> new NotFoundException("Season", seasonId));
+
+        return new AllStatsByBetTitlesInSeasonDto(PlayerStatsByBetTitlesDto.from(allStatsByBetTitles));
     }
 
 

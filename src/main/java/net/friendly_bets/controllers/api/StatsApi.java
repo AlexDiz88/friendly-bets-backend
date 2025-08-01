@@ -54,6 +54,18 @@ public interface StatsApi {
     ResponseEntity<AllStatsByTeamsInSeasonDto> getAllStatsByTeamsInSeason(
             @Parameter(description = "Season ID") @NotBlank String seasonId);
 
+    @Operation(summary = "Statistics of all tournament participants in a season by bet titles", description = "Accessible to everyone")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Statistics of all participants in the season by bet titles",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = AllStatsByBetTitlesInSeasonDto.class))),
+            @ApiResponse(responseCode = "400", description = "Invalid season ID provided",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto"))),
+            @ApiResponse(responseCode = "404", description = "Season not found",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto")))
+    })
+    ResponseEntity<AllStatsByBetTitlesInSeasonDto> getAllStatsByBetTitlesInSeason(
+            @Parameter(description = "Season ID") @NotBlank String seasonId);
+
     @Operation(summary = "Team statistics", description = "Accessible to everyone")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Statistics by teams",
