@@ -73,6 +73,14 @@ public class StatsController implements StatsApi {
 
     @Override
     @PreAuthorize("hasAuthority('ADMIN')")
+    @GetMapping("/season/{season-id}/recalculation/bet-titles")
+    public ResponseEntity<Void> playersStatsByBetTitlesRecalculation(@PathVariable("season-id") String seasonId) {
+        statsService.playersStatsByBetTitlesRecalculation(seasonId);
+        return ResponseEntity.ok().build();
+    }
+
+    @Override
+    @PreAuthorize("hasAuthority('ADMIN')")
     @GetMapping("/season/{season-id}/recalculation/gameweeks")
     public ResponseEntity<Void> recalculateAllGameweekStats(@PathVariable("season-id") String seasonId) {
         statsService.recalculateAllGameweekStats(seasonId);

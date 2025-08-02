@@ -103,6 +103,17 @@ public interface StatsApi {
     ResponseEntity<Void> playersStatsByTeamsRecalculation(
             @Parameter(description = "Season ID") @NotBlank String seasonId);
 
+    @Operation(summary = "Full recalculation of bet titles player statistics for a season", description = "Accessible only to administrators")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Recalculated statistics of all players by bet titles in the season"),
+            @ApiResponse(responseCode = "403", description = "User not authenticated or not authorized",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto"))),
+            @ApiResponse(responseCode = "404", description = "Season not found",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto")))
+    })
+    ResponseEntity<Void> playersStatsByBetTitlesRecalculation(
+            @Parameter(description = "Season ID") @NotBlank String seasonId);
+
     @Operation(summary = "Recalculate all gameweek statistics", description = "Accessible only to administrators")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Recalculated statistics of all gameweeks"),

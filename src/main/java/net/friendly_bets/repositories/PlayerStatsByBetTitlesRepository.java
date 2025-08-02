@@ -13,7 +13,5 @@ public interface PlayerStatsByBetTitlesRepository extends MongoRepository<Player
 
     Optional<List<PlayerStatsByBetTitles>> findAllBySeasonId(String seasonId);
 
-    void deleteBySeasonIdAndUserId(String seasonId, String userId);
-
     void deleteAllBySeasonId(String seasonId);
 }

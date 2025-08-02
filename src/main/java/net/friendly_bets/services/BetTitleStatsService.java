@@ -16,7 +16,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 import static net.friendly_bets.models.enums.BetTitleCategory.CATEGORY_SUBCATEGORY_MAP;
@@ -87,9 +86,9 @@ public class BetTitleStatsService {
     public PlayerStatsByBetTitles createNewStatsByBetTitle(String seasonId, String userId) {
         List<BetTitleCategoryStats> categoryStatsList = new ArrayList<>();
 
-        for (Map.Entry<BetTitleCategory, Set<BetTitleSubCategory>> entry : CATEGORY_SUBCATEGORY_MAP.entrySet()) {
+        for (Map.Entry<BetTitleCategory, List<BetTitleSubCategory>> entry : CATEGORY_SUBCATEGORY_MAP.entrySet()) {
             BetTitleCategory category = entry.getKey();
-            Set<BetTitleSubCategory> subCategories = entry.getValue();
+            List<BetTitleSubCategory> subCategories = entry.getValue();
 
             List<BetTitleSubcategoryStats> subCategoryStatsList = subCategories.stream()
                     .map(this::createNewBetTitleSubcategoryStats)

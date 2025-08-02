@@ -35,6 +35,7 @@ public class StatsService {
 
     PlayerStatsService playerStatsService;
     TeamStatsService teamStatsService;
+    BetTitleStatsService betTitleStatsService;
     GameweekStatsService gameweekStatsService;
     GetEntityService getEntityService;
 
@@ -183,6 +184,17 @@ public class StatsService {
 
         for (PlayerStatsByTeams stats : statsMap.values()) {
             playerStatsByTeamsRepository.save(stats);
+        }
+    }
+
+    public void playersStatsByBetTitlesRecalculation(String seasonId) {
+        playerStatsByBetTitlesRepository.deleteAllBySeasonId(seasonId);
+        List<Bet> bets = betsRepository.findAllBySeason_Id(seasonId);
+
+        for (Bet bet : bets) {
+            if (WRL_STATUSES.contains(bet.getBetStatus())) {
+                betTitleStatsService.calculateStatsByBetTitle(seasonId, bet.getUser().getId(), bet, true);
+            }
         }
     }
 
