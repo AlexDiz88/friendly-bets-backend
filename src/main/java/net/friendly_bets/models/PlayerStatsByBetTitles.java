@@ -22,5 +22,6 @@ public class PlayerStatsByBetTitles {
     private String id;
     private String seasonId;
     private String userId;
+    private Double actualBalance;
     private List<BetTitleCategoryStats> betTitleCategoryStats;
 }

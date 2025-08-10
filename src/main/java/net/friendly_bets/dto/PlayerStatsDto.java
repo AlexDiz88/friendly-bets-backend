@@ -18,6 +18,9 @@ import java.util.stream.Collectors;
 @Schema(description = "Статистика игрока")
 public class PlayerStatsDto {
 
+    @Schema(description = "ID участника")
+    private String userId;
+
     @Schema(description = "аватар пользователя в формате base64")
     private String avatar;
 
@@ -56,6 +59,7 @@ public class PlayerStatsDto {
 
     public static PlayerStatsDto from(PlayerStats playerStats) {
         return PlayerStatsDto.builder()
+                .userId(playerStats.getUser().getId())
                 .avatar(playerStats.getUser().getAvatar() != null ?
                         Base64.getEncoder().encodeToString(playerStats.getUser().getAvatar().getData()) : null)
                 .username(playerStats.getUser().getUsername())

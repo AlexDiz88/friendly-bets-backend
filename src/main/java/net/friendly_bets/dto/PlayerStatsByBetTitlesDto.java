@@ -24,6 +24,9 @@ public class PlayerStatsByBetTitlesDto {
     @Schema(description = "ID игрока", example = "12-байтовый хэш ID")
     private String userId;
 
+    @Schema(description = "Баланс игрока", example = "125.45")
+    private Double actualBalance;
+
     @Schema(description = "список категорий ставок со статистикой")
     private List<BetTitleCategoryStats> betTitleCategoryStats;
 
@@ -32,6 +35,7 @@ public class PlayerStatsByBetTitlesDto {
         return PlayerStatsByBetTitlesDto.builder()
                 .seasonId(playerStatsByBetTitles.getSeasonId())
                 .userId(playerStatsByBetTitles.getUserId())
+                .actualBalance(playerStatsByBetTitles.getActualBalance())
                 .betTitleCategoryStats(playerStatsByBetTitles.getBetTitleCategoryStats())
                 .build();
     }

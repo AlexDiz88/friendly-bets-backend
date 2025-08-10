@@ -12,7 +12,7 @@ public interface PlayerStatsRepository extends MongoRepository<PlayerStats, Stri
 
     List<PlayerStats> findAllBySeasonId(String seasonId);
 
-    Optional<PlayerStats> findAllBySeasonIdAndUser(String seasonId, User user);
+    Optional<PlayerStats> findAllBySeasonIdAndLeagueIdAndUser_Id(String seasonId, String leagueId, String userId);
 
     Optional<PlayerStats> findBySeasonIdAndLeagueIdAndUser(String seasonId, String leagueId, User user);
 

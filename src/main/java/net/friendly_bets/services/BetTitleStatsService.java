@@ -3,10 +3,7 @@ package net.friendly_bets.services;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
-import net.friendly_bets.models.Bet;
-import net.friendly_bets.models.BetTitleCategoryStats;
-import net.friendly_bets.models.BetTitleSubcategoryStats;
-import net.friendly_bets.models.PlayerStatsByBetTitles;
+import net.friendly_bets.models.*;
 import net.friendly_bets.models.enums.BetTitleCategory;
 import net.friendly_bets.models.enums.BetTitleSubCategory;
 import net.friendly_bets.repositories.PlayerStatsByBetTitlesRepository;
@@ -19,6 +16,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import static net.friendly_bets.models.enums.BetTitleCategory.CATEGORY_SUBCATEGORY_MAP;
+import static net.friendly_bets.utils.Constants.TOTAL_ID;
 import static net.friendly_bets.utils.StatsUtils.*;
 
 
@@ -28,6 +26,7 @@ import static net.friendly_bets.utils.StatsUtils.*;
 public class BetTitleStatsService {
 
     PlayerStatsByBetTitlesRepository playerStatsByBetTitlesRepository;
+    GetEntityService getEntityService;
 
     // ------------------------------------------------------------------------------------------------------ //
 
@@ -54,6 +53,10 @@ public class BetTitleStatsService {
 
         modifyBetTitleStats(subcategoryStats, bet, isPlus);
         modifyBetTitleStats(subcategorySummaryStats, bet, isPlus);
+
+        PlayerStats playerStats = getEntityService.getTotalPlayerStatsOrThrow(seasonId, TOTAL_ID, userId);
+        playerStatsByBetTitles.setActualBalance(playerStats.getActualBalance());
+
         saveStatsByBetTitle(playerStatsByBetTitles);
     }
 
@@ -105,6 +108,7 @@ public class BetTitleStatsService {
         return PlayerStatsByBetTitles.builder()
                 .seasonId(seasonId)
                 .userId(userId)
+                .actualBalance(0.0)
                 .betTitleCategoryStats(categoryStatsList)
                 .build();
     }
@@ -178,12 +182,12 @@ public class BetTitleStatsService {
 
         //========= GOALS =========
         if (code >= 1301 && code <= 1350) return BetTitleSubCategory.BOTH_SCORES;
+        if (code >= 1351 && code <= 1400) return BetTitleSubCategory.GOALS_IN_HALFTIMES;
         if (code >= 1401 && code <= 1450) return BetTitleSubCategory.BOTH_SCORES_AND_GAME_RESULT;
         if (code >= 1451 && code <= 1500) return BetTitleSubCategory.OTHER;
         if (code >= 1501 && code <= 1600) return BetTitleSubCategory.BOTH_SCORES_AND_TOTAL_GOALS;
 
         //========= HALFTIMES =========
-        if (code >= 1351 && code <= 1400) return BetTitleSubCategory.GOALS_HALFTIME;
         if (code >= 2001 && code <= 2100) return BetTitleSubCategory.GAME_RESULT;
         if (code >= 2101 && code <= 2200) return BetTitleSubCategory.HALF_FULL_FIRST_SECOND;
         if (code >= 2201 && code <= 2300) return BetTitleSubCategory.GAME_SCORE;
