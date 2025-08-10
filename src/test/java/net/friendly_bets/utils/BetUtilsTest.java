@@ -52,113 +52,113 @@ class BetUtilsTest {
     @ParameterizedTest
     @EnumSource(value = Bet.BetStatus.class, names = {"OPENED", "EMPTY", "DELETED"})
     @DisplayName("Should do nothing when bet status is not in WRL_STATUSES")
-    void checkGameResult_ShouldDoNothing_WhenBetStatusIsNotWRLStatus(Bet.BetStatus betStatus) {
+    void checkGameScore_ShouldDoNothing_WhenBetStatusIsNotWRLStatus(Bet.BetStatus betStatus) {
         // given
-        GameResult nullGameResult = null;
-        GameResult normalGameResult = new GameResult("2:1", "1:0", null, null);
+        GameScore nullGameScore = null;
+        GameScore normalGameScore = new GameScore("2:1", "1:0", null, null);
 
         // when + then
-        assertDoesNotThrow(() -> BetUtils.checkGameResult(nullGameResult, betStatus));
-        assertDoesNotThrow(() -> BetUtils.checkGameResult(normalGameResult, betStatus));
+        assertDoesNotThrow(() -> BetUtils.checkGameScore(nullGameScore, betStatus));
+        assertDoesNotThrow(() -> BetUtils.checkGameScore(normalGameScore, betStatus));
     }
 
     @ParameterizedTest
     @EnumSource(value = Bet.BetStatus.class, names = {"WON", "RETURNED", "LOST"})
-    @DisplayName("Should throw BadRequestException when game result is null and bet status is in WRL_STATUSES")
-    void checkGameResult_ShouldThrowException_WhenGameResultIsNullAndBetStatusIsWRLStatus(Bet.BetStatus betStatus) {
+    @DisplayName("Should throw BadRequestException when GameScore is null and bet status is in WRL_STATUSES")
+    void checkGameScore_ShouldThrowException_WhenGameScoreIsNullAndBetStatusIsWRLStatus(Bet.BetStatus betStatus) {
         // given
-        GameResult gameResult = null;
+        GameScore gameScore = null;
 
         // when + then
         BadRequestException exception = assertThrows(BadRequestException.class,
-                () -> BetUtils.checkGameResult(gameResult, betStatus));
+                () -> BetUtils.checkGameScore(gameScore, betStatus));
 
-        assertEquals("gameResultIsNull", exception.getMessage());
+        assertEquals("gameScoreIsNull", exception.getMessage());
     }
 
     @ParameterizedTest
-    @MethodSource("provideInvalidGameResults")
-    @DisplayName("Should throw BadRequestException when GameResult has invalid fullTime or firstTime")
-    void checkGameResult_ShouldThrowException_WhenGameResultIsInvalid(GameResult gameResult) {
+    @MethodSource("provideInvalidGameScores")
+    @DisplayName("Should throw BadRequestException when GameScore has invalid fullTime or firstTime")
+    void checkGameScore_ShouldThrowException_WhenGameScoreIsInvalid(GameScore gameScore) {
         // given
         Bet.BetStatus betStatus = Bet.BetStatus.WON;
 
         // when + then
         BadRequestException exception = assertThrows(BadRequestException.class,
-                () -> BetUtils.checkGameResult(gameResult, betStatus));
+                () -> BetUtils.checkGameScore(gameScore, betStatus));
 
-        assertEquals("incorrectGameResult", exception.getMessage());
+        assertEquals("incorrectGameScore", exception.getMessage());
     }
 
-    private static Stream<GameResult> provideInvalidGameResults() {
+    private static Stream<GameScore> provideInvalidGameScores() {
         return Stream.of(
-                GameResult.builder().fullTime(null).firstTime(null).build(),
-                GameResult.builder().fullTime("1-0").firstTime(null).build(),
-                GameResult.builder().fullTime(null).firstTime("2-1").build(),
-                GameResult.builder().fullTime("1-0").firstTime("").build(),
-                GameResult.builder().fullTime("").firstTime("2-1").build(),
-                GameResult.builder().fullTime("1-0").firstTime("  ").build(),
-                GameResult.builder().fullTime(" ").firstTime("2-1").build());
+                GameScore.builder().fullTime(null).firstTime(null).build(),
+                GameScore.builder().fullTime("1-0").firstTime(null).build(),
+                GameScore.builder().fullTime(null).firstTime("2-1").build(),
+                GameScore.builder().fullTime("1-0").firstTime("").build(),
+                GameScore.builder().fullTime("").firstTime("2-1").build(),
+                GameScore.builder().fullTime("1-0").firstTime("  ").build(),
+                GameScore.builder().fullTime(" ").firstTime("2-1").build());
     }
 
     @ParameterizedTest
-    @MethodSource("validGameResultsProvider")
-    @DisplayName("Should not throw exception when valid game result and valid bet status are provided")
-    void checkGameResult_ShouldPass_WhenValidGameResultAndValidBetStatusAreProvided(GameResult validGameResult) {
+    @MethodSource("validGameScoreProvider")
+    @DisplayName("Should not throw exception when valid GameScore and valid bet status are provided")
+    void checkGameScore_ShouldPass_WhenValidGameScoreAndValidBetStatusAreProvided(GameScore validGameScore) {
         Bet.BetStatus betStatus = Bet.BetStatus.WON;
 
-        assertDoesNotThrow(() -> BetUtils.checkGameResult(validGameResult, betStatus));
+        assertDoesNotThrow(() -> BetUtils.checkGameScore(validGameScore, betStatus));
     }
 
-    private static Stream<GameResult> validGameResultsProvider() {
+    private static Stream<GameScore> validGameScoreProvider() {
         return Stream.of(
-                new GameResult("3:1", "1:1", null, null),
-                new GameResult("2:2", "2:2", null, null),
-                new GameResult("3:3", "0:0", null, null),
-                new GameResult("0:0", "0:0", null, null),
-                new GameResult("1:1", "0:1", "2:1", null),
-                new GameResult("1:1", "0:0", "0:1", null),
-                new GameResult("3:1", "1:1", "2:0", null),
-                new GameResult("2:5", "2:0", "1:0", null),
-                new GameResult("0:0", "0:0", "0:0", "4:3"),
-                new GameResult("2:2", "2:0", "1:1", "3:5"),
-                new GameResult("3:1", "1:1", "0:0", "4:2"),
-                new GameResult("1:3", "0:1", "1:1", "3:0")
+                new GameScore("3:1", "1:1", null, null),
+                new GameScore("2:2", "2:2", null, null),
+                new GameScore("3:3", "0:0", null, null),
+                new GameScore("0:0", "0:0", null, null),
+                new GameScore("1:1", "0:1", "2:1", null),
+                new GameScore("1:1", "0:0", "0:1", null),
+                new GameScore("3:1", "1:1", "2:0", null),
+                new GameScore("2:5", "2:0", "1:0", null),
+                new GameScore("0:0", "0:0", "0:0", "4:3"),
+                new GameScore("2:2", "2:0", "1:1", "3:5"),
+                new GameScore("3:1", "1:1", "0:0", "4:2"),
+                new GameScore("1:3", "0:1", "1:1", "3:0")
         );
     }
 
     @ParameterizedTest
-    @MethodSource("invalidGameResultsProvider")
-    @DisplayName("Should throw BadRequestException when invalid game result and valid bet status")
-    void shouldFail_WhenFirstHalfScoreHigherThanFullTimeScore(GameResult invalidGameResult) {
+    @MethodSource("invalidGameScoreProvider")
+    @DisplayName("Should throw BadRequestException when invalid GameScore and valid bet status")
+    void shouldFail_WhenFirstHalfScoreHigherThanFullTimeScore(GameScore invalidGameScore) {
         // given
         Bet.BetStatus betStatus = Bet.BetStatus.WON;
 
         // when + then
         BadRequestException exception = assertThrows(BadRequestException.class,
-                () -> BetUtils.checkGameResult(invalidGameResult, betStatus));
+                () -> BetUtils.checkGameScore(invalidGameScore, betStatus));
 
-        assertEquals("incorrectGameResult", exception.getMessage());
+        assertEquals("incorrectGameScore", exception.getMessage());
     }
 
-    private static Stream<GameResult> invalidGameResultsProvider() {
+    private static Stream<GameScore> invalidGameScoreProvider() {
         return Stream.of(
-                new GameResult("1 1", "1:1", null, null),
-                new GameResult("1-1", "1:1", null, null),
-                new GameResult("1:1!", "1:1", null, null),
-                new GameResult("1: 1", "1:1", null, null),
-                new GameResult(":1:1", "1:1", null, null),
-                new GameResult("0:01", "0:0", null, null),
-                new GameResult("3::1", "1:1", null, null),
-                new GameResult("test", "1:1", null, null),
-                new GameResult("0:0", "1:1", null, null),
-                new GameResult("0:0", "1:1", null, "1:3"),
-                new GameResult("1:1", "1:1", "1:1", null),
-                new GameResult("3:1", "2:0", "0:0", null),
-                new GameResult("3:3", "1:2", "1:1", "3:3"),
-                new GameResult("2:0", "0:0", "1:1", "4:0"),
-                new GameResult("3:3", "1:2", "1:3", "3:3"),
-                new GameResult("0:1", "1:2", "2:1", "7:3")
+                new GameScore("1 1", "1:1", null, null),
+                new GameScore("1-1", "1:1", null, null),
+                new GameScore("1:1!", "1:1", null, null),
+                new GameScore("1: 1", "1:1", null, null),
+                new GameScore(":1:1", "1:1", null, null),
+                new GameScore("0:01", "0:0", null, null),
+                new GameScore("3::1", "1:1", null, null),
+                new GameScore("test", "1:1", null, null),
+                new GameScore("0:0", "1:1", null, null),
+                new GameScore("0:0", "1:1", null, "1:3"),
+                new GameScore("1:1", "1:1", "1:1", null),
+                new GameScore("3:1", "2:0", "0:0", null),
+                new GameScore("3:3", "1:2", "1:1", "3:3"),
+                new GameScore("2:0", "0:0", "1:1", "4:0"),
+                new GameScore("3:3", "1:2", "1:3", "3:3"),
+                new GameScore("0:1", "1:2", "2:1", "7:3")
         );
     }
 
@@ -267,7 +267,7 @@ class BetUtilsTest {
         editedBet.setBetTitle(betTitle);
         Bet.BetStatus betStatus = Bet.BetStatus.OPENED;
 
-        when(betsRepository.existsBySeason_IdAndLeague_IdAndUser_IdAndMatchDayAndHomeTeam_IdAndAwayTeam_IdAndBetTitle_CodeAndBetTitle_IsNotAndBetOddsAndBetSizeAndGameResultAndBetStatus(
+        when(betsRepository.existsBySeason_IdAndLeague_IdAndUser_IdAndMatchDayAndHomeTeam_IdAndAwayTeam_IdAndBetTitle_CodeAndBetTitle_IsNotAndBetOddsAndBetSizeAndGameScoreAndBetStatus(
                 any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(true);
 
@@ -287,7 +287,7 @@ class BetUtilsTest {
         editedBet.setBetTitle(betTitle);
         Bet.BetStatus betStatus = Bet.BetStatus.OPENED;
 
-        when(betsRepository.existsBySeason_IdAndLeague_IdAndUser_IdAndMatchDayAndHomeTeam_IdAndAwayTeam_IdAndBetTitle_CodeAndBetTitle_IsNotAndBetOddsAndBetSizeAndGameResultAndBetStatus(
+        when(betsRepository.existsBySeason_IdAndLeague_IdAndUser_IdAndMatchDayAndHomeTeam_IdAndAwayTeam_IdAndBetTitle_CodeAndBetTitle_IsNotAndBetOddsAndBetSizeAndGameScoreAndBetStatus(
                 any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(false);
 
@@ -423,7 +423,7 @@ class BetUtilsTest {
                 .betOdds(1.75)
                 .betSize(10)
                 .betStatus(Bet.BetStatus.WON)
-                .gameResult(new GameResult())
+                .gameScore(new GameScore())
                 .balanceChange(7.5)
                 .build();
 
@@ -440,7 +440,7 @@ class BetUtilsTest {
         assertEquals(originalBet.getBetOdds(), previousStateBet.getBetOdds());
         assertEquals(originalBet.getBetSize(), previousStateBet.getBetSize());
         assertEquals(originalBet.getBetStatus(), previousStateBet.getBetStatus());
-        assertEquals(originalBet.getGameResult(), previousStateBet.getGameResult());
+        assertEquals(originalBet.getGameScore(), previousStateBet.getGameScore());
         assertEquals(originalBet.getBalanceChange(), previousStateBet.getBalanceChange());
     }
 
@@ -581,7 +581,7 @@ class BetUtilsTest {
     void processBetResultValues_ShouldUpdateBalanceChangeAndBetResult(Bet.BetStatus betStatus, int betSize, double betOdds, double expectedBalanceChange) {
         // given
         User moderator = new User();
-        GameResult gameResult = new GameResult();
+        GameScore gameScore = new GameScore();
 
         Bet bet = Bet.builder()
                 .betSize(betSize)
@@ -590,7 +590,7 @@ class BetUtilsTest {
 
         BetResult betResult = BetResult.builder()
                 .betStatus(betStatus.name())
-                .gameResult(gameResult)
+                .gameScore(gameScore)
                 .build();
 
         // when
@@ -601,7 +601,7 @@ class BetUtilsTest {
         assertNotNull(bet.getBetResultAddedAt());
         assertEquals(moderator, bet.getBetResultAddedBy());
         assertEquals(betStatus, bet.getBetStatus());
-        assertEquals(gameResult, bet.getGameResult());
+        assertEquals(gameScore, bet.getGameScore());
     }
 
     static Stream<Arguments> provideBetResultValues() {
@@ -637,7 +637,7 @@ class BetUtilsTest {
                 .betTitle(new BetTitle())
                 .betSize(10)
                 .betOdds(2.2)
-                .gameResult(new GameResult())
+                .gameScore(new GameScore())
                 .betStatus(Bet.BetStatus.WON)
                 .build();
 
@@ -651,14 +651,14 @@ class BetUtilsTest {
                 .label("betLabel")
                 .isNot(true)
                 .build();
-        GameResult newGameResult = GameResult.builder().fullTime("2:2").firstTime("1:1").build();
+        GameScore newGameScore = GameScore.builder().fullTime("2:2").firstTime("1:1").build();
 
         EditedBetDto editedBet = EditedBetDto.builder()
                 .matchDay(newMatchday)
                 .betTitle(newBetTitle)
                 .betSize(newBetSize)
                 .betOdds(newBetOdds)
-                .gameResult(newGameResult)
+                .gameScore(newGameScore)
                 .betStatus(newBetStatus.toString())
                 .build();
 
@@ -682,7 +682,7 @@ class BetUtilsTest {
         assertEquals(newBetSize, bet.getBetSize());
         assertEquals(newBetStatus, bet.getBetStatus());
 
-        assertEquals(newGameResult, bet.getGameResult());
+        assertEquals(newGameScore, bet.getGameScore());
         assertEquals(expectedBalanceChange, bet.getBalanceChange());
     }
 
@@ -696,8 +696,8 @@ class BetUtilsTest {
 
     @ParameterizedTest
     @MethodSource("provideNonWrlBetValues")
-    @DisplayName("Should update edited bet values correctly but not update balance and game result for non-WRL bet statuses")
-    void updateEditedBetValues_ShouldNotUpdateBalanceOrGameResultForNonWrlStatuses(Integer newBetSize, Double newBetOdds, Bet.BetStatus newBetStatus) {
+    @DisplayName("Should update edited bet values correctly but not update balance and GameScore for non-WRL bet statuses")
+    void updateEditedBetValues_ShouldNotUpdateBalanceOrGameScoreForNonWrlStatuses(Integer newBetSize, Double newBetOdds, Bet.BetStatus newBetStatus) {
         // given
         String expectedBetId = "betId";
         Season season = Season.builder().id("seasonId").build();
@@ -755,7 +755,7 @@ class BetUtilsTest {
         assertEquals(newBetSize, bet.getBetSize());
 
         assertNull(bet.getBalanceChange());
-        assertNull(bet.getGameResult());
+        assertNull(bet.getGameScore());
     }
 
     static Stream<Arguments> provideNonWrlBetValues() {

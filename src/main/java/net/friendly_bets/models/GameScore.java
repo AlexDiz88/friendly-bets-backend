@@ -9,9 +9,9 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Builder
 @Data
-public class GameResult {
-    private String leagueId;
-    private String homeTeamId;
-    private String awayTeamId;
-    private GameScore gameScore;
+public class GameScore {
+    private String fullTime;
+    private String firstTime;
+    private String overTime;
+    private String penalty;
 }

@@ -72,7 +72,7 @@ public class Bet {
     private User betResultAddedBy;
 
     @Field(name = "game_result")
-    private GameResult gameResult;
+    private GameScore gameScore;
 
     @Field(name = "bet_status")
     private BetStatus betStatus;

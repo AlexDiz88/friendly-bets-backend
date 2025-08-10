@@ -76,6 +76,10 @@ public class GetEntityService {
                 .orElseThrow(() -> new BadRequestException("leagueNotFoundInSeasonCalendar"));
     }
 
+    public PlayerStats getTotalPlayerStatsOrThrow(String seasonId, String leagueId, String userId) {
+        return playerStatsRepository.findAllBySeasonIdAndLeagueIdAndUser_Id(seasonId, leagueId, userId)
+                .orElseThrow(() -> new BadRequestException("playerStatsForSeasonNotFound"));
+    }
 
     public PlayerStats getPlayerStatsOrNull(String seasonId, String leagueId, User user) {
         Optional<PlayerStats> playerStatsOptional =

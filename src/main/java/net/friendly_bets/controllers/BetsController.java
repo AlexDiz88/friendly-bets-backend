@@ -4,7 +4,7 @@ import lombok.RequiredArgsConstructor;
 import net.friendly_bets.controllers.api.BetsApi;
 import net.friendly_bets.dto.*;
 import net.friendly_bets.models.BetResult;
-import net.friendly_bets.models.BetTitleCode;
+import net.friendly_bets.models.enums.BetTitleCode;
 import net.friendly_bets.security.details.AuthenticatedUser;
 import net.friendly_bets.services.BetsService;
 import org.springframework.data.domain.PageRequest;
@@ -54,6 +54,16 @@ public class BetsController implements BetsApi {
                                                @RequestBody @Valid BetResult betResult) {
         String moderatorId = currentUser.getUser().getId();
         return ResponseEntity.ok(betsService.setBetResult(moderatorId, betId, betResult));
+    }
+
+    @Override
+    @PreAuthorize("hasAuthority('ADMIN') || hasAuthority('MODERATOR')")
+    @PostMapping("/set-auto-bet-results")
+    public ResponseEntity<BetsPage> setBetResults(@AuthenticationPrincipal AuthenticatedUser currentUser,
+                                                  @RequestBody @Valid GameResultsRequest request) {
+        System.out.println(request);
+        String moderatorId = currentUser.getUser().getId();
+        return ResponseEntity.ok(betsService.setBetResults(moderatorId, request.getSeasonId(), request.getGameResults()));
     }
 
     @Override

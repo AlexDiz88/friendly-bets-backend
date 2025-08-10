@@ -5,7 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import net.friendly_bets.models.BetTitle;
-import net.friendly_bets.models.GameResult;
+import net.friendly_bets.models.GameScore;
 
 import javax.validation.constraints.Min;
 import javax.validation.constraints.NotBlank;
@@ -51,7 +51,7 @@ public class EditedBetDto {
     @Min(value = 1, message = "{field.bet.betSizeMinValue}")
     private Integer betSize;
 
-    private GameResult gameResult;
+    private GameScore gameScore;
 
     @NotNull(message = "{field.isNull}")
     @NotBlank(message = "{field.bet.blankBetStatus}")

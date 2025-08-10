@@ -7,6 +7,7 @@ import net.friendly_bets.dto.NewEmptyBet;
 import net.friendly_bets.exceptions.BadRequestException;
 import net.friendly_bets.exceptions.ConflictException;
 import net.friendly_bets.models.*;
+import net.friendly_bets.models.enums.BetTitleCode;
 import net.friendly_bets.repositories.BetsRepository;
 import net.friendly_bets.repositories.LeaguesRepository;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,30 +25,30 @@ import static net.friendly_bets.utils.Constants.WRL_STATUSES;
 @UtilityClass
 public class BetUtils {
 
-    public static void checkGameResult(GameResult gameResult, Bet.BetStatus betStatus) {
+    public static void checkGameScore(GameScore gameScore, Bet.BetStatus betStatus) {
         if (WRL_STATUSES.contains(betStatus)) {
-            if (gameResult == null) {
-                throw new BadRequestException("gameResultIsNull");
+            if (gameScore == null) {
+                throw new BadRequestException("gameScoreIsNull");
             }
-            if ((gameResult.getFullTime() == null && gameResult.getFirstTime() == null)
-                    || gameResult.getFullTime() == null || gameResult.getFirstTime() == null
-                    || gameResult.getFullTime().isBlank() || gameResult.getFirstTime().isBlank()) {
-                throw new BadRequestException("incorrectGameResult");
+            if ((gameScore.getFullTime() == null && gameScore.getFirstTime() == null)
+                    || gameScore.getFullTime() == null || gameScore.getFirstTime() == null
+                    || gameScore.getFullTime().isBlank() || gameScore.getFirstTime().isBlank()) {
+                throw new BadRequestException("incorrectGameScore");
             }
 
-            boolean isGameScoreValid = isGameScoreValid(gameResult);
+            boolean isGameScoreValid = isGameScoreValid(gameScore);
 
             if (!isGameScoreValid) {
-                throw new BadRequestException("incorrectGameResult");
+                throw new BadRequestException("incorrectGameScore");
             }
         }
     }
 
-    private static boolean isGameScoreValid(GameResult gameResult) {
-        String fullTime = gameResult.getFullTime();
-        String firstTime = gameResult.getFirstTime();
-        String overTime = gameResult.getOverTime();
-        String penalty = gameResult.getPenalty();
+    private static boolean isGameScoreValid(GameScore gameScore) {
+        String fullTime = gameScore.getFullTime();
+        String firstTime = gameScore.getFirstTime();
+        String overTime = gameScore.getOverTime();
+        String penalty = gameScore.getPenalty();
 
         int[] fullTimeScore = parseScorePart(fullTime);
         int[] firstTimeScore = parseScorePart(firstTime);
@@ -117,7 +118,7 @@ public class BetUtils {
 
             return new int[]{home, away};
         } catch (NumberFormatException e) {
-            throw new BadRequestException("incorrectGameResult");
+            throw new BadRequestException("incorrectGameScore");
         }
     }
 
@@ -155,7 +156,7 @@ public class BetUtils {
     }
 
     public static void checkIfBetAlreadyEdited(BetsRepository betsRepo, EditedBetDto editedBet, Bet.BetStatus betStatus) {
-        if (betsRepo.existsBySeason_IdAndLeague_IdAndUser_IdAndMatchDayAndHomeTeam_IdAndAwayTeam_IdAndBetTitle_CodeAndBetTitle_IsNotAndBetOddsAndBetSizeAndGameResultAndBetStatus(
+        if (betsRepo.existsBySeason_IdAndLeague_IdAndUser_IdAndMatchDayAndHomeTeam_IdAndAwayTeam_IdAndBetTitle_CodeAndBetTitle_IsNotAndBetOddsAndBetSizeAndGameScoreAndBetStatus(
                 editedBet.getSeasonId(),
                 editedBet.getLeagueId(),
                 editedBet.getUserId(),
@@ -166,7 +167,7 @@ public class BetUtils {
                 editedBet.getBetTitle().isNot(),
                 editedBet.getBetOdds(),
                 editedBet.getBetSize(),
-                editedBet.getGameResult(),
+                editedBet.getGameScore(),
                 betStatus)) {
             throw new ConflictException("betAlreadyEdited");
         }
@@ -233,7 +234,7 @@ public class BetUtils {
                 .betSize(bet.getBetSize())
                 .betResultAddedAt(bet.getBetResultAddedAt())
                 .betResultAddedBy(bet.getBetResultAddedBy())
-                .gameResult(bet.getGameResult())
+                .gameScore(bet.getGameScore())
                 .betStatus(bet.getBetStatus())
                 .balanceChange(bet.getBalanceChange())
                 .updatedAt(bet.getUpdatedAt())
@@ -275,7 +276,7 @@ public class BetUtils {
         bet.setBetResultAddedAt(LocalDateTime.now());
         bet.setBetResultAddedBy(moderator);
         bet.setBetStatus(betStatus);
-        bet.setGameResult(betResult.getGameResult());
+        bet.setGameScore(betResult.getGameScore());
     }
 
     private static void updateBalanceChange(Bet bet, Bet.BetStatus betStatus, Integer betSize, Double betOdds) {
@@ -301,9 +302,9 @@ public class BetUtils {
         checkIfBetAlreadyEdited(betsRepository, editedBet, betStatus);
 
         if (WRL_STATUSES.contains(bet.getBetStatus())) {
-            checkGameResult(editedBet.getGameResult(), bet.getBetStatus());
+            checkGameScore(editedBet.getGameScore(), bet.getBetStatus());
             updateBalanceChange(bet, betStatus, editedBet.getBetSize(), editedBet.getBetOdds());
-            bet.setGameResult(editedBet.getGameResult());
+            bet.setGameScore(editedBet.getGameScore());
         }
 
         bet.setBetStatus(betStatus);
@@ -353,5 +354,13 @@ public class BetUtils {
                 throw new ConflictException("Выбранная лига с указанным туром уже добавлена в календарь - " + node.getLeagueCode() + " " + node.getMatchDay());
             }
         }
+    }
+
+    public static Bet.BetStatus invertBetStatus(Bet.BetStatus original) {
+        return switch (original) {
+            case WON -> Bet.BetStatus.LOST;
+            case LOST -> Bet.BetStatus.WON;
+            default -> original; // RETURNED — не инвертируется
+        };
     }
 }

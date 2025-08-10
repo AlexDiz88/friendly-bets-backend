@@ -12,7 +12,7 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-@Schema(description = "Страница со списком статистики всех игроков")
+@Schema(description = "Страница со списком статистики всех игроков по командам")
 public class AllStatsByTeamsInSeasonDto {
 
     @Schema(description = "Список статистики всех игроков по командам")
