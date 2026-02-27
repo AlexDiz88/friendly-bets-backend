@@ -126,6 +126,9 @@ public class BetsService {
                 BetTitleCode betTitleCode = BetTitleCode.fromCode(betTitleCodeNumber);
                 GameScore gameScore = gameResult.getGameScore();
                 Bet.BetStatus betStatus = betTitleCode.getChecker().check(gameScore, betTitleCode);
+                if (betStatus == Bet.BetStatus.OPENED) {
+                    continue;
+                }
 
                 boolean isNot = bet.getBetTitle().isNot(); // инверсия BetStatus, если установлен флаг "нет"
                 if (isNot) {

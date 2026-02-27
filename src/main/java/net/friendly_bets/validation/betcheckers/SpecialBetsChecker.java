@@ -23,6 +23,7 @@ public class SpecialBetsChecker implements BetChecker {
         boolean isPenalty = checkExtraTime(gameScore.getPenalty());
         boolean homeAny = home > away || homeOvertime > awayOvertime || homePenalty > awayPenalty;
         boolean awayAny = home < away || homeOvertime < awayOvertime || homePenalty < awayPenalty;
+        Boolean homeAdvanced = getPlayoffWinner(isOverTime, isPenalty, homeOvertime, awayOvertime, homePenalty, awayPenalty);
 
         return switch (code) {
             case CLEAN_WIN_HOME -> home > away && away == 0 ? BetStatus.WON : BetStatus.LOST;
@@ -51,10 +52,11 @@ public class SpecialBetsChecker implements BetChecker {
             case PLAYOFF_AWAY_WIN_PENALTIES -> homePenalty < awayPenalty ? BetStatus.WON : BetStatus.LOST;
             case PLAYOFF_HOME_OR_AWAY_PENALTIES -> homePenalty != awayPenalty ? BetStatus.WON : BetStatus.LOST;
 
-            case PLAYOFF_HOME_ADVANCE_NEXT_STAGE -> homeAny ? BetStatus.WON : BetStatus.LOST;
-            case PLAYOFF_AWAY_ADVANCE_NEXT_STAGE -> awayAny ? BetStatus.WON : BetStatus.LOST;
-            case PLAYOFF_HOME_ADVANCE_FINAL -> homeAny ? BetStatus.WON : BetStatus.LOST;
-            case PLAYOFF_AWAY_ADVANCE_FINAL -> awayAny ? BetStatus.WON : BetStatus.LOST;
+            // TODO: нужно придумать систему авто-определения результата ставок "команда выйдет в след.стадию/в финал". Текущая система учитывает только результат одной игры а не серии.
+            case PLAYOFF_HOME_ADVANCE_NEXT_STAGE -> homeAdvanced == null ? BetStatus.OPENED : homeAdvanced ? BetStatus.WON : BetStatus.LOST;
+            case PLAYOFF_AWAY_ADVANCE_NEXT_STAGE -> homeAdvanced == null ? BetStatus.OPENED : !homeAdvanced ? BetStatus.WON : BetStatus.LOST;
+            case PLAYOFF_HOME_ADVANCE_FINAL -> homeAdvanced == null ? BetStatus.OPENED : homeAdvanced ? BetStatus.WON : BetStatus.LOST;
+            case PLAYOFF_AWAY_ADVANCE_FINAL -> homeAdvanced == null ? BetStatus.OPENED : !homeAdvanced ? BetStatus.WON : BetStatus.LOST;
             case PLAYOFF_HOME_WIN_TOURNAMENT -> homeAny ? BetStatus.WON : BetStatus.LOST;
             case PLAYOFF_AWAY_WIN_TOURNAMENT -> awayAny ? BetStatus.WON : BetStatus.LOST;
 
@@ -64,5 +66,19 @@ public class SpecialBetsChecker implements BetChecker {
 
     private boolean checkExtraTime(String extraTime) {
         return extraTime != null && !extraTime.isBlank();
+    }
+
+    private Boolean getPlayoffWinner(boolean isOverTime, boolean isPenalty, int homeOT, int awayOT, int homePen, int awayPen) {
+        if (isPenalty) {
+            if (homePen > awayPen) return true;
+            if (homePen < awayPen) return false;
+            return null;
+        }
+        if (isOverTime) {
+            if (homeOT > awayOT) return true;
+            if (homeOT < awayOT) return false;
+            return null;
+        }
+        return null; // невозможно определить
     }
 }
