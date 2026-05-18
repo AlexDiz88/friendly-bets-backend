@@ -1,10 +1,12 @@
 package net.friendly_bets.support;
 
 import lombok.RequiredArgsConstructor;
+import net.friendly_bets.dto.BetDto;
 import net.friendly_bets.dto.NewBetDto;
 import net.friendly_bets.models.*;
 import net.friendly_bets.models.enums.BetTitleCode;
 import net.friendly_bets.repositories.*;
+import net.friendly_bets.services.BetsService;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
@@ -30,6 +32,7 @@ public class TestDataFactory {
     private final SeasonsRepository seasonsRepository;
     private final CalendarsRepository calendarsRepository;
     private final BetsRepository betsRepository;
+    private final BetsService betsService;
 
     // ------------------------------------------------------------------------------------------------------ //
 
@@ -265,41 +268,62 @@ public class TestDataFactory {
     }
 
     /**
-     * {@link #createMinimalSeasonSetup()} + открытая ставка в календаре.
+     * {@link #createMinimalSeasonSetup()} + открытая ставка через {@link BetsService} (со статистикой).
      */
     public TestFixture createSeasonWithOpenedBet() {
         TestFixture fixture = createMinimalSeasonSetup();
-        Bet bet = createOpenedBet(
-                fixture.getModerator(),
-                fixture.getPlayer(),
-                fixture.getSeason(),
-                fixture.getLeague(),
-                fixture.getHomeTeam(),
-                fixture.getAwayTeam(),
-                fixture.getCalendarNode(),
-                fixture.getMatchDay()
-        );
+        Bet bet = addOpenedBetViaService(fixture);
         return fixture.toBuilder().bet(bet).build();
     }
 
     /**
-     * {@link #createMinimalSeasonSetup()} + завершённая ставка (WON).
+     * {@link #createSeasonWithOpenedBet()} + результат WON через {@link BetsService}.
      */
     public TestFixture createSeasonWithWonBet() {
-        TestFixture fixture = createMinimalSeasonSetup();
-        Bet bet = createWonBet(
-                fixture.getModerator(),
-                fixture.getPlayer(),
-                fixture.getSeason(),
-                fixture.getLeague(),
-                fixture.getHomeTeam(),
-                fixture.getAwayTeam(),
-                fixture.getCalendarNode(),
-                fixture.getMatchDay(),
-                2.0,
-                10
-        );
+        TestFixture fixture = createSeasonWithOpenedBet();
+        Bet bet = setBetResultViaService(fixture, Bet.BetStatus.WON, defaultWinGameScore());
         return fixture.toBuilder().bet(bet).build();
+    }
+
+    public NewBetDto buildNewOpenedBetDto(TestFixture fixture) {
+        return NewBetDto.builder()
+                .userId(fixture.getPlayer().getId())
+                .seasonId(fixture.getSeason().getId())
+                .leagueId(fixture.getLeague().getId())
+                .matchDay(fixture.getMatchDay())
+                .homeTeamId(fixture.getHomeTeam().getId())
+                .awayTeamId(fixture.getAwayTeam().getId())
+                .betTitle(createDefaultBetTitle())
+                .betOdds(2.0)
+                .betSize(10)
+                .calendarNodeId(fixture.getCalendarNode().getId())
+                .build();
+    }
+
+    public Bet addOpenedBetViaService(TestFixture fixture) {
+        BetDto betDto = betsService.addOpenedBet(fixture.getModerator().getId(), buildNewOpenedBetDto(fixture));
+        return betsRepository.findById(betDto.getId()).orElseThrow();
+    }
+
+    public Bet setBetResultViaService(TestFixture fixture, Bet.BetStatus status, GameScore gameScore) {
+        BetResult betResult = BetResult.builder()
+                .gameScore(gameScore)
+                .betStatus(status.name())
+                .build();
+        BetDto betDto = betsService.setBetResult(
+                fixture.getModerator().getId(),
+                fixture.getBet().getId(),
+                betResult
+        );
+        return betsRepository.findById(betDto.getId()).orElseThrow();
+    }
+
+    public static GameScore defaultWinGameScore() {
+        return GameScore.builder().fullTime("2:1").firstTime("1:0").build();
+    }
+
+    public static GameScore defaultLossGameScore() {
+        return GameScore.builder().fullTime("0:1").firstTime("0:0").build();
     }
 
     // ------------------------------------------------------------------------------------------------------ //
