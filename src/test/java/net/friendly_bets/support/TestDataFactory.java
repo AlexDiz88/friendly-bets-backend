@@ -157,12 +157,45 @@ public class TestDataFactory {
         return createCalendarNode(seasonId, league, "1", 1);
     }
 
+    public CalendarNode createCalendarNodeWithMatchdays(String seasonId,
+                                                        League league,
+                                                        int betCountLimit,
+                                                        String... matchDays) {
+        List<LeagueMatchdayNode> nodes = new ArrayList<>();
+        for (String matchDay : matchDays) {
+            nodes.add(LeagueMatchdayNode.builder()
+                    .leagueId(league.getId())
+                    .leagueCode(league.getLeagueCode())
+                    .matchDay(matchDay)
+                    .betCountLimit(betCountLimit)
+                    .bets(new ArrayList<>())
+                    .build());
+        }
+
+        CalendarNode calendarNode = CalendarNode.builder()
+                .createdAt(LocalDateTime.now())
+                .seasonId(seasonId)
+                .startDate(LocalDate.now())
+                .endDate(LocalDate.now().plusDays(7))
+                .leagueMatchdayNodes(nodes)
+                .hasBets(false)
+                .isFinished(false)
+                .gameweekStats(new ArrayList<>())
+                .build();
+
+        return calendarsRepository.save(calendarNode);
+    }
+
     // ------------------------------------------------------------------------------------------------------ //
 
     public BetTitle createDefaultBetTitle() {
+        return createBetTitle(BetTitleCode.HOME_WIN);
+    }
+
+    public BetTitle createBetTitle(BetTitleCode betTitleCode) {
         return BetTitle.builder()
-                .code(BetTitleCode.HOME_WIN.getCode())
-                .label(BetTitleCode.HOME_WIN.getLabel())
+                .code(betTitleCode.getCode())
+                .label(betTitleCode.getLabel())
                 .isNot(false)
                 .build();
     }
@@ -324,6 +357,188 @@ public class TestDataFactory {
 
     public static GameScore defaultLossGameScore() {
         return GameScore.builder().fullTime("0:1").firstTime("0:0").build();
+    }
+
+    /**
+     * Сезон, 1 лига, 1 тур, 2 игрока, 2 команды, календарь с лимитом ставок на игрока.
+     */
+    public TwoPlayersTestFixture createTwoPlayersFirstMatchdaySetup(int betCountLimitPerUser) {
+        User moderator = createModerator();
+        User playerOne = createPlayer();
+        User playerTwo = createPlayer();
+        Team homeTeam = createHomeTeam();
+        Team awayTeam = createAwayTeam();
+        League league = createLeague();
+        league = addTeamToLeague(league, homeTeam);
+        league = addTeamToLeague(league, awayTeam);
+
+        Season season = createSeason("Integration season", 1, Season.Status.ACTIVE);
+        season = addPlayerToSeason(season, playerOne);
+        season = addPlayerToSeason(season, playerTwo);
+        season = addLeagueToSeason(season, league);
+
+        String matchDay = "1";
+        CalendarNode calendarNode = createCalendarNode(season.getId(), league, matchDay, betCountLimitPerUser);
+
+        return TwoPlayersTestFixture.builder()
+                .moderator(moderator)
+                .playerOne(playerOne)
+                .playerTwo(playerTwo)
+                .season(season)
+                .league(league)
+                .homeTeam(homeTeam)
+                .awayTeam(awayTeam)
+                .calendarNode(calendarNode)
+                .matchDay(matchDay)
+                .build();
+    }
+
+    public Bet addOpenedAndWonBet(TwoPlayersTestFixture fixture,
+                                  User player,
+                                  Team homeTeam,
+                                  Team awayTeam,
+                                  double betOdds,
+                                  int betSize) {
+        return addOpenedAndWonBet(fixture, player, homeTeam, awayTeam, betOdds, betSize, fixture.getMatchDay());
+    }
+
+    public Bet addOpenedAndWonBet(TwoPlayersTestFixture fixture,
+                                  User player,
+                                  Team homeTeam,
+                                  Team awayTeam,
+                                  double betOdds,
+                                  int betSize,
+                                  String matchDay) {
+        return addOpenedAndWonBet(fixture, player, homeTeam, awayTeam, betOdds, betSize, matchDay,
+                createDefaultBetTitle(), defaultWinGameScore());
+    }
+
+    public Bet addOpenedAndWonBet(TwoPlayersTestFixture fixture,
+                                  User player,
+                                  Team homeTeam,
+                                  Team awayTeam,
+                                  double betOdds,
+                                  int betSize,
+                                  String matchDay,
+                                  BetTitle betTitle,
+                                  GameScore gameScore) {
+        NewBetDto newBetDto = NewBetDto.builder()
+                .userId(player.getId())
+                .seasonId(fixture.getSeason().getId())
+                .leagueId(fixture.getLeague().getId())
+                .matchDay(matchDay)
+                .homeTeamId(homeTeam.getId())
+                .awayTeamId(awayTeam.getId())
+                .betTitle(betTitle)
+                .betOdds(betOdds)
+                .betSize(betSize)
+                .calendarNodeId(fixture.getCalendarNode().getId())
+                .build();
+
+        BetDto opened = betsService.addOpenedBet(fixture.getModerator().getId(), newBetDto);
+        BetResult betResult = BetResult.builder()
+                .gameScore(gameScore)
+                .betStatus(Bet.BetStatus.WON.name())
+                .build();
+        BetDto won = betsService.setBetResult(fixture.getModerator().getId(), opened.getId(), betResult);
+        return betsRepository.findById(won.getId()).orElseThrow();
+    }
+
+    public Bet addOpenedBet(TwoPlayersTestFixture fixture,
+                            User player,
+                            Team homeTeam,
+                            Team awayTeam,
+                            double betOdds,
+                            int betSize) {
+        NewBetDto newBetDto = NewBetDto.builder()
+                .userId(player.getId())
+                .seasonId(fixture.getSeason().getId())
+                .leagueId(fixture.getLeague().getId())
+                .matchDay(fixture.getMatchDay())
+                .homeTeamId(homeTeam.getId())
+                .awayTeamId(awayTeam.getId())
+                .betTitle(createDefaultBetTitle())
+                .betOdds(betOdds)
+                .betSize(betSize)
+                .calendarNodeId(fixture.getCalendarNode().getId())
+                .build();
+
+        BetDto opened = betsService.addOpenedBet(fixture.getModerator().getId(), newBetDto);
+        return betsRepository.findById(opened.getId()).orElseThrow();
+    }
+
+    /**
+     * 2 игрока, 3 команды в лиге, 1 тур — для сценариев смены соперника в editBet.
+     */
+    public TwoPlayersTestFixture createTwoPlayersThreeTeamsSetup(int betCountLimitPerUser) {
+        User moderator = createModerator();
+        User playerOne = createPlayer();
+        User playerTwo = createPlayer();
+        Team homeTeam = createHomeTeam();
+        Team awayTeam = createAwayTeam();
+        Team thirdTeam = createTeam("Third");
+        League league = createLeague();
+        league = addTeamToLeague(league, homeTeam);
+        league = addTeamToLeague(league, awayTeam);
+        league = addTeamToLeague(league, thirdTeam);
+
+        Season season = createSeason("Integration season 3 teams", 1, Season.Status.ACTIVE);
+        season = addPlayerToSeason(season, playerOne);
+        season = addPlayerToSeason(season, playerTwo);
+        season = addLeagueToSeason(season, league);
+
+        String matchDay = "1";
+        CalendarNode calendarNode = createCalendarNode(season.getId(), league, matchDay, betCountLimitPerUser);
+
+        return TwoPlayersTestFixture.builder()
+                .moderator(moderator)
+                .playerOne(playerOne)
+                .playerTwo(playerTwo)
+                .season(season)
+                .league(league)
+                .homeTeam(homeTeam)
+                .awayTeam(awayTeam)
+                .thirdTeam(thirdTeam)
+                .calendarNode(calendarNode)
+                .matchDay(matchDay)
+                .build();
+    }
+
+    /**
+     * 2 игрока, 2 тура в одном gameweek — для сценариев смены matchDay в editBet.
+     */
+    public TwoPlayersTestFixture createTwoPlayersTwoMatchdaysSetup(int betCountLimitPerUser) {
+        User moderator = createModerator();
+        User playerOne = createPlayer();
+        User playerTwo = createPlayer();
+        Team homeTeam = createHomeTeam();
+        Team awayTeam = createAwayTeam();
+        League league = createLeague();
+        league = addTeamToLeague(league, homeTeam);
+        league = addTeamToLeague(league, awayTeam);
+
+        Season season = createSeason("Integration season 2 matchdays", 1, Season.Status.ACTIVE);
+        season = addPlayerToSeason(season, playerOne);
+        season = addPlayerToSeason(season, playerTwo);
+        season = addLeagueToSeason(season, league);
+
+        String matchDayOne = "1";
+        String matchDayTwo = "2";
+        CalendarNode calendarNode = createCalendarNodeWithMatchdays(
+                season.getId(), league, betCountLimitPerUser, matchDayOne, matchDayTwo);
+
+        return TwoPlayersTestFixture.builder()
+                .moderator(moderator)
+                .playerOne(playerOne)
+                .playerTwo(playerTwo)
+                .season(season)
+                .league(league)
+                .homeTeam(homeTeam)
+                .awayTeam(awayTeam)
+                .calendarNode(calendarNode)
+                .matchDay(matchDayOne)
+                .secondMatchDay(matchDayTwo)
+                .build();
     }
 
     // ------------------------------------------------------------------------------------------------------ //
