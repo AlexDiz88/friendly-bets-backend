@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 import static net.friendly_bets.utils.BetUtils.*;
@@ -141,7 +142,7 @@ public class BetsService {
                         .build();
 
                 setBetResult(moderatorId, bet.getId(), betResult);
-                processedBets.add(bet);
+                processedBets.add(getEntityService.getBetOrThrow(bet.getId()));
             }
         }
 
@@ -222,6 +223,7 @@ public class BetsService {
         User moderator = getEntityService.getUserOrThrow(moderatorId);
         User newUser = getEntityService.getUserOrThrow(editedBet.getUserId());
         Bet bet = getEntityService.getBetOrThrow(editedBetId);
+        validateEditedBetStatusTransition(bet.getBetStatus(), Bet.BetStatus.valueOf(editedBet.getBetStatus()));
         Bet prevBetState = getPreviousStateOfBet(bet); // сохраняем изначальное состояние ставки до редактирования
         Team newHomeTeam = getEntityService.getTeamOrThrow(editedBet.getHomeTeamId());
         Team newAwayTeam = getEntityService.getTeamOrThrow(editedBet.getAwayTeamId());
@@ -235,11 +237,20 @@ public class BetsService {
 
         playerStatsService.calculateStatsBasedOnEditedBet(seasonId, leagueId, newUser, bet, true);
         playerStatsService.calculateStatsBasedOnEditedBet(seasonId, leagueId, prevBetState.getUser(), prevBetState, false);
-        teamStatsService.calculateStatsByTeams(seasonId, leagueId, newUser.getId(), bet, true);
-        teamStatsService.calculateStatsByTeams(seasonId, leagueId, prevBetState.getUser().getId(), prevBetState, false);
-        gameweekStatsService.calculateGameweekStats(bet.getCalendarNodeId());
-        betTitleStatsService.calculateStatsByBetTitle(seasonId, newUser.getId(), bet, true);
-        betTitleStatsService.calculateStatsByBetTitle(seasonId, prevBetState.getUser().getId(), prevBetState, false);
+        if (WRL_STATUSES.contains(prevBetState.getBetStatus())) {
+            teamStatsService.calculateStatsByTeams(seasonId, leagueId, prevBetState.getUser().getId(), prevBetState, false);
+            betTitleStatsService.calculateStatsByBetTitle(seasonId, prevBetState.getUser().getId(), prevBetState, false);
+        }
+        if (WRL_STATUSES.contains(bet.getBetStatus())) {
+            teamStatsService.calculateStatsByTeams(seasonId, leagueId, newUser.getId(), bet, true);
+            betTitleStatsService.calculateStatsByBetTitle(seasonId, newUser.getId(), bet, true);
+        }
+        String prevCalendarNodeId = prevBetState.getCalendarNodeId();
+        String newCalendarNodeId = bet.getCalendarNodeId();
+        gameweekStatsService.calculateGameweekStats(newCalendarNodeId);
+        if (prevCalendarNodeId != null && !Objects.equals(prevCalendarNodeId, newCalendarNodeId)) {
+            gameweekStatsService.calculateGameweekStats(prevCalendarNodeId);
+        }
 
         return BetDto.from(bet);
     }
