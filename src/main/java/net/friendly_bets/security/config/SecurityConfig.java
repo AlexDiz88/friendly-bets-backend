@@ -30,13 +30,13 @@ import java.util.Arrays;
 
 @RequiredArgsConstructor
 @EnableWebSecurity
-@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
+@FieldDefaults(level = AccessLevel.PRIVATE)
 @EnableGlobalMethodSecurity(securedEnabled = true, prePostEnabled = true, proxyTargetClass = true)
 public class SecurityConfig {
 
-    UserDetailsService userDetailsServiceImpl;
-    PasswordEncoder passwordEncoder;
-    ObjectMapper objectMapper;
+    final UserDetailsService userDetailsServiceImpl;
+    final PasswordEncoder passwordEncoder;
+    final ObjectMapper objectMapper;
 
     @Value("${app.security.remember-me.key}")
     String rememberMeKey;
