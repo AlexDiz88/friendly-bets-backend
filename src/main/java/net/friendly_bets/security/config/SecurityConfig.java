@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import net.friendly_bets.dto.StandardResponseDto;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -37,6 +38,12 @@ public class SecurityConfig {
     PasswordEncoder passwordEncoder;
     ObjectMapper objectMapper;
 
+    @Value("${app.security.remember-me.key}")
+    String rememberMeKey;
+
+    @Value("${app.security.remember-me.token-validity-seconds}")
+    int rememberMeTokenValiditySeconds;
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) throws Exception {
         httpSecurity
@@ -44,7 +51,9 @@ public class SecurityConfig {
                 .cors().configurationSource(corsConfigurationSource())
                 .and()
                 .rememberMe()
-                .tokenValiditySeconds(86400)
+                .key(rememberMeKey)
+                .userDetailsService(userDetailsServiceImpl)
+                .tokenValiditySeconds(rememberMeTokenValiditySeconds)
                 .and()
                 .headers().frameOptions().disable().and()
                 .authorizeRequests()
