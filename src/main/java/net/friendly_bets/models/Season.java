@@ -36,6 +36,9 @@ public class Season {
     @Field(name = "bet_count_per_match_day")
     private Integer betCountPerMatchDay;
 
+    @Field(name = "default_bet_size")
+    private Integer defaultBetSize;
+
     @Field(name = "status")
     private Status status;
 

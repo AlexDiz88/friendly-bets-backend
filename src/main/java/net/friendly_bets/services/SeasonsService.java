@@ -61,6 +61,7 @@ public class SeasonsService {
                 .createdAt(LocalDateTime.now())
                 .title(newSeason.getTitle())
                 .betCountPerMatchDay(newSeason.getBetCountPerMatchDay())
+                .defaultBetSize(newSeason.getDefaultBetSize())
                 .status(Season.Status.CREATED)
                 .players(new ArrayList<>())
                 .leagues(new ArrayList<>())

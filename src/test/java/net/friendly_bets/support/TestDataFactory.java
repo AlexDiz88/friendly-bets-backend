@@ -111,6 +111,7 @@ public class TestDataFactory {
                 .createdAt(LocalDateTime.now())
                 .title(title)
                 .betCountPerMatchDay(betCountPerMatchDay)
+                .defaultBetSize(10)
                 .status(status)
                 .players(new ArrayList<>())
                 .leagues(new ArrayList<>())
@@ -136,6 +137,7 @@ public class TestDataFactory {
                 .leagueCode(league.getLeagueCode())
                 .matchDay(matchDay)
                 .betCountLimit(betCountLimit)
+                .defaultBetSize(10)
                 .bets(new ArrayList<>())
                 .build();
 
@@ -168,6 +170,7 @@ public class TestDataFactory {
                     .leagueCode(league.getLeagueCode())
                     .matchDay(matchDay)
                     .betCountLimit(betCountLimit)
+                    .defaultBetSize(10)
                     .bets(new ArrayList<>())
                     .build());
         }

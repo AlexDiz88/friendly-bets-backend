@@ -31,6 +31,9 @@ public class LeagueMatchdayNodeDto {
     @Schema(description = "лимит ставок на тур", example = "2")
     private Integer betCountLimit;
 
+    @Schema(description = "размер ставки по умолчанию для тура", example = "10")
+    private Integer defaultBetSize;
+
     @Schema(description = "идентификатор лиги", example = "12-байтовый хэш ID")
     private List<BetDto> bets;
 
@@ -40,6 +43,7 @@ public class LeagueMatchdayNodeDto {
                 .leagueCode(node.getLeagueCode())
                 .matchDay(node.getMatchDay())
                 .betCountLimit(node.getBetCountLimit())
+                .defaultBetSize(node.getDefaultBetSize())
                 .bets(isWithBets ? BetDto.from(node.getBets()) : new ArrayList<>())
                 .build();
     }

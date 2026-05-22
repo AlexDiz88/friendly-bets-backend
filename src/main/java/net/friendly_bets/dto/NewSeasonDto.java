@@ -20,4 +20,8 @@ public class NewSeasonDto {
     @NotNull(message = "{field.isNull}")
     @Min(value = 1, message = "{betsInSeason.minCount}")
     private Integer betCountPerMatchDay;
+
+    @NotNull(message = "{field.isNull}")
+    @Min(value = 1, message = "{field.bet.betSizeMinValue}")
+    private Integer defaultBetSize;
 }

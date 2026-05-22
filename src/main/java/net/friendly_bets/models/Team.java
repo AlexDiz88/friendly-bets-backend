@@ -33,4 +33,7 @@ public class Team {
     @Field(name = "logo")
     private String logo;
 
+    @Field(name = "football_data_team_id")
+    private Integer footballDataTeamId;
+
 }

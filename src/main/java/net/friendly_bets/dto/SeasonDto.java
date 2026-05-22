@@ -26,6 +26,9 @@ public class SeasonDto {
     @Schema(description = "количество ставок на каждый игровой тур", example = "2")
     private Integer betCountPerMatchDay;
 
+    @Schema(description = "размер ставки по умолчанию", example = "10")
+    private Integer defaultBetSize;
+
     @Schema(description = "статус сезона", example = "ACTIVE")
     private String status;
 
@@ -41,6 +44,7 @@ public class SeasonDto {
                 .id(season.getId())
                 .title(season.getTitle())
                 .betCountPerMatchDay(season.getBetCountPerMatchDay())
+                .defaultBetSize(season.getDefaultBetSize() != null ? season.getDefaultBetSize() : 10)
                 .status(season.getStatus().name())
                 .players(UserDto.from(season.getPlayers()))
                 .leagues(LeagueDto.from(season.getLeagues()))
