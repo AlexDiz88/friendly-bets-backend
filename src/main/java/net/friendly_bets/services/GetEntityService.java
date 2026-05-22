@@ -25,6 +25,7 @@ public class GetEntityService {
     CalendarsRepository calendarsRepository;
     PlayerStatsRepository playerStatsRepository;
     PlayerStatsByTeamsRepository playerStatsByTeamsRepository;
+    TournamentFormatsRepository tournamentFormatsRepository;
 
     public User getUserOrThrow(String userId) {
         return usersRepository.findById(userId).orElseThrow(
@@ -39,6 +40,18 @@ public class GetEntityService {
     public League getLeagueOrThrow(String leagueId) {
         return leaguesRepository.findById(leagueId).orElseThrow(
                 () -> new NotFoundException("League", leagueId));
+    }
+
+    public TournamentFormat getTournamentFormatOrThrow(String formatId) {
+        return tournamentFormatsRepository.findById(formatId).orElseThrow(
+                () -> new NotFoundException("TournamentFormat", formatId));
+    }
+
+    public TournamentFormat getLeagueTournamentFormatOrThrow(League league) {
+        if (league.getTournamentFormatId() == null || league.getTournamentFormatId().isBlank()) {
+            throw new BadRequestException("leagueHasNoTournamentFormat");
+        }
+        return getTournamentFormatOrThrow(league.getTournamentFormatId());
     }
 
     public Team getTeamOrThrow(String teamId) {

@@ -29,6 +29,9 @@ public class LeagueDto {
     @Schema(description = "текущий игровой тур лиги", example = "14")
     private String currentMatchDay;
 
+    @Schema(description = "идентификатор формата турнира")
+    private String tournamentFormatId;
+
     @Schema(description = "список команд лиги", example = "[Team1, Team2...]")
     private List<TeamDto> teams;
 
@@ -38,6 +41,7 @@ public class LeagueDto {
                 .leagueCode(league.getLeagueCode().toString())
                 .name(league.getName())
                 .currentMatchDay(league.getCurrentMatchDay())
+                .tournamentFormatId(league.getTournamentFormatId())
                 .teams(TeamDto.from(league.getTeams()))
                 .build();
     }

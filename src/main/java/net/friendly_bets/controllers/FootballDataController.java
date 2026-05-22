@@ -61,10 +61,12 @@ public class FootballDataController {
     public ResponseEntity<ExternalMatchdaySyncDto> syncMatchday(
             @PathVariable String competitionCode,
             @PathVariable int matchday,
-            @RequestParam(required = false) String season) {
+            @RequestParam(required = false) String season,
+            @RequestParam(required = false) String leagueId) {
 
         String resolvedSeason = season != null ? season : footballDataProperties.getDefaultSeason();
-        ExternalMatchdaySync sync = footballDataSyncService.syncMatchday(competitionCode, matchday, resolvedSeason);
+        ExternalMatchdaySync sync = footballDataSyncService.syncMatchday(
+                competitionCode, matchday, resolvedSeason, leagueId);
         return ResponseEntity.ok(ExternalMatchdaySyncDto.from(sync));
     }
 

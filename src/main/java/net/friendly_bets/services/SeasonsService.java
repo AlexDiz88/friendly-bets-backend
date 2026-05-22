@@ -14,6 +14,7 @@ import net.friendly_bets.repositories.BetsRepository;
 import net.friendly_bets.repositories.CalendarsRepository;
 import net.friendly_bets.repositories.LeaguesRepository;
 import net.friendly_bets.repositories.SeasonsRepository;
+import net.friendly_bets.repositories.TournamentFormatsRepository;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
@@ -39,6 +40,7 @@ public class SeasonsService {
 
     CalendarsRepository calendarsRepository;
     BetsRepository betsRepository;
+    TournamentFormatsRepository tournamentFormatsRepository;
 
     @Transactional
     public SeasonsPage getAll() {
@@ -214,11 +216,17 @@ public class SeasonsService {
             throw new ConflictException("leagueAlreadyExistInThisSeason");
         }
 
+        String formatId = newLeague.getTournamentFormatId();
+        if (!tournamentFormatsRepository.existsById(formatId)) {
+            throw new NotFoundException("TournamentFormat", formatId);
+        }
+
         League league = League.builder()
                 .createdAt(LocalDateTime.now())
                 .leagueCode(League.LeagueCode.valueOf(newLeague.getLeagueCode()))
                 .name(newLeague.getLeagueCode() + " " + season.getTitle())
                 .currentMatchDay("1")
+                .tournamentFormatId(formatId)
                 .teams(new ArrayList<>())
                 .build();
 

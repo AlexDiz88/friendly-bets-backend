@@ -9,4 +9,6 @@ import java.util.List;
 public interface LeaguesRepository extends MongoRepository<League, String> {
 
     List<League> findAllByLeagueCode(League.LeagueCode leagueCode);
+
+    long countByTournamentFormatId(String tournamentFormatId);
 }

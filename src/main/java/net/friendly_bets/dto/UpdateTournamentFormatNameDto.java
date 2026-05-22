@@ -10,13 +10,9 @@ import javax.validation.constraints.NotNull;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class NewLeagueDto {
+public class UpdateTournamentFormatNameDto {
 
     @NotNull(message = "{field.isNull}")
     @NotBlank(message = "{field.isBlank}")
-    private String leagueCode;
-
-    @NotNull(message = "{field.isNull}")
-    @NotBlank(message = "{field.isBlank}")
-    private String tournamentFormatId;
+    private String name;
 }

@@ -22,10 +22,21 @@ public class FootballDataMatchMapper {
                                   Team awayTeam,
                                   String leagueId,
                                   LocalDateTime fetchedAt) {
+        return toEntity(dto, competitionCode, season, dto.getMatchday(), homeTeam, awayTeam, leagueId, fetchedAt);
+    }
+
+    public ExternalMatch toEntity(FootballDataMatchDto dto,
+                                  String competitionCode,
+                                  String season,
+                                  int storageMatchday,
+                                  Team homeTeam,
+                                  Team awayTeam,
+                                  String leagueId,
+                                  LocalDateTime fetchedAt) {
         return ExternalMatch.builder()
                 .externalMatchId(dto.getId())
                 .competitionCode(competitionCode)
-                .matchday(dto.getMatchday())
+                .matchday(storageMatchday)
                 .season(season)
                 .status(dto.getStatus())
                 .utcDate(parseUtc(dto.getUtcDate()))

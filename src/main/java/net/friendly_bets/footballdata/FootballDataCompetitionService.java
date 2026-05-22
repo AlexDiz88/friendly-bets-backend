@@ -2,14 +2,20 @@ package net.friendly_bets.footballdata;
 
 import lombok.RequiredArgsConstructor;
 import net.friendly_bets.dto.ExternalCompetitionInfoDto;
+import net.friendly_bets.dto.ExternalMatchdaySlotDto;
 import net.friendly_bets.exceptions.BadRequestException;
 import net.friendly_bets.footballdata.client.FootballDataClient;
 import net.friendly_bets.footballdata.client.dto.FootballDataCompetitionResponse;
+import net.friendly_bets.models.ExpandedMatchdaySlot;
+import net.friendly_bets.models.League;
+import net.friendly_bets.models.TournamentFormat;
+import net.friendly_bets.services.GetEntityService;
+import net.friendly_bets.services.TournamentFormatExpander;
+import net.friendly_bets.services.TournamentFormatsService;
 import org.springframework.stereotype.Service;
 
 import java.util.Comparator;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 
 @Service
@@ -17,17 +23,49 @@ import java.util.Optional;
 public class FootballDataCompetitionService {
 
     private final FootballDataClient footballDataClient;
+    private final GetEntityService getEntityService;
+    private final TournamentFormatExpander tournamentFormatExpander;
+
+    public ExternalCompetitionInfoDto getCompetitionInfoForLeague(String leagueId, String season) {
+        League league = getEntityService.getLeagueOrThrow(leagueId);
+        Optional<String> competitionCode = FootballDataCompetitionMapping.toCompetitionCode(league.getLeagueCode());
+        if (competitionCode.isEmpty()) {
+            throw new BadRequestException("leagueNotMappedToExternalCompetition");
+        }
+
+        String code = competitionCode.get();
+        if (league.getTournamentFormatId() == null || league.getTournamentFormatId().isBlank()) {
+            return getCompetitionInfo(code, season).toBuilder().leagueId(leagueId).build();
+        }
+
+        TournamentFormat format = getEntityService.getTournamentFormatOrThrow(league.getTournamentFormatId());
+        List<ExternalMatchdaySlotDto> slots = tournamentFormatExpander.expand(format).stream()
+                .map(TournamentFormatsService::toExternalSlot)
+                .toList();
+
+        int matchdayCount = slots.size();
+        int currentMatchday = resolveCurrentSlotOrder(code, season, format, matchdayCount);
+
+        return ExternalCompetitionInfoDto.builder()
+                .competitionCode(code)
+                .season(season)
+                .leagueId(leagueId)
+                .currentMatchday(currentMatchday)
+                .matchdayCount(matchdayCount)
+                .matchdaySlots(slots)
+                .build();
+    }
 
     public ExternalCompetitionInfoDto getCompetitionInfo(String competitionCode, String season) {
         if (!footballDataClient.isConfigured()) {
-            return fallback(competitionCode, season);
+            return fallback(competitionCode, season, null);
         }
         try {
             FootballDataCompetitionResponse response = footballDataClient.fetchCompetition(competitionCode);
             if (response == null) {
-                return fallback(competitionCode, season);
+                return fallback(competitionCode, season, null);
             }
-            int matchdayCount = resolveMatchdayCount(response);
+            int matchdayCount = FootballDataCompetitionDefaults.totalMatchdaySlots(competitionCode);
             int currentMatchday = resolveCurrentMatchday(response, season, matchdayCount);
 
             return ExternalCompetitionInfoDto.builder()
@@ -35,33 +73,46 @@ public class FootballDataCompetitionService {
                     .season(season)
                     .currentMatchday(currentMatchday)
                     .matchdayCount(matchdayCount)
+                    .matchdaySlots(FootballDataKnockoutMatchdays.buildMatchdaySlots(competitionCode))
                     .build();
         } catch (BadRequestException e) {
-            return fallback(competitionCode, season);
+            return fallback(competitionCode, season, null);
         }
     }
 
-    private ExternalCompetitionInfoDto fallback(String competitionCode, String season) {
-        int matchdayCount = FootballDataCompetitionDefaults.defaultMatchdayCount(competitionCode);
+    private ExternalCompetitionInfoDto fallback(String competitionCode, String season, String leagueId) {
+        int matchdayCount = FootballDataCompetitionDefaults.totalMatchdaySlots(competitionCode);
         return ExternalCompetitionInfoDto.builder()
                 .competitionCode(competitionCode)
                 .season(season)
+                .leagueId(leagueId)
                 .currentMatchday(1)
                 .matchdayCount(matchdayCount)
+                .matchdaySlots(FootballDataKnockoutMatchdays.buildMatchdaySlots(competitionCode))
                 .build();
     }
 
-    private int resolveMatchdayCount(FootballDataCompetitionResponse response) {
-        if (response.getSeasons() == null || response.getSeasons().isEmpty()) {
-            return FootballDataCompetitionDefaults.defaultMatchdayCount(response.getCode());
+    private int resolveCurrentSlotOrder(
+            String competitionCode,
+            String season,
+            TournamentFormat format,
+            int slotCount
+    ) {
+        if (!footballDataClient.isConfigured()) {
+            return 1;
         }
-
-        return response.getSeasons().stream()
-                .filter(this::isRegularSeason)
-                .map(FootballDataCompetitionResponse.Season::getCurrentMatchday)
-                .filter(Objects::nonNull)
-                .max(Integer::compareTo)
-                .orElseGet(() -> FootballDataCompetitionDefaults.defaultMatchdayCount(response.getCode()));
+        try {
+            FootballDataCompetitionResponse response = footballDataClient.fetchCompetition(competitionCode);
+            if (response == null) {
+                return 1;
+            }
+            int apiMatchday = resolveCurrentMatchday(response, season, FootballDataCompetitionDefaults.regularSeasonMatchdayCount(competitionCode));
+            return tournamentFormatExpander.findBySlotId(format, String.valueOf(apiMatchday))
+                    .map(ExpandedMatchdaySlot::getOrder)
+                    .orElse(Math.min(apiMatchday, slotCount));
+        } catch (BadRequestException e) {
+            return 1;
+        }
     }
 
     private int resolveCurrentMatchday(
@@ -114,10 +165,5 @@ public class FootballDataCompetitionService {
         int startYear = season.getStartDate().getYear();
         int endYear = season.getEndDate().getYear();
         return year == endYear || year == startYear;
-    }
-
-    private boolean isRegularSeason(FootballDataCompetitionResponse.Season season) {
-        List<String> stages = season.getStages();
-        return stages == null || stages.isEmpty() || stages.contains("REGULAR_SEASON");
     }
 }

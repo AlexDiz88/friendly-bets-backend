@@ -50,16 +50,34 @@ public class FootballDataClient {
     }
 
     public FootballDataMatchdayResponse fetchMatchday(String competitionCode, int matchday, String season) {
+        return fetchMatches(competitionCode, season, matchday, null);
+    }
+
+    public FootballDataMatchdayResponse fetchMatchesByStage(String competitionCode, String stage, String season) {
+        return fetchMatches(competitionCode, season, null, stage);
+    }
+
+    private FootballDataMatchdayResponse fetchMatches(
+            String competitionCode,
+            String season,
+            Integer matchday,
+            String stage
+    ) {
         if (properties.getApiKey() == null || properties.getApiKey().isBlank()) {
             throw new BadRequestException("footballDataApiKeyNotConfigured");
         }
 
-        String url = UriComponentsBuilder
+        UriComponentsBuilder uriBuilder = UriComponentsBuilder
                 .fromPath("/competitions/{code}/matches")
-                .queryParam("matchday", matchday)
-                .queryParam("season", season)
-                .buildAndExpand(competitionCode)
-                .toUriString();
+                .queryParam("season", season);
+
+        if (stage != null && !stage.isBlank()) {
+            uriBuilder.queryParam("stage", stage);
+        } else if (matchday != null) {
+            uriBuilder.queryParam("matchday", matchday);
+        }
+
+        String url = uriBuilder.buildAndExpand(competitionCode).toUriString();
 
         HttpHeaders headers = new HttpHeaders();
         headers.set("X-Auth-Token", properties.getApiKey());
