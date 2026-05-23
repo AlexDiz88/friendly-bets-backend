@@ -5,6 +5,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.repository.MongoRepository;
 
+import java.util.List;
 import java.util.Optional;
 
 
@@ -17,5 +18,7 @@ public interface SeasonsRepository extends MongoRepository<Season, String> {
     Optional<Season> findSeasonByStatus(Season.Status status);
 
     Page<Season> findAll(Pageable pageable);
+
+    List<Season> findByStartDateIsNull();
 
 }

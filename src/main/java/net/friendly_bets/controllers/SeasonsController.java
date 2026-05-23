@@ -116,4 +116,18 @@ public class SeasonsController implements SeasonsApi {
     public ResponseEntity<Map<String, Object>> dbUpdate() {
         return ResponseEntity.ok(seasonsService.dbUpdate());
     }
+
+    @GetMapping("/without-dates")
+    @PreAuthorize("hasAuthority('ADMIN')")
+    public ResponseEntity<SeasonsWithoutDatesPage> getSeasonsWithoutDates() {
+        return ResponseEntity.ok(seasonsService.getSeasonsWithoutDates());
+    }
+
+    @PatchMapping("/{id}/dates")
+    @PreAuthorize("hasAuthority('ADMIN')")
+    public ResponseEntity<SeasonDto> assignSeasonDates(
+            @PathVariable("id") String id,
+            @RequestBody @Valid UpdateSeasonDatesDto dto) {
+        return ResponseEntity.ok(seasonsService.assignSeasonDates(id, dto));
+    }
 }

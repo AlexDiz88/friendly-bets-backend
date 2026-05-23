@@ -21,7 +21,9 @@ import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import net.friendly_bets.utils.SeasonCalendarUtils;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.function.Function;
@@ -58,10 +60,13 @@ public class SeasonsService {
         if (seasonsRepository.existsByTitle(newSeason.getTitle())) {
             throw new BadRequestException("seasonWithThisTitleAlreadyExist");
         }
+        SeasonCalendarUtils.validateDateRange(newSeason.getStartDate(), newSeason.getEndDate());
 
         Season season = Season.builder()
                 .createdAt(LocalDateTime.now())
                 .title(newSeason.getTitle())
+                .startDate(newSeason.getStartDate())
+                .endDate(newSeason.getEndDate())
                 .betCountPerMatchDay(newSeason.getBetCountPerMatchDay())
                 .defaultBetSize(newSeason.getDefaultBetSize())
                 .status(Season.Status.CREATED)
@@ -69,6 +74,24 @@ public class SeasonsService {
                 .leagues(new ArrayList<>())
                 .build();
 
+        seasonsRepository.save(season);
+        return SeasonDto.from(season);
+    }
+
+    @Transactional(readOnly = true)
+    public SeasonsWithoutDatesPage getSeasonsWithoutDates() {
+        List<SeasonWithoutDatesDto> seasons = seasonsRepository.findByStartDateIsNull().stream()
+                .map(SeasonWithoutDatesDto::from)
+                .collect(Collectors.toList());
+        return SeasonsWithoutDatesPage.builder().seasons(seasons).build();
+    }
+
+    @Transactional
+    public SeasonDto assignSeasonDates(String seasonId, UpdateSeasonDatesDto dto) {
+        Season season = getEntityService.getSeasonOrThrow(seasonId);
+        SeasonCalendarUtils.validateDateRange(dto.getStartDate(), dto.getEndDate());
+        season.setStartDate(dto.getStartDate());
+        season.setEndDate(dto.getEndDate());
         seasonsRepository.save(season);
         return SeasonDto.from(season);
     }

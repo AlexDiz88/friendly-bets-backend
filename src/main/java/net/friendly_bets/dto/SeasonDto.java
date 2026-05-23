@@ -6,7 +6,9 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import net.friendly_bets.models.Season;
+import net.friendly_bets.utils.SeasonCalendarUtils;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -22,6 +24,18 @@ public class SeasonDto {
 
     @Schema(description = "название сезона (годы проведения)", example = "Season 2023-2024")
     private String title;
+
+    @Schema(description = "дата начала турнира", example = "2024-08-16")
+    private LocalDate startDate;
+
+    @Schema(description = "дата окончания турнира", example = "2025-05-25")
+    private LocalDate endDate;
+
+    @Schema(description = "год для football-data.org (год старта сезона)", example = "2024")
+    private Integer externalSeasonYear;
+
+    @Schema(description = "допустимые годы для запросов к API (от года начала до года конца)")
+    private List<Integer> availableExternalYears;
 
     @Schema(description = "количество ставок на каждый игровой тур", example = "2")
     private Integer betCountPerMatchDay;
@@ -40,9 +54,15 @@ public class SeasonDto {
 
 
     public static SeasonDto from(Season season) {
+        LocalDate start = season.getStartDate();
+        LocalDate end = season.getEndDate();
         return SeasonDto.builder()
                 .id(season.getId())
                 .title(season.getTitle())
+                .startDate(start)
+                .endDate(end)
+                .externalSeasonYear(SeasonCalendarUtils.resolveExternalSeasonYear(start))
+                .availableExternalYears(SeasonCalendarUtils.availableExternalYears(start, end))
                 .betCountPerMatchDay(season.getBetCountPerMatchDay())
                 .defaultBetSize(season.getDefaultBetSize() != null ? season.getDefaultBetSize() : 10)
                 .status(season.getStatus().name())

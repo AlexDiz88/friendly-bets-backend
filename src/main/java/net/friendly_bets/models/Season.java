@@ -9,6 +9,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 import org.springframework.data.mongodb.core.mapping.MongoId;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -32,6 +33,12 @@ public class Season {
 
     @Field(name = "title")
     private String title;
+
+    @Field(name = "start_date")
+    private LocalDate startDate;
+
+    @Field(name = "end_date")
+    private LocalDate endDate;
 
     @Field(name = "bet_count_per_match_day")
     private Integer betCountPerMatchDay;
