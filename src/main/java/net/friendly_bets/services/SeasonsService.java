@@ -43,12 +43,14 @@ public class SeasonsService {
     CalendarsRepository calendarsRepository;
     BetsRepository betsRepository;
     TournamentFormatsRepository tournamentFormatsRepository;
+    TournamentFormatExpander tournamentFormatExpander;
+    LeagueMatchdayService leagueMatchdayService;
 
     @Transactional
     public SeasonsPage getAll() {
         List<Season> allSeasons = seasonsRepository.findAll();
         return SeasonsPage.builder()
-                .seasons(SeasonDto.from(allSeasons))
+                .seasons(allSeasons.stream().map(this::toSeasonDto).toList())
                 .build();
     }
 
@@ -75,7 +77,7 @@ public class SeasonsService {
                 .build();
 
         seasonsRepository.save(season);
-        return SeasonDto.from(season);
+        return toSeasonDto(season);
     }
 
     @Transactional(readOnly = true)
@@ -93,7 +95,7 @@ public class SeasonsService {
         season.setStartDate(dto.getStartDate());
         season.setEndDate(dto.getEndDate());
         seasonsRepository.save(season);
-        return SeasonDto.from(season);
+        return toSeasonDto(season);
     }
 
     // ------------------------------------------------------------------------------------------------------ //
@@ -133,7 +135,7 @@ public class SeasonsService {
         season.setStatus(Season.Status.valueOf(status));
         seasonsRepository.save(season);
 
-        return SeasonDto.from(season);
+        return toSeasonDto(season);
     }
 
     // ------------------------------------------------------------------------------------------------------ //
@@ -163,7 +165,7 @@ public class SeasonsService {
             throw new BadRequestException("noActiveSeasonWasFounded");
         }
         Season season = seasonByStatus.get();
-        return SeasonDto.from(season);
+        return toSeasonDto(season);
     }
 
     // ------------------------------------------------------------------------------------------------------ //
@@ -186,7 +188,7 @@ public class SeasonsService {
             throw new BadRequestException("noScheduledSeasonWasFounded");
         }
         Season season = seasonByStatus.get();
-        return SeasonDto.from(season);
+        return toSeasonDto(season);
     }
 
     // ------------------------------------------------------------------------------------------------------ //
@@ -208,7 +210,7 @@ public class SeasonsService {
 
         season.getPlayers().add(user);
         seasonsRepository.save(season);
-        return SeasonDto.from(season);
+        return toSeasonDto(season);
     }
 
     // ------------------------------------------------------------------------------------------------------ //
@@ -216,8 +218,11 @@ public class SeasonsService {
 
     public LeaguesPage getLeaguesBySeason(String seasonId) {
         Season season = getEntityService.getSeasonOrThrow(seasonId);
+        List<LeagueDto> leagues = season.getLeagues() == null
+                ? List.of()
+                : season.getLeagues().stream().map(l -> toLeagueDto(season, l)).toList();
         return LeaguesPage.builder()
-                .leagues(LeagueDto.from(season.getLeagues()))
+                .leagues(leagues)
                 .build();
     }
 
@@ -244,11 +249,17 @@ public class SeasonsService {
             throw new NotFoundException("TournamentFormat", formatId);
         }
 
+        TournamentFormat format = getEntityService.getTournamentFormatOrThrow(formatId);
+        String firstSlotId = tournamentFormatExpander.expand(format).stream()
+                .findFirst()
+                .map(ExpandedMatchdaySlot::getId)
+                .orElse("1");
+
         League league = League.builder()
                 .createdAt(LocalDateTime.now())
                 .leagueCode(League.LeagueCode.valueOf(newLeague.getLeagueCode()))
                 .name(newLeague.getLeagueCode() + " " + season.getTitle())
-                .currentMatchDay("1")
+                .currentMatchDay(firstSlotId)
                 .tournamentFormatId(formatId)
                 .teams(new ArrayList<>())
                 .build();
@@ -257,7 +268,7 @@ public class SeasonsService {
         season.getLeagues().add(league);
         seasonsRepository.save(season);
 
-        return SeasonDto.from(season);
+        return toSeasonDto(season);
     }
 
     // ------------------------------------------------------------------------------------------------------ //
@@ -392,6 +403,46 @@ public class SeasonsService {
         response.put("failedItems", failedConversions);
 
         return response;
+    }
+
+    private SeasonDto toSeasonDto(Season season) {
+        LocalDate start = season.getStartDate();
+        LocalDate end = season.getEndDate();
+        List<LeagueDto> leagues = season.getLeagues() == null
+                ? List.of()
+                : season.getLeagues().stream()
+                .map(league -> toLeagueDto(season, league))
+                .collect(Collectors.toList());
+
+        return SeasonDto.builder()
+                .id(season.getId())
+                .title(season.getTitle())
+                .startDate(start)
+                .endDate(end)
+                .externalSeasonYear(SeasonCalendarUtils.resolveExternalSeasonYear(start))
+                .availableExternalYears(SeasonCalendarUtils.availableExternalYears(start, end))
+                .betCountPerMatchDay(season.getBetCountPerMatchDay())
+                .defaultBetSize(season.getDefaultBetSize() != null ? season.getDefaultBetSize() : 10)
+                .status(season.getStatus().name())
+                .players(UserDto.from(season.getPlayers()))
+                .leagues(leagues)
+                .build();
+    }
+
+    private LeagueDto toLeagueDto(Season season, League league) {
+        List<ExpandedMatchdaySlotDto> slots = leagueMatchdayService.expandSlotsForLeague(league);
+        String currentForUi = season.getStatus() == Season.Status.FINISHED
+                ? league.getCurrentMatchDay()
+                : leagueMatchdayService.resolveEffectiveCurrentMatchDay(league);
+        return LeagueDto.builder()
+                .id(league.getId())
+                .leagueCode(league.getLeagueCode().toString())
+                .name(league.getName())
+                .currentMatchDay(currentForUi)
+                .tournamentFormatId(league.getTournamentFormatId())
+                .matchdaySlots(slots.isEmpty() ? null : slots)
+                .teams(TeamDto.from(league.getTeams()))
+                .build();
     }
 
 }

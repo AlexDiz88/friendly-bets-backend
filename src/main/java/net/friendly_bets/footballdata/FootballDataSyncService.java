@@ -53,7 +53,7 @@ public class FootballDataSyncService {
     private final LeaguesRepository leaguesRepository;
     private final GetEntityService getEntityService;
     private final TournamentFormatExpander tournamentFormatExpander;
-    private final FootballDataSlotQueryResolver footballDataSlotQueryResolver;
+    private final net.friendly_bets.externaldata.ExternalMatchDataFacade externalMatchDataFacade;
 
     public void registerPollingForSeason(String seasonId) {
         List<Bet> openedBets = betsRepository.findAllBySeason_IdAndBetStatus(seasonId, Bet.BetStatus.OPENED);
@@ -285,8 +285,14 @@ public class FootballDataSyncService {
                 TournamentFormat format = getEntityService.getTournamentFormatOrThrow(league.getTournamentFormatId());
                 ExpandedMatchdaySlot slot = tournamentFormatExpander.findByOrder(format, slotOrder)
                         .orElseThrow(() -> new BadRequestException("invalidSlotOrder"));
-                FootballDataSlotQuery query = footballDataSlotQueryResolver.resolve(slot);
-                List<FootballDataMatchDto> matches = fetchByQuery(competitionCode, season, query);
+                List<FootballDataMatchDto> matches = externalMatchDataFacade.fetchMatches(
+                        net.friendly_bets.externaldata.ExternalMatchFetchRequest.builder()
+                                .competitionCode(competitionCode)
+                                .season(season)
+                                .slot(slot)
+                                .leagueId(leagueId)
+                                .build()
+                );
                 FootballDataMatchdayResponse response = new FootballDataMatchdayResponse();
                 response.setMatches(matches);
                 FootballDataMatchdayResponse.ResultSet resultSet = new FootballDataMatchdayResponse.ResultSet();
@@ -300,21 +306,6 @@ public class FootballDataSyncService {
                 .stageForMatchday(competitionCode, slotOrder)
                 .map(stage -> footballDataClient.fetchMatchesByStage(competitionCode, stage, season))
                 .orElseGet(() -> footballDataClient.fetchMatchday(competitionCode, slotOrder, season));
-    }
-
-    private List<FootballDataMatchDto> fetchByQuery(String competitionCode, String season, FootballDataSlotQuery query) {
-        FootballDataMatchdayResponse response = switch (query.queryType()) {
-            case MATCHDAY -> footballDataClient.fetchMatchday(competitionCode, query.matchday(), season);
-            case STAGE -> footballDataClient.fetchMatchesByStage(competitionCode, query.stage(), season);
-            case STAGE_LEG -> footballDataClient.fetchMatchesByStage(competitionCode, query.stage(), season);
-        };
-        if (response == null || response.getMatches() == null) {
-            return List.of();
-        }
-        if (query.queryType() == FootballDataSlotQuery.QueryType.STAGE_LEG && query.leg() != null) {
-            return FootballDataLegFilter.filterByLeg(response.getMatches(), query.leg());
-        }
-        return response.getMatches();
     }
 
     private void ensurePolling(MatchdayKey key) {

@@ -27,6 +27,7 @@ public class LeaguesService {
     LeaguesRepository leaguesRepository;
     TournamentFormatsRepository tournamentFormatsRepository;
     GetEntityService getEntityService;
+    LeagueMatchdayService leagueMatchdayService;
 
     @Transactional(readOnly = true)
     public LeaguesWithoutFormatPage getLeaguesWithoutFormat() {
@@ -52,6 +53,6 @@ public class LeaguesService {
         }
         league.setTournamentFormatId(tournamentFormatId);
         leaguesRepository.save(league);
-        return LeagueDto.from(league);
+        return LeagueDto.from(league, leagueMatchdayService.expandSlotsForLeague(league));
     }
 }

@@ -1,9 +1,12 @@
-package net.friendly_bets.footballdata;
+package net.friendly_bets.externaldata;
 
 import lombok.Builder;
 
+/**
+ * Provider-neutral description of how to fetch matches for a tournament slot.
+ */
 @Builder
-public record FootballDataSlotQuery(
+public record ExternalSlotQuery(
         QueryType queryType,
         Integer matchday,
         String stage,

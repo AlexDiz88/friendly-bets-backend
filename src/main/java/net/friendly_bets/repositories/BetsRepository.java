@@ -41,6 +41,13 @@ public interface BetsRepository extends MongoRepository<Bet, String> {
 
     int countBetsByLeagueAndBetStatusNot(League league, Bet.BetStatus betStatus);
 
+    int countBySeason_IdAndLeague_IdAndMatchDayAndBetStatusNot(
+            String seasonId,
+            String leagueId,
+            String matchDay,
+            Bet.BetStatus betStatus
+    );
+
     List<Bet> findAllBySeason_Id(String seasonId);
 
     List<Bet> findAllBySeason_IdAndBetStatus(String seasonId, Bet.BetStatus betStatus);
