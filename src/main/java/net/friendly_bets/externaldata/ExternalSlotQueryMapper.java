@@ -11,5 +11,5 @@ public interface ExternalSlotQueryMapper {
 
     String providerId();
 
-    Optional<ExternalSlotQuery> map(ExpandedMatchdaySlot slot);
+    Optional<ExternalSlotQuery> map(ExpandedMatchdaySlot slot, String competitionCode);
 }

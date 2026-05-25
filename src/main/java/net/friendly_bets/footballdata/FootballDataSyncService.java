@@ -139,13 +139,22 @@ public class FootballDataSyncService {
                     matchDto.getAwayTeam().getName()
             ).orElse(null);
 
+            Optional<ExternalMatch> existingMatch = externalMatchRepository
+                    .findByCompetitionCodeAndMatchdayAndSeasonAndExternalMatchId(
+                            competitionCode, slotOrder, resolvedSeason, matchDto.getId());
+
+            if (existingMatch.isPresent()
+                    && FootballDataMatchStatuses.isTerminal(existingMatch.get().getStatus())) {
+                if (FootballDataMatchStatuses.isTerminal(matchDto.getStatus())) {
+                    finishedCount++;
+                }
+                continue;
+            }
+
             ExternalMatch mapped = matchMapper.toEntity(
                     matchDto, competitionCode, resolvedSeason, slotOrder, homeTeam, awayTeam, storageLeagueId, now);
 
-            ExternalMatch toSave = externalMatchRepository
-                    .findByCompetitionCodeAndMatchdayAndSeasonAndExternalMatchId(
-                            competitionCode, slotOrder, resolvedSeason, matchDto.getId())
-                    .orElse(mapped);
+            ExternalMatch toSave = existingMatch.orElse(mapped);
 
             toSave.setExternalMatchId(mapped.getExternalMatchId());
             toSave.setCompetitionCode(mapped.getCompetitionCode());

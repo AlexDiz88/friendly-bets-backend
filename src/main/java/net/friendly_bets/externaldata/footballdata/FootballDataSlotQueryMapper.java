@@ -35,14 +35,14 @@ public class FootballDataSlotQueryMapper implements ExternalSlotQueryMapper {
     }
 
     @Override
-    public Optional<ExternalSlotQuery> map(ExpandedMatchdaySlot slot) {
-        if (slot == null) {
+    public Optional<ExternalSlotQuery> map(ExpandedMatchdaySlot slot, String competitionCode) {
+        if (slot == null || competitionCode == null || competitionCode.isBlank()) {
             return Optional.empty();
         }
         return Optional.of(switch (slot.getKind()) {
             case REGULAR, GROUP -> ExternalSlotQuery.builder()
                     .queryType(ExternalSlotQuery.QueryType.MATCHDAY)
-                    .matchday(Integer.parseInt(slot.getId()))
+                    .matchday(FootballDataBettingSlotApiMatchdayResolver.resolveApiMatchday(competitionCode, slot))
                     .build();
             case KNOCKOUT -> resolveKnockout(slot.getId());
         });

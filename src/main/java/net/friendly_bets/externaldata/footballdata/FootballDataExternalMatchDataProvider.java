@@ -49,7 +49,7 @@ public class FootballDataExternalMatchDataProvider implements ExternalMatchDataP
         if (slot == null) {
             throw new BadRequestException("invalidSlotOrder");
         }
-        ExternalSlotQuery query = slotQueryMapper.map(slot)
+        ExternalSlotQuery query = slotQueryMapper.map(slot, request.competitionCode())
                 .orElseThrow(() -> new BadRequestException("invalidSlotOrder"));
 
         FootballDataMatchdayResponse response = switch (query.queryType()) {
