@@ -5,6 +5,7 @@ import net.friendly_bets.dto.ExternalCompetitionInfoDto;
 import net.friendly_bets.dto.ExternalMatchDto;
 import net.friendly_bets.dto.ExternalMatchdayPageDto;
 import net.friendly_bets.dto.ExternalMatchdaySyncDto;
+import net.friendly_bets.footballdata.ExternalMatchDisplayService;
 import net.friendly_bets.footballdata.FootballDataCompetitionService;
 import net.friendly_bets.footballdata.FootballDataSyncService;
 import net.friendly_bets.footballdata.config.FootballDataProperties;
@@ -25,6 +26,7 @@ import java.util.Map;
 public class FootballDataController {
 
     private final FootballDataSyncService footballDataSyncService;
+    private final ExternalMatchDisplayService externalMatchDisplayService;
     private final FootballDataCompetitionService footballDataCompetitionService;
     private final ExternalMatchdaySyncRepository externalMatchdaySyncRepository;
     private final FootballDataProperties footballDataProperties;
@@ -53,7 +55,7 @@ public class FootballDataController {
 
         return ResponseEntity.ok(ExternalMatchdayPageDto.builder()
                 .sync(syncDto)
-                .matches(matches.stream().map(ExternalMatchDto::from).toList())
+                .matches(externalMatchDisplayService.toDisplayDtos(matches))
                 .build());
     }
 

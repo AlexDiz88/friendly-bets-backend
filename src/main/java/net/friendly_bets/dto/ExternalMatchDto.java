@@ -27,6 +27,13 @@ public class ExternalMatchDto {
     private String awayTeamName;
     private String homeTeamId;
     private String awayTeamId;
+    /** Внутренний ключ команды (PascalCase) для логотипа и teams:* i18n. */
+    private String homeTeamTitle;
+    private String awayTeamTitle;
+    private String homeTeamLogoKey;
+    private String awayTeamLogoKey;
+    private TeamDisplayNamesDto homeTeamDisplayNames;
+    private TeamDisplayNamesDto awayTeamDisplayNames;
     private String leagueId;
     private GameScore gameScore;
     private LocalDateTime fetchedAt;

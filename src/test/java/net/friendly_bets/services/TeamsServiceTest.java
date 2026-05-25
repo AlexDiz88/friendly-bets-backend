@@ -49,7 +49,7 @@ class TeamsServiceTest {
                 .build();
 
         newTeamDto = NewTeamDto.builder()
-                .title("Team A")
+                .title("TeamA")
                 .country("Country A")
                 .build();
     }
@@ -135,16 +135,16 @@ class TeamsServiceTest {
     @DisplayName("Should create new team when title is unique")
     void createTeam_ShouldCreateNewTeam_WhenTitleIsUnique() {
         // given
-        when(teamsRepository.existsByTitle("Team A")).thenReturn(false);
+        when(teamsRepository.existsByTitle("TeamA")).thenReturn(false);
 
         // when
         TeamDto result = teamsService.createTeam(newTeamDto);
 
         // then
         assertNotNull(result);
-        assertEquals("Team A", result.getTitle());
+        assertEquals("TeamA", result.getTitle());
         verify(teamsRepository, times(1)).save(argThat(team ->
-                team.getTitle().equals("Team A") && team.getCountry().equals("Country A")
+                team.getTitle().equals("TeamA") && team.getCountry().equals("Country A")
         ));
     }
 
@@ -152,7 +152,7 @@ class TeamsServiceTest {
     @DisplayName("Should throw ConflictException when team title already exists")
     void createTeam_ShouldThrowConflictException_WhenTitleAlreadyExists() {
         // given
-        when(teamsRepository.existsByTitle("Team A")).thenReturn(true);
+        when(teamsRepository.existsByTitle("TeamA")).thenReturn(true);
 
         // when + then
         assertThrows(ConflictException.class, () -> teamsService.createTeam(newTeamDto),

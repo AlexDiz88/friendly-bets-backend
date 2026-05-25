@@ -5,27 +5,16 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import javax.validation.constraints.NotBlank;
-import javax.validation.constraints.NotNull;
 import java.util.List;
 
-@Data
-@Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class NewTeamDto {
+@Builder
+@Data
+public class UpdateTeamDto {
 
-    @NotNull(message = "{field.isNull}")
-    @NotBlank(message = "{field.isBlank}")
-    private String title;
-
-    @NotNull(message = "{field.isNull}")
-    @NotBlank(message = "{field.isBlank}")
     private String country;
-
     private TeamDisplayNamesDto displayNames;
-
     private List<TeamExternalAliasDto> externalAliases;
-
     private Integer footballDataTeamId;
 }

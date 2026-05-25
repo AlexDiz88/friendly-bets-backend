@@ -5,6 +5,7 @@ import net.friendly_bets.controllers.api.TeamsApi;
 import net.friendly_bets.dto.NewTeamDto;
 import net.friendly_bets.dto.TeamDto;
 import net.friendly_bets.dto.TeamsPage;
+import net.friendly_bets.dto.UpdateTeamDto;
 import net.friendly_bets.services.TeamsService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -40,6 +41,16 @@ public class TeamsController implements TeamsApi {
     public ResponseEntity<TeamDto> createTeam(@RequestBody @Valid NewTeamDto newTeam) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(teamsService.createTeam(newTeam));
+    }
+
+    @Override
+    @PreAuthorize("hasAuthority('ADMIN')")
+    @PatchMapping("/{team-id}")
+    public ResponseEntity<TeamDto> updateTeam(
+            @PathVariable("team-id") String teamId,
+            @RequestBody @Valid UpdateTeamDto updateTeam
+    ) {
+        return ResponseEntity.ok(teamsService.updateTeam(teamId, updateTeam));
     }
 
 }
