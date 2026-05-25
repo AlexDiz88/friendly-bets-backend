@@ -15,7 +15,7 @@ public final class FootballDataCompetitionDefaults {
     private static final Map<String, Integer> TOTAL_SLOTS_BY_CODE = Map.of(
             "PL", 38,
             "BL1", 34,
-            "CL", 12,
+            "CL", 14,
             "EC", 7,
             "WC", 7
     );

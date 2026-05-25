@@ -20,8 +20,13 @@ public class FootballDataSlotQueryMapper implements ExternalSlotQueryMapper {
 
     private static final Pattern LEG_SUFFIX = Pattern.compile(" \\[(\\d)]$");
 
+    /**
+     * football-data.org v4 {@code stage} for filter on {@code /competitions/{code}/matches}.
+     * Knockout play-offs before R16: football-data returns {@code PLAYOFFS} bucket; legs split via {@link net.friendly_bets.footballdata.FootballDataLegFilter}.
+     *
+     * @see <a href="https://docs.football-data.org/general/v4/lookup_tables.html">Match.stage enum</a>
+     */
     private static final Map<String, String> PLAYOFF_STAGE_TO_API = Map.ofEntries(
-            Map.entry("1/16", "PLAY_OFF_ROUND"),
             Map.entry("1/8", "LAST_16"),
             Map.entry("1/4", "QUARTER_FINALS"),
             Map.entry("1/2", "SEMI_FINALS"),
@@ -59,6 +64,15 @@ public class FootballDataSlotQueryMapper implements ExternalSlotQueryMapper {
             leg = null;
             playoffStage = slotId;
         }
+        if ("1/16".equals(playoffStage)) {
+            int resolvedLeg = leg == null ? 1 : leg;
+            return ExternalSlotQuery.builder()
+                    .queryType(ExternalSlotQuery.QueryType.STAGE_LEG)
+                    .stage("PLAYOFFS")
+                    .leg(resolvedLeg)
+                    .build();
+        }
+
         String apiStage = PLAYOFF_STAGE_TO_API.get(playoffStage);
         if (apiStage == null) {
             throw new IllegalArgumentException("Unknown playoff stage for football-data: " + playoffStage);

@@ -11,6 +11,7 @@ public class FootballDataMatchDto {
     private String utcDate;
     private String status;
     private int matchday;
+    private String stage;
     private String lastUpdated;
     private Team homeTeam;
     private Team awayTeam;

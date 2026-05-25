@@ -6,6 +6,7 @@ import lombok.experimental.FieldDefaults;
 import net.friendly_bets.dto.LeagueDto;
 import net.friendly_bets.dto.LeagueWithoutFormatDto;
 import net.friendly_bets.dto.LeaguesWithoutFormatPage;
+import net.friendly_bets.exceptions.BadRequestException;
 import net.friendly_bets.exceptions.NotFoundException;
 import net.friendly_bets.models.League;
 import net.friendly_bets.models.Season;
@@ -52,6 +53,19 @@ public class LeaguesService {
             throw new NotFoundException("TournamentFormat", tournamentFormatId);
         }
         league.setTournamentFormatId(tournamentFormatId);
+        leaguesRepository.save(league);
+        return LeagueDto.from(league, leagueMatchdayService.expandSlotsForLeague(league));
+    }
+
+    @Transactional
+    public LeagueDto setCurrentMatchday(String leagueId, String matchDay) {
+        League league = getEntityService.getLeagueOrThrow(leagueId);
+        if (league.getTournamentFormatId() == null || league.getTournamentFormatId().isBlank()) {
+            throw new BadRequestException("leagueHasNoTournamentFormat");
+        }
+        String slotId = matchDay == null ? "" : matchDay.trim();
+        leagueMatchdayService.validateMatchDayForLeague(league, slotId);
+        league.setCurrentMatchDay(slotId);
         leaguesRepository.save(league);
         return LeagueDto.from(league, leagueMatchdayService.expandSlotsForLeague(league));
     }

@@ -10,8 +10,6 @@ import net.friendly_bets.footballdata.client.FootballDataClient;
 import net.friendly_bets.footballdata.client.dto.FootballDataMatchDto;
 import net.friendly_bets.footballdata.client.dto.FootballDataMatchdayResponse;
 import net.friendly_bets.models.ExpandedMatchdaySlot;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -19,8 +17,6 @@ import java.util.List;
 @Component
 @RequiredArgsConstructor
 public class FootballDataExternalMatchDataProvider implements ExternalMatchDataProvider {
-
-    private static final Logger log = LoggerFactory.getLogger(FootballDataExternalMatchDataProvider.class);
 
     private final FootballDataClient footballDataClient;
     private final FootballDataSlotQueryMapper slotQueryMapper;

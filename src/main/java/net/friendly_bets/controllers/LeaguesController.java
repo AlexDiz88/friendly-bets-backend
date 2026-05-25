@@ -2,6 +2,7 @@ package net.friendly_bets.controllers;
 
 import lombok.RequiredArgsConstructor;
 import net.friendly_bets.dto.AssignTournamentFormatDto;
+import net.friendly_bets.dto.SetLeagueCurrentMatchdayDto;
 import net.friendly_bets.dto.ExternalCompetitionInfoDto;
 import net.friendly_bets.dto.LeagueDto;
 import net.friendly_bets.dto.LeaguesWithoutFormatPage;
@@ -36,6 +37,15 @@ public class LeaguesController {
         return ResponseEntity.ok(
                 leaguesService.assignTournamentFormat(leagueId, body.getTournamentFormatId())
         );
+    }
+
+    @PatchMapping("/{leagueId}/current-matchday")
+    @PreAuthorize("hasAuthority('ADMIN')")
+    public ResponseEntity<LeagueDto> setCurrentMatchday(
+            @PathVariable String leagueId,
+            @RequestBody @Valid SetLeagueCurrentMatchdayDto body
+    ) {
+        return ResponseEntity.ok(leaguesService.setCurrentMatchday(leagueId, body.getMatchDay()));
     }
 
     @GetMapping("/{leagueId}/external-competition-info")

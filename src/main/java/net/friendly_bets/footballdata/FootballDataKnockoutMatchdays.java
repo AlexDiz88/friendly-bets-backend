@@ -12,30 +12,39 @@ import java.util.Optional;
  */
 public final class FootballDataKnockoutMatchdays {
 
-    private record KnockoutSlot(int matchday, String stage, String labelKey) {
+    public record KnockoutSlot(int matchday, String stage, String labelKey, Integer leg) {
+        public KnockoutSlot(int matchday, String stage, String labelKey) {
+            this(matchday, stage, labelKey, null);
+        }
     }
 
     private static final Map<String, List<KnockoutSlot>> KNOCKOUT_SLOTS_BY_CODE = Map.of(
             "CL", List.of(
-                    new KnockoutSlot(9, "LAST_16", "1/8"),
-                    new KnockoutSlot(10, "QUARTER_FINALS", "1/4"),
-                    new KnockoutSlot(11, "SEMI_FINALS", "1/2"),
-                    new KnockoutSlot(12, "FINAL", "final")
+                    new KnockoutSlot(9, "PLAYOFFS", "1/16 [1]", 1),
+                    new KnockoutSlot(10, "PLAYOFFS", "1/16 [2]", 2),
+                    new KnockoutSlot(11, "LAST_16", "1/8"),
+                    new KnockoutSlot(12, "QUARTER_FINALS", "1/4"),
+                    new KnockoutSlot(13, "SEMI_FINALS", "1/2"),
+                    new KnockoutSlot(14, "FINAL", "final")
             )
     );
 
     private FootballDataKnockoutMatchdays() {
     }
 
-    public static Optional<String> stageForMatchday(String competitionCode, int matchday) {
+    public static Optional<KnockoutSlot> knockoutSlotForMatchday(String competitionCode, int matchday) {
         List<KnockoutSlot> slots = KNOCKOUT_SLOTS_BY_CODE.get(competitionCode);
         if (slots == null) {
             return Optional.empty();
         }
         return slots.stream()
                 .filter(s -> s.matchday() == matchday)
-                .map(KnockoutSlot::stage)
                 .findFirst();
+    }
+
+    /** @deprecated use {@link #knockoutSlotForMatchday} */
+    public static Optional<String> stageForMatchday(String competitionCode, int matchday) {
+        return knockoutSlotForMatchday(competitionCode, matchday).map(KnockoutSlot::stage);
     }
 
     public static boolean isKnockoutMatchday(String competitionCode, int matchday) {

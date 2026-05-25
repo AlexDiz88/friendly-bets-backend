@@ -10,6 +10,7 @@ import net.friendly_bets.models.ExpandedMatchdaySlot;
 import net.friendly_bets.models.League;
 import net.friendly_bets.models.TournamentFormat;
 import net.friendly_bets.services.GetEntityService;
+import net.friendly_bets.services.LeagueMatchdayService;
 import net.friendly_bets.services.TournamentFormatExpander;
 import net.friendly_bets.services.TournamentFormatsService;
 import org.springframework.stereotype.Service;
@@ -25,6 +26,7 @@ public class FootballDataCompetitionService {
     private final FootballDataClient footballDataClient;
     private final GetEntityService getEntityService;
     private final TournamentFormatExpander tournamentFormatExpander;
+    private final LeagueMatchdayService leagueMatchdayService;
 
     public ExternalCompetitionInfoDto getCompetitionInfoForLeague(String leagueId, String season) {
         League league = getEntityService.getLeagueOrThrow(leagueId);
@@ -44,7 +46,9 @@ public class FootballDataCompetitionService {
                 .toList();
 
         int matchdayCount = slots.size();
-        int currentMatchday = resolveCurrentSlotOrder(code, season, format, matchdayCount);
+        String effectiveSlotId = leagueMatchdayService.resolveEffectiveCurrentMatchDay(league);
+        int currentMatchday = tournamentFormatExpander.resolveOrder(format, effectiveSlotId)
+                .orElse(1);
 
         return ExternalCompetitionInfoDto.builder()
                 .competitionCode(code)

@@ -9,6 +9,8 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
@@ -17,6 +19,8 @@ import org.springframework.web.util.UriComponentsBuilder;
 @Component
 @RequiredArgsConstructor
 public class FootballDataClient {
+
+    private static final Logger log = LoggerFactory.getLogger(FootballDataClient.class);
 
     private final RestTemplate footballDataRestTemplate;
     private final FootballDataProperties properties;
@@ -78,6 +82,13 @@ public class FootballDataClient {
         }
 
         String url = uriBuilder.buildAndExpand(competitionCode).toUriString();
+        log.info(
+                "football-data.org GET {}{} competition={} season={}",
+                properties.getBaseUrl(),
+                url,
+                competitionCode,
+                season
+        );
 
         HttpHeaders headers = new HttpHeaders();
         headers.set("X-Auth-Token", properties.getApiKey());
@@ -89,10 +100,15 @@ public class FootballDataClient {
                     new HttpEntity<>(headers),
                     FootballDataMatchdayResponse.class
             );
-            return response.getBody();
+            FootballDataMatchdayResponse body = response.getBody();
+            int count = body != null && body.getMatches() != null ? body.getMatches().size() : 0;
+            log.info("football-data.org response: {} matches for {}", count, url);
+            return body;
         } catch (HttpClientErrorException.TooManyRequests e) {
+            log.warn("football-data.org rate limit for {}", url);
             throw new BadRequestException("footballDataRateLimitExceeded");
         } catch (HttpClientErrorException e) {
+            log.warn("football-data.org HTTP {} for {}: {}", e.getStatusCode().value(), url, e.getMessage());
             throw new BadRequestException("footballDataRequestFailed");
         }
     }

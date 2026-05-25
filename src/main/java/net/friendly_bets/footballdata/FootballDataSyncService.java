@@ -119,7 +119,7 @@ public class FootballDataSyncService {
             throw new BadRequestException("footballDataEmptyResponse");
         }
 
-        String resolvedSeason = resolveSeason(response, season);
+        String storageSeason = resolveStorageSeason(season);
         LocalDateTime now = LocalDateTime.now();
         String storageLeagueId = friendlyLeagueId;
         if (storageLeagueId == null || storageLeagueId.isBlank()) {
@@ -141,7 +141,7 @@ public class FootballDataSyncService {
 
             Optional<ExternalMatch> existingMatch = externalMatchRepository
                     .findByCompetitionCodeAndMatchdayAndSeasonAndExternalMatchId(
-                            competitionCode, slotOrder, resolvedSeason, matchDto.getId());
+                            competitionCode, slotOrder, storageSeason, matchDto.getId());
 
             if (existingMatch.isPresent()
                     && FootballDataMatchStatuses.isTerminal(existingMatch.get().getStatus())) {
@@ -152,7 +152,7 @@ public class FootballDataSyncService {
             }
 
             ExternalMatch mapped = matchMapper.toEntity(
-                    matchDto, competitionCode, resolvedSeason, slotOrder, homeTeam, awayTeam, storageLeagueId, now);
+                    matchDto, competitionCode, storageSeason, slotOrder, homeTeam, awayTeam, storageLeagueId, now);
 
             ExternalMatch toSave = existingMatch.orElse(mapped);
 
@@ -185,11 +185,11 @@ public class FootballDataSyncService {
                 : response.getMatches().size();
 
         ExternalMatchdaySync sync = externalMatchdaySyncRepository
-                .findByCompetitionCodeAndMatchdayAndSeason(competitionCode, slotOrder, resolvedSeason)
+                .findByCompetitionCodeAndMatchdayAndSeason(competitionCode, slotOrder, storageSeason)
                 .orElse(ExternalMatchdaySync.builder()
                         .competitionCode(competitionCode)
                         .matchday(slotOrder)
-                        .season(resolvedSeason)
+                        .season(storageSeason)
                         .syncStatus(ExternalMatchdaySyncStatus.POLLING)
                         .firstFetchedAt(now)
                         .build());
@@ -294,6 +294,14 @@ public class FootballDataSyncService {
                 TournamentFormat format = getEntityService.getTournamentFormatOrThrow(league.getTournamentFormatId());
                 ExpandedMatchdaySlot slot = tournamentFormatExpander.findByOrder(format, slotOrder)
                         .orElseThrow(() -> new BadRequestException("invalidSlotOrder"));
+                log.info(
+                        "football-data sync via format: competition={} slotOrder={} slotId={} season={} leagueId={}",
+                        competitionCode,
+                        slotOrder,
+                        slot.getId(),
+                        season,
+                        leagueId
+                );
                 List<FootballDataMatchDto> matches = externalMatchDataFacade.fetchMatches(
                         net.friendly_bets.externaldata.ExternalMatchFetchRequest.builder()
                                 .competitionCode(competitionCode)
@@ -307,14 +315,36 @@ public class FootballDataSyncService {
                 FootballDataMatchdayResponse.ResultSet resultSet = new FootballDataMatchdayResponse.ResultSet();
                 resultSet.setCount(matches.size());
                 response.setResultSet(resultSet);
+                log.info("football-data sync result: {} matches saved for slotOrder={}", matches.size(), slotOrder);
                 return response;
             }
         }
 
         return FootballDataKnockoutMatchdays
-                .stageForMatchday(competitionCode, slotOrder)
-                .map(stage -> footballDataClient.fetchMatchesByStage(competitionCode, stage, season))
+                .knockoutSlotForMatchday(competitionCode, slotOrder)
+                .map(slot -> fetchKnockoutStage(competitionCode, slot, season))
                 .orElseGet(() -> footballDataClient.fetchMatchday(competitionCode, slotOrder, season));
+    }
+
+    private FootballDataMatchdayResponse fetchKnockoutStage(
+            String competitionCode,
+            FootballDataKnockoutMatchdays.KnockoutSlot slot,
+            String season
+    ) {
+        FootballDataMatchdayResponse response = footballDataClient.fetchMatchesByStage(
+                competitionCode, slot.stage(), season);
+        if (slot.leg() == null || response == null || response.getMatches() == null) {
+            return response;
+        }
+        List<FootballDataMatchDto> filtered = FootballDataLegFilter.filterByLeg(response.getMatches(), slot.leg());
+        FootballDataMatchdayResponse narrowed = new FootballDataMatchdayResponse();
+        narrowed.setMatches(filtered);
+        narrowed.setCompetition(response.getCompetition());
+        narrowed.setFilters(response.getFilters());
+        FootballDataMatchdayResponse.ResultSet resultSet = new FootballDataMatchdayResponse.ResultSet();
+        resultSet.setCount(filtered.size());
+        narrowed.setResultSet(resultSet);
+        return narrowed;
     }
 
     private void ensurePolling(MatchdayKey key) {
@@ -370,11 +400,11 @@ public class FootballDataSyncService {
         }
     }
 
-    private String resolveSeason(FootballDataMatchdayResponse response, String fallbackSeason) {
-        if (response.getFilters() != null && response.getFilters().getSeason() != null) {
-            return response.getFilters().getSeason();
+    private String resolveStorageSeason(String requestedSeason) {
+        if (requestedSeason != null && !requestedSeason.isBlank()) {
+            return requestedSeason.trim();
         }
-        return fallbackSeason;
+        return properties.getDefaultSeason();
     }
 
     /**

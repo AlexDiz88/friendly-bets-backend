@@ -44,11 +44,12 @@ public class FootballDataController {
             @PathVariable int matchday,
             @RequestParam(defaultValue = "2025") String season) {
 
-        List<ExternalMatch> matches = footballDataSyncService.getMatches(competitionCode, matchday, season);
         ExternalMatchdaySyncDto syncDto = externalMatchdaySyncRepository
                 .findByCompetitionCodeAndMatchdayAndSeason(competitionCode, matchday, season)
                 .map(ExternalMatchdaySyncDto::from)
                 .orElse(null);
+
+        List<ExternalMatch> matches = footballDataSyncService.getMatches(competitionCode, matchday, season);
 
         return ResponseEntity.ok(ExternalMatchdayPageDto.builder()
                 .sync(syncDto)
