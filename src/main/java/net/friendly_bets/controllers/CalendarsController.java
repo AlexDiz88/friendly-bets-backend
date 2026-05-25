@@ -5,6 +5,7 @@ import net.friendly_bets.controllers.api.CalendarsApi;
 import net.friendly_bets.dto.BetsPage;
 import net.friendly_bets.dto.CalendarNodeDto;
 import net.friendly_bets.dto.CalendarNodesPage;
+import net.friendly_bets.dto.GameweeksOverviewPage;
 import net.friendly_bets.dto.NewCalendarNodeDto;
 import net.friendly_bets.services.CalendarsService;
 import org.springframework.http.HttpStatus;
@@ -31,6 +32,14 @@ public class CalendarsController implements CalendarsApi {
     @GetMapping("/seasons/{season-id}/has-bets")
     public ResponseEntity<CalendarNodesPage> getSeasonCalendarHasBetsNodes(@PathVariable("season-id") String seasonId) {
         return ResponseEntity.ok(calendarsService.getSeasonCalendarHasBetsNodes(seasonId));
+    }
+
+    @GetMapping("/seasons/{season-id}/gameweeks-overview")
+    public ResponseEntity<GameweeksOverviewPage> getGameweeksOverview(
+            @PathVariable("season-id") String seasonId,
+            @RequestParam(value = "calendarNodeId", required = false) String calendarNodeId
+    ) {
+        return ResponseEntity.ok(calendarsService.getGameweeksOverview(seasonId, calendarNodeId));
     }
 
     @Override
