@@ -5,9 +5,14 @@ import net.friendly_bets.dto.ExternalCompetitionInfoDto;
 import net.friendly_bets.dto.ExternalMatchDto;
 import net.friendly_bets.dto.ExternalMatchdayPageDto;
 import net.friendly_bets.dto.ExternalMatchdaySyncDto;
+import net.friendly_bets.footballdata.AutoBetSettlementService;
+import net.friendly_bets.footballdata.AutoSettleResult;
 import net.friendly_bets.footballdata.ExternalMatchDisplayService;
 import net.friendly_bets.footballdata.FootballDataCompetitionService;
 import net.friendly_bets.footballdata.FootballDataSyncService;
+import net.friendly_bets.repositories.SeasonsRepository;
+import net.friendly_bets.models.Season;
+import net.friendly_bets.exceptions.NotFoundException;
 import net.friendly_bets.footballdata.config.FootballDataProperties;
 import net.friendly_bets.models.GameResult;
 import net.friendly_bets.models.external.ExternalMatch;
@@ -30,6 +35,8 @@ public class FootballDataController {
     private final FootballDataCompetitionService footballDataCompetitionService;
     private final ExternalMatchdaySyncRepository externalMatchdaySyncRepository;
     private final FootballDataProperties footballDataProperties;
+    private final AutoBetSettlementService autoBetSettlementService;
+    private final SeasonsRepository seasonsRepository;
 
     @GetMapping("/competitions/{competitionCode}")
     @PreAuthorize("permitAll()")
@@ -70,6 +77,7 @@ public class FootballDataController {
         String resolvedSeason = season != null ? season : footballDataProperties.getDefaultSeason();
         ExternalMatchdaySync sync = footballDataSyncService.syncMatchday(
                 competitionCode, matchday, resolvedSeason, leagueId);
+        autoBetSettlementService.settleActiveSeasonIfEnabled();
         return ResponseEntity.ok(ExternalMatchdaySyncDto.from(sync));
     }
 
@@ -77,10 +85,20 @@ public class FootballDataController {
     @PreAuthorize("hasAuthority('ADMIN') || hasAuthority('MODERATOR')")
     public ResponseEntity<Map<String, Object>> refreshSeason(@PathVariable String seasonId) {
         footballDataSyncService.refreshSeason(seasonId);
+        seasonsRepository.findById(seasonId)
+                .ifPresent(autoBetSettlementService::settleSeason);
         return ResponseEntity.ok(Map.of(
                 "message", "footballDataRefreshStarted",
                 "seasonId", seasonId
         ));
+    }
+
+    @PostMapping("/seasons/{seasonId}/auto-settle")
+    @PreAuthorize("hasAuthority('ADMIN') || hasAuthority('MODERATOR')")
+    public ResponseEntity<AutoSettleResult> autoSettleSeason(@PathVariable String seasonId) {
+        Season season = seasonsRepository.findById(seasonId)
+                .orElseThrow(() -> new NotFoundException("Season", seasonId));
+        return ResponseEntity.ok(autoBetSettlementService.settleSeason(season));
     }
 
     @GetMapping("/seasons/{seasonId}/cached-game-results")

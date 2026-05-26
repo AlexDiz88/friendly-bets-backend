@@ -8,6 +8,7 @@ import net.friendly_bets.exceptions.BadRequestException;
 import net.friendly_bets.exceptions.ConflictException;
 import net.friendly_bets.models.*;
 import net.friendly_bets.models.enums.BetTitleCode;
+import net.friendly_bets.footballdata.FootballDataSyncService;
 import net.friendly_bets.repositories.BetsRepository;
 import net.friendly_bets.repositories.LeaguesRepository;
 import org.springframework.data.domain.Page;
@@ -38,6 +39,7 @@ public class BetsService {
     GameweekStatsService gameweekStatsService;
     BetTitleStatsService betTitleStatsService;
     LeagueMatchdayService leagueMatchdayService;
+    FootballDataSyncService footballDataSyncService;
 
     @Transactional
     public BetDto addOpenedBet(String moderatorId, NewBetDto newOpenedBet) {
@@ -57,6 +59,7 @@ public class BetsService {
         leagueMatchdayService.updateCurrentMatchDayAfterBet(season, league);
         calendarsService.addBetToCalendarNode(openedBet, newOpenedBet.getCalendarNodeId(), newOpenedBet.getLeagueId(), newOpenedBet.getMatchDay());
         playerStatsService.calculateStatsBasedOnNewOpenedBet(season.getId(), league.getId(), user, true);
+        footballDataSyncService.registerPollingForOpenedBet(openedBet);
 
         return BetDto.from(openedBet);
     }

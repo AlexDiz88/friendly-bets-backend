@@ -10,7 +10,9 @@ import net.friendly_bets.footballdata.config.FootballDataProperties;
 import net.friendly_bets.models.Bet;
 import net.friendly_bets.models.ExpandedMatchdaySlot;
 import net.friendly_bets.models.GameResult;
+import net.friendly_bets.models.GameScore;
 import net.friendly_bets.models.League;
+import net.friendly_bets.models.Season;
 import net.friendly_bets.models.Team;
 import net.friendly_bets.models.TournamentFormat;
 import net.friendly_bets.services.GetEntityService;
@@ -22,6 +24,7 @@ import net.friendly_bets.repositories.BetsRepository;
 import net.friendly_bets.repositories.ExternalMatchRepository;
 import net.friendly_bets.repositories.ExternalMatchdaySyncRepository;
 import net.friendly_bets.repositories.LeaguesRepository;
+import net.friendly_bets.repositories.SeasonsRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -29,12 +32,11 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -51,56 +53,78 @@ public class FootballDataSyncService {
     private final ExternalMatchdaySyncRepository externalMatchdaySyncRepository;
     private final BetsRepository betsRepository;
     private final LeaguesRepository leaguesRepository;
+    private final SeasonsRepository seasonsRepository;
     private final GetEntityService getEntityService;
     private final TournamentFormatExpander tournamentFormatExpander;
     private final net.friendly_bets.externaldata.ExternalMatchDataFacade externalMatchDataFacade;
+    private final ExternalMatchGameResultCollector gameResultCollector;
+    private final FootballDataMatchdaySupport matchdaySupport;
+    private final ExternalSyncIssueService externalSyncIssueService;
 
     public void registerPollingForSeason(String seasonId) {
-        List<Bet> openedBets = betsRepository.findAllBySeason_IdAndBetStatus(seasonId, Bet.BetStatus.OPENED);
-        Set<MatchdayKey> keys = new LinkedHashSet<>();
+        getEntityService.getSeasonOrThrow(seasonId);
+        collectMatchdayKeysForSeasonId(seasonId).forEach(this::ensurePolling);
+    }
 
-        for (Bet bet : openedBets) {
-            if (bet.getLeague() == null || bet.getMatchDay() == null) {
-                continue;
-            }
-            buildMatchdayKey(bet.getLeague(), bet.getMatchDay()).ifPresent(keys::add);
+    /** Регистрирует опрос тура при новой открытой ставке. */
+    public void registerPollingForOpenedBet(Bet bet) {
+        if (bet.getBetStatus() != Bet.BetStatus.OPENED || bet.getMatchDay() == null || bet.getMatchDay().isBlank()) {
+            return;
         }
+        String leagueId = extractLeagueId(bet);
+        String seasonId = extractSeasonId(bet);
+        if (leagueId == null || seasonId == null) {
+            return;
+        }
+        League league = getEntityService.getLeagueOrThrow(leagueId);
+        Season season = getEntityService.getSeasonOrThrow(seasonId);
+        matchdaySupport.buildMatchdayKey(
+                        league,
+                        bet.getMatchDay(),
+                        matchdaySupport.resolveFootballDataSeasonYear(season))
+                .ifPresent(key -> {
+                    ensurePolling(key);
+                    syncMatchdayIfConfigured(key);
+                });
+    }
 
-        for (MatchdayKey key : keys) {
-            ensurePolling(key);
+    private void syncMatchdayIfConfigured(FootballDataMatchdayKey key) {
+        if (!properties.isSyncEnabled() || !footballDataClient.isConfigured()) {
+            return;
+        }
+        try {
+            syncMatchday(key.competitionCode(), key.matchday(), key.season(), key.leagueId());
+        } catch (Exception e) {
+            log.warn("Immediate matchday sync failed for {}: {}", key, e.getMessage());
         }
     }
 
     /**
-     * Плановый опрос football-data.org: только текущий тур каждого турнира, если тур ещё не завершён.
+     * Плановый tick: опрос туров с открытыми ставками + текущих туров API (если ещё не COMPLETED).
      */
-    public int syncPollingMatchdays() {
+    public int runPollingTick() {
         if (!properties.isSyncEnabled() || !footballDataClient.isConfigured()) {
             return 0;
         }
 
-        String season = properties.getDefaultSeason();
+        Set<FootballDataMatchdayKey> keys = new LinkedHashSet<>();
+        seasonsRepository.findSeasonByStatus(Season.Status.ACTIVE).ifPresent(season -> {
+            keys.addAll(collectMatchdayKeysForSeason(season));
+            addCurrentApiMatchdayKeys(keys, matchdaySupport.resolveFootballDataSeasonYear(season));
+        });
+        keys.forEach(this::ensurePolling);
+
         int synced = 0;
-
-        for (String competitionCode : FootballDataCompetitionMapping.allCompetitionCodes()) {
+        for (FootballDataMatchdayKey key : keys) {
             try {
-                ExternalCompetitionInfoDto info = footballDataCompetitionService.getCompetitionInfo(
-                        competitionCode, season);
-                int currentMatchday = info.getCurrentMatchday();
-
-                Optional<ExternalMatchdaySync> existing = externalMatchdaySyncRepository
-                        .findByCompetitionCodeAndMatchdayAndSeason(competitionCode, currentMatchday, season);
-
-                if (existing.isPresent()
-                        && existing.get().getSyncStatus() == ExternalMatchdaySyncStatus.COMPLETED) {
-                    continue;
-                }
-
-                syncMatchday(competitionCode, currentMatchday, season);
+                syncMatchday(key.competitionCode(), key.matchday(), key.season(), key.leagueId());
                 synced++;
             } catch (Exception e) {
-                log.warn("Failed to poll current matchday for {}: {}", competitionCode, e.getMessage());
+                log.warn("Failed to poll matchday {}: {}", key, e.getMessage());
             }
+        }
+        if (synced > 0) {
+            log.debug("Football-data polled {} matchday(s)", synced);
         }
         return synced;
     }
@@ -129,6 +153,7 @@ public class FootballDataSyncService {
         }
 
         int finishedCount = 0;
+        boolean hadUnmappedTeams = false;
         for (FootballDataMatchDto matchDto : response.getMatches()) {
             Team homeTeam = teamResolver.resolve(
                     matchDto.getHomeTeam().getId(),
@@ -139,12 +164,55 @@ public class FootballDataSyncService {
                     matchDto.getAwayTeam().getName()
             ).orElse(null);
 
+            // Strict mode: only persist matches when both teams are mapped to our Team titles.
+            if (homeTeam == null || awayTeam == null) {
+                hadUnmappedTeams = true;
+                externalSyncIssueService.recordMissingTeamMapping(competitionCode, season, slotOrder, matchDto);
+                log.warn(
+                        "External match skipped (missing team mapping): provider=football-data competition={} season={} matchday={} matchId={} home='{}' away='{}'",
+                        competitionCode,
+                        season,
+                        slotOrder,
+                        matchDto.getId(),
+                        matchDto.getHomeTeam() != null ? matchDto.getHomeTeam().getName() : null,
+                        matchDto.getAwayTeam() != null ? matchDto.getAwayTeam().getName() : null
+                );
+                continue;
+            }
+
             Optional<ExternalMatch> existingMatch = externalMatchRepository
                     .findByCompetitionCodeAndMatchdayAndSeasonAndExternalMatchId(
                             competitionCode, slotOrder, storageSeason, matchDto.getId());
 
             if (existingMatch.isPresent()
                     && FootballDataMatchStatuses.isTerminal(existingMatch.get().getStatus())) {
+                ExternalMatch terminal = existingMatch.get();
+                GameScore refreshedScore = matchMapper.toGameScore(matchDto);
+                boolean needsSave = false;
+                if (homeTeam != null && !java.util.Objects.equals(homeTeam.getId(), terminal.getHomeTeamId())) {
+                    terminal.setHomeTeamId(homeTeam.getId());
+                    needsSave = true;
+                }
+                if (awayTeam != null && !java.util.Objects.equals(awayTeam.getId(), terminal.getAwayTeamId())) {
+                    terminal.setAwayTeamId(awayTeam.getId());
+                    needsSave = true;
+                }
+                if (refreshedScore != null
+                        && (terminal.getGameScore() == null
+                        || terminal.getGameScore().getFullTime() == null)) {
+                    terminal.setGameScore(refreshedScore);
+                    needsSave = true;
+                }
+                if (needsSave) {
+                    terminal.setFetchedAt(now);
+                    externalMatchRepository.save(terminal);
+                    log.info(
+                            "Backfilled external match {}: homeTeamId={}, awayTeamId={}",
+                            matchDto.getId(),
+                            terminal.getHomeTeamId(),
+                            terminal.getAwayTeamId()
+                    );
+                }
                 if (FootballDataMatchStatuses.isTerminal(matchDto.getStatus())) {
                     finishedCount++;
                 }
@@ -201,7 +269,7 @@ public class FootballDataSyncService {
             sync.setFirstFetchedAt(now);
         }
 
-        boolean allTerminal = response.getMatches().stream()
+        boolean allTerminal = !hadUnmappedTeams && response.getMatches().stream()
                 .allMatch(m -> FootballDataMatchStatuses.isTerminal(m.getStatus()));
 
         if (expected > 0 && allTerminal) {
@@ -221,65 +289,121 @@ public class FootballDataSyncService {
     }
 
     public List<GameResult> getCachedGameResultsForSeason(String seasonId) {
-        List<Bet> openedBets = betsRepository.findAllBySeason_IdAndBetStatus(seasonId, Bet.BetStatus.OPENED);
-        Map<String, GameResult> unique = new LinkedHashMap<>();
-
-        for (Bet bet : openedBets) {
-            if (bet.getHomeTeam() == null || bet.getAwayTeam() == null || bet.getLeague() == null) {
-                continue;
-            }
-
-            Optional<String> competitionCode = FootballDataCompetitionMapping
-                    .toCompetitionCode(bet.getLeague().getLeagueCode());
-            if (competitionCode.isEmpty()) {
-                continue;
-            }
-
-            Optional<Integer> slotOrder = resolveSlotOrder(bet.getLeague(), bet.getMatchDay());
-            if (slotOrder.isEmpty()) {
-                continue;
-            }
-
-            String season = properties.getDefaultSeason();
-            externalMatchRepository
-                    .findByCompetitionCodeAndMatchdayAndSeasonAndHomeTeamIdAndAwayTeamId(
-                            competitionCode.get(),
-                            slotOrder.get(),
-                            season,
-                            bet.getHomeTeam().getId(),
-                            bet.getAwayTeam().getId()
-                    )
-                    .filter(m -> "FINISHED".equals(m.getStatus()))
-                    .filter(m -> m.getGameScore() != null && m.getGameScore().getFullTime() != null)
-                    .ifPresent(match -> {
-                        String key = bet.getLeague().getId() + "_" + bet.getHomeTeam().getId() + "_" + bet.getAwayTeam().getId();
-                        unique.putIfAbsent(key, GameResult.builder()
-                                .leagueId(bet.getLeague().getId())
-                                .homeTeamId(bet.getHomeTeam().getId())
-                                .awayTeamId(bet.getAwayTeam().getId())
-                                .gameScore(match.getGameScore())
-                                .build());
-                    });
-        }
-
-        return new ArrayList<>(unique.values());
+        Season season = getEntityService.getSeasonOrThrow(seasonId);
+        return gameResultCollector.collectForSeason(season);
     }
 
     public void refreshSeason(String seasonId) {
-        List<Bet> openedBets = betsRepository.findAllBySeason_IdAndBetStatus(seasonId, Bet.BetStatus.OPENED);
-        Set<MatchdayKey> keys = new LinkedHashSet<>();
-        for (Bet bet : openedBets) {
-            if (bet.getLeague() == null || bet.getMatchDay() == null) {
-                continue;
-            }
-            buildMatchdayKey(bet.getLeague(), bet.getMatchDay()).ifPresent(keys::add);
-        }
-        for (MatchdayKey key : keys) {
+        Set<FootballDataMatchdayKey> keys = collectMatchdayKeysForSeasonId(seasonId);
+        for (FootballDataMatchdayKey key : keys) {
             ensurePolling(key);
             if (footballDataClient.isConfigured()) {
                 syncMatchday(key.competitionCode(), key.matchday(), key.season(), key.leagueId());
             }
         }
+    }
+
+    private Set<FootballDataMatchdayKey> collectMatchdayKeysForSeasonId(String seasonId) {
+        Season season = getEntityService.getSeasonOrThrow(seasonId);
+        return collectMatchdayKeysForSeason(season);
+    }
+
+    private Set<FootballDataMatchdayKey> collectMatchdayKeysForSeason(Season season) {
+        List<Bet> openedBets = betsRepository.findAllBySeason_IdAndBetStatus(season.getId(), Bet.BetStatus.OPENED);
+        Set<FootballDataMatchdayKey> keys = new LinkedHashSet<>();
+        String footballDataSeason = matchdaySupport.resolveFootballDataSeasonYear(season);
+        int skipped = 0;
+
+        for (Bet bet : openedBets) {
+            if (bet.getMatchDay() == null || bet.getMatchDay().isBlank()) {
+                skipped++;
+                continue;
+            }
+            String leagueId = extractLeagueId(bet);
+            if (leagueId == null) {
+                skipped++;
+                continue;
+            }
+            try {
+                League league = getEntityService.getLeagueOrThrow(leagueId);
+                Optional<FootballDataMatchdayKey> matchdayKey = matchdaySupport.buildMatchdayKey(
+                        league, bet.getMatchDay(), footballDataSeason);
+                if (matchdayKey.isPresent()) {
+                    keys.add(matchdayKey.get());
+                } else {
+                    skipped++;
+                }
+            } catch (Exception e) {
+                log.warn(
+                        "Football-data polling: skip bet {} (league {}): {}",
+                        bet.getId(),
+                        leagueId,
+                        e.getMessage()
+                );
+                skipped++;
+            }
+        }
+
+        if (!openedBets.isEmpty()) {
+            log.info(
+                    "Football-data polling keys from {} OPENED bet(s): {} matchday(s), {} skipped, season={}",
+                    openedBets.size(),
+                    keys.size(),
+                    skipped,
+                    footballDataSeason
+            );
+        }
+        return keys;
+    }
+
+    /**
+     * Дополнительно опрашивает текущий тур API только для лиг, где уже есть открытые ставки
+     * (не дергаем EC/WC и прочие коды без активных ставок).
+     */
+    private void addCurrentApiMatchdayKeys(Set<FootballDataMatchdayKey> keys, String footballDataSeason) {
+        Set<String> competitionCodes = keys.stream()
+                .map(FootballDataMatchdayKey::competitionCode)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        if (competitionCodes.isEmpty()) {
+            return;
+        }
+
+        for (String competitionCode : competitionCodes) {
+            try {
+                ExternalCompetitionInfoDto info = footballDataCompetitionService.getCompetitionInfo(
+                        competitionCode, footballDataSeason);
+                int currentMatchday = info.getCurrentMatchday();
+
+                Optional<ExternalMatchdaySync> existing = externalMatchdaySyncRepository
+                        .findByCompetitionCodeAndMatchdayAndSeason(
+                                competitionCode, currentMatchday, footballDataSeason);
+
+                if (existing.isPresent()
+                        && existing.get().getSyncStatus() == ExternalMatchdaySyncStatus.COMPLETED) {
+                    continue;
+                }
+
+                keys.add(new FootballDataMatchdayKey(competitionCode, currentMatchday, footballDataSeason, null));
+            } catch (Exception e) {
+                log.warn("Failed to resolve current matchday for {}: {}", competitionCode, e.getMessage());
+            }
+        }
+    }
+
+    private static String extractLeagueId(Bet bet) {
+        if (bet.getLeague() == null) {
+            return null;
+        }
+        String leagueId = bet.getLeague().getId();
+        return leagueId == null || leagueId.isBlank() ? null : leagueId;
+    }
+
+    private static String extractSeasonId(Bet bet) {
+        if (bet.getSeason() == null) {
+            return null;
+        }
+        String seasonId = bet.getSeason().getId();
+        return seasonId == null || seasonId.isBlank() ? null : seasonId;
     }
 
     private FootballDataMatchdayResponse fetchResponse(
@@ -347,12 +471,15 @@ public class FootballDataSyncService {
         return narrowed;
     }
 
-    private void ensurePolling(MatchdayKey key) {
+    private void ensurePolling(FootballDataMatchdayKey key) {
         externalMatchdaySyncRepository
                 .findByCompetitionCodeAndMatchdayAndSeason(key.competitionCode(), key.matchday(), key.season())
                 .ifPresentOrElse(existing -> {
                     if (existing.getSyncStatus() == ExternalMatchdaySyncStatus.COMPLETED) {
-                        log.debug("Matchday already completed: {}", key);
+                        existing.setSyncStatus(ExternalMatchdaySyncStatus.POLLING);
+                        existing.setCompletedAt(null);
+                        externalMatchdaySyncRepository.save(existing);
+                        log.debug("Reopened polling for matchday (new opened bets): {}", key);
                     }
                 }, () -> externalMatchdaySyncRepository.save(ExternalMatchdaySync.builder()
                         .competitionCode(key.competitionCode())
@@ -366,40 +493,6 @@ public class FootballDataSyncService {
                         .build()));
     }
 
-    private Optional<MatchdayKey> buildMatchdayKey(League league, String matchDay) {
-        Optional<String> competitionCode = FootballDataCompetitionMapping.toCompetitionCode(league.getLeagueCode());
-        if (competitionCode.isEmpty()) {
-            return Optional.empty();
-        }
-        return resolveSlotOrder(league, matchDay)
-                .map(order -> new MatchdayKey(
-                        competitionCode.get(),
-                        order,
-                        properties.getDefaultSeason(),
-                        league.getId()
-                ));
-    }
-
-    private Optional<Integer> resolveSlotOrder(League league, String matchDay) {
-        if (league.getTournamentFormatId() != null && !league.getTournamentFormatId().isBlank()) {
-            try {
-                TournamentFormat format = getEntityService.getTournamentFormatOrThrow(league.getTournamentFormatId());
-                Optional<Integer> fromFormat = tournamentFormatExpander.resolveOrder(format, matchDay);
-                if (fromFormat.isPresent()) {
-                    return fromFormat;
-                }
-            } catch (Exception e) {
-                log.warn("Failed to resolve slot for matchDay '{}' league {}: {}", matchDay, league.getId(), e.getMessage());
-            }
-        }
-        try {
-            return Optional.of(Integer.parseInt(matchDay));
-        } catch (NumberFormatException e) {
-            log.warn("Cannot parse matchDay '{}' for league {}", matchDay, league.getLeagueCode());
-            return Optional.empty();
-        }
-    }
-
     private String resolveStorageSeason(String requestedSeason) {
         if (requestedSeason != null && !requestedSeason.isBlank()) {
             return requestedSeason.trim();
@@ -407,10 +500,6 @@ public class FootballDataSyncService {
         return properties.getDefaultSeason();
     }
 
-    /**
-     * В Mongo может быть несколько лиг с одним {@link League.LeagueCode} — берём самую раннюю по {@code createdAt}
-     * как каноническую и логируем предупреждение.
-     */
     private String resolveSingleLeagueId(League.LeagueCode leagueCode) {
         if (leagueCode == null) {
             return null;
@@ -428,8 +517,5 @@ public class FootballDataSyncService {
                     leagues.get(0).getId());
         }
         return leagues.get(0).getId();
-    }
-
-    private record MatchdayKey(String competitionCode, int matchday, String season, String leagueId) {
     }
 }

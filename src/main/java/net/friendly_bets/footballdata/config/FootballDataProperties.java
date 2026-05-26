@@ -3,9 +3,6 @@ package net.friendly_bets.footballdata.config;
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
-import java.util.HashMap;
-import java.util.Map;
-
 @Data
 @ConfigurationProperties(prefix = "football-data")
 public class FootballDataProperties {
@@ -13,16 +10,12 @@ public class FootballDataProperties {
     private String apiKey = "";
     private String baseUrl = "https://api.football-data.org/v4";
     private boolean syncEnabled = true;
+    /** Автоматически вызывать {@code setBetResults} после опроса API. */
+    private boolean autoSettleEnabled = true;
     private long pollingIntervalMs = 900_000L;
     private String defaultSeason = "2025";
-
     /**
-     * football-data team id -> точное title команды в MongoDB.
+     * Id пользователя-модератора для аудита auto-settle. Пусто — первый ADMIN в БД.
      */
-    private Map<Integer, String> teamIds = new HashMap<>();
-
-    /**
-     * Имя команды из API -> title команды в MongoDB (fallback).
-     */
-    private Map<String, String> teamNames = new HashMap<>();
+    private String systemModeratorId = "";
 }

@@ -1,8 +1,8 @@
 package net.friendly_bets.services;
 
 import lombok.RequiredArgsConstructor;
-import net.friendly_bets.footballdata.config.FootballDataProperties;
 import net.friendly_bets.models.Team;
+import net.friendly_bets.models.TeamExternalAlias;
 import net.friendly_bets.repositories.TeamsRepository;
 import net.friendly_bets.utils.TeamTitleUtils;
 import org.springframework.stereotype.Component;
@@ -14,9 +14,17 @@ import java.util.Optional;
 public class TeamAliasResolver {
 
     private final TeamsRepository teamsRepository;
-    private final FootballDataProperties footballDataProperties;
 
     public Optional<Team> resolveFootballData(int footballDataTeamId, String footballDataTeamName) {
+        // Priority: name from API -> id from API.
+        if (footballDataTeamName != null && !footballDataTeamName.isBlank()) {
+            Optional<Team> byAliasName = teamsRepository.findByExternalAliasName(
+                    TeamTitleUtils.FOOTBALL_DATA_PROVIDER, footballDataTeamName);
+            if (byAliasName.isPresent()) {
+                return byAliasName;
+            }
+        }
+
         Optional<Team> byStoredId = teamsRepository.findByFootballDataTeamId(footballDataTeamId);
         if (byStoredId.isPresent()) {
             return byStoredId;
@@ -28,29 +36,46 @@ public class TeamAliasResolver {
             return byAliasId;
         }
 
-        if (footballDataTeamName != null && !footballDataTeamName.isBlank()) {
-            Optional<Team> byAliasName = teamsRepository.findByExternalAliasName(
-                    TeamTitleUtils.FOOTBALL_DATA_PROVIDER, footballDataTeamName);
-            if (byAliasName.isPresent()) {
-                return byAliasName;
-            }
-        }
-
-        String mappedTitle = footballDataProperties.getTeamIds().get(footballDataTeamId);
-        if (mappedTitle == null && footballDataTeamName != null) {
-            mappedTitle = footballDataProperties.getTeamNames().get(footballDataTeamName);
-        }
-        if (mappedTitle != null) {
-            Optional<Team> byTitle = teamsRepository.findByTitleIgnoreCase(mappedTitle);
-            if (byTitle.isPresent()) {
-                return byTitle;
-            }
-            String compact = mappedTitle.replaceAll("\\s+", "");
-            if (!compact.equals(mappedTitle)) {
-                return teamsRepository.findByTitle(compact);
-            }
-        }
-
         return Optional.empty();
+    }
+
+    /**
+     * football-data.org team id для внутренней команды (обратное сопоставление к {@link #resolveFootballData}).
+     */
+    public Optional<Integer> resolveFootballDataTeamId(Team team) {
+        if (team == null) {
+            return Optional.empty();
+        }
+        if (team.getFootballDataTeamId() != null && team.getFootballDataTeamId() > 0) {
+            return Optional.of(team.getFootballDataTeamId());
+        }
+        if (team.getExternalAliases() != null) {
+            for (TeamExternalAlias alias : team.getExternalAliases()) {
+                if (TeamTitleUtils.FOOTBALL_DATA_PROVIDER.equals(alias.getProvider())
+                        && alias.getExternalId() != null
+                        && alias.getExternalId() > 0) {
+                    return Optional.of(alias.getExternalId());
+                }
+            }
+        }
+        return Optional.empty();
+    }
+
+    public boolean teamMatchesFootballDataSide(Team team, int footballDataTeamId, String footballDataTeamName) {
+        if (team == null) {
+            return false;
+        }
+        if (footballDataTeamName != null && !footballDataTeamName.isBlank()
+                && team.getExternalAliases() != null) {
+            for (TeamExternalAlias alias : team.getExternalAliases()) {
+                if (TeamTitleUtils.FOOTBALL_DATA_PROVIDER.equals(alias.getProvider())
+                        && footballDataTeamName.equals(alias.getExternalName())) {
+                    return true;
+                }
+            }
+        }
+        return resolveFootballDataTeamId(team)
+                .map(teamFdId -> teamFdId.equals(footballDataTeamId))
+                .orElse(false);
     }
 }

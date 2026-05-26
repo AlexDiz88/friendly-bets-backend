@@ -13,13 +13,31 @@ public class FootballDataSyncScheduler {
     private static final Logger log = LoggerFactory.getLogger(FootballDataSyncScheduler.class);
 
     private final FootballDataSyncService footballDataSyncService;
+    private final AutoBetSettlementService autoBetSettlementService;
 
-    /** Каждые 15 мин — текущий тур по каждому турниру, если он не завершён. */
+    /** Каждые 15 мин: опрос API → auto-settle открытых ставок. */
     @Scheduled(fixedDelayString = "${football-data.polling-interval-ms}")
-    public void pollExternalMatchdays() {
-        int synced = footballDataSyncService.syncPollingMatchdays();
-        if (synced > 0) {
-            log.debug("Football-data polled {} current matchday(s)", synced);
+    public void pollExternalMatchdaysAndSettleBets() {
+        try {
+            footballDataSyncService.runPollingTick();
+        } catch (Exception e) {
+            log.warn("Football-data polling tick failed: {}", e.getMessage());
+        }
+
+        try {
+            autoBetSettlementService.settleActiveSeasonIfEnabled()
+                    .ifPresent(result -> {
+                        if (result.isExecuted()) {
+                            log.info(
+                                    "Auto-settle tick: season={}, matches={}, bets={}",
+                                    result.getSeasonId(),
+                                    result.getMatchesSubmitted(),
+                                    result.getBetsProcessed()
+                            );
+                        }
+                    });
+        } catch (Exception e) {
+            log.error("Auto-settle tick failed: {}", e.getMessage(), e);
         }
     }
 }

@@ -14,6 +14,7 @@ import net.friendly_bets.repositories.BetsRepository;
 import net.friendly_bets.repositories.CalendarsRepository;
 import net.friendly_bets.repositories.LeaguesRepository;
 import net.friendly_bets.repositories.SeasonsRepository;
+import net.friendly_bets.footballdata.FootballDataSyncService;
 import net.friendly_bets.repositories.TournamentFormatsRepository;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
@@ -43,6 +44,7 @@ public class SeasonsService {
     CalendarsRepository calendarsRepository;
     BetsRepository betsRepository;
     TournamentFormatsRepository tournamentFormatsRepository;
+    FootballDataSyncService footballDataSyncService;
     TournamentFormatExpander tournamentFormatExpander;
     LeagueMatchdayService leagueMatchdayService;
 
@@ -134,6 +136,10 @@ public class SeasonsService {
 
         season.setStatus(Season.Status.valueOf(status));
         seasonsRepository.save(season);
+
+        if (Season.Status.ACTIVE.name().equals(status)) {
+            footballDataSyncService.registerPollingForSeason(seasonId);
+        }
 
         return toSeasonDto(season);
     }
