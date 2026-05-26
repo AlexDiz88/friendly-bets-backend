@@ -7,6 +7,7 @@ import net.friendly_bets.models.enums.BetTitleCode;
 import net.friendly_bets.models.enums.BetTitleSubCategory;
 import net.friendly_bets.repositories.*;
 import net.friendly_bets.support.AbstractMongoIntegrationTest;
+import net.friendly_bets.support.IntegrationTestDtoFactory;
 import net.friendly_bets.support.TestDataFactory;
 import net.friendly_bets.support.TwoPlayersTestFixture;
 import org.junit.jupiter.api.BeforeEach;
@@ -200,6 +201,46 @@ class BetsStatsComplexScenariosIntegrationTest extends AbstractMongoIntegrationT
                     playerStatsRepository, playerStatsByTeamsRepository, playerStatsByBetTitlesRepository,
                     fixture, fixture.getPlayerOne(),
                     1, 1, 1, ODDS, WON_BALANCE, 1, 1, WON_BALANCE);
+        }
+    }
+
+    @Nested
+    @DisplayName("editBet change user and bet title")
+    class EditBetUserAndBetTitleChange {
+
+        private TwoPlayersTestFixture fixture;
+        private Bet wonBet;
+
+        @BeforeEach
+        void seed() {
+            fixture = testData.createTwoPlayersFirstMatchdaySetup(2);
+            wonBet = testData.addOpenedAndWonBet(
+                    fixture, fixture.getPlayerOne(), fixture.getHomeTeam(), fixture.getAwayTeam(), ODDS, SIZE);
+        }
+
+        @Test
+        @DisplayName("should revert bet-title stats for old user and apply for new user")
+        void shouldMoveBetTitleStatsBetweenUsers() {
+            String seasonId = fixture.getSeason().getId();
+            User playerOne = fixture.getPlayerOne();
+            User playerTwo = fixture.getPlayerTwo();
+
+            assertBetTitleSubcategory(playerStatsByBetTitlesRepository, seasonId, playerOne.getId(),
+                    BetTitleSubCategory.HOME_WIN, 1, 1, ODDS);
+            assertBetTitleStatsAbsent(playerStatsByBetTitlesRepository, seasonId, playerTwo.getId());
+
+            var editedBet = IntegrationTestDtoFactory.editedBetWithBetTitleAndUser(
+                    fixture, wonBet, playerTwo, BetTitleCode.AWAY_WIN, defaultLossGameScore());
+
+            betsService.editBet(fixture.getModerator().getId(), wonBet.getId(), editedBet);
+
+            assertBetTitleSubcategory(playerStatsByBetTitlesRepository, seasonId, playerOne.getId(),
+                    BetTitleSubCategory.HOME_WIN, 0, 0, 0);
+
+            assertBetTitleSubcategory(playerStatsByBetTitlesRepository, seasonId, playerTwo.getId(),
+                    BetTitleSubCategory.AWAY_WIN, 1, 1, ODDS);
+            assertBetTitleSubcategory(playerStatsByBetTitlesRepository, seasonId, playerTwo.getId(),
+                    BetTitleSubCategory.HOME_WIN, 0, 0, 0);
         }
     }
 

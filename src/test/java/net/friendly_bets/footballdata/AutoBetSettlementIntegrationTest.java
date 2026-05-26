@@ -77,7 +77,7 @@ class AutoBetSettlementIntegrationTest extends AbstractMongoIntegrationTest {
 
         Bet updated = betsRepository.findById(fx.getBet().getId()).orElseThrow();
         assertNotEquals(Bet.BetStatus.OPENED, updated.getBetStatus());
-        assertNotNull(updated.getBetResult());
-        assertEquals("2:0", updated.getBetResult().getGameScore().getFullTime());
+        assertNotNull(updated.getGameScore());
+        assertEquals("2:0", updated.getGameScore().getFullTime());
     }
 }

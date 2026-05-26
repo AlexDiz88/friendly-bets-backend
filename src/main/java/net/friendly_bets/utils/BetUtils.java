@@ -215,6 +215,29 @@ public class BetUtils {
                 .build();
     }
 
+    public static BetTitle copyBetTitle(BetTitle title) {
+        if (title == null) {
+            return null;
+        }
+        return BetTitle.builder()
+                .code(title.getCode())
+                .label(title.getLabel())
+                .isNot(title.isNot())
+                .build();
+    }
+
+    public static GameScore copyGameScore(GameScore gameScore) {
+        if (gameScore == null) {
+            return null;
+        }
+        return GameScore.builder()
+                .fullTime(gameScore.getFullTime())
+                .firstTime(gameScore.getFirstTime())
+                .overTime(gameScore.getOverTime())
+                .penalty(gameScore.getPenalty())
+                .build();
+    }
+
     public static Bet getPreviousStateOfBet(Bet bet) {
         if (bet.getBetStatus().equals(Bet.BetStatus.EMPTY) || bet.getBetStatus().equals(Bet.BetStatus.DELETED)) {
             throw new BadRequestException("emptyAndDeletedBetsCannotBeEdited");
@@ -229,12 +252,12 @@ public class BetUtils {
                 .matchDay(bet.getMatchDay())
                 .homeTeam(bet.getHomeTeam())
                 .awayTeam(bet.getAwayTeam())
-                .betTitle(bet.getBetTitle())
+                .betTitle(copyBetTitle(bet.getBetTitle()))
                 .betOdds(bet.getBetOdds())
                 .betSize(bet.getBetSize())
                 .betResultAddedAt(bet.getBetResultAddedAt())
                 .betResultAddedBy(bet.getBetResultAddedBy())
-                .gameScore(bet.getGameScore())
+                .gameScore(copyGameScore(bet.getGameScore()))
                 .betStatus(bet.getBetStatus())
                 .balanceChange(bet.getBalanceChange())
                 .updatedAt(bet.getUpdatedAt())

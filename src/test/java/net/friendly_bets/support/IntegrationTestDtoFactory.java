@@ -88,6 +88,21 @@ public class IntegrationTestDtoFactory {
         return editedBetForUser(fixture, bet, bet.getUser(), matchDay);
     }
 
+    public static EditedBetDto editedBetWithBetTitleAndUser(TwoPlayersTestFixture fixture,
+                                                            Bet bet,
+                                                            User user,
+                                                            BetTitleCode betTitleCode,
+                                                            GameScore gameScore) {
+        BetTitle betTitle = BetTitle.builder()
+                .code(betTitleCode.getCode())
+                .label(betTitleCode.getLabel())
+                .isNot(false)
+                .build();
+        return editedBetFrom(fixture, bet, user, bet.getMatchDay(),
+                bet.getHomeTeam().getId(), bet.getAwayTeam().getId(),
+                betTitle, bet.getBetOdds(), bet.getBetSize(), gameScore, bet.getBetStatus());
+    }
+
     public static EditedBetDto editedBetWithBetTitle(TwoPlayersTestFixture fixture,
                                                      Bet bet,
                                                      BetTitleCode betTitleCode,

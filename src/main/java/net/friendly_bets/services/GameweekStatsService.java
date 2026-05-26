@@ -39,12 +39,15 @@ public class GameweekStatsService {
         CalendarNode calendarNode = getEntityService.getCalendarNodeOrThrow(calendarNodeId);
         updateGameweekFinishedStatus(calendarNode);
 
-        if (calendarNode.getIsFinished()) {
+        if (Boolean.TRUE.equals(calendarNode.getIsFinished())) {
             updatePreviousGameweekId(calendarNode);
             updateGameweekStats(calendarNode);
             updatePlayersPositions(calendarNode);
-            saveCalendarNode(calendarNode);
+        } else {
+            calendarNode.setGameweekStats(new ArrayList<>());
+            calendarNode.setPreviousGameweekId(null);
         }
+        saveCalendarNode(calendarNode);
     }
 
     // ------------------------------------------------------------------------------------------------------ //

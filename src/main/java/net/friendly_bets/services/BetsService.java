@@ -242,16 +242,8 @@ public class BetsService {
         calendarsService.updateCalendar(prevBetState, bet);
         betsRepository.save(bet);
 
-        playerStatsService.calculateStatsBasedOnEditedBet(seasonId, leagueId, newUser, bet, true);
-        playerStatsService.calculateStatsBasedOnEditedBet(seasonId, leagueId, prevBetState.getUser(), prevBetState, false);
-        if (WRL_STATUSES.contains(prevBetState.getBetStatus())) {
-            teamStatsService.calculateStatsByTeams(seasonId, leagueId, prevBetState.getUser().getId(), prevBetState, false);
-            betTitleStatsService.calculateStatsByBetTitle(seasonId, prevBetState.getUser().getId(), prevBetState, false);
-        }
-        if (WRL_STATUSES.contains(bet.getBetStatus())) {
-            teamStatsService.calculateStatsByTeams(seasonId, leagueId, newUser.getId(), bet, true);
-            betTitleStatsService.calculateStatsByBetTitle(seasonId, newUser.getId(), bet, true);
-        }
+        revertStatsForEditedBet(prevBetState);
+        applyStatsForEditedBet(bet, seasonId, leagueId, newUser);
         String prevCalendarNodeId = prevBetState.getCalendarNodeId();
         String newCalendarNodeId = bet.getCalendarNodeId();
         gameweekStatsService.calculateGameweekStats(newCalendarNodeId);
@@ -260,6 +252,26 @@ public class BetsService {
         }
 
         return BetDto.from(bet);
+    }
+
+    private void revertStatsForEditedBet(Bet prevBetState) {
+        String prevSeasonId = prevBetState.getSeason().getId();
+        String prevLeagueId = prevBetState.getLeague().getId();
+        User prevUser = prevBetState.getUser();
+
+        playerStatsService.calculateStatsBasedOnEditedBet(prevSeasonId, prevLeagueId, prevUser, prevBetState, false);
+        if (WRL_STATUSES.contains(prevBetState.getBetStatus())) {
+            teamStatsService.calculateStatsByTeams(prevSeasonId, prevLeagueId, prevUser.getId(), prevBetState, false);
+            betTitleStatsService.calculateStatsByBetTitle(prevSeasonId, prevUser.getId(), prevBetState, false);
+        }
+    }
+
+    private void applyStatsForEditedBet(Bet bet, String seasonId, String leagueId, User user) {
+        playerStatsService.calculateStatsBasedOnEditedBet(seasonId, leagueId, user, bet, true);
+        if (WRL_STATUSES.contains(bet.getBetStatus())) {
+            teamStatsService.calculateStatsByTeams(seasonId, leagueId, user.getId(), bet, true);
+            betTitleStatsService.calculateStatsByBetTitle(seasonId, user.getId(), bet, true);
+        }
     }
 
     // ------------------------------------------------------------------------------------------------------ //
@@ -293,6 +305,11 @@ public class BetsService {
         calendarsService.deleteBetFromCalendar(bet, deletedBetMetaData.getCalendarNodeId());
 
         betsRepository.save(bet);
+
+        String calendarNodeId = deletedBetMetaData.getCalendarNodeId();
+        if (calendarNodeId != null && !calendarNodeId.isBlank()) {
+            gameweekStatsService.calculateGameweekStats(calendarNodeId);
+        }
 
         return betDto;
     }

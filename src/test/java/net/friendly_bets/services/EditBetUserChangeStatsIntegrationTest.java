@@ -12,6 +12,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
+import net.friendly_bets.models.enums.BetTitleSubCategory;
+
 import static net.friendly_bets.support.IntegrationStatsAssertions.*;
 import static net.friendly_bets.utils.Constants.TOTAL_ID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -97,6 +99,7 @@ class EditBetUserChangeStatsIntegrationTest extends AbstractMongoIntegrationTest
 
     private void assertPlayerOneStatsAfterOneWonBetRemains() {
         User playerOne = fixture.getPlayerOne();
+        String seasonId = fixture.getSeason().getId();
 
         assertFullUserStats(
                 playerStatsRepository, playerStatsByTeamsRepository, playerStatsByBetTitlesRepository,
@@ -104,6 +107,8 @@ class EditBetUserChangeStatsIntegrationTest extends AbstractMongoIntegrationTest
                 1, 1, 1, BET_TWO_ODDS, BET_TWO_BALANCE,
                 1, 1, BET_TWO_BALANCE
         );
+        assertBetTitleSubcategory(playerStatsByBetTitlesRepository, seasonId, playerOne.getId(),
+                BetTitleSubCategory.HOME_WIN, 1, 1, BET_TWO_ODDS);
     }
 
     private void assertPlayerTwoHasNoStats() {
@@ -119,6 +124,7 @@ class EditBetUserChangeStatsIntegrationTest extends AbstractMongoIntegrationTest
 
     private void assertPlayerTwoStatsAfterReceivingOneWonBet() {
         User playerTwo = fixture.getPlayerTwo();
+        String seasonId = fixture.getSeason().getId();
 
         assertFullUserStats(
                 playerStatsRepository, playerStatsByTeamsRepository, playerStatsByBetTitlesRepository,
@@ -126,5 +132,7 @@ class EditBetUserChangeStatsIntegrationTest extends AbstractMongoIntegrationTest
                 1, 1, 1, BET_ONE_ODDS, BET_ONE_BALANCE,
                 1, 1, BET_ONE_BALANCE
         );
+        assertBetTitleSubcategory(playerStatsByBetTitlesRepository, seasonId, playerTwo.getId(),
+                BetTitleSubCategory.HOME_WIN, 1, 1, BET_ONE_ODDS);
     }
 }

@@ -436,12 +436,16 @@ class BetUtilsTest {
         assertEquals(originalBet.getMatchDay(), previousStateBet.getMatchDay());
         assertEquals(originalBet.getHomeTeam(), previousStateBet.getHomeTeam());
         assertEquals(originalBet.getAwayTeam(), previousStateBet.getAwayTeam());
-        assertEquals(originalBet.getBetTitle(), previousStateBet.getBetTitle());
+        assertNotSame(originalBet.getBetTitle(), previousStateBet.getBetTitle());
+        assertEquals(originalBet.getBetTitle().getCode(), previousStateBet.getBetTitle().getCode());
         assertEquals(originalBet.getBetOdds(), previousStateBet.getBetOdds());
         assertEquals(originalBet.getBetSize(), previousStateBet.getBetSize());
         assertEquals(originalBet.getBetStatus(), previousStateBet.getBetStatus());
-        assertEquals(originalBet.getGameScore(), previousStateBet.getGameScore());
+        assertNotSame(originalBet.getGameScore(), previousStateBet.getGameScore());
         assertEquals(originalBet.getBalanceChange(), previousStateBet.getBalanceChange());
+
+        originalBet.getBetTitle().setCode((short) 999);
+        assertEquals((short) 101, previousStateBet.getBetTitle().getCode());
     }
 
     // ------------------------------------------------------------------------------------------------------ //
