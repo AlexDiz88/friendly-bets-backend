@@ -310,6 +310,35 @@ public class SeasonsService {
         return TeamDto.from(team);
     }
 
+    @Transactional
+    public TeamDto removeTeamFromLeagueInSeason(String seasonId, String leagueId, String teamId) {
+        if (teamId == null || teamId.isBlank()) {
+            throw new BadRequestException("teamIdIsNull");
+        }
+        if (leagueId == null || leagueId.isBlank()) {
+            throw new BadRequestException("leagueIdIsNull");
+        }
+        if (seasonId == null || seasonId.isBlank()) {
+            throw new BadRequestException("seasonIdIsNull");
+        }
+        Season season = getEntityService.getSeasonOrThrow(seasonId);
+        Team team = getEntityService.getTeamOrThrow(teamId);
+
+        League leagueInSeason = season.getLeagues().stream()
+                .filter(l -> l.getId().equals(leagueId))
+                .findFirst()
+                .orElseThrow(() -> new NotFoundException("League", leagueId));
+
+        boolean removed = leagueInSeason.getTeams().removeIf(t -> t.getId().equals(teamId));
+        if (!removed) {
+            throw new BadRequestException("teamNotInLeagueInThisSeason");
+        }
+
+        leaguesRepository.save(leagueInSeason);
+
+        return TeamDto.from(team);
+    }
+
     // ------------------------------------------------------------------------------------------------------ //
 
     public Map<String, Object> dbUpdate() {

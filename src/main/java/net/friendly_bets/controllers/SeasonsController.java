@@ -112,6 +112,15 @@ public class SeasonsController implements SeasonsApi {
 
     @Override
     @PreAuthorize("hasAuthority('ADMIN')")
+    @DeleteMapping("/{season-id}/leagues/{league-id}/teams/{team-id}")
+    public ResponseEntity<TeamDto> removeTeamFromLeagueInSeason(@PathVariable("season-id") String seasonId,
+                                                                @PathVariable("league-id") String leagueId,
+                                                                @PathVariable("team-id") String teamId) {
+        return ResponseEntity.ok(seasonsService.removeTeamFromLeagueInSeason(seasonId, leagueId, teamId));
+    }
+
+    @Override
+    @PreAuthorize("hasAuthority('ADMIN')")
     @GetMapping("/db-update")
     public ResponseEntity<Map<String, Object>> dbUpdate() {
         return ResponseEntity.ok(seasonsService.dbUpdate());
