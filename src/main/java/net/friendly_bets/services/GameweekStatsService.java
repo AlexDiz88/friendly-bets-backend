@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import net.friendly_bets.exceptions.BadRequestException;
 import net.friendly_bets.models.*;
+import net.friendly_bets.repositories.BetsRepository;
 import net.friendly_bets.repositories.CalendarsRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,6 +25,7 @@ import static net.friendly_bets.utils.Constants.NO_PREVIOUS_CALENDAR_NODE;
 public class GameweekStatsService {
 
     CalendarsRepository calendarsRepository;
+    BetsRepository betsRepository;
     GetEntityService getEntityService;
 
     public void recalculateAllGameweekStats(String seasonId) {
@@ -55,13 +57,11 @@ public class GameweekStatsService {
     private void updateGameweekStats(CalendarNode calendarNode) {
         List<GameweekStats> gameweekStatsList = new ArrayList<>();
 
-        for (LeagueMatchdayNode leagueMatchdayNode : calendarNode.getLeagueMatchdayNodes()) {
-            for (Bet bet : leagueMatchdayNode.getBets()) {
-                GameweekStats stats = getGameweekStatsOrCreateNew(gameweekStatsList, bet.getUser().getId());
-                if (COMPLETED_BET_STATUSES.contains(bet.getBetStatus())) {
-                    updateUserGameweekBalance(stats, bet.getBalanceChange());
-                    updateUserTotalBalance(calendarNode.getPreviousGameweekId(), stats);
-                }
+        for (Bet bet : getBetsForCalendarNode(calendarNode)) {
+            GameweekStats stats = getGameweekStatsOrCreateNew(gameweekStatsList, bet.getUser().getId());
+            if (COMPLETED_BET_STATUSES.contains(bet.getBetStatus())) {
+                updateUserGameweekBalance(stats, bet.getBalanceChange());
+                updateUserTotalBalance(calendarNode.getPreviousGameweekId(), stats);
             }
         }
         calendarNode.setGameweekStats(gameweekStatsList);
@@ -79,8 +79,7 @@ public class GameweekStatsService {
         }
         int totalBetsInGameweek = season.getPlayers().size() * gameweekBetLimit;
 
-        long completedBetsCount = calendarNode.getLeagueMatchdayNodes().stream()
-                .flatMap(node -> node.getBets().stream())
+        long completedBetsCount = getBetsForCalendarNode(calendarNode).stream()
                 .filter(bet -> COMPLETED_BET_STATUSES.contains(bet.getBetStatus()))
                 .count();
 
@@ -183,6 +182,20 @@ public class GameweekStatsService {
     }
 
     // ------------------------------------------------------------------------------------------------------ //
+
+    private List<Bet> getBetsForCalendarNode(CalendarNode calendarNode) {
+        List<Bet> bets = betsRepository.findAllByCalendarNodeId(calendarNode.getId());
+        if (!bets.isEmpty()) {
+            return bets;
+        }
+        List<Bet> legacyBets = new ArrayList<>();
+        for (LeagueMatchdayNode leagueMatchdayNode : calendarNode.getLeagueMatchdayNodes()) {
+            if (leagueMatchdayNode.getBets() != null) {
+                legacyBets.addAll(leagueMatchdayNode.getBets());
+            }
+        }
+        return legacyBets;
+    }
 
     private GameweekStats getGameweekStatsOrCreateNew(List<GameweekStats> gameweekStatsList, String userId) {
         return gameweekStatsList.stream()

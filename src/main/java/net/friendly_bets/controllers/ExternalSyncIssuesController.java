@@ -22,9 +22,15 @@ public class ExternalSyncIssuesController {
     private final ExternalSyncIssueService externalSyncIssueService;
 
     @GetMapping
-    @PreAuthorize("hasAuthority('ADMIN')")
+    @PreAuthorize("hasAuthority('ADMIN') || hasAuthority('MODERATOR')")
     public ResponseEntity<List<ExternalSyncIssue>> getLatest() {
         return ResponseEntity.ok(externalSyncIssueService.getLatest());
+    }
+
+    @GetMapping("/status")
+    @PreAuthorize("hasAuthority('ADMIN') || hasAuthority('MODERATOR')")
+    public ResponseEntity<Map<String, Boolean>> getStatus() {
+        return ResponseEntity.ok(Map.of("hasIssues", externalSyncIssueService.hasIssues()));
     }
 
     @GetMapping("/unmapped-team-names")
@@ -34,7 +40,7 @@ public class ExternalSyncIssuesController {
     }
 
     @DeleteMapping
-    @PreAuthorize("hasAuthority('ADMIN')")
+    @PreAuthorize("hasAuthority('ADMIN') || hasAuthority('MODERATOR')")
     public ResponseEntity<Map<String, Object>> clearAll() {
         externalSyncIssueService.clearAll();
         return ResponseEntity.ok(Map.of("message", "externalSyncIssuesCleared"));

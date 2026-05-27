@@ -31,6 +31,15 @@ public class ExternalSyncIssueService {
         String awayName = matchDto != null && matchDto.getAwayTeam() != null ? matchDto.getAwayTeam().getName() : null;
         Integer homeId = matchDto != null && matchDto.getHomeTeam() != null ? matchDto.getHomeTeam().getId() : null;
         Integer awayId = matchDto != null && matchDto.getAwayTeam() != null ? matchDto.getAwayTeam().getId() : null;
+        Long externalMatchId = matchDto != null ? matchDto.getId() : null;
+
+        if (externalMatchId != null
+                && externalSyncIssueRepository.existsByProviderAndIssueTypeAndExternalMatchId(
+                ExternalSyncIssue.Provider.FOOTBALL_DATA.name(),
+                ExternalSyncIssue.IssueType.TEAM_MAPPING_MISSING.name(),
+                externalMatchId)) {
+            return;
+        }
 
         externalSyncIssueRepository.save(ExternalSyncIssue.builder()
                 .createdAt(LocalDateTime.now())
@@ -39,12 +48,11 @@ public class ExternalSyncIssueService {
                 .competitionCode(competitionCode)
                 .season(season)
                 .matchday(matchday)
-                .externalMatchId(matchDto != null ? matchDto.getId() : null)
+                .externalMatchId(externalMatchId)
                 .homeTeamName(homeName)
                 .awayTeamName(awayName)
                 .homeTeamExternalId(homeId)
                 .awayTeamExternalId(awayId)
-                .message("Missing team mapping for external match (configure Team external aliases)")
                 .build());
     }
 
@@ -54,6 +62,10 @@ public class ExternalSyncIssueService {
 
     public void clearAll() {
         externalSyncIssueRepository.deleteAll();
+    }
+
+    public boolean hasIssues() {
+        return externalSyncIssueRepository.count() > 0;
     }
 
     /**

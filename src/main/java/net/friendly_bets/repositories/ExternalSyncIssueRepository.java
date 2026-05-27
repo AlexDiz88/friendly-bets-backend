@@ -7,5 +7,7 @@ import java.util.List;
 
 public interface ExternalSyncIssueRepository extends MongoRepository<ExternalSyncIssue, String> {
     List<ExternalSyncIssue> findTop200ByOrderByCreatedAtDesc();
+
+    boolean existsByProviderAndIssueTypeAndExternalMatchId(String provider, String issueType, Long externalMatchId);
 }
 
