@@ -8,12 +8,14 @@ import net.friendly_bets.dto.StandardResponseDto;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -58,14 +60,22 @@ public class SecurityConfig {
                 .headers().frameOptions().disable().and()
                 .authorizeRequests()
                 .antMatchers("/swagger-ui.html/**").permitAll()
+                .antMatchers(HttpMethod.POST, "/api/register").permitAll()
+                .antMatchers(HttpMethod.POST, "/api/login").permitAll()
+                .antMatchers("/api/auth/**").permitAll()
                 .and()
                 .formLogin()
                 .loginProcessingUrl("/api/login")
                 .successHandler((request, response, authentication) -> {
                     fillResponse(response, HttpStatus.OK.value(), "authorizationSuccess");
                 })
-                .failureHandler((request, response, exception) ->
-                        fillResponse(response, HttpStatus.UNAUTHORIZED.value(), "invalidLoginOrPassword"))
+                .failureHandler((request, response, exception) -> {
+                    if (exception instanceof DisabledException) {
+                        fillResponse(response, HttpStatus.UNAUTHORIZED.value(), "emailNotConfirmed");
+                        return;
+                    }
+                    fillResponse(response, HttpStatus.UNAUTHORIZED.value(), "invalidLoginOrPassword");
+                })
                 .and()
                 .exceptionHandling()
                 .defaultAuthenticationEntryPointFor((request, response, authException) ->

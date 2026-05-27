@@ -36,11 +36,15 @@ public class UserDto {
     @Schema(description = "аватар пользователя в формате base64")
     private String avatar;
 
+    @Schema(description = "подтверждён ли email")
+    private Boolean emailIsConfirmed;
+
 
     public static UserDto from(User user) {
         return UserDto.builder()
                 .id(user.getId())
                 .email(user.getEmail())
+                .emailIsConfirmed(user.getEmailIsConfirmed())
                 .role(user.getRole().toString())
                 .username(user.getUsername())
                 .language(user.getLanguage())

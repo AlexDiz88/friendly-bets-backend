@@ -33,6 +33,8 @@ class UsersServiceTest {
     private GetEntityService getEntityService;
     @Mock
     private PasswordEncoder passwordEncoder;
+    @Mock
+    private EmailVerificationService emailVerificationService;
 
     @InjectMocks
     private UsersService usersService;

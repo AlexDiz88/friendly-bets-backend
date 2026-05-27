@@ -11,9 +11,11 @@ import java.util.Collections;
 public class AuthenticatedUser implements UserDetails {
 
     private final User user;
+    private final boolean requireEmailConfirmedForLogin;
 
-    public AuthenticatedUser(User user) {
+    public AuthenticatedUser(User user, boolean requireEmailConfirmedForLogin) {
         this.user = user;
+        this.requireEmailConfirmedForLogin = requireEmailConfirmedForLogin;
     }
 
     @Override
@@ -50,7 +52,10 @@ public class AuthenticatedUser implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        return true;
+        if (!requireEmailConfirmedForLogin) {
+            return true;
+        }
+        return !Boolean.FALSE.equals(user.getEmailIsConfirmed());
     }
 
     public User getUser() {

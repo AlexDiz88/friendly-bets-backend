@@ -25,6 +25,7 @@ public class UsersService {
     UsersRepository usersRepository;
     PasswordEncoder passwordEncoder;
     GetEntityService getEntityService;
+    EmailVerificationService emailVerificationService;
 
     public UserDto getProfile(String currentUserId) {
         User user = getEntityService.getUserOrThrow(currentUserId);
@@ -44,7 +45,9 @@ public class UsersService {
         }
 
         user.setEmail(updatedEmailDto.getNewEmail().toLowerCase());
+        user.setEmailIsConfirmed(false);
         usersRepository.save(user);
+        emailVerificationService.sendVerificationEmail(user);
 
         return UserDto.from(user);
     }
