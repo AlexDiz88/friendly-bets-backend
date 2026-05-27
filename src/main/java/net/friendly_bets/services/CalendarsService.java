@@ -21,6 +21,7 @@ import java.util.Comparator;
 import java.util.List;
 
 import static net.friendly_bets.utils.BetUtils.*;
+import static net.friendly_bets.utils.Constants.betsVisibleInGameweek;
 
 @RequiredArgsConstructor
 @Service
@@ -135,7 +136,7 @@ public class CalendarsService {
     }
 
     private List<Bet> collectBetsForCalendarNode(String calendarNodeId, CalendarNode cachedNode) {
-        List<Bet> bets = betsRepository.findAllByCalendarNodeId(calendarNodeId);
+        List<Bet> bets = betsVisibleInGameweek(betsRepository.findAllByCalendarNodeId(calendarNodeId));
         if (!bets.isEmpty()) {
             return bets;
         }
@@ -144,9 +145,11 @@ public class CalendarsService {
                 : getEntityService.getCalendarNodeOrThrow(calendarNodeId);
         List<Bet> legacyBets = new ArrayList<>();
         for (LeagueMatchdayNode leagueMatchdayNode : calendarNode.getLeagueMatchdayNodes()) {
-            legacyBets.addAll(leagueMatchdayNode.getBets());
+            if (leagueMatchdayNode.getBets() != null) {
+                legacyBets.addAll(leagueMatchdayNode.getBets());
+            }
         }
-        return legacyBets;
+        return betsVisibleInGameweek(legacyBets);
     }
 
     private BetsPage toBetsPage(List<Bet> bets) {

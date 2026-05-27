@@ -37,4 +37,14 @@ public class Constants {
             Bet.BetStatus.EMPTY
     );
 
+    /** Ставки тура для UI и статистики (без аннулированных). */
+    public static List<Bet> betsVisibleInGameweek(List<Bet> bets) {
+        if (bets == null || bets.isEmpty()) {
+            return List.of();
+        }
+        return bets.stream()
+                .filter(bet -> bet.getBetStatus() != Bet.BetStatus.DELETED)
+                .toList();
+    }
+
 }

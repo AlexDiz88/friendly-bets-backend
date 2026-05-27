@@ -17,6 +17,7 @@ import java.util.List;
 
 import static net.friendly_bets.utils.Constants.COMPLETED_BET_STATUSES;
 import static net.friendly_bets.utils.Constants.NO_PREVIOUS_CALENDAR_NODE;
+import static net.friendly_bets.utils.Constants.betsVisibleInGameweek;
 
 
 @RequiredArgsConstructor
@@ -184,7 +185,7 @@ public class GameweekStatsService {
     // ------------------------------------------------------------------------------------------------------ //
 
     private List<Bet> getBetsForCalendarNode(CalendarNode calendarNode) {
-        List<Bet> bets = betsRepository.findAllByCalendarNodeId(calendarNode.getId());
+        List<Bet> bets = betsVisibleInGameweek(betsRepository.findAllByCalendarNodeId(calendarNode.getId()));
         if (!bets.isEmpty()) {
             return bets;
         }
@@ -194,7 +195,7 @@ public class GameweekStatsService {
                 legacyBets.addAll(leagueMatchdayNode.getBets());
             }
         }
-        return legacyBets;
+        return betsVisibleInGameweek(legacyBets);
     }
 
     private GameweekStats getGameweekStatsOrCreateNew(List<GameweekStats> gameweekStatsList, String userId) {

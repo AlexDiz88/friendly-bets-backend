@@ -301,6 +301,7 @@ public class BetsService {
         updateDeletedBetValues(bet, moderator);
         BetDto betDto = BetDto.from(bet);
         bet.setBetStatus(Bet.BetStatus.DELETED);
+        bet.setCalendarNodeId(null);
 
         calendarsService.deleteBetFromCalendar(bet, deletedBetMetaData.getCalendarNodeId());
 
