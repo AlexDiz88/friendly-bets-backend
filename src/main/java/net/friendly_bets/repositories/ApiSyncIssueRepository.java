@@ -10,4 +10,6 @@ public interface ApiSyncIssueRepository extends MongoRepository<ApiSyncIssue, St
     List<ApiSyncIssue> findTop200ByOrderByCreatedAtDesc();
 
     boolean existsByProviderAndIssueTypeAndExternalMatchId(String provider, String issueType, Long externalMatchId);
+
+    boolean existsByProviderAndIssueTypeAndGameResultId(String provider, String issueType, String gameResultId);
 }

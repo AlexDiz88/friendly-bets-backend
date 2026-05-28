@@ -39,6 +39,21 @@ public class TeamAliasResolver {
         return Optional.empty();
     }
 
+    public Optional<Team> resolveOddsApi(Integer oddsApiTeamId, String oddsApiTeamName) {
+        if (oddsApiTeamName != null && !oddsApiTeamName.isBlank()) {
+            Optional<Team> byAliasName = teamsRepository.findByExternalAliasName(
+                    TeamTitleUtils.ODDS_API_PROVIDER, oddsApiTeamName);
+            if (byAliasName.isPresent()) {
+                return byAliasName;
+            }
+        }
+        if (oddsApiTeamId != null && oddsApiTeamId > 0) {
+            return teamsRepository.findByExternalAliasId(
+                    TeamTitleUtils.ODDS_API_PROVIDER, oddsApiTeamId);
+        }
+        return Optional.empty();
+    }
+
     /**
      * football-data.org team id для внутренней команды (обратное сопоставление к {@link #resolveFootballData}).
      */

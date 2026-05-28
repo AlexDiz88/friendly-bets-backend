@@ -80,6 +80,10 @@ public class GameResultRecord {
     @Field(name = "admin_corrected")
     private boolean adminCorrected;
 
+    /** Событие odds-api.io после успешного сопоставления. */
+    @Field(name = "odds_api_event_id")
+    private Long oddsApiEventId;
+
     public boolean isFinalized() {
         return finalizedAt != null;
     }

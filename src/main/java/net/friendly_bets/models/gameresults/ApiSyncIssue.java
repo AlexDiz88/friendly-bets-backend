@@ -19,11 +19,13 @@ import java.time.LocalDateTime;
 public class ApiSyncIssue {
 
     public enum Provider {
-        FOOTBALL_DATA
+        FOOTBALL_DATA,
+        ODDS_API
     }
 
     public enum IssueType {
-        TEAM_MAPPING_MISSING
+        TEAM_MAPPING_MISSING,
+        EVENT_MAPPING_MISSING
     }
 
     @MongoId
@@ -51,6 +53,9 @@ public class ApiSyncIssue {
 
     @Field(name = "external_match_id")
     private Long externalMatchId;
+
+    @Field(name = "game_result_id")
+    private String gameResultId;
 
     @Field(name = "home_team_name")
     private String homeTeamName;
