@@ -2,8 +2,8 @@ package net.friendly_bets.controllers;
 
 import lombok.RequiredArgsConstructor;
 import net.friendly_bets.dto.UnmappedExternalTeamNameDto;
-import net.friendly_bets.footballdata.ExternalSyncIssueService;
-import net.friendly_bets.models.external.ExternalSyncIssue;
+import net.friendly_bets.footballdata.ApiSyncIssueService;
+import net.friendly_bets.models.gameresults.ApiSyncIssue;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -16,34 +16,33 @@ import java.util.Map;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/admin/external-sync-issues")
-public class ExternalSyncIssuesController {
+@RequestMapping("/api/admin/api-sync-issues")
+public class ApiSyncIssuesController {
 
-    private final ExternalSyncIssueService externalSyncIssueService;
+    private final ApiSyncIssueService apiSyncIssueService;
 
     @GetMapping
     @PreAuthorize("hasAuthority('ADMIN') || hasAuthority('MODERATOR')")
-    public ResponseEntity<List<ExternalSyncIssue>> getLatest() {
-        return ResponseEntity.ok(externalSyncIssueService.getLatest());
+    public ResponseEntity<List<ApiSyncIssue>> getLatest() {
+        return ResponseEntity.ok(apiSyncIssueService.getLatest());
     }
 
     @GetMapping("/status")
     @PreAuthorize("hasAuthority('ADMIN') || hasAuthority('MODERATOR')")
     public ResponseEntity<Map<String, Boolean>> getStatus() {
-        return ResponseEntity.ok(Map.of("hasIssues", externalSyncIssueService.hasIssues()));
+        return ResponseEntity.ok(Map.of("hasIssues", apiSyncIssueService.hasIssues()));
     }
 
     @GetMapping("/unmapped-team-names")
     @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<List<UnmappedExternalTeamNameDto>> getUnmappedTeamNames() {
-        return ResponseEntity.ok(externalSyncIssueService.getUnmappedTeamNameHints());
+        return ResponseEntity.ok(apiSyncIssueService.getUnmappedTeamNameHints());
     }
 
     @DeleteMapping
     @PreAuthorize("hasAuthority('ADMIN') || hasAuthority('MODERATOR')")
     public ResponseEntity<Map<String, Object>> clearAll() {
-        externalSyncIssueService.clearAll();
-        return ResponseEntity.ok(Map.of("message", "externalSyncIssuesCleared"));
+        apiSyncIssueService.clearAll();
+        return ResponseEntity.ok(Map.of("message", "apiSyncIssuesCleared"));
     }
 }
-

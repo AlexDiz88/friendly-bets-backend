@@ -1,4 +1,4 @@
-package net.friendly_bets.models.external;
+package net.friendly_bets.models.gameresults;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -15,20 +15,20 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @Builder
 @Data
-@Document(collection = "external_matchday_sync")
+@Document(collection = "game_results_sync")
 @CompoundIndex(
-        name = "comp_matchday_season_unique",
-        def = "{'competition_code': 1, 'matchday': 1, 'season': 1}",
+        name = "league_matchday_season_unique",
+        def = "{'league_code': 1, 'matchday': 1, 'season': 1}",
         unique = true
 )
-public class ExternalMatchdaySync {
+public class GameResultsSync {
 
     @MongoId
     @Field(name = "_id")
     private String id;
 
-    @Field(name = "competition_code")
-    private String competitionCode;
+    @Field(name = "league_code")
+    private String leagueCode;
 
     @Field(name = "matchday")
     private int matchday;
@@ -37,7 +37,7 @@ public class ExternalMatchdaySync {
     private String season;
 
     @Field(name = "sync_status")
-    private ExternalMatchdaySyncStatus syncStatus;
+    private GameResultsSyncStatus syncStatus;
 
     @Field(name = "expected_match_count")
     private int expectedMatchCount;

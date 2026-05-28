@@ -1,4 +1,4 @@
-package net.friendly_bets.models.external;
+package net.friendly_bets.models.gameresults;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -15,8 +15,8 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @Builder
 @Data
-@Document(collection = "external_sync_issues")
-public class ExternalSyncIssue {
+@Document(collection = "api_sync_issues")
+public class ApiSyncIssue {
 
     public enum Provider {
         FOOTBALL_DATA
@@ -40,8 +40,8 @@ public class ExternalSyncIssue {
     @Field(name = "issue_type")
     private String issueType;
 
-    @Field(name = "competition_code")
-    private String competitionCode;
+    @Field(name = "league_code")
+    private String leagueCode;
 
     @Field(name = "season")
     private String season;
@@ -59,12 +59,11 @@ public class ExternalSyncIssue {
     private String awayTeamName;
 
     @Field(name = "home_team_external_id")
-    private Integer homeTeamExternalId;
+    private String homeTeamExternalId;
 
     @Field(name = "away_team_external_id")
-    private Integer awayTeamExternalId;
+    private String awayTeamExternalId;
 
     @Field(name = "message")
     private String message;
 }
-

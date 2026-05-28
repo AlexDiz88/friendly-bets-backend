@@ -4,8 +4,8 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import net.friendly_bets.models.external.ExternalMatchdaySync;
-import net.friendly_bets.models.external.ExternalMatchdaySyncStatus;
+import net.friendly_bets.models.gameresults.GameResultsSync;
+import net.friendly_bets.models.gameresults.GameResultsSyncStatus;
 
 import java.time.LocalDateTime;
 
@@ -15,18 +15,18 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 public class ExternalMatchdaySyncDto {
 
-    private String competitionCode;
+    private String leagueCode;
     private int matchday;
     private String season;
-    private ExternalMatchdaySyncStatus syncStatus;
+    private GameResultsSyncStatus syncStatus;
     private int expectedMatchCount;
     private int finishedMatchCount;
     private LocalDateTime lastFetchedAt;
     private LocalDateTime completedAt;
 
-    public static ExternalMatchdaySyncDto from(ExternalMatchdaySync sync) {
+    public static ExternalMatchdaySyncDto from(GameResultsSync sync) {
         return ExternalMatchdaySyncDto.builder()
-                .competitionCode(sync.getCompetitionCode())
+                .leagueCode(sync.getLeagueCode())
                 .matchday(sync.getMatchday())
                 .season(sync.getSeason())
                 .syncStatus(sync.getSyncStatus())

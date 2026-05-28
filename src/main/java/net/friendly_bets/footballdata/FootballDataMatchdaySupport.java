@@ -59,13 +59,12 @@ public class FootballDataMatchdaySupport {
     }
 
     public Optional<FootballDataMatchdayKey> buildMatchdayKey(League league, String matchDay, String footballDataSeason) {
-        Optional<String> competitionCode = FootballDataCompetitionMapping.toCompetitionCode(league.getLeagueCode());
-        if (competitionCode.isEmpty()) {
+        if (!FootballDataCompetitionMapping.isSupported(league.getLeagueCode())) {
             return Optional.empty();
         }
         return resolveSlotOrder(league, matchDay)
                 .map(order -> new FootballDataMatchdayKey(
-                        competitionCode.get(),
+                        league.getLeagueCode().name(),
                         order,
                         footballDataSeason,
                         league.getId()

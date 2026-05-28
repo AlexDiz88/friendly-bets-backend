@@ -26,7 +26,7 @@ public class AutoBetSettlementService {
     private final FootballDataProperties properties;
     private final SeasonsRepository seasonsRepository;
     private final UsersRepository usersRepository;
-    private final ExternalMatchGameResultCollector gameResultCollector;
+    private final GameResultCollector gameResultCollector;
     private final BetsService betsService;
 
     public Optional<AutoSettleResult> settleActiveSeasonIfEnabled() {

@@ -5,7 +5,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import net.friendly_bets.models.GameScore;
-import net.friendly_bets.models.external.ExternalMatch;
+import net.friendly_bets.models.gameresults.GameResultRecord;
+import net.friendly_bets.models.gameresults.GameResultSourceSnapshot;
 
 import java.time.LocalDateTime;
 
@@ -15,19 +16,17 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 public class ExternalMatchDto {
 
+    private String id;
     private long externalMatchId;
-    private String competitionCode;
+    private String leagueCode;
     private int matchday;
     private String season;
     private String status;
     private LocalDateTime utcDate;
-    private int homeFootballDataTeamId;
-    private int awayFootballDataTeamId;
     private String homeTeamName;
     private String awayTeamName;
     private String homeTeamId;
     private String awayTeamId;
-    /** Внутренний ключ команды (PascalCase) для логотипа и teams:* i18n. */
     private String homeTeamTitle;
     private String awayTeamTitle;
     private String homeTeamLogoKey;
@@ -37,24 +36,31 @@ public class ExternalMatchDto {
     private String leagueId;
     private GameScore gameScore;
     private LocalDateTime fetchedAt;
+    private LocalDateTime finalizedAt;
+    private String finalizedSource;
+    private boolean adminCorrected;
+    private boolean finalized;
 
-    public static ExternalMatchDto from(ExternalMatch match) {
+    public static ExternalMatchDto from(GameResultRecord match) {
+        GameResultSourceSnapshot source = match.footballDataSource();
+        long externalMatchId = source != null ? source.getExternalMatchId() : 0L;
         return ExternalMatchDto.builder()
-                .externalMatchId(match.getExternalMatchId())
-                .competitionCode(match.getCompetitionCode())
+                .id(match.getId())
+                .externalMatchId(externalMatchId)
+                .leagueCode(match.getLeagueCode())
                 .matchday(match.getMatchday())
                 .season(match.getSeason())
                 .status(match.getStatus())
                 .utcDate(match.getUtcDate())
-                .homeFootballDataTeamId(match.getHomeFootballDataTeamId())
-                .awayFootballDataTeamId(match.getAwayFootballDataTeamId())
-                .homeTeamName(match.getHomeTeamName())
-                .awayTeamName(match.getAwayTeamName())
                 .homeTeamId(match.getHomeTeamId())
                 .awayTeamId(match.getAwayTeamId())
                 .leagueId(match.getLeagueId())
                 .gameScore(match.getGameScore())
                 .fetchedAt(match.getFetchedAt())
+                .finalizedAt(match.getFinalizedAt())
+                .finalizedSource(match.getFinalizedSource())
+                .adminCorrected(match.isAdminCorrected())
+                .finalized(match.isFinalized())
                 .build();
     }
 }

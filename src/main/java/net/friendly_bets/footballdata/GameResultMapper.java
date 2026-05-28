@@ -1,55 +1,70 @@
 package net.friendly_bets.footballdata;
 
 import net.friendly_bets.footballdata.client.dto.FootballDataMatchDto;
+import net.friendly_bets.gameresults.MatchDataProviders;
 import net.friendly_bets.models.GameScore;
 import net.friendly_bets.models.Team;
-import net.friendly_bets.models.external.ExternalMatch;
+import net.friendly_bets.models.gameresults.GameResultRecord;
+import net.friendly_bets.models.gameresults.GameResultSideSnapshot;
+import net.friendly_bets.models.gameresults.GameResultSourceSnapshot;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.Optional;
+import java.util.Map;
 
 @Component
-public class FootballDataMatchMapper {
+public class GameResultMapper {
 
     private static final DateTimeFormatter API_DATE = DateTimeFormatter.ISO_DATE_TIME;
 
-    public ExternalMatch toEntity(FootballDataMatchDto dto,
-                                  String competitionCode,
-                                  String season,
-                                  Team homeTeam,
-                                  Team awayTeam,
-                                  String leagueId,
-                                  LocalDateTime fetchedAt) {
-        return toEntity(dto, competitionCode, season, dto.getMatchday(), homeTeam, awayTeam, leagueId, fetchedAt);
-    }
-
-    public ExternalMatch toEntity(FootballDataMatchDto dto,
-                                  String competitionCode,
-                                  String season,
-                                  int storageMatchday,
-                                  Team homeTeam,
-                                  Team awayTeam,
-                                  String leagueId,
-                                  LocalDateTime fetchedAt) {
-        return ExternalMatch.builder()
-                .externalMatchId(dto.getId())
-                .competitionCode(competitionCode)
+    public GameResultRecord toNewRecord(
+            FootballDataMatchDto dto,
+            String leagueCode,
+            String season,
+            int storageMatchday,
+            Team homeTeam,
+            Team awayTeam,
+            String leagueId,
+            String externalCompetitionCode,
+            LocalDateTime fetchedAt
+    ) {
+        GameResultSourceSnapshot source = toSourceSnapshot(
+                dto, externalCompetitionCode, season, fetchedAt);
+        return GameResultRecord.builder()
+                .leagueCode(leagueCode)
                 .matchday(storageMatchday)
                 .season(season)
+                .leagueId(leagueId)
+                .homeTeamId(homeTeam.getId())
+                .awayTeamId(awayTeam.getId())
                 .status(dto.getStatus())
                 .utcDate(parseUtc(dto.getUtcDate()))
-                .homeFootballDataTeamId(dto.getHomeTeam().getId())
-                .awayFootballDataTeamId(dto.getAwayTeam().getId())
-                .homeTeamName(dto.getHomeTeam().getName())
-                .awayTeamName(dto.getAwayTeam().getName())
-                .homeTeamId(homeTeam != null ? homeTeam.getId() : null)
-                .awayTeamId(awayTeam != null ? awayTeam.getId() : null)
-                .leagueId(leagueId)
                 .gameScore(toGameScore(dto))
                 .fetchedAt(fetchedAt)
+                .provider(MatchDataProviders.FOOTBALL_DATA)
+                .sources(Map.of(MatchDataProviders.sourcesStorageKey(MatchDataProviders.FOOTBALL_DATA), source))
+                .build();
+    }
+
+    public GameResultSourceSnapshot toSourceSnapshot(
+            FootballDataMatchDto dto,
+            String externalCompetitionCode,
+            String storageSeason,
+            LocalDateTime fetchedAt
+    ) {
+        return GameResultSourceSnapshot.builder()
+                .externalMatchId(dto.getId())
+                .externalCompetitionCode(externalCompetitionCode)
+                .externalMatchday(dto.getMatchday())
+                .externalSeason(storageSeason)
+                .status(dto.getStatus())
+                .utcDate(parseUtc(dto.getUtcDate()))
+                .gameScore(toGameScore(dto))
+                .home(sideSnapshot(dto.getHomeTeam().getId(), dto.getHomeTeam().getName()))
+                .away(sideSnapshot(dto.getAwayTeam().getId(), dto.getAwayTeam().getName()))
                 .apiLastUpdated(parseUtc(dto.getLastUpdated()))
+                .fetchedAt(fetchedAt)
                 .build();
     }
 
@@ -79,6 +94,13 @@ public class FootballDataMatchMapper {
             return null;
         }
         return gameScore;
+    }
+
+    private static GameResultSideSnapshot sideSnapshot(int externalTeamId, String externalName) {
+        return GameResultSideSnapshot.builder()
+                .externalId(String.valueOf(externalTeamId))
+                .externalName(externalName)
+                .build();
     }
 
     private static String formatScore(int home, int away) {

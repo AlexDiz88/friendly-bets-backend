@@ -7,9 +7,12 @@ import net.friendly_bets.models.GameScore;
 import net.friendly_bets.models.League;
 import net.friendly_bets.models.Season;
 import net.friendly_bets.models.Team;
-import net.friendly_bets.models.external.ExternalMatch;
+import net.friendly_bets.gameresults.GameScoreValidator;
+import net.friendly_bets.models.gameresults.GameResultRecord;
+import net.friendly_bets.models.gameresults.GameResultSideSnapshot;
+import net.friendly_bets.models.gameresults.GameResultSourceSnapshot;
 import net.friendly_bets.repositories.BetsRepository;
-import net.friendly_bets.repositories.ExternalMatchRepository;
+import net.friendly_bets.repositories.GameResultRecordRepository;
 import net.friendly_bets.services.GetEntityService;
 import net.friendly_bets.services.TeamAliasResolver;
 import org.slf4j.Logger;
@@ -23,17 +26,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-/**
- * Собирает {@link GameResult} из кэша {@code external_matches} для матчей с открытыми ставками.
- */
 @Component
 @RequiredArgsConstructor
-public class ExternalMatchGameResultCollector {
+public class GameResultCollector {
 
-    private static final Logger log = LoggerFactory.getLogger(ExternalMatchGameResultCollector.class);
+    private static final Logger log = LoggerFactory.getLogger(GameResultCollector.class);
 
     private final BetsRepository betsRepository;
-    private final ExternalMatchRepository externalMatchRepository;
+    private final GameResultRecordRepository gameResultRecordRepository;
     private final FootballDataMatchdaySupport matchdaySupport;
     private final GetEntityService getEntityService;
     private final TeamAliasResolver teamAliasResolver;
@@ -71,12 +71,11 @@ public class ExternalMatchGameResultCollector {
                 continue;
             }
 
-            Optional<String> competitionCode = FootballDataCompetitionMapping
-                    .toCompetitionCode(league.getLeagueCode());
-            if (competitionCode.isEmpty()) {
+            if (!FootballDataCompetitionMapping.isSupported(league.getLeagueCode())) {
                 skippedNoLeague++;
                 continue;
             }
+            String leagueCode = league.getLeagueCode().name();
 
             Optional<Integer> slotOrder = matchdaySupport.resolveSlotOrder(league, bet.getMatchDay());
             if (slotOrder.isEmpty()) {
@@ -90,23 +89,22 @@ public class ExternalMatchGameResultCollector {
                 continue;
             }
 
-            MatchdayCacheKey cacheKey = new MatchdayCacheKey(
-                    competitionCode.get(), slotOrder.get(), footballDataSeason);
+            MatchdayCacheKey cacheKey = new MatchdayCacheKey(leagueCode, slotOrder.get(), footballDataSeason);
             MatchdayMatchIndex matchIndex = matchdayCache.computeIfAbsent(
                     cacheKey,
                     key -> MatchdayMatchIndex.from(
-                            externalMatchRepository.findByCompetitionCodeAndMatchdayAndSeason(
-                                    key.competitionCode(), key.slotOrder(), key.season()),
+                            gameResultRecordRepository.findByLeagueCodeAndMatchdayAndSeason(
+                                    key.leagueCode(), key.slotOrder(), key.season()),
                             teamAliasResolver)
             );
 
-            Optional<ExternalMatch> match = matchIndex.findSettleableMatch(homeTeam, awayTeam);
+            Optional<GameResultRecord> match = matchIndex.findSettleableMatch(homeTeam, awayTeam);
 
             if (match.isEmpty()) {
                 log.warn(
-                        "Auto-settle: no external match for bet {} ({}/{}/{} teams {}/{}, season={})",
+                        "Auto-settle: no game result for bet {} ({}/{}/{} teams {}/{}, season={})",
                         bet.getId(),
-                        competitionCode.get(),
+                        leagueCode,
                         slotOrder.get(),
                         bet.getMatchDay(),
                         homeTeamId,
@@ -168,19 +166,19 @@ public class ExternalMatchGameResultCollector {
         return leagueId == null || leagueId.isBlank() ? null : leagueId;
     }
 
-    private record MatchdayCacheKey(String competitionCode, int slotOrder, String season) {
+    private record MatchdayCacheKey(String leagueCode, int slotOrder, String season) {
     }
 
     private static final class MatchdayMatchIndex {
-        private final Map<String, ExternalMatch> byInternalPair;
-        private final Map<Long, ExternalMatch> byFootballDataPair;
-        private final List<ExternalMatch> settleableMatches;
+        private final Map<String, GameResultRecord> byInternalPair;
+        private final Map<Long, GameResultRecord> byFootballDataPair;
+        private final List<GameResultRecord> settleableMatches;
         private final TeamAliasResolver teamAliasResolver;
 
         private MatchdayMatchIndex(
-                Map<String, ExternalMatch> byInternalPair,
-                Map<Long, ExternalMatch> byFootballDataPair,
-                List<ExternalMatch> settleableMatches,
+                Map<String, GameResultRecord> byInternalPair,
+                Map<Long, GameResultRecord> byFootballDataPair,
+                List<GameResultRecord> settleableMatches,
                 TeamAliasResolver teamAliasResolver
         ) {
             this.byInternalPair = byInternalPair;
@@ -189,11 +187,11 @@ public class ExternalMatchGameResultCollector {
             this.teamAliasResolver = teamAliasResolver;
         }
 
-        static MatchdayMatchIndex from(List<ExternalMatch> matches, TeamAliasResolver teamAliasResolver) {
-            Map<String, ExternalMatch> byInternalPair = new LinkedHashMap<>();
-            Map<Long, ExternalMatch> byFootballDataPair = new LinkedHashMap<>();
-            List<ExternalMatch> settleableMatches = new ArrayList<>();
-            for (ExternalMatch match : matches) {
+        static MatchdayMatchIndex from(List<GameResultRecord> matches, TeamAliasResolver teamAliasResolver) {
+            Map<String, GameResultRecord> byInternalPair = new LinkedHashMap<>();
+            Map<Long, GameResultRecord> byFootballDataPair = new LinkedHashMap<>();
+            List<GameResultRecord> settleableMatches = new ArrayList<>();
+            for (GameResultRecord match : matches) {
                 if (!isSettleable(match)) {
                     continue;
                 }
@@ -201,18 +199,17 @@ public class ExternalMatchGameResultCollector {
                 if (match.getHomeTeamId() != null && match.getAwayTeamId() != null) {
                     byInternalPair.putIfAbsent(pairKey(match.getHomeTeamId(), match.getAwayTeamId()), match);
                 }
-                if (match.getHomeFootballDataTeamId() > 0 && match.getAwayFootballDataTeamId() > 0) {
-                    byFootballDataPair.putIfAbsent(
-                            fdPairKey(match.getHomeFootballDataTeamId(), match.getAwayFootballDataTeamId()),
-                            match
-                    );
+                int homeFd = sideFdId(match, true);
+                int awayFd = sideFdId(match, false);
+                if (homeFd > 0 && awayFd > 0) {
+                    byFootballDataPair.putIfAbsent(fdPairKey(homeFd, awayFd), match);
                 }
             }
             return new MatchdayMatchIndex(byInternalPair, byFootballDataPair, settleableMatches, teamAliasResolver);
         }
 
-        Optional<ExternalMatch> findSettleableMatch(Team homeTeam, Team awayTeam) {
-            ExternalMatch byIds = byInternalPair.get(pairKey(homeTeam.getId(), awayTeam.getId()));
+        Optional<GameResultRecord> findSettleableMatch(Team homeTeam, Team awayTeam) {
+            GameResultRecord byIds = byInternalPair.get(pairKey(homeTeam.getId(), awayTeam.getId()));
             if (byIds != null) {
                 return Optional.of(byIds);
             }
@@ -220,13 +217,13 @@ public class ExternalMatchGameResultCollector {
             Optional<Integer> homeFdId = teamAliasResolver.resolveFootballDataTeamId(homeTeam);
             Optional<Integer> awayFdId = teamAliasResolver.resolveFootballDataTeamId(awayTeam);
             if (homeFdId.isPresent() && awayFdId.isPresent()) {
-                ExternalMatch byFd = byFootballDataPair.get(fdPairKey(homeFdId.get(), awayFdId.get()));
+                GameResultRecord byFd = byFootballDataPair.get(fdPairKey(homeFdId.get(), awayFdId.get()));
                 if (byFd != null) {
                     return Optional.of(byFd);
                 }
             }
 
-            for (ExternalMatch match : settleableMatches) {
+            for (GameResultRecord match : settleableMatches) {
                 if (teamsMatch(match, homeTeam, awayTeam)) {
                     return Optional.of(match);
                 }
@@ -234,11 +231,15 @@ public class ExternalMatchGameResultCollector {
             return Optional.empty();
         }
 
-        private boolean teamsMatch(ExternalMatch match, Team homeTeam, Team awayTeam) {
+        private boolean teamsMatch(GameResultRecord match, Team homeTeam, Team awayTeam) {
+            GameResultSourceSnapshot source = match.footballDataSource();
+            if (source == null) {
+                return false;
+            }
             return teamAliasResolver.teamMatchesFootballDataSide(
-                    homeTeam, match.getHomeFootballDataTeamId(), match.getHomeTeamName())
+                    homeTeam, sideFdId(source.getHome()), externalName(source.getHome()))
                     && teamAliasResolver.teamMatchesFootballDataSide(
-                    awayTeam, match.getAwayFootballDataTeamId(), match.getAwayTeamName());
+                    awayTeam, sideFdId(source.getAway()), externalName(source.getAway()));
         }
 
         private static String pairKey(String homeId, String awayId) {
@@ -249,18 +250,41 @@ public class ExternalMatchGameResultCollector {
             return ((long) homeFdId << 32) | (awayFdId & 0xffffffffL);
         }
 
-        private static boolean isSettleable(ExternalMatch match) {
-            if (!FootballDataMatchStatuses.isTerminal(match.getStatus())) {
+        private static boolean isSettleable(GameResultRecord match) {
+            if (!match.isFinalized()) {
+                return false;
+            }
+            if (!GameScoreValidator.hasValidFullTime(match.getGameScore())) {
                 return false;
             }
             GameScore score = match.getGameScore();
-            if (score == null || score.getFullTime() == null || score.getFullTime().isBlank()) {
-                return false;
-            }
             boolean hasInternalTeams = match.getHomeTeamId() != null && !match.getHomeTeamId().isBlank()
                     && match.getAwayTeamId() != null && !match.getAwayTeamId().isBlank();
-            boolean hasExternalTeams = match.getHomeFootballDataTeamId() > 0 && match.getAwayFootballDataTeamId() > 0;
+            boolean hasExternalTeams = sideFdId(match, true) > 0 && sideFdId(match, false) > 0;
             return hasInternalTeams || hasExternalTeams;
+        }
+
+        private static int sideFdId(GameResultRecord match, boolean home) {
+            GameResultSourceSnapshot source = match.footballDataSource();
+            if (source == null) {
+                return 0;
+            }
+            return sideFdId(home ? source.getHome() : source.getAway());
+        }
+
+        private static int sideFdId(GameResultSideSnapshot side) {
+            if (side == null || side.getExternalId() == null || side.getExternalId().isBlank()) {
+                return 0;
+            }
+            try {
+                return Integer.parseInt(side.getExternalId().trim());
+            } catch (NumberFormatException e) {
+                return 0;
+            }
+        }
+
+        private static String externalName(GameResultSideSnapshot side) {
+            return side != null ? side.getExternalName() : null;
         }
     }
 }

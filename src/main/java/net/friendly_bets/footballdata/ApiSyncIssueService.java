@@ -3,8 +3,9 @@ package net.friendly_bets.footballdata;
 import lombok.RequiredArgsConstructor;
 import net.friendly_bets.dto.UnmappedExternalTeamNameDto;
 import net.friendly_bets.footballdata.client.dto.FootballDataMatchDto;
-import net.friendly_bets.models.external.ExternalSyncIssue;
-import net.friendly_bets.repositories.ExternalSyncIssueRepository;
+import net.friendly_bets.gameresults.MatchDataProviders;
+import net.friendly_bets.models.gameresults.ApiSyncIssue;
+import net.friendly_bets.repositories.ApiSyncIssueRepository;
 import net.friendly_bets.services.TeamAliasResolver;
 import org.springframework.stereotype.Service;
 
@@ -16,36 +17,38 @@ import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
-public class ExternalSyncIssueService {
+public class ApiSyncIssueService {
 
-    private final ExternalSyncIssueRepository externalSyncIssueRepository;
+    private final ApiSyncIssueRepository apiSyncIssueRepository;
     private final TeamAliasResolver teamAliasResolver;
 
     public void recordMissingTeamMapping(
-            String competitionCode,
+            String leagueCode,
             String season,
             int matchday,
             FootballDataMatchDto matchDto
     ) {
         String homeName = matchDto != null && matchDto.getHomeTeam() != null ? matchDto.getHomeTeam().getName() : null;
         String awayName = matchDto != null && matchDto.getAwayTeam() != null ? matchDto.getAwayTeam().getName() : null;
-        Integer homeId = matchDto != null && matchDto.getHomeTeam() != null ? matchDto.getHomeTeam().getId() : null;
-        Integer awayId = matchDto != null && matchDto.getAwayTeam() != null ? matchDto.getAwayTeam().getId() : null;
+        String homeId = matchDto != null && matchDto.getHomeTeam() != null
+                ? String.valueOf(matchDto.getHomeTeam().getId()) : null;
+        String awayId = matchDto != null && matchDto.getAwayTeam() != null
+                ? String.valueOf(matchDto.getAwayTeam().getId()) : null;
         Long externalMatchId = matchDto != null ? matchDto.getId() : null;
 
         if (externalMatchId != null
-                && externalSyncIssueRepository.existsByProviderAndIssueTypeAndExternalMatchId(
-                ExternalSyncIssue.Provider.FOOTBALL_DATA.name(),
-                ExternalSyncIssue.IssueType.TEAM_MAPPING_MISSING.name(),
+                && apiSyncIssueRepository.existsByProviderAndIssueTypeAndExternalMatchId(
+                MatchDataProviders.FOOTBALL_DATA,
+                ApiSyncIssue.IssueType.TEAM_MAPPING_MISSING.name(),
                 externalMatchId)) {
             return;
         }
 
-        externalSyncIssueRepository.save(ExternalSyncIssue.builder()
+        apiSyncIssueRepository.save(ApiSyncIssue.builder()
                 .createdAt(LocalDateTime.now())
-                .provider(ExternalSyncIssue.Provider.FOOTBALL_DATA.name())
-                .issueType(ExternalSyncIssue.IssueType.TEAM_MAPPING_MISSING.name())
-                .competitionCode(competitionCode)
+                .provider(MatchDataProviders.FOOTBALL_DATA)
+                .issueType(ApiSyncIssue.IssueType.TEAM_MAPPING_MISSING.name())
+                .leagueCode(leagueCode)
                 .season(season)
                 .matchday(matchday)
                 .externalMatchId(externalMatchId)
@@ -56,25 +59,22 @@ public class ExternalSyncIssueService {
                 .build());
     }
 
-    public List<ExternalSyncIssue> getLatest() {
-        return externalSyncIssueRepository.findTop200ByOrderByCreatedAtDesc();
+    public List<ApiSyncIssue> getLatest() {
+        return apiSyncIssueRepository.findTop200ByOrderByCreatedAtDesc();
     }
 
     public void clearAll() {
-        externalSyncIssueRepository.deleteAll();
+        apiSyncIssueRepository.deleteAll();
     }
 
     public boolean hasIssues() {
-        return externalSyncIssueRepository.count() > 0;
+        return apiSyncIssueRepository.count() > 0;
     }
 
-    /**
-     * Unique API team names from recent sync issues that are still not mapped to a {@link net.friendly_bets.models.Team}.
-     */
     public List<UnmappedExternalTeamNameDto> getUnmappedTeamNameHints() {
         Map<String, UnmappedExternalTeamNameDto> byName = new LinkedHashMap<>();
-        for (ExternalSyncIssue issue : getLatest()) {
-            if (!ExternalSyncIssue.IssueType.TEAM_MAPPING_MISSING.name().equals(issue.getIssueType())) {
+        for (ApiSyncIssue issue : getLatest()) {
+            if (!ApiSyncIssue.IssueType.TEAM_MAPPING_MISSING.name().equals(issue.getIssueType())) {
                 continue;
             }
             addUnmappedHint(byName, issue.getHomeTeamName(), issue.getHomeTeamExternalId());
@@ -83,11 +83,11 @@ public class ExternalSyncIssueService {
         return new ArrayList<>(byName.values());
     }
 
-    private void addUnmappedHint(Map<String, UnmappedExternalTeamNameDto> byName, String name, Integer externalId) {
+    private void addUnmappedHint(Map<String, UnmappedExternalTeamNameDto> byName, String name, String externalId) {
         if (name == null || name.isBlank()) {
             return;
         }
-        int fdId = externalId != null ? externalId : 0;
+        int fdId = parseExternalId(externalId);
         if (teamAliasResolver.resolveFootballData(fdId, name).isPresent()) {
             return;
         }
@@ -95,12 +95,22 @@ public class ExternalSyncIssueService {
                 name,
                 UnmappedExternalTeamNameDto.builder()
                         .externalName(name)
-                        .externalId(externalId)
+                        .externalId(fdId > 0 ? fdId : null)
                         .build(),
                 (existing, incoming) -> existing.getExternalId() == null && incoming.getExternalId() != null
                         ? incoming
                         : existing
         );
     }
-}
 
+    private static int parseExternalId(String externalId) {
+        if (externalId == null || externalId.isBlank()) {
+            return 0;
+        }
+        try {
+            return Integer.parseInt(externalId.trim());
+        } catch (NumberFormatException e) {
+            return 0;
+        }
+    }
+}
