@@ -5,6 +5,9 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import net.friendly_bets.models.odds.OddsDemoSnapshot;
+import net.friendly_bets.models.odds.OddsMarketGroup;
+
+import java.util.List;
 
 @AllArgsConstructor
 @NoArgsConstructor
@@ -28,7 +31,17 @@ public class OddsDemoEventSummaryDto {
                 .eventDate(snapshot.getEventDate())
                 .leagueSlug(snapshot.getLeagueSlug())
                 .status(snapshot.getStatus())
-                .mergedLineCount(snapshot.getMergedLines() != null ? snapshot.getMergedLines().size() : 0)
+                .mergedLineCount(countRows(snapshot))
                 .build();
+    }
+
+    private static int countRows(OddsDemoSnapshot snapshot) {
+        List<OddsMarketGroup> groups = snapshot.getMarketGroups();
+        if (groups == null || groups.isEmpty()) {
+            return 0;
+        }
+        return groups.stream()
+                .mapToInt(g -> g.getRows() != null ? g.getRows().size() : 0)
+                .sum();
     }
 }

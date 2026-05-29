@@ -48,7 +48,8 @@ public final class OddsMarketParser {
             if (row == null || row.isNull() || !row.isObject()) {
                 continue;
             }
-            String line = extractLine(row);
+            boolean labelRow = row.hasNonNull("label");
+            String line = labelRow ? null : extractLine(row);
             if (!OddsMarketFilter.isLineAllowed(line)) {
                 continue;
             }

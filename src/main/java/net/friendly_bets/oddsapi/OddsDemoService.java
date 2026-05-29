@@ -6,8 +6,8 @@ import net.friendly_bets.dto.OddsDemoEventSummaryDto;
 import net.friendly_bets.dto.OddsDemoRefreshResultDto;
 import net.friendly_bets.exceptions.BadRequestException;
 import net.friendly_bets.exceptions.NotFoundException;
-import net.friendly_bets.models.odds.MergedOddsLine;
 import net.friendly_bets.models.odds.OddsDemoSnapshot;
+import net.friendly_bets.models.odds.OddsMarketGroup;
 import net.friendly_bets.oddsapi.client.OddsApiClient;
 import net.friendly_bets.oddsapi.client.dto.OddsApiEventDto;
 import net.friendly_bets.oddsapi.client.dto.OddsApiEventOddsDto;
@@ -81,8 +81,9 @@ public class OddsDemoService {
                     continue;
                 }
                 OddsApiEventOddsDto oddsDto = oddsById.get(event.getId());
-                List<MergedOddsLine> merged = oddsDto != null
-                        ? OddsLineMerger.merge(oddsDto.getBookmakers(), canonicalByLower)
+                OddsMatchContext matchContext = OddsMatchContext.of(event.getHome(), event.getAway());
+                List<OddsMarketGroup> marketGroups = oddsDto != null
+                        ? OddsGroupBuilder.build(oddsDto.getBookmakers(), canonicalByLower, matchContext)
                         : List.of();
 
                 oddsDemoSnapshotRepository.save(OddsDemoSnapshot.builder()
@@ -93,7 +94,7 @@ public class OddsDemoService {
                         .leagueSlug(leagueSlug.trim())
                         .status(event.getStatus())
                         .bookmakers(new ArrayList<>(canonicalByLower.values()))
-                        .mergedLines(merged)
+                        .marketGroups(marketGroups)
                         .fetchedAt(fetchedAt)
                         .build());
                 stored++;

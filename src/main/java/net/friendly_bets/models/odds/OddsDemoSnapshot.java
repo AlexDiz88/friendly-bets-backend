@@ -50,6 +50,10 @@ public class OddsDemoSnapshot {
     @Builder.Default
     private List<MergedOddsLine> mergedLines = new ArrayList<>();
 
+    @Field(name = "market_groups")
+    @Builder.Default
+    private List<OddsMarketGroup> marketGroups = new ArrayList<>();
+
     @Field(name = "fetched_at")
     private LocalDateTime fetchedAt;
 }

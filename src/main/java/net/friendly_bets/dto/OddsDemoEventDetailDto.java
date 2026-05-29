@@ -4,8 +4,8 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import net.friendly_bets.models.odds.MergedOddsLine;
 import net.friendly_bets.models.odds.OddsDemoSnapshot;
+import net.friendly_bets.models.odds.OddsMarketGroup;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -23,7 +23,7 @@ public class OddsDemoEventDetailDto {
     private String leagueSlug;
     private String status;
     private List<String> bookmakers;
-    private List<MergedOddsLine> mergedLines;
+    private List<OddsMarketGroup> marketGroups;
     private LocalDateTime fetchedAt;
 
     public static OddsDemoEventDetailDto from(OddsDemoSnapshot snapshot) {
@@ -35,7 +35,7 @@ public class OddsDemoEventDetailDto {
                 .leagueSlug(snapshot.getLeagueSlug())
                 .status(snapshot.getStatus())
                 .bookmakers(snapshot.getBookmakers())
-                .mergedLines(snapshot.getMergedLines())
+                .marketGroups(snapshot.getMarketGroups())
                 .fetchedAt(snapshot.getFetchedAt())
                 .build();
     }
