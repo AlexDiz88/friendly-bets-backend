@@ -6,9 +6,7 @@ import net.friendly_bets.dto.*;
 import net.friendly_bets.models.BetResult;
 import net.friendly_bets.models.enums.BetTitleCode;
 import net.friendly_bets.security.details.AuthenticatedUser;
-import net.friendly_bets.dto.PlaceBetFromOddsDto;
 import net.friendly_bets.services.BetsService;
-import net.friendly_bets.services.SelfBetPlacementService;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -27,16 +25,14 @@ import java.util.Map;
 public class BetsController implements BetsApi {
 
     private final BetsService betsService;
-    private final SelfBetPlacementService selfBetPlacementService;
 
     @Override
-    @PreAuthorize("hasAuthority('ADMIN') || hasAuthority('MODERATOR')")
+    @PreAuthorize("hasAuthority('USER') || hasAuthority('MODERATOR') || hasAuthority('ADMIN')")
     @PostMapping("/add")
     public ResponseEntity<BetDto> addBet(@AuthenticationPrincipal AuthenticatedUser currentUser,
                                          @RequestBody @Valid NewBetDto newOpenedBet) {
-        String moderatorId = currentUser.getUser().getId();
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(betsService.addOpenedBet(moderatorId, newOpenedBet));
+                .body(betsService.addOpenedBet(currentUser, newOpenedBet));
     }
 
     @Override
@@ -73,30 +69,6 @@ public class BetsController implements BetsApi {
     @GetMapping("/opened/seasons/{season-id}")
     public ResponseEntity<BetsPage> getOpenedBets(@PathVariable("season-id") String seasonId) {
         return ResponseEntity.ok(betsService.getOpenedBets(seasonId));
-    }
-
-    @GetMapping("/self/opened")
-    @PreAuthorize("hasAuthority('USER') || hasAuthority('MODERATOR') || hasAuthority('ADMIN')")
-    public ResponseEntity<BetsPage> getSelfOpenedBets(
-            @AuthenticationPrincipal AuthenticatedUser currentUser,
-            @RequestParam String seasonId,
-            @RequestParam String leagueId,
-            @RequestParam(required = false) String matchDay
-    ) {
-        String userId = currentUser.getUser().getId();
-        return ResponseEntity.ok(betsService.getSelfOpenedBets(userId, seasonId, leagueId, matchDay));
-    }
-
-    @PostMapping("/self/place-from-odds")
-    @PreAuthorize("hasAuthority('USER') || hasAuthority('MODERATOR') || hasAuthority('ADMIN')")
-    public ResponseEntity<BetDto> placeFromOdds(
-            @AuthenticationPrincipal AuthenticatedUser currentUser,
-            @RequestBody @Valid PlaceBetFromOddsDto body,
-            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey
-    ) {
-        String userId = currentUser.getUser().getId();
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(selfBetPlacementService.placeFromOdds(userId, body, idempotencyKey));
     }
 
     @Override

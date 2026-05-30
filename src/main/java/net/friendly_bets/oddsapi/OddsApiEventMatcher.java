@@ -20,6 +20,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
 
@@ -79,20 +80,45 @@ public class OddsApiEventMatcher {
         return Optional.empty();
     }
 
+    /**
+     * События odds-api, попадающие в окно kick-off хотя бы одного матча тура (не весь турнир).
+     */
+    public List<OddsApiEventDto> eventsForPendingMatches(
+            List<GameResultRecord> pending,
+            List<OddsApiEventDto> leagueEvents
+    ) {
+        if (pending == null || pending.isEmpty() || leagueEvents == null || leagueEvents.isEmpty()) {
+            return List.of();
+        }
+        LinkedHashSet<Long> seenIds = new LinkedHashSet<>();
+        List<OddsApiEventDto> result = new ArrayList<>();
+        for (GameResultRecord match : pending) {
+            for (OddsApiEventDto event : filterByKickoffWindow(match, leagueEvents)) {
+                if (event != null && event.getId() != null && seenIds.add(event.getId())) {
+                    result.add(event);
+                }
+            }
+        }
+        return result;
+    }
+
     private List<OddsApiEventDto> filterByKickoffWindow(GameResultRecord match, List<OddsApiEventDto> events) {
-        if (match.getUtcDate() == null || events == null) {
-            return events != null ? events : List.of();
+        if (events == null) {
+            return List.of();
+        }
+        if (match.getUtcDate() == null) {
+            return List.of();
         }
         long center = match.getUtcDate().toInstant(ZoneOffset.UTC).toEpochMilli();
         long windowMs = properties.getEventWindowHours() * 3_600_000L;
         List<OddsApiEventDto> filtered = new ArrayList<>();
         for (OddsApiEventDto event : events) {
             Long kickoff = parseEventMillis(event.getDate());
-            if (kickoff == null || Math.abs(kickoff - center) <= windowMs) {
+            if (kickoff != null && Math.abs(kickoff - center) <= windowMs) {
                 filtered.add(event);
             }
         }
-        return filtered.isEmpty() ? events : filtered;
+        return filtered;
     }
 
     private boolean sidesMatch(GameResultRecord match, OddsApiEventDto event) {

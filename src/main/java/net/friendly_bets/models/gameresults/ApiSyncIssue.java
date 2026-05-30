@@ -25,7 +25,8 @@ public class ApiSyncIssue {
 
     public enum IssueType {
         TEAM_MAPPING_MISSING,
-        EVENT_MAPPING_MISSING
+        EVENT_MAPPING_MISSING,
+        API_SCORE_CHANGED
     }
 
     @MongoId

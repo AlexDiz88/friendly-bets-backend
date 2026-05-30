@@ -30,7 +30,10 @@ public class ApiSyncIssuesController {
     @GetMapping("/status")
     @PreAuthorize("hasAuthority('ADMIN') || hasAuthority('MODERATOR')")
     public ResponseEntity<Map<String, Boolean>> getStatus() {
-        return ResponseEntity.ok(Map.of("hasIssues", apiSyncIssueService.hasIssues()));
+        return ResponseEntity.ok(Map.of(
+                "hasIssues", apiSyncIssueService.hasIssues(),
+                "hasScoreChangeIssues", apiSyncIssueService.hasScoreChangeIssues()
+        ));
     }
 
     @GetMapping("/unmapped-team-names")

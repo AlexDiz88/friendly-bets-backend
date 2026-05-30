@@ -6,6 +6,10 @@ import net.friendly_bets.models.gameresults.GameResultFinalizedSource;
 import net.friendly_bets.models.gameresults.GameResultRecord;
 import net.friendly_bets.models.gameresults.GameResultSourceSnapshot;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -14,12 +18,18 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 
+@ExtendWith(MockitoExtension.class)
 class GameResultPersistenceTest {
 
-    private final GameResultPersistence persistence = new GameResultPersistence(
-            new net.friendly_bets.gameresults.GameResultFinalizer()
-    );
+    @Mock
+    ApiSyncIssueService apiSyncIssueService;
+
+    @InjectMocks
+    GameResultPersistence persistence;
 
     @Test
     void applyProvisionalSync_finalizesInPlayWithFullTimeAndHalftime() {
@@ -41,6 +51,7 @@ class GameResultPersistenceTest {
 
         persistence.applyProvisionalSync(existing, incoming, first.plusHours(2));
 
+        verify(apiSyncIssueService).recordApiScoreChangedIfNeeded(existing, incoming);
         assertEquals("FINISHED", existing.getStatus());
         assertEquals("1:1", existing.getGameScore().getFullTime());
         assertNotNull(existing.getFinalizedAt());
@@ -54,6 +65,7 @@ class GameResultPersistenceTest {
         GameResultSourceSnapshot source = GameResultSourceSnapshot.builder()
                 .status("FINISHED")
                 .gameScore(GameScore.builder().fullTime("2:1").build())
+                .apiLastUpdated(first)
                 .fetchedAt(first)
                 .build();
         Map<String, GameResultSourceSnapshot> sources = new HashMap<>();
@@ -70,17 +82,29 @@ class GameResultPersistenceTest {
         GameResultRecord incoming = GameResultRecord.builder()
                 .status("FINISHED")
                 .gameScore(GameScore.builder().fullTime("9:9").build())
+                .sources(Map.of(
+                        MatchDataProviders.sourcesStorageKey(MatchDataProviders.FOOTBALL_DATA),
+                        GameResultSourceSnapshot.builder()
+                                .status("FINISHED")
+                                .gameScore(GameScore.builder().fullTime("9:9").build())
+                                .apiLastUpdated(second)
+                                .build()
+                ))
                 .build();
 
         persistence.applyFinalizedApiSync(existing, incoming, second);
 
+        verify(apiSyncIssueService).recordApiScoreChangedIfNeeded(existing, incoming);
         assertEquals("2:1", existing.getGameScore().getFullTime());
         assertEquals(second, existing.getFetchedAt());
+        assertEquals("9:9", existing.footballDataSource().getGameScore().getFullTime());
+        assertEquals(second, existing.footballDataSource().getApiLastUpdated());
     }
 
     @Test
     void isLockedAgainstApiSync_whenAdminCorrected() {
         GameResultRecord record = GameResultRecord.builder().adminCorrected(true).build();
         assertTrue(persistence.isLockedAgainstApiSync(record));
+        verify(apiSyncIssueService, never()).recordApiScoreChangedIfNeeded(any(), any());
     }
 }

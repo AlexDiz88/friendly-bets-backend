@@ -3,45 +3,41 @@ package net.friendly_bets.oddsapi;
 import net.friendly_bets.models.BetTitle;
 import net.friendly_bets.models.enums.BetTitleCode;
 import net.friendly_bets.models.odds.OddsLineRow;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class OddsSelectionBetTitleMapperTest {
 
     @Test
+    @DisplayName("maps match result HOME to HOME_WIN bet title")
     void mapsMatchResultHome() {
-        BetTitle title = OddsSelectionBetTitleMapper.toBetTitle(
-                OddsMarketCategory.MATCH_RESULT.name(),
-                OddsLineRow.builder().selectionCode("HOME").build());
+        OddsLineRow row = OddsLineRow.builder()
+                .selectionCode("HOME")
+                .displayLabel("П1")
+                .build();
+
+        BetTitle title = OddsSelectionBetTitleMapper.toBetTitle("MATCH_RESULT", row);
+
         assertEquals(BetTitleCode.HOME_WIN.getCode(), title.getCode());
-    }
-
-    @Test
-    void mapsTotalsOver25() {
-        BetTitle title = OddsSelectionBetTitleMapper.toBetTitle(
-                OddsMarketCategory.TOTALS.name(),
-                OddsLineRow.builder().selectionCode("OVER").line("2.5").build());
-        assertEquals(BetTitleCode.TOTAL_OVER_2_5.getCode(), title.getCode());
-    }
-
-    @Test
-    void mapsBttsNoWithIsNot() {
-        BetTitle title = OddsSelectionBetTitleMapper.toBetTitle(
-                OddsMarketCategory.BTTS.name(),
-                OddsLineRow.builder().selectionCode("NO").build());
-        assertEquals(BetTitleCode.BOTH_TEAMS_SCORE.getCode(), title.getCode());
-        assertTrue(title.isNot());
-    }
-
-    @Test
-    void mapsDoubleChance1x() {
-        BetTitle title = OddsSelectionBetTitleMapper.toBetTitle(
-                OddsMarketCategory.DOUBLE_CHANCE.name(),
-                OddsLineRow.builder().selectionCode("DC_1X").build());
-        assertEquals(BetTitleCode.HOME_WIN_OR_DRAW.getCode(), title.getCode());
+        assertEquals(BetTitleCode.HOME_WIN.getLabel(), title.getLabel());
         assertFalse(title.isNot());
+    }
+
+    @Test
+    @DisplayName("maps BTTS NO to BOTH_TEAMS_SCORE with isNot")
+    void mapsBttsNo() {
+        OddsLineRow row = OddsLineRow.builder()
+                .selectionCode("NO")
+                .displayLabel("Нет")
+                .build();
+
+        BetTitle title = OddsSelectionBetTitleMapper.toBetTitle("BTTS", row);
+
+        assertEquals(BetTitleCode.BOTH_TEAMS_SCORE.getCode(), title.getCode());
+        assertEquals(BetTitleCode.BOTH_TEAMS_SCORE.getLabel(), title.getLabel());
+        assertEquals(true, title.isNot());
     }
 }

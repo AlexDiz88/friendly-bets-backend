@@ -2,6 +2,7 @@ package net.friendly_bets.oddsapi;
 
 import lombok.RequiredArgsConstructor;
 import net.friendly_bets.dto.ExternalCompetitionInfoDto;
+import net.friendly_bets.exceptions.BadRequestException;
 import net.friendly_bets.footballdata.FootballDataCompetitionMapping;
 import net.friendly_bets.footballdata.FootballDataCompetitionService;
 import net.friendly_bets.footballdata.FootballDataMatchdaySupport;
@@ -17,6 +18,7 @@ import net.friendly_bets.oddsapi.config.OddsApiProperties;
 import net.friendly_bets.repositories.GameResultOddsRepository;
 import net.friendly_bets.repositories.GameResultRecordRepository;
 import net.friendly_bets.repositories.SeasonsRepository;
+import net.friendly_bets.services.GetEntityService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -42,6 +44,35 @@ public class OddsApiSyncService {
     private final GameResultRecordRepository gameResultRecordRepository;
     private final GameResultOddsRepository gameResultOddsRepository;
     private final OddsApiEventMatcher eventMatcher;
+    private final GetEntityService getEntityService;
+
+    /**
+     * Принудительная синхронизация кэфов для тура лиги (админ / модератор).
+     */
+    public OddsApiSyncResult syncMatchday(String leagueId, int matchday, String season) {
+        List<String> bookmakers = requireSyncReady();
+        League league = getEntityService.getLeagueOrThrow(leagueId);
+        if (league.getLeagueCode() == null) {
+            throw new BadRequestException("leagueSlugRequired");
+        }
+        Optional<String> leagueSlug = OddsApiLeagueMapping.toLeagueSlug(league.getLeagueCode(), properties);
+        if (leagueSlug.isEmpty()) {
+            throw new BadRequestException("leagueSlugRequired");
+        }
+
+        String resolvedSeason = resolveStorageSeason(season, league);
+        LocalDateTime now = LocalDateTime.now();
+        LeagueMatchdaySyncCounters counters = syncLeagueMatchday(
+                league,
+                matchday,
+                resolvedSeason,
+                leagueSlug.get(),
+                bookmakers,
+                now,
+                true
+        );
+        return counters.toResult();
+    }
 
     public OddsApiSyncResult runTick() {
         if (!properties.isSyncEnabled() || !oddsApiClient.isConfigured()) {
@@ -63,9 +94,11 @@ public class OddsApiSyncService {
         int matchesSkippedStarted = 0;
         int mappingFailures = 0;
 
-        List<String> bookmakers = properties.getBookmakers();
-        if (bookmakers == null || bookmakers.isEmpty()) {
-            log.warn("odds-api sync: no bookmakers configured");
+        List<String> bookmakers;
+        try {
+            bookmakers = requireSyncReady();
+        } catch (BadRequestException e) {
+            log.warn("odds-api sync tick skipped: {}", e.getMessage());
             return OddsApiSyncResult.builder().build();
         }
 
@@ -90,66 +123,23 @@ public class OddsApiSyncService {
                     externalSeasonYear
             );
             int matchday = info.getCurrentMatchday();
-            String leagueCode = league.getLeagueCode().name();
 
-            List<GameResultRecord> matches = gameResultRecordRepository.findByLeagueCodeAndMatchdayAndSeason(
-                    leagueCode,
+            LeagueMatchdaySyncCounters leagueResult = syncLeagueMatchday(
+                    league,
                     matchday,
-                    externalSeasonYear
+                    externalSeasonYear,
+                    leagueSlug.get(),
+                    bookmakers,
+                    now,
+                    false
             );
-
-            List<GameResultRecord> pending = new ArrayList<>();
-            for (GameResultRecord match : matches) {
-                if (GameResultNotStarted.isNotStarted(match, now)) {
-                    pending.add(match);
-                } else {
-                    matchesSkippedStarted++;
-                }
+            if (leagueResult.leaguesProcessed() > 0) {
+                leaguesProcessed += leagueResult.leaguesProcessed();
             }
-
-            if (pending.isEmpty()) {
-                continue;
-            }
-
-            leaguesProcessed++;
-            matchesEligible += pending.size();
-
-            List<OddsApiEventDto> leagueEvents;
-            try {
-                leagueEvents = oddsApiClient.fetchEvents(leagueSlug.get(), "pending");
-            } catch (Exception e) {
-                log.warn("odds-api events fetch failed for {}: {}", leagueSlug.get(), e.getMessage());
-                mappingFailures += pending.size();
-                continue;
-            }
-
-            Map<Long, GameResultRecord> eventIdToMatch = new LinkedHashMap<>();
-            for (GameResultRecord match : pending) {
-                Optional<Long> eventId = eventMatcher.resolveAndPersistEventId(
-                        match,
-                        leagueEvents,
-                        leagueCode,
-                        externalSeasonYear,
-                        matchday
-                );
-                if (eventId.isEmpty()) {
-                    mappingFailures++;
-                    continue;
-                }
-                eventIdToMatch.put(eventId.get(), match);
-            }
-
-            List<Long> eventIds = new ArrayList<>(eventIdToMatch.keySet());
-            for (int i = 0; i < eventIds.size(); i += 10) {
-                List<Long> batch = eventIds.subList(i, Math.min(i + 10, eventIds.size()));
-                try {
-                    List<OddsApiEventOddsDto> oddsResponses = oddsApiClient.fetchOddsMulti(batch, bookmakers);
-                    oddsDocumentsSaved += persistOddsBatch(oddsResponses, eventIdToMatch, bookmakers, now);
-                } catch (Exception e) {
-                    log.warn("odds-api multi odds failed for batch {}: {}", batch, e.getMessage());
-                    mappingFailures += batch.size();
-                }
-            }
+            matchesEligible += leagueResult.matchesEligible();
+            oddsDocumentsSaved += leagueResult.oddsDocumentsSaved();
+            matchesSkippedStarted += leagueResult.matchesSkippedStarted();
+            mappingFailures += leagueResult.mappingFailures();
         }
 
         log.info(
@@ -168,6 +158,129 @@ public class OddsApiSyncService {
                 .matchesSkippedStarted(matchesSkippedStarted)
                 .mappingFailures(mappingFailures)
                 .build();
+    }
+
+    private LeagueMatchdaySyncCounters syncLeagueMatchday(
+            League league,
+            int matchday,
+            String season,
+            String leagueSlug,
+            List<String> bookmakers,
+            LocalDateTime now,
+            boolean failWhenNoPendingMatches
+    ) {
+        String leagueCode = league.getLeagueCode().name();
+        List<GameResultRecord> matches = gameResultRecordRepository.findByLeagueCodeAndMatchdayAndSeason(
+                leagueCode,
+                matchday,
+                season
+        );
+
+        List<GameResultRecord> pending = new ArrayList<>();
+        int matchesSkippedStarted = 0;
+        for (GameResultRecord match : matches) {
+            if (GameResultNotStarted.isNotStarted(match, now)) {
+                pending.add(match);
+            } else {
+                matchesSkippedStarted++;
+            }
+        }
+
+        if (pending.isEmpty()) {
+            if (failWhenNoPendingMatches) {
+                throw new BadRequestException("oddsSyncNoMatchdayMatches");
+            }
+            return new LeagueMatchdaySyncCounters(0, 0, 0, matchesSkippedStarted, 0);
+        }
+
+        List<OddsApiEventDto> leagueEvents;
+        try {
+            leagueEvents = oddsApiClient.fetchEvents(leagueSlug, "pending");
+        } catch (Exception e) {
+            log.warn("odds-api events fetch failed for {}: {}", leagueSlug, e.getMessage());
+            return new LeagueMatchdaySyncCounters(0, pending.size(), 0, matchesSkippedStarted, pending.size());
+        }
+
+        List<OddsApiEventDto> slotEvents = eventMatcher.eventsForPendingMatches(pending, leagueEvents);
+
+        Map<Long, GameResultRecord> eventIdToMatch = new LinkedHashMap<>();
+        int mappingFailures = 0;
+        for (GameResultRecord match : pending) {
+            Optional<Long> eventId = eventMatcher.resolveAndPersistEventId(
+                    match,
+                    slotEvents,
+                    leagueCode,
+                    season,
+                    matchday
+            );
+            if (eventId.isEmpty()) {
+                mappingFailures++;
+                continue;
+            }
+            eventIdToMatch.put(eventId.get(), match);
+        }
+
+        int oddsDocumentsSaved = 0;
+        List<Long> eventIds = new ArrayList<>(eventIdToMatch.keySet());
+        for (int i = 0; i < eventIds.size(); i += 10) {
+            List<Long> batch = eventIds.subList(i, Math.min(i + 10, eventIds.size()));
+            try {
+                List<OddsApiEventOddsDto> oddsResponses = oddsApiClient.fetchOddsMulti(batch, bookmakers);
+                oddsDocumentsSaved += persistOddsBatch(oddsResponses, eventIdToMatch, bookmakers, now);
+            } catch (Exception e) {
+                log.warn("odds-api multi odds failed for batch {}: {}", batch, e.getMessage());
+                mappingFailures += batch.size();
+            }
+        }
+
+        return new LeagueMatchdaySyncCounters(
+                1,
+                pending.size(),
+                oddsDocumentsSaved,
+                matchesSkippedStarted,
+                mappingFailures
+        );
+    }
+
+    private List<String> requireSyncReady() {
+        if (!properties.isSyncEnabled()) {
+            throw new BadRequestException("oddsApiNotConfigured");
+        }
+        if (!oddsApiClient.isConfigured()) {
+            throw new BadRequestException("oddsApiKeyNotConfigured");
+        }
+        List<String> bookmakers = properties.getBookmakers();
+        if (bookmakers == null || bookmakers.isEmpty()) {
+            throw new BadRequestException("oddsApiBookmakersNotConfigured");
+        }
+        return bookmakers;
+    }
+
+    private String resolveStorageSeason(String requestedSeason, League league) {
+        if (requestedSeason != null && !requestedSeason.isBlank()) {
+            return requestedSeason.trim();
+        }
+        Season active = seasonsRepository.findSeasonByStatus(Season.Status.ACTIVE)
+                .orElseThrow(() -> new BadRequestException("seasonDatesRequired"));
+        return matchdaySupport.resolveFootballDataSeasonYear(active, league.getLeagueCode());
+    }
+
+    private record LeagueMatchdaySyncCounters(
+            int leaguesProcessed,
+            int matchesEligible,
+            int oddsDocumentsSaved,
+            int matchesSkippedStarted,
+            int mappingFailures
+    ) {
+        OddsApiSyncResult toResult() {
+            return OddsApiSyncResult.builder()
+                    .leaguesProcessed(leaguesProcessed)
+                    .matchesEligible(matchesEligible)
+                    .oddsDocumentsSaved(oddsDocumentsSaved)
+                    .matchesSkippedStarted(matchesSkippedStarted)
+                    .mappingFailures(mappingFailures)
+                    .build();
+        }
     }
 
     private int persistOddsBatch(

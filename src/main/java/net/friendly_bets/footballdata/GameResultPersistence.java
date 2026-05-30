@@ -16,6 +16,7 @@ import java.util.Map;
 public class GameResultPersistence {
 
     private final GameResultFinalizer gameResultFinalizer;
+    private final ApiSyncIssueService apiSyncIssueService;
 
     public boolean isLockedAgainstApiSync(GameResultRecord record) {
         return record != null && record.isAdminCorrected();
@@ -25,6 +26,7 @@ public class GameResultPersistence {
      * Первая запись или provisional: полное обновление канона и снимка API, затем попытка финализации.
      */
     public void applyProvisionalSync(GameResultRecord existing, GameResultRecord incoming, LocalDateTime fetchedAt) {
+        apiSyncIssueService.recordApiScoreChangedIfNeeded(existing, incoming);
         existing.setStatus(incoming.getStatus());
         existing.setUtcDate(incoming.getUtcDate());
         existing.setGameScore(incoming.getGameScore());
@@ -34,12 +36,13 @@ public class GameResultPersistence {
     }
 
     /**
-     * Уже финализировано API: только {@code status} и {@code fetchedAt}.
+     * Уже финализировано API: канонический счёт не меняется; обновляются status/fetchedAt и снимок API.
      */
     public void applyFinalizedApiSync(GameResultRecord existing, GameResultRecord incoming, LocalDateTime fetchedAt) {
+        apiSyncIssueService.recordApiScoreChangedIfNeeded(existing, incoming);
         existing.setStatus(incoming.getStatus());
         existing.setFetchedAt(fetchedAt);
-        mergeSourceStatusAndFetchedAt(existing, incoming.footballDataSource(), fetchedAt);
+        mergeFinalizedFootballDataSource(existing, incoming.footballDataSource(), fetchedAt);
     }
 
     public void applySync(GameResultRecord existing, GameResultRecord incoming, LocalDateTime fetchedAt) {
@@ -62,7 +65,7 @@ public class GameResultPersistence {
         sources.put(MatchDataProviders.sourcesStorageKey(MatchDataProviders.FOOTBALL_DATA), incoming);
     }
 
-    private static void mergeSourceStatusAndFetchedAt(
+    private static void mergeFinalizedFootballDataSource(
             GameResultRecord record,
             GameResultSourceSnapshot incoming,
             LocalDateTime fetchedAt
@@ -83,5 +86,7 @@ public class GameResultPersistence {
         }
         stored.setStatus(incoming.getStatus());
         stored.setFetchedAt(fetchedAt);
+        stored.setApiLastUpdated(incoming.getApiLastUpdated());
+        stored.setGameScore(incoming.getGameScore());
     }
 }

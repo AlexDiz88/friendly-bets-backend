@@ -6,6 +6,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.data.mongodb.core.mapping.Field;
 
+import net.friendly_bets.models.BetTitle;
+
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -36,4 +38,7 @@ public class OddsLineRow {
 
     @Field(name = "best_bookmaker")
     private String bestBookmaker;
+
+    @Field(name = "bet_title")
+    private BetTitle betTitle;
 }

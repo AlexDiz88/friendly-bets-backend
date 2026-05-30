@@ -4,6 +4,7 @@ import net.friendly_bets.models.gameresults.ApiSyncIssue;
 import org.springframework.data.mongodb.repository.MongoRepository;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface ApiSyncIssueRepository extends MongoRepository<ApiSyncIssue, String> {
 
@@ -12,4 +13,12 @@ public interface ApiSyncIssueRepository extends MongoRepository<ApiSyncIssue, St
     boolean existsByProviderAndIssueTypeAndExternalMatchId(String provider, String issueType, Long externalMatchId);
 
     boolean existsByProviderAndIssueTypeAndGameResultId(String provider, String issueType, String gameResultId);
+
+    Optional<ApiSyncIssue> findFirstByProviderAndIssueTypeAndGameResultId(
+            String provider,
+            String issueType,
+            String gameResultId
+    );
+
+    boolean existsByIssueType(String issueType);
 }

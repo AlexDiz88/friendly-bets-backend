@@ -76,9 +76,6 @@ public class BetDto {
     @Schema(description = "идентификатор записи календаря", example = "12-байтовый хэш ID")
     private String calendarNodeId;
 
-    @Schema(description = "id game_results для ставки из odds-api")
-    private String gameResultId;
-
 
     public static BetDto from(Bet bet) {
         if (WRL_STATUSES.contains(bet.getBetStatus())) {
@@ -101,7 +98,6 @@ public class BetDto {
                     .balanceChange(bet.getBalanceChange())
                     .updatedAt(bet.getUpdatedAt())
                     .calendarNodeId(bet.getCalendarNodeId())
-                    .gameResultId(bet.getGameResultId())
                     .build();
         }
         if (bet.getBetStatus().equals(Bet.BetStatus.OPENED)) {
@@ -121,7 +117,6 @@ public class BetDto {
                     .betStatus(Bet.BetStatus.OPENED.toString())
                     .updatedAt(bet.getUpdatedAt())
                     .calendarNodeId(bet.getCalendarNodeId())
-                    .gameResultId(bet.getGameResultId())
                     .build();
         }
         if (bet.getBetStatus().equals(Bet.BetStatus.EMPTY)) {

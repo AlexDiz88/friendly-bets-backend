@@ -8,17 +8,25 @@ import net.friendly_bets.exceptions.BadRequestException;
 import net.friendly_bets.exceptions.ConflictException;
 import net.friendly_bets.models.*;
 import net.friendly_bets.models.enums.BetTitleCode;
+import net.friendly_bets.exceptions.ForbiddenException;
+import net.friendly_bets.footballdata.FootballDataMatchdaySupport;
 import net.friendly_bets.footballdata.FootballDataSyncService;
+import net.friendly_bets.models.gameresults.GameResultRecord;
+import net.friendly_bets.oddsapi.GameResultNotStarted;
 import net.friendly_bets.repositories.BetsRepository;
+import net.friendly_bets.repositories.GameResultRecordRepository;
 import net.friendly_bets.repositories.LeaguesRepository;
+import net.friendly_bets.security.details.AuthenticatedUser;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import static net.friendly_bets.utils.BetUtils.*;
@@ -40,20 +48,37 @@ public class BetsService {
     BetTitleStatsService betTitleStatsService;
     LeagueMatchdayService leagueMatchdayService;
     FootballDataSyncService footballDataSyncService;
+    GameResultRecordRepository gameResultRecordRepository;
+    FootballDataMatchdaySupport matchdaySupport;
 
     @Transactional
-    public BetDto addOpenedBet(String moderatorId, NewBetDto newOpenedBet) {
-        User moderator = getEntityService.getUserOrThrow(moderatorId);
+    public BetDto addOpenedBet(AuthenticatedUser currentUser, NewBetDto newOpenedBet) {
+        User createdBy = getEntityService.getUserOrThrow(currentUser.getUser().getId());
         User user = getEntityService.getUserOrThrow(newOpenedBet.getUserId());
         Season season = getEntityService.getSeasonOrThrow(newOpenedBet.getSeasonId());
         League league = getEntityService.getLeagueOrThrow(newOpenedBet.getLeagueId());
         leagueMatchdayService.validateMatchDayForLeague(league, newOpenedBet.getMatchDay());
+
+        boolean moderatorAction = isModeratorOrAdmin(createdBy.getRole());
+        if (!moderatorAction) {
+            if (!createdBy.getId().equals(newOpenedBet.getUserId())) {
+                throw new ForbiddenException("accessDenied");
+            }
+            if (!isSeasonParticipant(season, createdBy.getId())) {
+                throw new ForbiddenException("notSeasonParticipant");
+            }
+        }
+
         validateBet(newOpenedBet);
         checkIfBetAlreadyExists(betsRepository, newOpenedBet);
         Team homeTeam = getEntityService.getTeamOrThrow(newOpenedBet.getHomeTeamId());
         Team awayTeam = getEntityService.getTeamOrThrow(newOpenedBet.getAwayTeamId());
 
-        Bet openedBet = createNewOpenedBet(newOpenedBet, moderator, user, season, league, homeTeam, awayTeam);
+        if (!moderatorAction) {
+            validateMatchNotStartedForSelfBet(season, league, newOpenedBet, homeTeam.getId(), awayTeam.getId());
+        }
+
+        Bet openedBet = createNewOpenedBet(newOpenedBet, createdBy, user, season, league, homeTeam, awayTeam);
 
         betsRepository.save(openedBet);
         leagueMatchdayService.updateCurrentMatchDayAfterBet(season, league);
@@ -173,29 +198,6 @@ public class BetsService {
         List<Bet> openedBets = betsRepository.findAllBySeason_IdAndBetStatus(seasonId, Bet.BetStatus.OPENED);
         return BetsPage.builder()
                 .bets(BetDto.from(openedBets))
-                .build();
-    }
-
-    public BetsPage getSelfOpenedBets(String userId, String seasonId, String leagueId, String matchDay) {
-        List<Bet> opened;
-        if (matchDay != null && !matchDay.isBlank()) {
-            opened = betsRepository.findAllBySeason_IdAndUser_IdAndLeague_IdAndMatchDayAndBetStatusIn(
-                    seasonId,
-                    userId,
-                    leagueId,
-                    matchDay.trim(),
-                    List.of(Bet.BetStatus.OPENED)
-            );
-        } else {
-            opened = betsRepository.findAllBySeason_IdAndUser_IdAndLeague_IdAndBetStatusIn(
-                    seasonId,
-                    userId,
-                    leagueId,
-                    List.of(Bet.BetStatus.OPENED)
-            );
-        }
-        return BetsPage.builder()
-                .bets(BetDto.from(opened))
                 .build();
     }
 
@@ -336,6 +338,50 @@ public class BetsService {
         }
 
         return betDto;
+    }
+
+    private static boolean isModeratorOrAdmin(User.Role role) {
+        return role == User.Role.MODERATOR || role == User.Role.ADMIN;
+    }
+
+    private static boolean isSeasonParticipant(Season season, String userId) {
+        if (userId == null || season.getPlayers() == null) {
+            return false;
+        }
+        return season.getPlayers().stream()
+                .filter(Objects::nonNull)
+                .map(User::getId)
+                .anyMatch(userId::equals);
+    }
+
+    private void validateMatchNotStartedForSelfBet(
+            Season season,
+            League league,
+            NewBetDto newBet,
+            String homeTeamId,
+            String awayTeamId
+    ) {
+        if (league.getLeagueCode() == null) {
+            throw new BadRequestException("gameResultNotFound");
+        }
+        String storageSeason = matchdaySupport.resolveFootballDataSeasonYear(season, league.getLeagueCode());
+        List<GameResultRecord> matches = gameResultRecordRepository.findByLeagueCodeAndSeasonAndHomeTeamIdAndAwayTeamId(
+                league.getLeagueCode().name(),
+                storageSeason,
+                homeTeamId,
+                awayTeamId
+        );
+        if (matches.isEmpty()) {
+            throw new BadRequestException("gameResultNotFound");
+        }
+        Optional<Integer> slotOrder = matchdaySupport.resolveSlotOrder(league, newBet.getMatchDay());
+        GameResultRecord match = matches.stream()
+                .filter(m -> slotOrder.isEmpty() || Objects.equals(m.getMatchday(), slotOrder.get()))
+                .findFirst()
+                .orElseThrow(() -> new BadRequestException("gameResultNotFound"));
+        if (!GameResultNotStarted.isNotStarted(match, LocalDateTime.now())) {
+            throw new BadRequestException("matchAlreadyStarted");
+        }
     }
 }
 

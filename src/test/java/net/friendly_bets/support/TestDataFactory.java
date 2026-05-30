@@ -6,6 +6,7 @@ import net.friendly_bets.dto.NewBetDto;
 import net.friendly_bets.models.*;
 import net.friendly_bets.models.enums.BetTitleCode;
 import net.friendly_bets.repositories.*;
+import net.friendly_bets.security.details.AuthenticatedUser;
 import net.friendly_bets.services.BetsService;
 import org.springframework.stereotype.Component;
 
@@ -337,7 +338,7 @@ public class TestDataFactory {
     }
 
     public Bet addOpenedBetViaService(TestFixture fixture) {
-        BetDto betDto = betsService.addOpenedBet(fixture.getModerator().getId(), buildNewOpenedBetDto(fixture));
+        BetDto betDto = betsService.addOpenedBet(authUser(fixture.getModerator()), buildNewOpenedBetDto(fixture));
         return betsRepository.findById(betDto.getId()).orElseThrow();
     }
 
@@ -438,7 +439,7 @@ public class TestDataFactory {
                 .calendarNodeId(fixture.getCalendarNode().getId())
                 .build();
 
-        BetDto opened = betsService.addOpenedBet(fixture.getModerator().getId(), newBetDto);
+        BetDto opened = betsService.addOpenedBet(authUser(fixture.getModerator()), newBetDto);
         BetResult betResult = BetResult.builder()
                 .gameScore(gameScore)
                 .betStatus(Bet.BetStatus.WON.name())
@@ -466,7 +467,7 @@ public class TestDataFactory {
                 .calendarNodeId(fixture.getCalendarNode().getId())
                 .build();
 
-        BetDto opened = betsService.addOpenedBet(fixture.getModerator().getId(), newBetDto);
+        BetDto opened = betsService.addOpenedBet(authUser(fixture.getModerator()), newBetDto);
         return betsRepository.findById(opened.getId()).orElseThrow();
     }
 
@@ -560,5 +561,9 @@ public class TestDataFactory {
 
     private static String nextSuffix() {
         return String.valueOf(SEQUENCE.incrementAndGet());
+    }
+
+    public static AuthenticatedUser authUser(User user) {
+        return new AuthenticatedUser(user, false);
     }
 }

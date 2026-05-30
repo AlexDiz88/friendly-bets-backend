@@ -3,7 +3,9 @@ package net.friendly_bets.footballdata;
 import lombok.RequiredArgsConstructor;
 import net.friendly_bets.dto.UnmappedExternalTeamNameDto;
 import net.friendly_bets.footballdata.client.dto.FootballDataMatchDto;
+import net.friendly_bets.gameresults.GameScoreValidator;
 import net.friendly_bets.gameresults.MatchDataProviders;
+import net.friendly_bets.models.GameScore;
 import net.friendly_bets.models.gameresults.ApiSyncIssue;
 import net.friendly_bets.models.gameresults.GameResultRecord;
 import net.friendly_bets.models.gameresults.GameResultSideSnapshot;
@@ -17,6 +19,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -143,6 +146,92 @@ public class ApiSyncIssueService {
                 .build());
     }
 
+    /**
+     * football-data обновил матч ({@code lastUpdated} новее сохранённого), а счёт отличается от канона.
+     */
+    public void recordApiScoreChangedIfNeeded(GameResultRecord existing, GameResultRecord incoming) {
+        if (existing == null || incoming == null || existing.getId() == null || existing.isAdminCorrected()) {
+            return;
+        }
+        GameScore storedScore = existing.getGameScore();
+        GameScore incomingScore = incoming.getGameScore();
+        if (!GameScoreValidator.hasValidFullTime(storedScore) || !GameScoreValidator.hasValidFullTime(incomingScore)) {
+            return;
+        }
+        if (GameScoreValidator.sameCanonicalScore(storedScore, incomingScore)) {
+            return;
+        }
+
+        GameResultSourceSnapshot storedSource = existing.footballDataSource();
+        GameResultSourceSnapshot incomingSource = incoming.footballDataSource();
+        LocalDateTime storedApiLastUpdated = storedSource != null ? storedSource.getApiLastUpdated() : null;
+        LocalDateTime incomingApiLastUpdated = incomingSource != null ? incomingSource.getApiLastUpdated() : null;
+        if (incomingApiLastUpdated == null) {
+            return;
+        }
+        if (storedApiLastUpdated != null && !incomingApiLastUpdated.isAfter(storedApiLastUpdated)) {
+            return;
+        }
+
+        String message = buildApiScoreChangedMessage(storedScore, incomingScore, existing.isFinalized(), incomingApiLastUpdated);
+        String provider = MatchDataProviders.FOOTBALL_DATA;
+        String issueType = ApiSyncIssue.IssueType.API_SCORE_CHANGED.name();
+
+        Optional<ApiSyncIssue> existingIssue = apiSyncIssueRepository.findFirstByProviderAndIssueTypeAndGameResultId(
+                provider,
+                issueType,
+                existing.getId()
+        );
+        if (existingIssue.isPresent()) {
+            ApiSyncIssue issue = existingIssue.get();
+            issue.setCreatedAt(LocalDateTime.now());
+            issue.setMessage(message);
+            issue.setMatchday(existing.getMatchday());
+            issue.setExternalMatchId(incomingSource != null ? incomingSource.getExternalMatchId() : null);
+            apiSyncIssueRepository.save(issue);
+            return;
+        }
+
+        apiSyncIssueRepository.save(ApiSyncIssue.builder()
+                .createdAt(LocalDateTime.now())
+                .provider(provider)
+                .issueType(issueType)
+                .leagueCode(existing.getLeagueCode())
+                .season(existing.getSeason())
+                .matchday(existing.getMatchday())
+                .gameResultId(existing.getId())
+                .externalMatchId(incomingSource != null ? incomingSource.getExternalMatchId() : null)
+                .homeTeamName(sideName(incomingSource, true))
+                .awayTeamName(sideName(incomingSource, false))
+                .homeTeamExternalId(sideExternalId(incomingSource, true))
+                .awayTeamExternalId(sideExternalId(incomingSource, false))
+                .message(message)
+                .build());
+    }
+
+    private static String buildApiScoreChangedMessage(
+            GameScore storedScore,
+            GameScore incomingScore,
+            boolean finalized,
+            LocalDateTime incomingApiLastUpdated
+    ) {
+        return "stored="
+                + GameScoreValidator.formatDisplay(storedScore)
+                + " api="
+                + GameScoreValidator.formatDisplay(incomingScore)
+                + " apiLastUpdated="
+                + incomingApiLastUpdated
+                + (finalized ? " finalized" : "");
+    }
+
+    private static String sideExternalId(GameResultSourceSnapshot source, boolean home) {
+        if (source == null) {
+            return null;
+        }
+        GameResultSideSnapshot side = home ? source.getHome() : source.getAway();
+        return side != null ? side.getExternalId() : null;
+    }
+
     public List<ApiSyncIssue> getLatest() {
         return apiSyncIssueRepository.findTop200ByOrderByCreatedAtDesc();
     }
@@ -153,6 +242,10 @@ public class ApiSyncIssueService {
 
     public boolean hasIssues() {
         return apiSyncIssueRepository.count() > 0;
+    }
+
+    public boolean hasScoreChangeIssues() {
+        return apiSyncIssueRepository.existsByIssueType(ApiSyncIssue.IssueType.API_SCORE_CHANGED.name());
     }
 
     public List<UnmappedExternalTeamNameDto> getUnmappedTeamNameHints() {

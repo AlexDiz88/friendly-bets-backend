@@ -129,7 +129,7 @@ class GameweekStatsIntegrationTest extends AbstractMongoIntegrationTest {
 
             BadRequestException ex = assertThrows(
                     BadRequestException.class,
-                    () -> betsService.addOpenedBet(fixture.getModerator().getId(), secondBet)
+                    () -> betsService.addOpenedBet(TestDataFactory.authUser(fixture.getModerator()), secondBet)
             );
             assertEquals("exceededLimitBetsFromPlayer", ex.getMessage());
         }

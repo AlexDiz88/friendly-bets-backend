@@ -89,19 +89,4 @@ public class Bet {
 
     @Field(name = "calendar_node_id")
     private String calendarNodeId;
-
-    @Field(name = "odds_source")
-    private BetOddsSource oddsSource;
-
-    @Field(name = "odds_bookmaker")
-    private String oddsBookmaker;
-
-    @Field(name = "odds_selection_key")
-    private String oddsSelectionKey;
-
-    @Field(name = "odds_locked_at")
-    private LocalDateTime oddsLockedAt;
-
-    @Field(name = "game_result_id")
-    private String gameResultId;
 }

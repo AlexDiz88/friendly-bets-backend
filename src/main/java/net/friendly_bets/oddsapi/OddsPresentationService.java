@@ -77,6 +77,7 @@ public class OddsPresentationService {
         OddsMatchContext matchContext = buildMatchContext(match);
         List<OddsMarketGroup> groups = OddsGroupBuilder.build(bookmakerMarkets, canonicalByLower, matchContext);
         OddsSelectionKey.enrichGroups(groups);
+        enrichBetTitles(groups);
 
         return OddsEventMarketsDto.builder()
                 .gameResultId(gameResultId)
@@ -197,5 +198,23 @@ public class OddsPresentationService {
         String home = getEntityService.getTeamOrThrow(match.getHomeTeamId()).getTitle();
         String away = getEntityService.getTeamOrThrow(match.getAwayTeamId()).getTitle();
         return OddsMatchContext.of(home, away);
+    }
+
+    private void enrichBetTitles(List<OddsMarketGroup> groups) {
+        if (groups == null) {
+            return;
+        }
+        for (OddsMarketGroup group : groups) {
+            if (group.getRows() == null || group.getCategory() == null) {
+                continue;
+            }
+            for (var row : group.getRows()) {
+                try {
+                    row.setBetTitle(OddsSelectionBetTitleMapper.toBetTitle(group.getCategory(), row));
+                } catch (BadRequestException ignored) {
+                    row.setBetTitle(null);
+                }
+            }
+        }
     }
 }

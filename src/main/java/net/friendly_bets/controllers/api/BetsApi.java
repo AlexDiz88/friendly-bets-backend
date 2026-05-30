@@ -22,13 +22,13 @@ import java.util.Map;
 })
 public interface BetsApi {
 
-    @Operation(summary = "Add a new bet", description = "Accessible only to moderators and administrators")
+    @Operation(summary = "Add a new bet", description = "Moderators and administrators can add bets for any player; users can add bets only for themselves before match kickoff")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "201", description = "The new bet has been successfully created. The response contains the created bet object with all details.",
                     content = @Content(mediaType = "application/json", schema = @Schema(implementation = BetDto.class))),
             @ApiResponse(responseCode = "400", description = "Invalid request data. The request may be missing required fields or contain invalid values.",
                     content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto"))),
-            @ApiResponse(responseCode = "403", description = "User not authenticated. Access is restricted to authenticated moderators and administrators.",
+            @ApiResponse(responseCode = "403", description = "Forbidden: not authenticated, not a season participant, or userId mismatch.",
                     content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto")))
     })
     ResponseEntity<BetDto> addBet(
