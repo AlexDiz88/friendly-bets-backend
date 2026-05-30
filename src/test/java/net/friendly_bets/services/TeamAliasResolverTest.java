@@ -61,29 +61,12 @@ class TeamAliasResolverTest {
     }
 
     @Test
-    @DisplayName("resolveWc26Code falls back to football-data alias when odds-api alias is missing")
-    void resolveWc26Code_fallsBackToFootballDataName() {
-        resolver = new TeamAliasResolver(teamsRepository);
-        when(teamsRepository.findByExternalAliasName("odds-api.io", "Canada"))
-                .thenReturn(Optional.empty());
-        when(teamsRepository.findByExternalAliasName("football-data", "Canada"))
-                .thenReturn(Optional.of(Team.builder().id("can1").title("Canada").build()));
-
-        Optional<Team> team = resolver.resolveWc26Code("CAN");
-
-        assertTrue(team.isPresent());
-        assertEquals("can1", team.get().getId());
-    @Test
     @DisplayName("resolveWc26Code tries catalog alternates for odds-api name")
     void resolveWc26Code_triesOddsApiAlternates() {
         resolver = new TeamAliasResolver(teamsRepository);
         when(teamsRepository.findByExternalAliasName("odds-api.io", "Czechia"))
                 .thenReturn(Optional.empty());
-        when(teamsRepository.findByExternalAliasName("football-data", "Czechia"))
-                .thenReturn(Optional.empty());
         when(teamsRepository.findByExternalAliasName("odds-api.io", "Czech Republic"))
-                .thenReturn(Optional.empty());
-        when(teamsRepository.findByExternalAliasName("football-data", "Czech Republic"))
                 .thenReturn(Optional.of(Team.builder().id("cze1").title("CzechRepublic").build()));
 
         Optional<Team> team = resolver.resolveWc26Code("CZE");
@@ -93,16 +76,12 @@ class TeamAliasResolverTest {
     }
 
     @Test
-    @DisplayName("resolveWc26Code returns empty when no alias matches")
+    @DisplayName("resolveWc26Code returns empty when odds-api alias is missing")
     void resolveWc26Code_emptyWhenNoAliasMatches() {
         resolver = new TeamAliasResolver(teamsRepository);
         when(teamsRepository.findByExternalAliasName("odds-api.io", "Korea Republic"))
                 .thenReturn(Optional.empty());
-        when(teamsRepository.findByExternalAliasName("football-data", "Korea Republic"))
-                .thenReturn(Optional.empty());
         when(teamsRepository.findByExternalAliasName("odds-api.io", "South Korea"))
-                .thenReturn(Optional.empty());
-        when(teamsRepository.findByExternalAliasName("football-data", "South Korea"))
                 .thenReturn(Optional.empty());
 
         assertTrue(resolver.resolveWc26Code("KOR").isEmpty());

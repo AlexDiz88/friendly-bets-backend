@@ -2,32 +2,47 @@ package net.friendly_bets.wc26;
 
 import lombok.RequiredArgsConstructor;
 import net.friendly_bets.config.WcTournamentSlots;
+import net.friendly_bets.dto.ExternalMatchDto;
 import net.friendly_bets.dto.Wc26BettingContextDto;
-import net.friendly_bets.dto.Wc26GameResultLookupDto;
+import net.friendly_bets.dto.Wc26BettingSlotDto;
+import net.friendly_bets.dto.Wc26GroupStageBoardDto;
 import net.friendly_bets.exceptions.BadRequestException;
 import net.friendly_bets.footballdata.FootballDataMatchdaySupport;
+import net.friendly_bets.footballdata.GameResultDisplayService;
+import net.friendly_bets.models.ExpandedMatchdaySlot;
 import net.friendly_bets.models.League;
 import net.friendly_bets.models.Season;
 import net.friendly_bets.models.TournamentFormat;
 import net.friendly_bets.models.User;
 import net.friendly_bets.models.gameresults.GameResultRecord;
+import net.friendly_bets.repositories.GameResultRecordRepository;
 import net.friendly_bets.repositories.SeasonsRepository;
 import net.friendly_bets.repositories.TournamentFormatsRepository;
 import net.friendly_bets.services.GetEntityService;
+import net.friendly_bets.services.TournamentFormatExpander;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Service
 @RequiredArgsConstructor
 public class Wc26MatchService {
 
+    private static final Pattern GROUP_SLOT_ID = Pattern.compile("^r([123])-s(\\d+)$");
+
     private final SeasonsRepository seasonsRepository;
     private final TournamentFormatsRepository tournamentFormatsRepository;
     private final FootballDataMatchdaySupport matchdaySupport;
-    private final Wc26GameResultLinker gameResultLinker;
     private final GetEntityService getEntityService;
+    private final GameResultRecordRepository gameResultRecordRepository;
+    private final GameResultDisplayService gameResultDisplayService;
+    private final TournamentFormatExpander tournamentFormatExpander;
 
     public Wc26BettingContextDto getBettingContext(String userId) {
         Optional<Season> active = seasonsRepository.findSeasonByStatus(Season.Status.ACTIVE);
@@ -59,21 +74,57 @@ public class Wc26MatchService {
                 .build();
     }
 
-    public Wc26GameResultLookupDto lookupGameResult(String seasonId, int wc26ScheduleId, String slotId) {
-        if (!Wc26ScheduleCatalog.isGroupStage(wc26ScheduleId)) {
-            throw new BadRequestException("wc26ScheduleIdNotSupported");
-        }
+    /**
+     * Group-stage betting board from {@code game_results} (same source as «Результаты матчей»).
+     * Each slot {@code r1-s1}…{@code r3-s4} maps to {@link GameResultRecord#getMatchday()} = tournament slot order.
+     */
+    public Wc26GroupStageBoardDto getGroupStageBoard(String seasonId) {
         Season season = getEntityService.getSeasonOrThrow(seasonId);
+        League wcLeague = requireWcLeague(season);
+        TournamentFormat format = tournamentFormatsRepository.findById(wcLeague.getTournamentFormatId())
+                .orElseThrow(() -> new BadRequestException("tournamentFormatNotFound"));
+        if (!WcTournamentSlots.FORMAT_CODE.equals(format.getFormatCode())) {
+            throw new BadRequestException("wcBettingFormatRequired");
+        }
         String storageSeason = matchdaySupport.resolveFootballDataSeasonYear(season, League.LeagueCode.WC);
-        GameResultRecord record = gameResultLinker.findByScheduleId(wc26ScheduleId, storageSeason)
-                .orElseThrow(() -> new BadRequestException("wc26GameResultNotMapped"));
-        return Wc26GameResultLookupDto.builder()
-                .gameResultId(record.getId())
-                .wc26ScheduleId(wc26ScheduleId)
-                .homeTeamId(record.getHomeTeamId())
-                .awayTeamId(record.getAwayTeamId())
-                .kickoffUtc(record.getUtcDate())
-                .slotId(slotId)
+        List<ExpandedMatchdaySlot> allSlots = tournamentFormatExpander.expand(format);
+        List<Wc26BettingSlotDto> slots = new ArrayList<>();
+        for (ExpandedMatchdaySlot expanded : allSlots) {
+            if (expanded.getOrder() < 1 || expanded.getOrder() > WcTournamentSlots.GROUP_SLOT_COUNT) {
+                continue;
+            }
+            String slotId = expanded.getId();
+            Matcher matcher = GROUP_SLOT_ID.matcher(slotId != null ? slotId : "");
+            if (!matcher.matches()) {
+                continue;
+            }
+            int round = Integer.parseInt(matcher.group(1));
+            int slotIndex = Integer.parseInt(matcher.group(2));
+            int matchesPerSlot = round == 3 ? 6 : 4;
+            List<GameResultRecord> records = gameResultRecordRepository.findByLeagueCodeAndMatchdayAndSeason(
+                    League.LeagueCode.WC.name(),
+                    expanded.getOrder(),
+                    storageSeason
+            );
+            records.sort(Comparator.comparing(
+                    GameResultRecord::getUtcDate,
+                    Comparator.nullsLast(Comparator.naturalOrder())
+            ));
+            List<ExternalMatchDto> matches = gameResultDisplayService.toDisplayDtos(records);
+            slots.add(Wc26BettingSlotDto.builder()
+                    .id(slotId)
+                    .round(round)
+                    .slotIndex(slotIndex)
+                    .betsRequired(WcTournamentSlots.betsRequiredForSlot(slotId))
+                    .matchesPerSlot(matchesPerSlot)
+                    .matches(matches)
+                    .build());
+        }
+        return Wc26GroupStageBoardDto.builder()
+                .seasonId(seasonId)
+                .leagueId(wcLeague.getId())
+                .storageSeason(storageSeason)
+                .slots(slots)
                 .build();
     }
 

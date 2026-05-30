@@ -102,6 +102,6 @@ public class Bet {
     @Field(name = "odds_locked_at")
     private LocalDateTime oddsLockedAt;
 
-    @Field(name = "wc26_schedule_id")
-    private Integer wc26ScheduleId;
+    @Field(name = "game_result_id")
+    private String gameResultId;
 }

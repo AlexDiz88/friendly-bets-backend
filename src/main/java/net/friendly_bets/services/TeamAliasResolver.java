@@ -41,22 +41,17 @@ public class TeamAliasResolver {
     }
 
     /**
-     * Maps WC26 schedule FIFA code (KOR, CZE, …) to internal team.
-     * Priority: odds-api.io alias → football-data alias (same API name candidates).
+     * Maps WC26 schedule FIFA code (KOR, CZE, …) to internal team via odds-api.io alias only.
      */
     public Optional<Team> resolveWc26Code(String wc26Code) {
         if (wc26Code == null || wc26Code.isBlank()) {
             return Optional.empty();
         }
         String code = wc26Code.trim();
-        for (String apiName : Wc26TeamCatalog.oddsApiNameCandidatesForFifaCode(code)) {
-            Optional<Team> byOddsApi = resolveOddsApi(null, apiName);
+        for (String oddsApiName : Wc26TeamCatalog.oddsApiNameCandidatesForFifaCode(code)) {
+            Optional<Team> byOddsApi = resolveOddsApi(null, oddsApiName);
             if (byOddsApi.isPresent()) {
                 return byOddsApi;
-            }
-            Optional<Team> byFootballData = resolveFootballData(0, apiName);
-            if (byFootballData.isPresent()) {
-                return byFootballData;
             }
         }
         return Optional.empty();

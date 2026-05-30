@@ -17,13 +17,14 @@ import net.friendly_bets.oddsapi.OddsPresentationService;
 import net.friendly_bets.oddsapi.OddsSelectionBetTitleMapper;
 import net.friendly_bets.repositories.BetPlacementIdempotencyRepository;
 import net.friendly_bets.repositories.BetsRepository;
+import net.friendly_bets.repositories.GameResultRecordRepository;
 import net.friendly_bets.repositories.SeasonsRepository;
-import net.friendly_bets.wc26.Wc26GameResultLinker;
 import net.friendly_bets.wc26.Wc26MatchService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
@@ -49,7 +50,7 @@ public class SelfBetPlacementService {
     private final BetPlacementIdempotencyRepository idempotencyRepository;
     private final GetEntityService getEntityService;
     private final Wc26MatchService wc26MatchService;
-    private final Wc26GameResultLinker gameResultLinker;
+    private final GameResultRecordRepository gameResultRecordRepository;
     private final FootballDataMatchdaySupport matchdaySupport;
     private final OddsPresentationService oddsPresentationService;
     private final LeagueMatchdayService leagueMatchdayService;
@@ -78,14 +79,25 @@ public class SelfBetPlacementService {
         leagueMatchdayService.validateMatchDayForLeague(wcLeague, dto.getMatchDay());
 
         String storageSeason = matchdaySupport.resolveFootballDataSeasonYear(season, wcLeague.getLeagueCode());
-        GameResultRecord match = gameResultLinker.findByScheduleId(dto.getWc26ScheduleId(), storageSeason)
-                .orElseThrow(() -> new BadRequestException("wc26GameResultNotMapped"));
+        GameResultRecord match = gameResultRecordRepository.findById(dto.getGameResultId().trim())
+                .orElseThrow(() -> new BadRequestException("gameResultNotFound"));
+        if (!League.LeagueCode.WC.name().equals(match.getLeagueCode())) {
+            throw new BadRequestException("gameResultNotFound");
+        }
+        if (!storageSeason.equals(match.getSeason())) {
+            throw new BadRequestException("gameResultNotFound");
+        }
+        int slotOrder = matchdaySupport.resolveSlotOrder(wcLeague, dto.getMatchDay())
+                .orElseThrow(() -> new BadRequestException("invalidMatchDay"));
+        if (match.getMatchday() != slotOrder) {
+            throw new BadRequestException("gameResultNotInSlot");
+        }
 
         LocalDateTime now = LocalDateTime.now();
         if (!GameResultNotStarted.isNotStarted(match, now)) {
             throw new BadRequestException("matchAlreadyStarted");
         }
-        validateSlotOpen(dto.getMatchDay(), storageSeason, now);
+        validateSlotOpen(wcLeague, dto.getMatchDay(), storageSeason, now);
 
         User user = getEntityService.getUserOrThrow(userId);
         Team homeTeam = getEntityService.getTeamOrThrow(match.getHomeTeamId());
@@ -149,7 +161,7 @@ public class SelfBetPlacementService {
                 .oddsBookmaker(dto.getBookmaker())
                 .oddsSelectionKey(dto.getSelectionKey())
                 .oddsLockedAt(now)
-                .wc26ScheduleId(dto.getWc26ScheduleId())
+                .gameResultId(match.getId())
                 .build();
 
         betsRepository.save(bet);
@@ -169,14 +181,21 @@ public class SelfBetPlacementService {
         return BetDto.from(bet);
     }
 
-    private void validateSlotOpen(String matchDay, String storageSeason, LocalDateTime now) {
-        List<Integer> scheduleIds = WcTournamentSlots.scheduleIdsForSlot(matchDay);
-        if (scheduleIds.isEmpty()) {
+    private void validateSlotOpen(League wcLeague, String matchDay, String storageSeason, LocalDateTime now) {
+        Optional<Integer> slotOrder = matchdaySupport.resolveSlotOrder(wcLeague, matchDay);
+        if (slotOrder.isEmpty()) {
             return;
         }
-        Integer firstId = scheduleIds.get(0);
-        GameResultRecord first = gameResultLinker.findByScheduleId(firstId, storageSeason).orElse(null);
-        if (first != null && first.getUtcDate() != null && !first.getUtcDate().isAfter(now)) {
+        List<GameResultRecord> inSlot = gameResultRecordRepository.findByLeagueCodeAndMatchdayAndSeason(
+                League.LeagueCode.WC.name(),
+                slotOrder.get(),
+                storageSeason
+        );
+        GameResultRecord first = inSlot.stream()
+                .filter(m -> m.getUtcDate() != null)
+                .min(Comparator.comparing(GameResultRecord::getUtcDate))
+                .orElse(null);
+        if (first != null && !first.getUtcDate().isAfter(now)) {
             throw new BadRequestException("betSlotClosed");
         }
     }

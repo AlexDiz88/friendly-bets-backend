@@ -156,36 +156,43 @@ public class ApiSyncIssueService {
     }
 
     public List<UnmappedExternalTeamNameDto> getUnmappedTeamNameHints() {
-        Map<String, UnmappedExternalTeamNameDto> byName = new LinkedHashMap<>();
+        Map<String, UnmappedExternalTeamNameDto> byKey = new LinkedHashMap<>();
         for (ApiSyncIssue issue : getLatest()) {
             if (!ApiSyncIssue.IssueType.TEAM_MAPPING_MISSING.name().equals(issue.getIssueType())) {
                 continue;
             }
-            if (MatchDataProviders.ODDS_API.equals(issue.getProvider())) {
-                addUnmappedOddsHint(byName, issue.getHomeTeamName(), issue.getHomeTeamExternalId());
-                addUnmappedOddsHint(byName, issue.getAwayTeamName(), issue.getAwayTeamExternalId());
-            } else {
-                addUnmappedFootballDataHint(byName, issue.getHomeTeamName(), issue.getHomeTeamExternalId());
-                addUnmappedFootballDataHint(byName, issue.getAwayTeamName(), issue.getAwayTeamExternalId());
+            String provider = issue.getProvider() != null
+                    ? issue.getProvider()
+                    : MatchDataProviders.FOOTBALL_DATA;
+            addUnmappedHint(byKey, provider, issue.getHomeTeamName(), issue.getHomeTeamExternalId());
+            addUnmappedHint(byKey, provider, issue.getAwayTeamName(), issue.getAwayTeamExternalId());
+        }
+        return new ArrayList<>(byKey.values());
+    }
+
+    private void addUnmappedHint(
+            Map<String, UnmappedExternalTeamNameDto> byKey,
+            String provider,
+            String name,
+            String externalId
+    ) {
+        if (name == null || name.isBlank()) {
+            return;
+        }
+        int parsedId = parseExternalId(externalId);
+        if (MatchDataProviders.ODDS_API.equals(provider)) {
+            if (teamAliasResolver.resolveOddsApi(parsedId > 0 ? parsedId : null, name).isPresent()) {
+                return;
             }
-        }
-        return new ArrayList<>(byName.values());
-    }
-
-    private void addUnmappedFootballDataHint(Map<String, UnmappedExternalTeamNameDto> byName, String name, String externalId) {
-        if (name == null || name.isBlank()) {
+        } else if (teamAliasResolver.resolveFootballData(parsedId, name).isPresent()) {
             return;
         }
-        int fdId = parseExternalId(externalId);
-        if (teamAliasResolver.resolveFootballData(fdId, name).isPresent()) {
-            return;
-        }
-        byName.merge(
-                name,
+        byKey.merge(
+                hintKey(provider, name),
                 UnmappedExternalTeamNameDto.builder()
                         .externalName(name)
-                        .externalId(fdId > 0 ? fdId : null)
-                        .provider(MatchDataProviders.FOOTBALL_DATA)
+                        .externalId(parsedId > 0 ? parsedId : null)
+                        .provider(provider)
                         .build(),
                 (existing, incoming) -> existing.getExternalId() == null && incoming.getExternalId() != null
                         ? incoming
@@ -193,25 +200,8 @@ public class ApiSyncIssueService {
         );
     }
 
-    private void addUnmappedOddsHint(Map<String, UnmappedExternalTeamNameDto> byName, String name, String externalId) {
-        if (name == null || name.isBlank()) {
-            return;
-        }
-        int oddsId = parseExternalId(externalId);
-        if (teamAliasResolver.resolveOddsApi(oddsId > 0 ? oddsId : null, name).isPresent()) {
-            return;
-        }
-        byName.merge(
-                name,
-                UnmappedExternalTeamNameDto.builder()
-                        .externalName(name)
-                        .externalId(oddsId > 0 ? oddsId : null)
-                        .provider(MatchDataProviders.ODDS_API)
-                        .build(),
-                (existing, incoming) -> existing.getExternalId() == null && incoming.getExternalId() != null
-                        ? incoming
-                        : existing
-        );
+    private static String hintKey(String provider, String name) {
+        return provider + "\0" + name;
     }
 
     private static String sideName(GameResultSourceSnapshot source, boolean home) {
