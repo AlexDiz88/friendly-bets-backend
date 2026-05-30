@@ -109,6 +109,18 @@ public class ApiSyncIssueService {
             String oddsApiTeamName,
             Integer oddsApiTeamId
     ) {
+        recordUnmappedOddsApiTeamNameHint(oddsApiTeamName, oddsApiTeamId, home, match);
+    }
+
+    /**
+     * Hint for admin team form chips ({@code UnmappedTeamNameHints}). Safe to call from odds demo refresh.
+     */
+    public void recordUnmappedOddsApiTeamNameHint(
+            String oddsApiTeamName,
+            Integer oddsApiTeamId,
+            boolean home,
+            GameResultRecord match
+    ) {
         if (oddsApiTeamName == null || oddsApiTeamName.isBlank()) {
             return;
         }

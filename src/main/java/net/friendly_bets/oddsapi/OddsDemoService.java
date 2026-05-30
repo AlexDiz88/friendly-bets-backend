@@ -6,6 +6,7 @@ import net.friendly_bets.dto.OddsDemoEventSummaryDto;
 import net.friendly_bets.dto.OddsDemoRefreshResultDto;
 import net.friendly_bets.exceptions.BadRequestException;
 import net.friendly_bets.exceptions.NotFoundException;
+import net.friendly_bets.footballdata.ApiSyncIssueService;
 import net.friendly_bets.models.odds.OddsDemoSnapshot;
 import net.friendly_bets.models.odds.OddsMarketGroup;
 import net.friendly_bets.oddsapi.client.OddsApiClient;
@@ -34,6 +35,7 @@ public class OddsDemoService {
     private final OddsApiClient oddsApiClient;
     private final OddsApiProperties properties;
     private final OddsDemoSnapshotRepository oddsDemoSnapshotRepository;
+    private final ApiSyncIssueService apiSyncIssueService;
 
     public OddsDemoRefreshResultDto refreshLeagueDemo(String leagueSlug, Integer limit) {
         if (!oddsApiClient.isConfigured()) {
@@ -80,6 +82,7 @@ public class OddsDemoService {
                 if (event == null || event.getId() == null) {
                     continue;
                 }
+                recordUnmappedTeamHints(event);
                 OddsApiEventOddsDto oddsDto = oddsById.get(event.getId());
                 OddsMatchContext matchContext = OddsMatchContext.of(event.getHome(), event.getAway());
                 List<OddsMarketGroup> marketGroups = oddsDto != null
@@ -119,5 +122,12 @@ public class OddsDemoService {
         OddsDemoSnapshot snapshot = oddsDemoSnapshotRepository.findByOddsApiEventId(eventId)
                 .orElseThrow(() -> new NotFoundException("oddsDemoEvent", String.valueOf(eventId)));
         return OddsDemoEventDetailDto.from(snapshot);
+    }
+
+    private void recordUnmappedTeamHints(OddsApiEventDto event) {
+        apiSyncIssueService.recordUnmappedOddsApiTeamNameHint(
+                event.getHome(), event.getHomeId(), true, null);
+        apiSyncIssueService.recordUnmappedOddsApiTeamNameHint(
+                event.getAway(), event.getAwayId(), false, null);
     }
 }

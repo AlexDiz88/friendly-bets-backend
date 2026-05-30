@@ -10,7 +10,6 @@ public final class TeamTitleUtils {
     public static final String FOOTBALL_DATA_PROVIDER = "football-data";
     /** {@link net.friendly_bets.gameresults.MatchDataProviders#ODDS_API} */
     public static final String ODDS_API_PROVIDER = "odds-api.io";
-    public static final String WC26_PROVIDER = "wc26";
 
     private TeamTitleUtils() {
     }

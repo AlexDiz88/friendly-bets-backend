@@ -5,6 +5,7 @@ import net.friendly_bets.models.Team;
 import net.friendly_bets.models.TeamExternalAlias;
 import net.friendly_bets.repositories.TeamsRepository;
 import net.friendly_bets.utils.TeamTitleUtils;
+import net.friendly_bets.wc26.Wc26TeamCatalog;
 import org.springframework.stereotype.Component;
 
 import java.util.Optional;
@@ -39,11 +40,26 @@ public class TeamAliasResolver {
         return Optional.empty();
     }
 
+    /**
+     * Maps WC26 schedule FIFA code (KOR, CZE, …) to internal team.
+     * Priority: odds-api.io alias → football-data alias (same API name candidates).
+     */
     public Optional<Team> resolveWc26Code(String wc26Code) {
         if (wc26Code == null || wc26Code.isBlank()) {
             return Optional.empty();
         }
-        return teamsRepository.findByExternalAliasName(TeamTitleUtils.WC26_PROVIDER, wc26Code.trim());
+        String code = wc26Code.trim();
+        for (String apiName : Wc26TeamCatalog.oddsApiNameCandidatesForFifaCode(code)) {
+            Optional<Team> byOddsApi = resolveOddsApi(null, apiName);
+            if (byOddsApi.isPresent()) {
+                return byOddsApi;
+            }
+            Optional<Team> byFootballData = resolveFootballData(0, apiName);
+            if (byFootballData.isPresent()) {
+                return byFootballData;
+            }
+        }
+        return Optional.empty();
     }
 
     public Optional<Team> resolveOddsApi(Integer oddsApiTeamId, String oddsApiTeamName) {

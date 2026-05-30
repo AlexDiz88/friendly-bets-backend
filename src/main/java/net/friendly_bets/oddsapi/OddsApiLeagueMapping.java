@@ -20,8 +20,8 @@ public final class OddsApiLeagueMapping {
         DEFAULT_SLUGS.put(League.LeagueCode.EPL, "england-premier-league");
         DEFAULT_SLUGS.put(League.LeagueCode.BL, "germany-bundesliga");
         DEFAULT_SLUGS.put(League.LeagueCode.CL, "international-clubs-uefa-champions-league");
-        DEFAULT_SLUGS.put(League.LeagueCode.WC, "international-fifa-world-cup");
-        DEFAULT_SLUGS.put(League.LeagueCode.EC, "international-uefa-european-championship");
+        DEFAULT_SLUGS.put(League.LeagueCode.WC, "international-world-cup");
+        DEFAULT_SLUGS.put(League.LeagueCode.EC, "euro-championship");
     }
 
     private OddsApiLeagueMapping() {
