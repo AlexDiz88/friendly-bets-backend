@@ -10,6 +10,7 @@ import net.friendly_bets.footballdata.client.FootballDataClient;
 import net.friendly_bets.footballdata.client.dto.FootballDataMatchDto;
 import net.friendly_bets.footballdata.client.dto.FootballDataMatchdayResponse;
 import net.friendly_bets.models.ExpandedMatchdaySlot;
+import net.friendly_bets.wc26.WcBerlinSlotMatchFilter;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -60,9 +61,16 @@ public class FootballDataExternalMatchDataProvider implements ExternalMatchDataP
         if (response == null || response.getMatches() == null) {
             return List.of();
         }
+        List<FootballDataMatchDto> matches;
         if (query.queryType() == ExternalSlotQuery.QueryType.STAGE_LEG && query.leg() != null) {
-            return FootballDataLegFilter.filterByLeg(response.getMatches(), query.leg());
+            matches = FootballDataLegFilter.filterByLeg(response.getMatches(), query.leg());
+        } else {
+            matches = response.getMatches();
         }
-        return response.getMatches();
+        if (slot.getKind() == ExpandedMatchdaySlot.Kind.GROUP
+                && WcBerlinSlotMatchFilter.isBerlinGroupSlot(slot.getId())) {
+            return WcBerlinSlotMatchFilter.filterFootballDataMatches(slot.getId(), matches);
+        }
+        return matches;
     }
 }

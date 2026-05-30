@@ -37,7 +37,8 @@ public class TeamAliasResolver {
             return byAliasId;
         }
 
-        return Optional.empty();
+        return Wc26TeamCatalog.fifaCodeForKnownName(footballDataTeamName)
+                .flatMap(this::resolveWc26Code);
     }
 
     /**

@@ -16,6 +16,7 @@ import net.friendly_bets.models.Team;
 import net.friendly_bets.models.TournamentFormat;
 import net.friendly_bets.services.GetEntityService;
 import net.friendly_bets.services.TournamentFormatExpander;
+import net.friendly_bets.wc26.WcBerlinSlotMatchFilter;
 import net.friendly_bets.models.gameresults.GameResultRecord;
 import net.friendly_bets.models.gameresults.GameResultsSync;
 import net.friendly_bets.models.gameresults.GameResultsSyncStatus;
@@ -237,9 +238,7 @@ public class FootballDataSyncService {
             }
         }
 
-        int expected = response.getResultSet() != null && response.getResultSet().getCount() > 0
-                ? response.getResultSet().getCount()
-                : response.getMatches().size();
+        int expected = resolveExpectedMatchCount(slotOrder, friendlyLeagueId, response);
 
         GameResultsSync sync = gameResultsSyncRepository
                 .findByLeagueCodeAndMatchdayAndSeason(leagueCode, slotOrder, storageSeason)
@@ -274,8 +273,19 @@ public class FootballDataSyncService {
     }
 
     public List<GameResultRecord> getMatches(String pathLeagueOrCompetitionCode, int matchday, String season) {
+        return getMatches(pathLeagueOrCompetitionCode, matchday, season, null);
+    }
+
+    public List<GameResultRecord> getMatches(
+            String pathLeagueOrCompetitionCode,
+            int matchday,
+            String season,
+            String leagueId
+    ) {
         String leagueCode = LeagueCodePathSupport.resolveStorageLeagueCode(pathLeagueOrCompetitionCode);
-        return gameResultRecordRepository.findByLeagueCodeAndMatchdayAndSeason(leagueCode, matchday, season);
+        List<GameResultRecord> matches = gameResultRecordRepository.findByLeagueCodeAndMatchdayAndSeason(
+                leagueCode, matchday, season);
+        return applyBerlinFilterIfNeeded(matches, leagueId, matchday);
     }
 
     public List<GameResult> getCachedGameResultsForSeason(String seasonId) {
@@ -395,6 +405,44 @@ public class FootballDataSyncService {
         }
         String seasonId = bet.getSeason().getId();
         return seasonId == null || seasonId.isBlank() ? null : seasonId;
+    }
+
+    private List<GameResultRecord> applyBerlinFilterIfNeeded(
+            List<GameResultRecord> matches,
+            String leagueId,
+            int slotOrder
+    ) {
+        return resolveSlotId(leagueId, slotOrder)
+                .filter(WcBerlinSlotMatchFilter::isBerlinGroupSlot)
+                .map(slotId -> WcBerlinSlotMatchFilter.filterGameResultRecords(slotId, matches))
+                .orElse(matches);
+    }
+
+    private int resolveExpectedMatchCount(
+            int slotOrder,
+            String leagueId,
+            FootballDataMatchdayResponse response
+    ) {
+        Optional<String> slotId = resolveSlotId(leagueId, slotOrder);
+        if (slotId.isPresent() && WcBerlinSlotMatchFilter.isBerlinGroupSlot(slotId.get())) {
+            return WcBerlinSlotMatchFilter.expectedMatchCount(slotId.get());
+        }
+        if (response.getResultSet() != null && response.getResultSet().getCount() > 0) {
+            return response.getResultSet().getCount();
+        }
+        return response.getMatches() != null ? response.getMatches().size() : 0;
+    }
+
+    private Optional<String> resolveSlotId(String leagueId, int slotOrder) {
+        if (leagueId == null || leagueId.isBlank()) {
+            return Optional.empty();
+        }
+        League league = getEntityService.getLeagueOrThrow(leagueId);
+        if (league.getTournamentFormatId() == null || league.getTournamentFormatId().isBlank()) {
+            return Optional.empty();
+        }
+        TournamentFormat format = getEntityService.getTournamentFormatOrThrow(league.getTournamentFormatId());
+        return tournamentFormatExpander.findByOrder(format, slotOrder).map(ExpandedMatchdaySlot::getId);
     }
 
     private FootballDataMatchdayResponse fetchResponse(

@@ -52,7 +52,8 @@ public class FootballDataController {
     public ResponseEntity<ExternalMatchdayPageDto> getMatchday(
             @PathVariable String pathLeagueOrCompetitionCode,
             @PathVariable int matchday,
-            @RequestParam(defaultValue = "2025") String season) {
+            @RequestParam(defaultValue = "2025") String season,
+            @RequestParam(required = false) String leagueId) {
 
         String leagueCode = LeagueCodePathSupport.resolveStorageLeagueCode(pathLeagueOrCompetitionCode);
 
@@ -61,7 +62,8 @@ public class FootballDataController {
                 .map(ExternalMatchdaySyncDto::from)
                 .orElse(null);
 
-        var matches = footballDataSyncService.getMatches(pathLeagueOrCompetitionCode, matchday, season);
+        var matches = footballDataSyncService.getMatches(
+                pathLeagueOrCompetitionCode, matchday, season, leagueId);
 
         return ResponseEntity.ok(ExternalMatchdayPageDto.builder()
                 .sync(syncDto)
