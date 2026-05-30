@@ -357,6 +357,7 @@ public class BetUtils {
     }
 
     private static void updateBetDetails(Bet bet, User moderator, User user, EditedBetDto editedBet, Team homeTeam, Team awayTeam) {
+        assertOddsApiBetEditable(bet, editedBet);
         bet.setUpdatedAt(LocalDateTime.now());
         bet.setUpdatedBy(moderator);
         bet.setUser(user);
@@ -367,6 +368,35 @@ public class BetUtils {
         bet.setBetOdds(editedBet.getBetOdds());
         bet.setBetSize(editedBet.getBetSize());
         bet.setCalendarNodeId(editedBet.getCalendarNodeId());
+    }
+
+    public static void assertOddsApiBetEditable(Bet bet, EditedBetDto editedBet) {
+        if (bet.getOddsSource() != net.friendly_bets.models.BetOddsSource.ODDS_API) {
+            return;
+        }
+        if (bet.getBetStatus() != Bet.BetStatus.OPENED) {
+            return;
+        }
+        if (editedBet.getBetOdds() != null && !editedBet.getBetOdds().equals(bet.getBetOdds())) {
+            throw new BadRequestException("betOddsLocked");
+        }
+        if (editedBet.getBetTitle() != null && bet.getBetTitle() != null) {
+            if (editedBet.getBetTitle().getCode() != bet.getBetTitle().getCode()
+                    || editedBet.getBetTitle().isNot() != bet.getBetTitle().isNot()) {
+                throw new BadRequestException("betOddsLocked");
+            }
+        }
+        if (editedBet.getMatchDay() != null && !editedBet.getMatchDay().equals(bet.getMatchDay())) {
+            throw new BadRequestException("betOddsLocked");
+        }
+        if (editedBet.getHomeTeamId() != null && bet.getHomeTeam() != null
+                && !editedBet.getHomeTeamId().equals(bet.getHomeTeam().getId())) {
+            throw new BadRequestException("betOddsLocked");
+        }
+        if (editedBet.getAwayTeamId() != null && bet.getAwayTeam() != null
+                && !editedBet.getAwayTeamId().equals(bet.getAwayTeam().getId())) {
+            throw new BadRequestException("betOddsLocked");
+        }
     }
 
     public static void updateDeletedBetValues(Bet bet, User moderator) {

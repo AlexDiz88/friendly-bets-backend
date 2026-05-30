@@ -30,6 +30,16 @@ public final class SeasonCalendarUtils {
         return startDate.getYear();
     }
 
+    /**
+     * Год турнира для football-data.org (WC, EC): ЧМ-2026 → {@code 2026} (год окончания сезона / проведения).
+     */
+    public static Integer resolveTournamentExternalSeasonYear(LocalDate startDate, LocalDate endDate) {
+        if (endDate != null) {
+            return endDate.getYear();
+        }
+        return resolveExternalSeasonYear(startDate);
+    }
+
     public static List<Integer> availableExternalYears(LocalDate startDate, LocalDate endDate) {
         if (startDate == null || endDate == null) {
             return List.of();

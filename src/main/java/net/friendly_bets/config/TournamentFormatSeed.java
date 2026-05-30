@@ -65,9 +65,9 @@ public class TournamentFormatSeed implements ApplicationRunner {
         return TournamentFormat.builder()
                 .groupStage(RoundRobinStage.builder().matchdayCount(3).build())
                 .playoff(List.of(
-                        PlayoffRound.builder().stage("1/16").matchdayCount(1).build(),
-                        PlayoffRound.builder().stage("1/8").matchdayCount(1).build(),
-                        PlayoffRound.builder().stage("1/4").matchdayCount(1).build(),
+                        PlayoffRound.builder().stage("1/16").matchdayCount(5).build(),
+                        PlayoffRound.builder().stage("1/8").matchdayCount(4).build(),
+                        PlayoffRound.builder().stage("1/4").matchdayCount(2).build(),
                         PlayoffRound.builder().stage("1/2").matchdayCount(1).build(),
                         PlayoffRound.builder().stage("third_place").matchdayCount(1).build(),
                         PlayoffRound.builder().stage("final").matchdayCount(1).build()

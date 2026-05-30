@@ -17,7 +17,7 @@ class FootballDataBettingSlotApiMatchdayResolverTest {
             "7, 2",
             "12, 2",
             "13, 3",
-            "18, 3",
+            "16, 3",
     })
     void wcApiMatchdayFromOrder_mapsBettingSlotsToOfficialMatchdays(int order, int apiMatchday) {
         assertEquals(apiMatchday, FootballDataBettingSlotApiMatchdayResolver.wcApiMatchdayFromOrder(order));
@@ -26,10 +26,10 @@ class FootballDataBettingSlotApiMatchdayResolverTest {
     @Test
     void resolveApiMatchday_wcGroupSlot_usesOrderNotId() {
         ExpandedMatchdaySlot slot = ExpandedMatchdaySlot.builder()
-                .id("13")
-                .order(13)
+                .id("r3-s2")
+                .order(14)
                 .kind(ExpandedMatchdaySlot.Kind.GROUP)
-                .labelKey("13")
+                .labelKey("r3-s2")
                 .build();
         assertEquals(3, FootballDataBettingSlotApiMatchdayResolver.resolveApiMatchday("WC", slot));
     }
@@ -50,6 +50,6 @@ class FootballDataBettingSlotApiMatchdayResolverTest {
         assertThrows(IllegalArgumentException.class,
                 () -> FootballDataBettingSlotApiMatchdayResolver.wcApiMatchdayFromOrder(0));
         assertThrows(IllegalArgumentException.class,
-                () -> FootballDataBettingSlotApiMatchdayResolver.wcApiMatchdayFromOrder(19));
+                () -> FootballDataBettingSlotApiMatchdayResolver.wcApiMatchdayFromOrder(17));
     }
 }

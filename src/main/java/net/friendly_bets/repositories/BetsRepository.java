@@ -48,6 +48,29 @@ public interface BetsRepository extends MongoRepository<Bet, String> {
             Bet.BetStatus betStatus
     );
 
+    long countBySeason_IdAndLeague_IdAndUser_IdAndMatchDayAndBetStatusIn(
+            String seasonId,
+            String leagueId,
+            String userId,
+            String matchDay,
+            List<Bet.BetStatus> betStatuses
+    );
+
+    List<Bet> findAllBySeason_IdAndUser_IdAndLeague_IdAndMatchDayAndBetStatusIn(
+            String seasonId,
+            String userId,
+            String leagueId,
+            String matchDay,
+            List<Bet.BetStatus> betStatuses
+    );
+
+    List<Bet> findAllBySeason_IdAndUser_IdAndLeague_IdAndBetStatusIn(
+            String seasonId,
+            String userId,
+            String leagueId,
+            List<Bet.BetStatus> betStatuses
+    );
+
     List<Bet> findAllByCalendarNodeId(String calendarNodeId);
 
     List<Bet> findAllBySeason_Id(String seasonId);

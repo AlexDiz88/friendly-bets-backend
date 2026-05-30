@@ -27,4 +27,13 @@ public class OddsLineRow {
     @Field(name = "bookmaker_odds")
     @Builder.Default
     private Map<String, String> bookmakerOdds = new LinkedHashMap<>();
+
+    @Field(name = "selection_key")
+    private String selectionKey;
+
+    @Field(name = "best_odds")
+    private String bestOdds;
+
+    @Field(name = "best_bookmaker")
+    private String bestBookmaker;
 }

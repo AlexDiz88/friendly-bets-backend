@@ -89,7 +89,10 @@ public class GameResultCollector {
                 continue;
             }
 
-            MatchdayCacheKey cacheKey = new MatchdayCacheKey(leagueCode, slotOrder.get(), footballDataSeason);
+            MatchdayCacheKey cacheKey = new MatchdayCacheKey(
+                    leagueCode,
+                    slotOrder.get(),
+                    matchdaySupport.resolveFootballDataSeasonYear(season, league.getLeagueCode()));
             MatchdayMatchIndex matchIndex = matchdayCache.computeIfAbsent(
                     cacheKey,
                     key -> MatchdayMatchIndex.from(

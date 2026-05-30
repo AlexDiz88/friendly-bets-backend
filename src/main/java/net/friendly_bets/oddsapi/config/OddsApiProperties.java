@@ -25,4 +25,6 @@ public class OddsApiProperties {
     private Map<String, String> leagueSlugs = new HashMap<>();
     /** Hours before/after kick-off when fetching events for matching. */
     private int eventWindowHours = 6;
+    /** Max age of cached odds before on-demand refresh (minutes). */
+    private int presentationStaleMinutes = 15;
 }

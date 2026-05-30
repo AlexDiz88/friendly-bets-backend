@@ -1,5 +1,6 @@
 package net.friendly_bets.services;
 
+import net.friendly_bets.config.WcTournamentSlots;
 import net.friendly_bets.exceptions.BadRequestException;
 import net.friendly_bets.models.ExpandedMatchdaySlot;
 import net.friendly_bets.models.PlayoffRound;
@@ -18,6 +19,9 @@ public class TournamentFormatExpander {
         if (format == null) {
             throw new BadRequestException("tournamentFormatIsNull");
         }
+        if (WcTournamentSlots.FORMAT_CODE.equals(format.getFormatCode())) {
+            return expandWc(format);
+        }
         List<ExpandedMatchdaySlot> slots = new ArrayList<>();
         int order = 1;
 
@@ -28,9 +32,21 @@ public class TournamentFormatExpander {
             order = appendRoundRobin(slots, format.getGroupStage(), ExpandedMatchdaySlot.Kind.GROUP, order);
         }
         if (format.getPlayoff() != null && !format.getPlayoff().isEmpty()) {
-            order = appendPlayoff(slots, format.getPlayoff(), order);
+            order = appendPlayoff(slots, format.getPlayoff(), order, false);
         }
 
+        if (slots.isEmpty()) {
+            throw new BadRequestException("tournamentFormatHasNoStages");
+        }
+        return slots;
+    }
+
+    private List<ExpandedMatchdaySlot> expandWc(TournamentFormat format) {
+        List<ExpandedMatchdaySlot> slots = new ArrayList<>(WcTournamentSlots.expandGroupSlots(1));
+        int order = slots.size() + 1;
+        if (format.getPlayoff() != null && !format.getPlayoff().isEmpty()) {
+            slots.addAll(WcTournamentSlots.expandPlayoffSlots(format.getPlayoff(), order));
+        }
         if (slots.isEmpty()) {
             throw new BadRequestException("tournamentFormatHasNoStages");
         }
@@ -79,20 +95,21 @@ public class TournamentFormatExpander {
         return order;
     }
 
-    private int appendPlayoff(List<ExpandedMatchdaySlot> slots, List<PlayoffRound> playoff, int order) {
+    private int appendPlayoff(List<ExpandedMatchdaySlot> slots, List<PlayoffRound> playoff, int order, boolean wcStyleIds) {
         for (PlayoffRound stage : playoff) {
-            order = appendPlayoffStage(slots, stage, order);
+            order = appendPlayoffStage(slots, stage, order, wcStyleIds);
         }
         return order;
     }
 
-    private int appendPlayoffStage(List<ExpandedMatchdaySlot> slots, PlayoffRound round, int order) {
+    private int appendPlayoffStage(List<ExpandedMatchdaySlot> slots, PlayoffRound round, int order, boolean wcStyleIds) {
         String stageKey = round.getStage();
         if (stageKey == null || stageKey.isBlank()) {
             throw new BadRequestException("playoffStageRequired");
         }
         int matchdayCount = round.getMatchdayCount();
-        if (matchdayCount < 1 || matchdayCount > 2) {
+        int maxLegs = wcStyleIds ? 8 : 2;
+        if (matchdayCount < 1 || matchdayCount > maxLegs) {
             throw new BadRequestException("invalidPlayoffMatchdayCount");
         }
         if (matchdayCount == 1) {
@@ -104,8 +121,9 @@ public class TournamentFormatExpander {
                     .build());
         } else {
             for (int leg = 1; leg <= matchdayCount; leg++) {
+                String id = wcStyleIds ? stageKey + "-s" + leg : stageKey + " [" + leg + "]";
                 slots.add(ExpandedMatchdaySlot.builder()
-                        .id(stageKey + " [" + leg + "]")
+                        .id(id)
                         .order(order++)
                         .kind(ExpandedMatchdaySlot.Kind.KNOCKOUT)
                         .labelKey(stageKey)

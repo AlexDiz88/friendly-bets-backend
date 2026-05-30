@@ -39,6 +39,13 @@ public class TeamAliasResolver {
         return Optional.empty();
     }
 
+    public Optional<Team> resolveWc26Code(String wc26Code) {
+        if (wc26Code == null || wc26Code.isBlank()) {
+            return Optional.empty();
+        }
+        return teamsRepository.findByExternalAliasName(TeamTitleUtils.WC26_PROVIDER, wc26Code.trim());
+    }
+
     public Optional<Team> resolveOddsApi(Integer oddsApiTeamId, String oddsApiTeamName) {
         if (oddsApiTeamName != null && !oddsApiTeamName.isBlank()) {
             Optional<Team> byAliasName = teamsRepository.findByExternalAliasName(

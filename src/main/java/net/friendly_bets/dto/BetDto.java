@@ -76,6 +76,9 @@ public class BetDto {
     @Schema(description = "идентификатор записи календаря", example = "12-байтовый хэш ID")
     private String calendarNodeId;
 
+    @Schema(description = "id матча в расписании ЧМ26", example = "14")
+    private Integer wc26ScheduleId;
+
 
     public static BetDto from(Bet bet) {
         if (WRL_STATUSES.contains(bet.getBetStatus())) {
@@ -98,6 +101,7 @@ public class BetDto {
                     .balanceChange(bet.getBalanceChange())
                     .updatedAt(bet.getUpdatedAt())
                     .calendarNodeId(bet.getCalendarNodeId())
+                    .wc26ScheduleId(bet.getWc26ScheduleId())
                     .build();
         }
         if (bet.getBetStatus().equals(Bet.BetStatus.OPENED)) {
@@ -117,6 +121,7 @@ public class BetDto {
                     .betStatus(Bet.BetStatus.OPENED.toString())
                     .updatedAt(bet.getUpdatedAt())
                     .calendarNodeId(bet.getCalendarNodeId())
+                    .wc26ScheduleId(bet.getWc26ScheduleId())
                     .build();
         }
         if (bet.getBetStatus().equals(Bet.BetStatus.EMPTY)) {

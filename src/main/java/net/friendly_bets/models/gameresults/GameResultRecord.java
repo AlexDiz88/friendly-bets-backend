@@ -84,6 +84,10 @@ public class GameResultRecord {
     @Field(name = "odds_api_event_id")
     private Long oddsApiEventId;
 
+    /** Id матча из статического расписания ЧМ26 (frontend wc26Schedule, 1–104). */
+    @Field(name = "wc26_schedule_id")
+    private Integer wc26ScheduleId;
+
     public boolean isFinalized() {
         return finalizedAt != null;
     }

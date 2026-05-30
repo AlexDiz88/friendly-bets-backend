@@ -176,6 +176,29 @@ public class BetsService {
                 .build();
     }
 
+    public BetsPage getSelfOpenedBets(String userId, String seasonId, String leagueId, String matchDay) {
+        List<Bet> opened;
+        if (matchDay != null && !matchDay.isBlank()) {
+            opened = betsRepository.findAllBySeason_IdAndUser_IdAndLeague_IdAndMatchDayAndBetStatusIn(
+                    seasonId,
+                    userId,
+                    leagueId,
+                    matchDay.trim(),
+                    List.of(Bet.BetStatus.OPENED)
+            );
+        } else {
+            opened = betsRepository.findAllBySeason_IdAndUser_IdAndLeague_IdAndBetStatusIn(
+                    seasonId,
+                    userId,
+                    leagueId,
+                    List.of(Bet.BetStatus.OPENED)
+            );
+        }
+        return BetsPage.builder()
+                .bets(BetDto.from(opened))
+                .build();
+    }
+
     // ------------------------------------------------------------------------------------------------------ //
 
 

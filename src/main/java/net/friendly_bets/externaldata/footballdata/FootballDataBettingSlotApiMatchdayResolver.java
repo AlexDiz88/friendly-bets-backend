@@ -7,10 +7,9 @@ import net.friendly_bets.models.ExpandedMatchdaySlot;
  */
 public final class FootballDataBettingSlotApiMatchdayResolver {
 
-    /** World Cup: 6 betting slots per official group-stage matchday (18 slots → API 1..3). */
+    /** World Cup Berlin group slots (16 → API matchdays 1..3). */
     public static final String WC_COMPETITION_CODE = "WC";
-    public static final int WC_BETTING_SLOTS_PER_OFFICIAL_MATCHDAY = 6;
-    public static final int WC_GROUP_BETTING_SLOT_COUNT = 18;
+    public static final int WC_GROUP_BETTING_SLOT_COUNT = 16;
 
     private FootballDataBettingSlotApiMatchdayResolver() {
     }
@@ -36,11 +35,17 @@ public final class FootballDataBettingSlotApiMatchdayResolver {
         return order >= 1 && order <= WC_GROUP_BETTING_SLOT_COUNT;
     }
 
-    /** Slots 1..6 → 1, 7..12 → 2, 13..18 → 3. */
+    /** Slots 1..6 → 1, 7..12 → 2, 13..16 → 3. */
     public static int wcApiMatchdayFromOrder(int bettingSlotOrder) {
         if (bettingSlotOrder < 1 || bettingSlotOrder > WC_GROUP_BETTING_SLOT_COUNT) {
             throw new IllegalArgumentException("WC betting slot order out of range: " + bettingSlotOrder);
         }
-        return (bettingSlotOrder - 1) / WC_BETTING_SLOTS_PER_OFFICIAL_MATCHDAY + 1;
+        if (bettingSlotOrder <= 6) {
+            return 1;
+        }
+        if (bettingSlotOrder <= 12) {
+            return 2;
+        }
+        return 3;
     }
 }

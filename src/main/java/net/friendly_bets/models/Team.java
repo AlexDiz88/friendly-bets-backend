@@ -28,7 +28,7 @@ public class Team {
 
     /**
      * Уникальный ключ: PascalCase без пробелов ({@code ManchesterUnited}).
-     * i18n {@code teams:{title}}, локальный логотип {@code /upload/logo/{snake_case}.png}.
+     * i18n {@code teams:{title}}, локальный логотип {@code /upload/logo/{lowercase}.png}.
      */
     @Field(name = "title")
     private String title;

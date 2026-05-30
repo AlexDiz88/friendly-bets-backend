@@ -25,6 +25,7 @@ import net.friendly_bets.repositories.GameResultRecordRepository;
 import net.friendly_bets.repositories.GameResultsSyncRepository;
 import net.friendly_bets.repositories.LeaguesRepository;
 import net.friendly_bets.repositories.SeasonsRepository;
+import net.friendly_bets.wc26.Wc26GameResultLinker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -62,6 +63,7 @@ public class FootballDataSyncService {
     private final GameResultCollector gameResultCollector;
     private final FootballDataMatchdaySupport matchdaySupport;
     private final ApiSyncIssueService apiSyncIssueService;
+    private final Wc26GameResultLinker wc26GameResultLinker;
 
     public void registerPollingForSeason(String seasonId) {
         getEntityService.getSeasonOrThrow(seasonId);
@@ -83,7 +85,7 @@ public class FootballDataSyncService {
         matchdaySupport.buildMatchdayKey(
                         league,
                         bet.getMatchDay(),
-                        matchdaySupport.resolveFootballDataSeasonYear(season))
+                        matchdaySupport.resolveFootballDataSeasonYear(season, league.getLeagueCode()))
                 .ifPresent(key -> {
                     ensurePolling(key);
                     syncMatchdayIfConfigured(key);
@@ -112,7 +114,7 @@ public class FootballDataSyncService {
         Set<FootballDataMatchdayKey> keys = new LinkedHashSet<>();
         seasonsRepository.findSeasonByStatus(Season.Status.ACTIVE).ifPresent(season -> {
             keys.addAll(collectMatchdayKeysForSeason(season));
-            addCurrentApiMatchdayKeys(keys, matchdaySupport.resolveFootballDataSeasonYear(season));
+            addCurrentApiMatchdayKeys(keys, season);
         });
         keys.forEach(this::ensurePolling);
 
@@ -147,14 +149,23 @@ public class FootballDataSyncService {
 
         String leagueCode = LeagueCodePathSupport.resolveStorageLeagueCode(pathLeagueOrCompetitionCode);
         String externalCompetitionCode = LeagueCodePathSupport.toExternalCompetitionCode(leagueCode);
+        League.LeagueCode leagueCodeEnum = League.LeagueCode.valueOf(leagueCode);
+
+        String resolvedSeason = resolveStorageSeason(season);
+        if (matchdaySupport.usesTournamentSeasonYear(leagueCodeEnum)) {
+            Optional<Season> activeSeason = seasonsRepository.findSeasonByStatus(Season.Status.ACTIVE);
+            if (activeSeason.isPresent()) {
+                resolvedSeason = matchdaySupport.resolveFootballDataSeasonYear(activeSeason.get(), leagueCodeEnum);
+            }
+        }
 
         FootballDataMatchdayResponse response = fetchResponse(
-                externalCompetitionCode, slotOrder, season, friendlyLeagueId);
+                externalCompetitionCode, slotOrder, resolvedSeason, friendlyLeagueId);
         if (response == null || response.getMatches() == null) {
             throw new BadRequestException("footballDataEmptyResponse");
         }
 
-        String storageSeason = resolveStorageSeason(season);
+        String storageSeason = resolvedSeason;
         LocalDateTime now = LocalDateTime.now();
         String storageLeagueId = friendlyLeagueId;
         if (storageLeagueId == null || storageLeagueId.isBlank()) {
@@ -175,11 +186,11 @@ public class FootballDataSyncService {
 
             if (homeTeam == null || awayTeam == null) {
                 hadUnmappedTeams = true;
-                apiSyncIssueService.recordMissingTeamMapping(leagueCode, season, slotOrder, matchDto);
+                apiSyncIssueService.recordMissingTeamMapping(leagueCode, storageSeason, slotOrder, matchDto);
                 log.warn(
                         "Game result skipped (missing team mapping): provider=football-data league={} season={} matchday={} matchId={} home='{}' away='{}'",
                         leagueCode,
-                        season,
+                        storageSeason,
                         slotOrder,
                         matchDto.getId(),
                         matchDto.getHomeTeam() != null ? matchDto.getHomeTeam().getName() : null,
@@ -216,12 +227,14 @@ public class FootballDataSyncService {
                 }
                 gameResultPersistence.applySync(record, incoming, now);
                 gameResultRecordRepository.save(record);
+                wc26GameResultLinker.linkIfPossible(record, storageSeason);
                 if (record.isFinalized()) {
                     finishedCount++;
                 }
             } else {
                 gameResultFinalizer.tryFinalize(incoming, now);
                 gameResultRecordRepository.save(incoming);
+                wc26GameResultLinker.linkIfPossible(incoming, storageSeason);
                 if (incoming.isFinalized()) {
                     finishedCount++;
                 }
@@ -292,7 +305,6 @@ public class FootballDataSyncService {
     private Set<FootballDataMatchdayKey> collectMatchdayKeysForSeason(Season season) {
         List<Bet> openedBets = betsRepository.findAllBySeason_IdAndBetStatus(season.getId(), Bet.BetStatus.OPENED);
         Set<FootballDataMatchdayKey> keys = new LinkedHashSet<>();
-        String footballDataSeason = matchdaySupport.resolveFootballDataSeasonYear(season);
         int skipped = 0;
 
         for (Bet bet : openedBets) {
@@ -307,6 +319,7 @@ public class FootballDataSyncService {
             }
             try {
                 League league = getEntityService.getLeagueOrThrow(leagueId);
+                String footballDataSeason = matchdaySupport.resolveFootballDataSeasonYear(season, league.getLeagueCode());
                 Optional<FootballDataMatchdayKey> matchdayKey = matchdaySupport.buildMatchdayKey(
                         league, bet.getMatchDay(), footballDataSeason);
                 if (matchdayKey.isPresent()) {
@@ -327,11 +340,10 @@ public class FootballDataSyncService {
 
         if (!openedBets.isEmpty()) {
             log.info(
-                    "Football-data polling keys from {} OPENED bet(s): {} matchday(s), {} skipped, season={}",
+                    "Football-data polling keys from {} OPENED bet(s): {} matchday(s), {} skipped",
                     openedBets.size(),
                     keys.size(),
-                    skipped,
-                    footballDataSeason
+                    skipped
             );
         }
         return keys;
@@ -341,7 +353,7 @@ public class FootballDataSyncService {
      * Дополнительно опрашивает текущий тур API только для лиг, где уже есть открытые ставки
      * (не дергаем EC/WC и прочие коды без активных ставок).
      */
-    private void addCurrentApiMatchdayKeys(Set<FootballDataMatchdayKey> keys, String footballDataSeason) {
+    private void addCurrentApiMatchdayKeys(Set<FootballDataMatchdayKey> keys, Season season) {
         Set<String> leagueCodes = keys.stream()
                 .map(FootballDataMatchdayKey::leagueCode)
                 .collect(Collectors.toCollection(LinkedHashSet::new));
@@ -351,6 +363,8 @@ public class FootballDataSyncService {
 
         for (String leagueCode : leagueCodes) {
             try {
+                League.LeagueCode code = League.LeagueCode.valueOf(leagueCode);
+                String footballDataSeason = matchdaySupport.resolveFootballDataSeasonYear(season, code);
                 String externalCompetitionCode = LeagueCodePathSupport.toExternalCompetitionCode(leagueCode);
                 ExternalCompetitionInfoDto info = footballDataCompetitionService.getCompetitionInfo(
                         externalCompetitionCode, footballDataSeason);
