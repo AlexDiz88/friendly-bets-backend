@@ -38,6 +38,9 @@ public class LeagueDto {
     @Schema(description = "список команд лиги", example = "[Team1, Team2...]")
     private List<TeamDto> teams;
 
+    @Schema(description = "можно удалить из сезона (нет ставок по лиге)")
+    private Boolean removable;
+
     public static LeagueDto from(League league) {
         return from(league, null);
     }

@@ -4,7 +4,7 @@ import lombok.RequiredArgsConstructor;
 import net.friendly_bets.dto.NewTournamentFormatDto;
 import net.friendly_bets.dto.TournamentFormatDto;
 import net.friendly_bets.dto.TournamentFormatsPage;
-import net.friendly_bets.dto.UpdateTournamentFormatNameDto;
+import net.friendly_bets.dto.UpdateTournamentFormatDto;
 import net.friendly_bets.services.TournamentFormatsService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -41,10 +41,10 @@ public class TournamentFormatsController {
     @PatchMapping("/{id}")
     @PutMapping("/{id}")
     @PreAuthorize("hasAuthority('ADMIN')")
-    public ResponseEntity<TournamentFormatDto> updateName(
+    public ResponseEntity<TournamentFormatDto> update(
             @PathVariable String id,
-            @RequestBody @Valid UpdateTournamentFormatNameDto dto) {
-        return ResponseEntity.ok(tournamentFormatsService.updateName(id, dto));
+            @RequestBody @Valid UpdateTournamentFormatDto dto) {
+        return ResponseEntity.ok(tournamentFormatsService.update(id, dto));
     }
 
     @DeleteMapping("/{id}")

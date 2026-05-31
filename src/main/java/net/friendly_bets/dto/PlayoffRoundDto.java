@@ -20,7 +20,7 @@ public class PlayoffRoundDto {
     private String stage;
 
     @Min(1)
-    @Max(2)
+    @Max(8)
     private int matchdayCount;
 
     public static PlayoffRoundDto from(PlayoffRound round) {

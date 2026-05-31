@@ -339,6 +339,31 @@ public class SeasonsService {
         return TeamDto.from(team);
     }
 
+    @Transactional
+    public SeasonDto removeLeagueFromSeason(String seasonId, String leagueId) {
+        if (leagueId == null || leagueId.isBlank()) {
+            throw new BadRequestException("leagueIdIsNull");
+        }
+        if (seasonId == null || seasonId.isBlank()) {
+            throw new BadRequestException("seasonIdIsNull");
+        }
+        Season season = getEntityService.getSeasonOrThrow(seasonId);
+        League league = season.getLeagues().stream()
+                .filter(l -> l.getId().equals(leagueId))
+                .findFirst()
+                .orElseThrow(() -> new NotFoundException("League", leagueId));
+
+        if (betsRepository.countBetsByLeagueAndBetStatusNot(league, Bet.BetStatus.DELETED) > 0) {
+            throw new ConflictException("leagueHasBetsCannotRemove");
+        }
+
+        season.getLeagues().removeIf(l -> l.getId().equals(leagueId));
+        seasonsRepository.save(season);
+        leaguesRepository.delete(league);
+
+        return toSeasonDto(season);
+    }
+
     // ------------------------------------------------------------------------------------------------------ //
 
     public Map<String, Object> dbUpdate() {
@@ -477,6 +502,7 @@ public class SeasonsService {
                 .tournamentFormatId(league.getTournamentFormatId())
                 .matchdaySlots(slots.isEmpty() ? null : slots)
                 .teams(TeamDto.from(league.getTeams()))
+                .removable(betsRepository.countBetsByLeagueAndBetStatusNot(league, Bet.BetStatus.DELETED) == 0)
                 .build();
     }
 

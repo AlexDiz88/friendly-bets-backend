@@ -42,8 +42,14 @@ public class TournamentFormatExpander {
     }
 
     private List<ExpandedMatchdaySlot> expandWc(TournamentFormat format) {
-        List<ExpandedMatchdaySlot> slots = new ArrayList<>(WcTournamentSlots.expandGroupSlots(1));
-        int order = slots.size() + 1;
+        List<ExpandedMatchdaySlot> slots = new ArrayList<>();
+        int order = 1;
+        if (format.getGroupStage() != null && format.getGroupStage().isSplitSlotsPerRound()) {
+            order = appendRoundRobin(slots, format.getGroupStage(), ExpandedMatchdaySlot.Kind.GROUP, order);
+        } else {
+            slots.addAll(WcTournamentSlots.expandGroupSlots(1));
+            order = slots.size() + 1;
+        }
         if (format.getPlayoff() != null && !format.getPlayoff().isEmpty()) {
             slots.addAll(WcTournamentSlots.expandPlayoffSlots(format.getPlayoff(), order));
         }
@@ -84,6 +90,9 @@ public class TournamentFormatExpander {
         if (stage.getMatchdayCount() < 1) {
             throw new BadRequestException("invalidMatchdayCount");
         }
+        if (kind == ExpandedMatchdaySlot.Kind.GROUP && stage.isSplitSlotsPerRound()) {
+            return appendSplitGroupSlots(slots, stage, order);
+        }
         for (int i = 1; i <= stage.getMatchdayCount(); i++) {
             slots.add(ExpandedMatchdaySlot.builder()
                     .id(String.valueOf(i))
@@ -93,6 +102,39 @@ public class TournamentFormatExpander {
                     .build());
         }
         return order;
+    }
+
+    private int appendSplitGroupSlots(
+            List<ExpandedMatchdaySlot> slots,
+            RoundRobinStage stage,
+            int order
+    ) {
+        validateSplitGroupStage(stage);
+        for (int round = 1; round <= stage.getMatchdayCount(); round++) {
+            int slotsInRound = stage.getSlotsPerRound().get(round - 1);
+            for (int slotIndex = 1; slotIndex <= slotsInRound; slotIndex++) {
+                String id = round + " [" + slotIndex + "]";
+                slots.add(ExpandedMatchdaySlot.builder()
+                        .id(id)
+                        .order(order++)
+                        .kind(ExpandedMatchdaySlot.Kind.GROUP)
+                        .labelKey(id)
+                        .build());
+            }
+        }
+        return order;
+    }
+
+    private void validateSplitGroupStage(RoundRobinStage stage) {
+        List<Integer> perRound = stage.getSlotsPerRound();
+        if (perRound == null || perRound.size() != stage.getMatchdayCount()) {
+            throw new BadRequestException("groupSlotsPerRoundSizeMismatch");
+        }
+        for (Integer count : perRound) {
+            if (count == null || count < 1 || count > 8) {
+                throw new BadRequestException("invalidGroupSlotCount");
+            }
+        }
     }
 
     private int appendPlayoff(List<ExpandedMatchdaySlot> slots, List<PlayoffRound> playoff, int order, boolean wcStyleIds) {

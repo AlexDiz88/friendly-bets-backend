@@ -5,16 +5,48 @@ import net.friendly_bets.models.PlayoffRound;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Betting slots for {@code wc-48teams}: 16 Berlin group slots + playoff sub-slots.
+ * Canonical {@code Bet.match_day} ids: {@code 1 [1]} … {@code 3 [4]}, {@code 1/16 [1]}, …
  */
 public final class WcTournamentSlots {
 
     public static final String FORMAT_CODE = "wc-48teams";
     public static final int GROUP_SLOT_COUNT = 16;
 
+    private static final Pattern BERLIN_GROUP_SLOT = Pattern.compile("^([123]) \\[(\\d+)\\]$");
+
     private WcTournamentSlots() {
+    }
+
+    public static String groupSlotId(int round, int index) {
+        return round + " [" + index + "]";
+    }
+
+    public static String playoffSlotId(String stage, int leg) {
+        return stage + " [" + leg + "]";
+    }
+
+    public static boolean isBerlinGroupSlot(String slotId) {
+        return slotId != null && BERLIN_GROUP_SLOT.matcher(slotId).matches();
+    }
+
+    public static Optional<int[]> parseBerlinGroupSlot(String slotId) {
+        if (slotId == null) {
+            return Optional.empty();
+        }
+        Matcher matcher = BERLIN_GROUP_SLOT.matcher(slotId);
+        if (!matcher.matches()) {
+            return Optional.empty();
+        }
+        return Optional.of(new int[]{
+                Integer.parseInt(matcher.group(1)),
+                Integer.parseInt(matcher.group(2))
+        });
     }
 
     public static List<ExpandedMatchdaySlot> expandGroupSlots(int startOrder) {
@@ -23,7 +55,7 @@ public final class WcTournamentSlots {
         for (int round = 1; round <= 3; round++) {
             int slotsInRound = round == 3 ? 4 : 6;
             for (int index = 1; index <= slotsInRound; index++) {
-                String id = "r" + round + "-s" + index;
+                String id = groupSlotId(round, index);
                 slots.add(ExpandedMatchdaySlot.builder()
                         .id(id)
                         .order(order++)
@@ -56,7 +88,7 @@ public final class WcTournamentSlots {
                         .build());
             } else {
                 for (int leg = 1; leg <= count; leg++) {
-                    String id = stage + "-s" + leg;
+                    String id = playoffSlotId(stage, leg);
                     slots.add(ExpandedMatchdaySlot.builder()
                             .id(id)
                             .order(order++)
@@ -70,15 +102,16 @@ public final class WcTournamentSlots {
     }
 
     /** Schedule ids (1–72) in Berlin betting slot. */
-    public static java.util.List<Integer> scheduleIdsForSlot(String slotId) {
-        if (slotId == null || !slotId.matches("r[123]-s\\d+")) {
-            return java.util.List.of();
+    public static List<Integer> scheduleIdsForSlot(String slotId) {
+        Optional<int[]> parsed = parseBerlinGroupSlot(slotId);
+        if (parsed.isEmpty()) {
+            return List.of();
         }
-        int round = Integer.parseInt(slotId.substring(1, 2));
-        int slotIndex = Integer.parseInt(slotId.substring(4));
+        int round = parsed.get()[0];
+        int slotIndex = parsed.get()[1];
         int matchesPerSlot = round == 3 ? 6 : 4;
         int startId = (round - 1) * 24 + (slotIndex - 1) * matchesPerSlot + 1;
-        java.util.List<Integer> ids = new java.util.ArrayList<>();
+        List<Integer> ids = new ArrayList<>();
         for (int i = 0; i < matchesPerSlot; i++) {
             ids.add(startId + i);
         }
@@ -87,13 +120,15 @@ public final class WcTournamentSlots {
 
     /** Bets required in slot (group stage only). */
     public static int betsRequiredForSlot(String slotId) {
-        if (slotId == null || !slotId.startsWith("r")) {
+        Optional<int[]> parsed = parseBerlinGroupSlot(slotId);
+        if (parsed.isEmpty()) {
             return 1;
         }
-        if (slotId.startsWith("r3-")) {
+        int round = parsed.get()[0];
+        if (round == 3) {
             return 3;
         }
-        if (slotId.startsWith("r1-") || slotId.startsWith("r2-")) {
+        if (round == 1 || round == 2) {
             return 2;
         }
         return 1;

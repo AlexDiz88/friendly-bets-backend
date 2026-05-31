@@ -175,6 +175,21 @@ public interface SeasonsApi {
             @Parameter(description = "League ID") @NotBlank String leagueId,
             @Parameter(description = "Team ID") @NotBlank String teamId);
 
+    @Operation(summary = "Remove league from season", description = "Available to admin only; allowed when the league has no bets")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Successfully removed league from season",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = SeasonDto.class))),
+            @ApiResponse(responseCode = "400", description = "Bad request, invalid IDs or league not in season",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto"))),
+            @ApiResponse(responseCode = "403", description = "User not authenticated or not authorized",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto"))),
+            @ApiResponse(responseCode = "409", description = "League has bets and cannot be removed",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto")))
+    })
+    ResponseEntity<SeasonDto> removeLeagueFromSeason(
+            @Parameter(description = "Season ID") @NotBlank String seasonId,
+            @Parameter(description = "League ID") @NotBlank String leagueId);
+
     @Operation(summary = "DB update", description = "Available to admin only")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Successfully updated the database",

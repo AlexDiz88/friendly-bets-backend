@@ -33,11 +33,15 @@ public class WcTournamentFormatMigration implements ApplicationRunner {
         if (isAlreadyMigrated(format)) {
             return;
         }
-        format.setGroupStage(RoundRobinStage.builder().matchdayCount(3).build());
+        format.setGroupStage(RoundRobinStage.builder()
+                .matchdayCount(3)
+                .splitSlotsPerRound(true)
+                .slotsPerRound(List.of(6, 6, 4))
+                .build());
         format.setPlayoff(List.of(
                 PlayoffRound.builder().stage("1/16").matchdayCount(5).build(),
-                PlayoffRound.builder().stage("1/8").matchdayCount(4).build(),
-                PlayoffRound.builder().stage("1/4").matchdayCount(2).build(),
+                PlayoffRound.builder().stage("1/8").matchdayCount(2).build(),
+                PlayoffRound.builder().stage("1/4").matchdayCount(1).build(),
                 PlayoffRound.builder().stage("1/2").matchdayCount(1).build(),
                 PlayoffRound.builder().stage("third_place").matchdayCount(1).build(),
                 PlayoffRound.builder().stage("final").matchdayCount(1).build()
@@ -46,10 +50,15 @@ public class WcTournamentFormatMigration implements ApplicationRunner {
     }
 
     private static boolean isAlreadyMigrated(TournamentFormat format) {
+        RoundRobinStage group = format.getGroupStage();
+        boolean groupOk = group != null
+                && group.isSplitSlotsPerRound()
+                && List.of(6, 6, 4).equals(group.getSlotsPerRound());
         if (format.getPlayoff() == null || format.getPlayoff().isEmpty()) {
-            return false;
+            return groupOk;
         }
-        return format.getPlayoff().stream()
+        boolean playoffOk = format.getPlayoff().stream()
                 .anyMatch(p -> "1/16".equals(p.getStage()) && p.getMatchdayCount() >= 5);
+        return playoffOk && groupOk;
     }
 }

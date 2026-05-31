@@ -10,20 +10,17 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.regex.Pattern;
 
 /**
- * Keeps only matches belonging to a Berlin betting slot ({@code r1-s1} … {@code r3-s4}).
+ * Keeps only matches belonging to a Berlin betting slot ({@code 1 [1]} … {@code 3 [4]}).
  */
 public final class WcBerlinSlotMatchFilter {
-
-    private static final Pattern BERLIN_GROUP_SLOT = Pattern.compile("r[123]-s\\d+");
 
     private WcBerlinSlotMatchFilter() {
     }
 
     public static boolean isBerlinGroupSlot(String slotId) {
-        return slotId != null && BERLIN_GROUP_SLOT.matcher(slotId).matches();
+        return WcTournamentSlots.isBerlinGroupSlot(slotId);
     }
 
     public static int expectedMatchCount(String slotId) {

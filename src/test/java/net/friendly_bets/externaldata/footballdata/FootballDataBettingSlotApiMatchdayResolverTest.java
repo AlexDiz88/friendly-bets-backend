@@ -26,10 +26,10 @@ class FootballDataBettingSlotApiMatchdayResolverTest {
     @Test
     void resolveApiMatchday_wcGroupSlot_usesOrderNotId() {
         ExpandedMatchdaySlot slot = ExpandedMatchdaySlot.builder()
-                .id("r3-s2")
+                .id("3 [2]")
                 .order(14)
                 .kind(ExpandedMatchdaySlot.Kind.GROUP)
-                .labelKey("r3-s2")
+                .labelKey("3 [2]")
                 .build();
         assertEquals(3, FootballDataBettingSlotApiMatchdayResolver.resolveApiMatchday("WC", slot));
     }

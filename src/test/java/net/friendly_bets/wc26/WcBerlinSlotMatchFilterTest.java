@@ -23,7 +23,7 @@ class WcBerlinSlotMatchFilterTest {
                 match("Brazil", "BRA", "Morocco", "MAR")
         );
 
-        List<FootballDataMatchDto> filtered = WcBerlinSlotMatchFilter.filterFootballDataMatches("r1-s1", all);
+        List<FootballDataMatchDto> filtered = WcBerlinSlotMatchFilter.filterFootballDataMatches("1 [1]", all);
 
         assertEquals(4, filtered.size());
         assertTrue(filtered.stream().anyMatch(m -> "Mexico".equals(m.getHomeTeam().getName())));
@@ -32,13 +32,13 @@ class WcBerlinSlotMatchFilterTest {
 
     @Test
     void expectedMatchCount_r3s1_isSix() {
-        assertEquals(6, WcBerlinSlotMatchFilter.expectedMatchCount("r3-s1"));
-        assertEquals(4, WcBerlinSlotMatchFilter.expectedMatchCount("r2-s6"));
+        assertEquals(6, WcBerlinSlotMatchFilter.expectedMatchCount("3 [1]"));
+        assertEquals(4, WcBerlinSlotMatchFilter.expectedMatchCount("2 [6]"));
     }
 
     @Test
     void scheduleIdsForSlot_r3s4_coversLastSixGroupMatches() {
-        List<Integer> ids = WcTournamentSlots.scheduleIdsForSlot("r3-s4");
+        List<Integer> ids = WcTournamentSlots.scheduleIdsForSlot("3 [4]");
         assertEquals(6, ids.size());
         assertEquals(67, ids.get(0));
         assertEquals(72, ids.get(5));
@@ -53,7 +53,7 @@ class WcBerlinSlotMatchFilterTest {
                 match("UnitedStates", "USA", "Paraguay", "PAR")
         );
 
-        List<FootballDataMatchDto> filtered = WcBerlinSlotMatchFilter.filterFootballDataMatches("r1-s1", all);
+        List<FootballDataMatchDto> filtered = WcBerlinSlotMatchFilter.filterFootballDataMatches("1 [1]", all);
 
         assertEquals(4, filtered.size());
     }
