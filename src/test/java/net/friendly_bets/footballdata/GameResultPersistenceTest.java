@@ -1,6 +1,7 @@
 package net.friendly_bets.footballdata;
 
 import net.friendly_bets.gameresults.MatchDataProviders;
+import net.friendly_bets.gameresults.MatchResultStabilizationService;
 import net.friendly_bets.models.GameScore;
 import net.friendly_bets.models.gameresults.GameResultFinalizedSource;
 import net.friendly_bets.models.gameresults.GameResultRecord;
@@ -17,6 +18,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
@@ -28,11 +30,17 @@ class GameResultPersistenceTest {
     @Mock
     ApiSyncIssueService apiSyncIssueService;
 
+    @Mock
+    GameResultFinalizer gameResultFinalizer;
+
+    @Mock
+    MatchResultStabilizationService stabilizationService;
+
     @InjectMocks
     GameResultPersistence persistence;
 
     @Test
-    void applyProvisionalSync_finalizesInPlayWithFullTimeAndHalftime() {
+    void applyProvisionalSync_updatesScoreWithoutForcingFinalizeOnInPlay() {
         LocalDateTime first = LocalDateTime.of(2026, 5, 28, 10, 0);
         GameResultRecord existing = GameResultRecord.builder()
                 .status("IN_PLAY")
@@ -52,10 +60,10 @@ class GameResultPersistenceTest {
         persistence.applyProvisionalSync(existing, incoming, first.plusHours(2));
 
         verify(apiSyncIssueService).recordApiScoreChangedIfNeeded(existing, incoming);
-        assertEquals("FINISHED", existing.getStatus());
+        verify(stabilizationService).updateStabilityCounters(existing, first.plusHours(2));
+        verify(gameResultFinalizer).tryFinalize(existing, first.plusHours(2));
+        assertEquals("IN_PLAY", existing.getStatus());
         assertEquals("1:1", existing.getGameScore().getFullTime());
-        assertNotNull(existing.getFinalizedAt());
-        assertEquals(GameResultFinalizedSource.API.name(), existing.getFinalizedSource());
     }
 
     @Test

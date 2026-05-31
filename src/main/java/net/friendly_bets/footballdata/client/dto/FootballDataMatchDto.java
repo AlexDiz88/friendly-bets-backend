@@ -33,8 +33,12 @@ public class FootballDataMatchDto {
     public static class Score {
         private ScoreLine fullTime;
         private ScoreLine halfTime;
+        /** Счёт после 90 минут (v4). */
+        private ScoreLine regularTime;
         private ScoreLine extraTime;
         private ScoreLine penalties;
+        /** REGULAR | EXTRA_TIME | PENALTY_SHOOTOUT */
+        private String duration;
     }
 
     @Data

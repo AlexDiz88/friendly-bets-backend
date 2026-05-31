@@ -13,6 +13,7 @@ import net.friendly_bets.repositories.PlayerStatsRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -201,5 +202,9 @@ public class StatsService {
 
     public void recalculateAllGameweekStats(String seasonId) {
         gameweekStatsService.recalculateAllGameweekStats(seasonId);
+    }
+
+    public int recalculateGameweekStatsFromEarliest(String seasonId, Collection<String> affectedCalendarNodeIds) {
+        return gameweekStatsService.recalculateGameweekStatsFromEarliest(seasonId, affectedCalendarNodeIds);
     }
 }

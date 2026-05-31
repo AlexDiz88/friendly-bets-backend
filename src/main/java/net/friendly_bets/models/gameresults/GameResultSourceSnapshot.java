@@ -53,4 +53,8 @@ public class GameResultSourceSnapshot {
     /** Время нашей синхронизации этого снимка. */
     @Field(name = "fetched_at")
     private LocalDateTime fetchedAt;
+
+    /** football-data score/duration: REGULAR | EXTRA_TIME | PENALTY_SHOOTOUT */
+    @Field(name = "score_duration")
+    private String scoreDuration;
 }

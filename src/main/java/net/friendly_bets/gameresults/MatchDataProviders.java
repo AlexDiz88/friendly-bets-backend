@@ -5,6 +5,7 @@ public final class MatchDataProviders {
     /** Логический id провайдера (совпадает с {@link net.friendly_bets.models.TeamExternalAlias}). */
     public static final String FOOTBALL_DATA = "football-data";
     public static final String ODDS_API = "odds-api.io";
+    public static final String API_FOOTBALL = "api-football";
 
     private MatchDataProviders() {
     }

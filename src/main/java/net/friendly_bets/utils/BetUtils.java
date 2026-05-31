@@ -6,6 +6,7 @@ import net.friendly_bets.dto.NewBetDto;
 import net.friendly_bets.dto.NewEmptyBet;
 import net.friendly_bets.exceptions.BadRequestException;
 import net.friendly_bets.exceptions.ConflictException;
+import net.friendly_bets.gameresults.GameScoreConsistencyValidator;
 import net.friendly_bets.models.*;
 import net.friendly_bets.models.enums.BetTitleCode;
 import net.friendly_bets.repositories.BetsRepository;
@@ -36,66 +37,12 @@ public class BetUtils {
                 throw new BadRequestException("incorrectGameScore");
             }
 
-            boolean isGameScoreValid = isGameScoreValid(gameScore);
+            boolean isGameScoreValid = GameScoreConsistencyValidator.isConsistent(gameScore);
 
             if (!isGameScoreValid) {
                 throw new BadRequestException("incorrectGameScore");
             }
         }
-    }
-
-    private static boolean isGameScoreValid(GameScore gameScore) {
-        String fullTime = gameScore.getFullTime();
-        String firstTime = gameScore.getFirstTime();
-        String overTime = gameScore.getOverTime();
-        String penalty = gameScore.getPenalty();
-
-        int[] fullTimeScore = parseScorePart(fullTime);
-        int[] firstTimeScore = parseScorePart(firstTime);
-
-        if (fullTimeScore == null || firstTimeScore == null) {
-            return false;
-        }
-        // Количество голов в 1 тайме не может быть больше голов за весь матч
-        if (fullTimeScore[0] < firstTimeScore[0] || fullTimeScore[1] < firstTimeScore[1]) {
-            return false;
-        }
-
-        if (overTime == null && penalty == null) {
-            return true;
-        }
-        if (overTime != null) {
-            int[] overTimeScore = parseScorePart(overTime);
-
-            if (overTimeScore == null) {
-                return false;
-            }
-            // Если нет пенальти - в дополнительное время не может быть ничьи
-            if (penalty == null) {
-                return overTimeScore[0] != overTimeScore[1];
-            }
-
-            if (penalty != null) {
-                // Если есть пенальти - должна быть ничья в дополнительное время
-                if (overTimeScore[0] != overTimeScore[1]) {
-                    return false;
-                }
-
-                int[] penaltyScore = parseScorePart(penalty);
-                if (penaltyScore == null) {
-                    return false;
-                }
-                // В серии пенальти не может быть ничьи
-                if (penaltyScore[0] == penaltyScore[1]) {
-                    return false;
-                }
-
-                // Разница в счете по пенальти не может быть больше 3
-                int scoreDifference = Math.abs(penaltyScore[0] - penaltyScore[1]);
-                return scoreDifference <= 3;
-            }
-        }
-        return false;
     }
 
     private static int[] parseScorePart(String score) {

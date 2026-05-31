@@ -7,6 +7,8 @@ import net.friendly_bets.models.gameresults.GameResultSideSnapshot;
 import net.friendly_bets.models.gameresults.GameResultSourceSnapshot;
 import net.friendly_bets.repositories.BetsRepository;
 import net.friendly_bets.repositories.GameResultRecordRepository;
+import net.friendly_bets.gameresults.MatchResultSyncSettingsService;
+import net.friendly_bets.repositories.GameResultsSyncRepository;
 import net.friendly_bets.services.GetEntityService;
 import net.friendly_bets.services.TeamAliasResolver;
 import org.junit.jupiter.api.DisplayName;
@@ -38,12 +40,21 @@ class GameResultCollectorTest {
     GetEntityService getEntityService;
     @Mock
     TeamAliasResolver teamAliasResolver;
+    @Mock
+    MatchResultSyncSettingsService syncSettingsService;
+    @Mock
+    GameResultsSyncRepository gameResultsSyncRepository;
     @InjectMocks
     GameResultCollector collector;
 
     @Test
     @DisplayName("collectForSeason uses only finalized game results")
     void collectForSeason_requiresFinalized() {
+        when(syncSettingsService.getEffective()).thenReturn(
+                MatchResultSyncSettingsService.EffectiveMatchResultSyncSettings.builder()
+                        .autoSettleOnlyWhenMatchdayCompleted(false)
+                        .build()
+        );
         Season season = Season.builder().id("s1").startDate(LocalDate.of(2025, 8, 1)).build();
         League league = League.builder().id("l1").leagueCode(League.LeagueCode.EPL).build();
         Team home = Team.builder().id("h1").title("Brighton").build();

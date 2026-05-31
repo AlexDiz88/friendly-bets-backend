@@ -80,6 +80,23 @@ public class GameResultRecord {
     @Field(name = "admin_corrected")
     private boolean adminCorrected;
 
+    /** football-data score/duration на момент последнего sync канона. */
+    @Field(name = "score_duration")
+    private String scoreDuration;
+
+    /** Первый poll с terminal status. */
+    @Field(name = "first_terminal_at")
+    private LocalDateTime firstTerminalAt;
+
+    /** Хеш канонического счёта с предыдущего poll. */
+    @Field(name = "last_seen_canonical_score_hash")
+    private String lastSeenCanonicalScoreHash;
+
+    /** Подряд идущих poll с одинаковым каноническим счётом. */
+    @Field(name = "stable_score_poll_count")
+    @Builder.Default
+    private int stableScorePollCount = 0;
+
     /** Событие odds-api.io после успешного сопоставления. */
     @Field(name = "odds_api_event_id")
     private Long oddsApiEventId;
@@ -97,5 +114,9 @@ public class GameResultRecord {
 
     public GameResultSourceSnapshot footballDataSource() {
         return sourceFor(MatchDataProviders.sourcesStorageKey(MatchDataProviders.FOOTBALL_DATA));
+    }
+
+    public GameResultSourceSnapshot apiFootballSource() {
+        return sourceFor(MatchDataProviders.sourcesStorageKey(MatchDataProviders.API_FOOTBALL));
     }
 }

@@ -232,6 +232,68 @@ public class ApiSyncIssueService {
         return side != null ? side.getExternalId() : null;
     }
 
+    public void recordInvalidCanonicalScore(GameResultRecord record) {
+        recordMatchIssue(record, ApiSyncIssue.IssueType.INVALID_CANONICAL_SCORE,
+                "score=" + GameScoreValidator.formatFullDisplay(record.getGameScore()));
+    }
+
+    public void recordScoreNotStable(GameResultRecord record) {
+        recordMatchIssue(record, ApiSyncIssue.IssueType.SCORE_NOT_STABLE,
+                "stablePolls=" + record.getStableScorePollCount()
+                        + " score=" + GameScoreValidator.formatFullDisplay(record.getGameScore()));
+    }
+
+    public void recordProviderScoreMismatch(GameResultRecord record) {
+        GameScore primary = scoreFromSource(record.footballDataSource());
+        GameScore secondary = scoreFromSource(record.apiFootballSource());
+        recordMatchIssue(record, ApiSyncIssue.IssueType.PROVIDER_SCORE_MISMATCH,
+                "primary=" + GameScoreValidator.formatFullDisplay(primary)
+                        + " secondary=" + GameScoreValidator.formatFullDisplay(secondary));
+    }
+
+    public void recordPrimaryProviderUnavailable(GameResultRecord record) {
+        recordMatchIssue(record, ApiSyncIssue.IssueType.PRIMARY_PROVIDER_UNAVAILABLE, "primary missing");
+    }
+
+    public void recordSecondaryProviderUnavailable(GameResultRecord record) {
+        recordMatchIssue(record, ApiSyncIssue.IssueType.SECONDARY_PROVIDER_UNAVAILABLE, "secondary missing");
+    }
+
+    private void recordMatchIssue(GameResultRecord record, ApiSyncIssue.IssueType issueType, String message) {
+        if (record == null || record.getId() == null) {
+            return;
+        }
+        String provider = MatchDataProviders.FOOTBALL_DATA;
+        String type = issueType.name();
+        Optional<ApiSyncIssue> existingIssue = apiSyncIssueRepository.findFirstByProviderAndIssueTypeAndGameResultId(
+                provider, type, record.getId());
+        GameResultSourceSnapshot source = record.footballDataSource();
+        if (existingIssue.isPresent()) {
+            ApiSyncIssue issue = existingIssue.get();
+            issue.setCreatedAt(LocalDateTime.now());
+            issue.setMessage(message);
+            apiSyncIssueRepository.save(issue);
+            return;
+        }
+        apiSyncIssueRepository.save(ApiSyncIssue.builder()
+                .createdAt(LocalDateTime.now())
+                .provider(provider)
+                .issueType(type)
+                .leagueCode(record.getLeagueCode())
+                .season(record.getSeason())
+                .matchday(record.getMatchday())
+                .gameResultId(record.getId())
+                .externalMatchId(source != null ? source.getExternalMatchId() : null)
+                .homeTeamName(sideName(source, true))
+                .awayTeamName(sideName(source, false))
+                .message(message)
+                .build());
+    }
+
+    private static GameScore scoreFromSource(GameResultSourceSnapshot source) {
+        return source != null ? source.getGameScore() : null;
+    }
+
     public List<ApiSyncIssue> getLatest() {
         return apiSyncIssueRepository.findTop200ByOrderByCreatedAtDesc();
     }
@@ -275,6 +337,10 @@ public class ApiSyncIssueService {
         int parsedId = parseExternalId(externalId);
         if (MatchDataProviders.ODDS_API.equals(provider)) {
             if (teamAliasResolver.resolveOddsApi(parsedId > 0 ? parsedId : null, name).isPresent()) {
+                return;
+            }
+        } else if (MatchDataProviders.API_FOOTBALL.equals(provider)) {
+            if (teamAliasResolver.resolveApiFootball(parsedId > 0 ? parsedId : null, name).isPresent()) {
                 return;
             }
         } else if (teamAliasResolver.resolveFootballData(parsedId, name).isPresent()) {

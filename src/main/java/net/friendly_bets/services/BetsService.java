@@ -115,6 +115,11 @@ public class BetsService {
 
     @Transactional
     public BetDto setBetResult(String moderatorId, String betId, BetResult betResult) {
+        return setBetResult(moderatorId, betId, betResult, true);
+    }
+
+    @Transactional
+    public BetDto setBetResult(String moderatorId, String betId, BetResult betResult, boolean updateGameweekStats) {
         try {
             Bet.BetStatus.valueOf(betResult.getBetStatus());
         } catch (IllegalArgumentException e) {
@@ -138,7 +143,9 @@ public class BetsService {
 
         playerStatsService.calculateStatsBasedOnBetResult(seasonId, leagueId, bet.getUser(), bet, true);
         teamStatsService.calculateStatsByTeams(seasonId, leagueId, userId, bet, true);
-        gameweekStatsService.calculateGameweekStats(bet.getCalendarNodeId());
+        if (updateGameweekStats) {
+            gameweekStatsService.calculateGameweekStats(bet.getCalendarNodeId());
+        }
         betTitleStatsService.calculateStatsByBetTitle(seasonId, userId, bet, true);
 
         return BetDto.from(bet);
@@ -146,6 +153,16 @@ public class BetsService {
 
     @Transactional
     public BetsPage setBetResults(String moderatorId, String seasonId, List<GameResult> gameResults) {
+        return setBetResults(moderatorId, seasonId, gameResults, true);
+    }
+
+    @Transactional
+    public BetsPage setBetResults(
+            String moderatorId,
+            String seasonId,
+            List<GameResult> gameResults,
+            boolean updateGameweekAfterEachBet
+    ) {
         List<Bet> openedBets = betsRepository.findAllBySeason_IdAndBetStatus(seasonId, Bet.BetStatus.OPENED);
         List<Bet> processedBets = new ArrayList<>();
 
@@ -171,7 +188,7 @@ public class BetsService {
                         .betStatus(betStatus.name())
                         .build();
 
-                setBetResult(moderatorId, bet.getId(), betResult);
+                setBetResult(moderatorId, bet.getId(), betResult, updateGameweekAfterEachBet);
                 processedBets.add(getEntityService.getBetOrThrow(bet.getId()));
             }
         }

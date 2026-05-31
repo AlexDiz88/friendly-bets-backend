@@ -54,6 +54,21 @@ public final class GameScoreValidator {
         return fullTime;
     }
 
+    public static String formatFullDisplay(GameScore score) {
+        if (!hasValidFullTime(score)) {
+            return "—";
+        }
+        String base = formatDisplay(score);
+        StringBuilder sb = new StringBuilder(base);
+        if (score.getOverTime() != null && !score.getOverTime().isBlank()) {
+            sb.append(" OT=").append(score.getOverTime().trim());
+        }
+        if (score.getPenalty() != null && !score.getPenalty().isBlank()) {
+            sb.append(" PEN=").append(score.getPenalty().trim());
+        }
+        return sb.toString();
+    }
+
     private static String normalizePart(String part) {
         if (part == null || part.isBlank()) {
             return null;

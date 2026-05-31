@@ -31,6 +31,15 @@ public class GameResultsAdminController {
         return ResponseEntity.ok(gameResultsAdminService.correctScoreByAdmin(id, body));
     }
 
+    @PostMapping("/{id}/apply-api-score")
+    @PreAuthorize("hasAuthority('ADMIN') || hasAuthority('MODERATOR')")
+    public ResponseEntity<ExternalMatchDto> applyApiScore(
+            @AuthenticationPrincipal AuthenticatedUser currentUser,
+            @PathVariable String id
+    ) {
+        return ResponseEntity.ok(gameResultsAdminService.applyPrimaryApiScore(id));
+    }
+
     @PostMapping("/matchdays/settle-and-recalculate")
     @PreAuthorize("hasAuthority('ADMIN') || hasAuthority('MODERATOR')")
     public ResponseEntity<MatchdaySettleResultDto> settleMatchdayAndRecalculate(

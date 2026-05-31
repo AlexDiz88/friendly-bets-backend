@@ -7,13 +7,20 @@ import net.friendly_bets.exceptions.BadRequestException;
 import net.friendly_bets.models.*;
 import net.friendly_bets.repositories.BetsRepository;
 import net.friendly_bets.repositories.CalendarsRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import static net.friendly_bets.utils.Constants.COMPLETED_BET_STATUSES;
 import static net.friendly_bets.utils.Constants.NO_PREVIOUS_CALENDAR_NODE;
@@ -25,17 +32,82 @@ import static net.friendly_bets.utils.Constants.betsVisibleInGameweek;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class GameweekStatsService {
 
+    private static final Logger log = LoggerFactory.getLogger(GameweekStatsService.class);
+
     CalendarsRepository calendarsRepository;
     BetsRepository betsRepository;
     GetEntityService getEntityService;
 
     public void recalculateAllGameweekStats(String seasonId) {
-        List<CalendarNode> calendarNodeList = getEntityService.getListOfCalendarNodesWithBetsBySeasonOrThrow(seasonId);
-        calendarNodeList.sort(Comparator.comparing(CalendarNode::getStartDate));
-
+        List<CalendarNode> calendarNodeList = sortedCalendarNodesWithBets(seasonId);
         for (CalendarNode node : calendarNodeList) {
             calculateGameweekStats(node.getId());
         }
+    }
+
+    /**
+     * Пересчёт gameweek stats с самого раннего затронутого calendar node (по startDate) до конца сезона.
+     * Нужен после settle/admin-score: {@code totalBalance} накопительный у последующих туров.
+     */
+    public int recalculateGameweekStatsFromEarliest(String seasonId, Collection<String> affectedCalendarNodeIds) {
+        List<CalendarNode> allNodes = sortedCalendarNodesWithBets(seasonId);
+        LocalDate earliestStart = resolveEarliestAffectedStart(allNodes, affectedCalendarNodeIds);
+        if (earliestStart == null) {
+            log.warn(
+                    "Gameweek partial recalc: no matching calendar nodes for season {} (affected ids: {}), skipping",
+                    seasonId,
+                    affectedCalendarNodeIds
+            );
+            return 0;
+        }
+
+        int recalculated = 0;
+        for (CalendarNode node : allNodes) {
+            if (!node.getStartDate().isBefore(earliestStart)) {
+                calculateGameweekStats(node.getId());
+                recalculated++;
+            }
+        }
+        log.info(
+                "Gameweek partial recalc: {} node(s) from startDate {} for season {}",
+                recalculated,
+                earliestStart,
+                seasonId
+        );
+        return recalculated;
+    }
+
+    private List<CalendarNode> sortedCalendarNodesWithBets(String seasonId) {
+        List<CalendarNode> calendarNodeList = getEntityService.getListOfCalendarNodesWithBetsBySeasonOrThrow(seasonId);
+        calendarNodeList.sort(Comparator.comparing(CalendarNode::getStartDate));
+        return calendarNodeList;
+    }
+
+    private static LocalDate resolveEarliestAffectedStart(
+            List<CalendarNode> allNodes,
+            Collection<String> affectedCalendarNodeIds
+    ) {
+        if (affectedCalendarNodeIds == null || affectedCalendarNodeIds.isEmpty()) {
+            return null;
+        }
+        Set<String> affectedIds = affectedCalendarNodeIds.stream()
+                .filter(Objects::nonNull)
+                .map(String::trim)
+                .filter(id -> !id.isEmpty())
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        if (affectedIds.isEmpty()) {
+            return null;
+        }
+
+        LocalDate earliest = null;
+        for (CalendarNode node : allNodes) {
+            if (affectedIds.contains(node.getId())) {
+                if (earliest == null || node.getStartDate().isBefore(earliest)) {
+                    earliest = node.getStartDate();
+                }
+            }
+        }
+        return earliest;
     }
 
     public void calculateGameweekStats(String calendarNodeId) {
@@ -44,8 +116,9 @@ public class GameweekStatsService {
 
         if (Boolean.TRUE.equals(calendarNode.getIsFinished())) {
             updatePreviousGameweekId(calendarNode);
-            updateGameweekStats(calendarNode);
-            updatePlayersPositions(calendarNode);
+            CalendarNode previousNode = resolvePreviousCalendarNode(calendarNode);
+            updateGameweekStats(calendarNode, previousNode);
+            updatePlayersPositions(calendarNode, previousNode);
         } else {
             calendarNode.setGameweekStats(new ArrayList<>());
             calendarNode.setPreviousGameweekId(null);
@@ -55,14 +128,14 @@ public class GameweekStatsService {
 
     // ------------------------------------------------------------------------------------------------------ //
 
-    private void updateGameweekStats(CalendarNode calendarNode) {
+    private void updateGameweekStats(CalendarNode calendarNode, CalendarNode previousNode) {
         List<GameweekStats> gameweekStatsList = new ArrayList<>();
 
         for (Bet bet : getBetsForCalendarNode(calendarNode)) {
             GameweekStats stats = getGameweekStatsOrCreateNew(gameweekStatsList, bet.getUser().getId());
             if (COMPLETED_BET_STATUSES.contains(bet.getBetStatus())) {
                 updateUserGameweekBalance(stats, bet.getBalanceChange());
-                updateUserTotalBalance(calendarNode.getPreviousGameweekId(), stats);
+                updateUserTotalBalance(previousNode, stats);
             }
         }
         calendarNode.setGameweekStats(gameweekStatsList);
@@ -121,53 +194,64 @@ public class GameweekStatsService {
 
     // ------------------------------------------------------------------------------------------------------ //
 
-    private void updateUserTotalBalance(String prevCalendarNodeId, GameweekStats currentGameweekStats) {
-        if (prevCalendarNodeId.equals(NO_PREVIOUS_CALENDAR_NODE)) {
+    private void updateUserTotalBalance(CalendarNode previousNode, GameweekStats currentGameweekStats) {
+        if (previousNode == null) {
             currentGameweekStats.setTotalBalance(currentGameweekStats.getBalanceChange());
-        } else {
-            CalendarNode prevCalendarNode = getEntityService.getCalendarNodeOrThrow(prevCalendarNodeId);
-            List<GameweekStats> prevGameweekStats = prevCalendarNode.getGameweekStats();
+            return;
+        }
+        List<GameweekStats> prevGameweekStats = previousNode.getGameweekStats();
+        if (prevGameweekStats == null) {
+            currentGameweekStats.setTotalBalance(currentGameweekStats.getBalanceChange());
+            return;
+        }
 
-            for (GameweekStats prevStats : prevGameweekStats) {
-                if (prevStats.getUserId().equals(currentGameweekStats.getUserId())) {
-                    if (prevStats.getTotalBalance() == null) {
-                        currentGameweekStats.setTotalBalance(currentGameweekStats.getBalanceChange());
-                    } else {
-                        Double updatedBalance = prevStats.getTotalBalance() + currentGameweekStats.getBalanceChange();
-                        currentGameweekStats.setTotalBalance(updatedBalance);
-                    }
-                    break;
+        for (GameweekStats prevStats : prevGameweekStats) {
+            if (prevStats.getUserId().equals(currentGameweekStats.getUserId())) {
+                if (prevStats.getTotalBalance() == null) {
+                    currentGameweekStats.setTotalBalance(currentGameweekStats.getBalanceChange());
+                } else {
+                    Double updatedBalance = prevStats.getTotalBalance() + currentGameweekStats.getBalanceChange();
+                    currentGameweekStats.setTotalBalance(updatedBalance);
                 }
+                return;
             }
         }
     }
 
+    private CalendarNode resolvePreviousCalendarNode(CalendarNode calendarNode) {
+        String prevCalendarNodeId = calendarNode.getPreviousGameweekId();
+        if (prevCalendarNodeId == null || NO_PREVIOUS_CALENDAR_NODE.equals(prevCalendarNodeId)) {
+            return null;
+        }
+        return getEntityService.getCalendarNodeOrThrow(prevCalendarNodeId);
+    }
+
     // ------------------------------------------------------------------------------------------------------ //
 
-    private void updatePlayersPositions(CalendarNode calendarNode) {
+    private void updatePlayersPositions(CalendarNode calendarNode, CalendarNode previousNode) {
         List<GameweekStats> currentGameweekStats = calendarNode.getGameweekStats();
-        String prevCalendarNodeId = calendarNode.getPreviousGameweekId();
 
         currentGameweekStats.sort((stats1, stats2) -> stats2.getTotalBalance().compareTo(stats1.getTotalBalance()));
         int position = 1;
 
-        if (prevCalendarNodeId.equals(NO_PREVIOUS_CALENDAR_NODE)) {
+        if (previousNode == null) {
             for (GameweekStats currentStats : currentGameweekStats) {
                 currentStats.setPositionAfterGameweek(position);
                 position++;
             }
         } else {
-            CalendarNode prevCalendarNode = getEntityService.getCalendarNodeOrThrow(prevCalendarNodeId);
-            List<GameweekStats> prevGameweekStats = prevCalendarNode.getGameweekStats();
+            List<GameweekStats> prevGameweekStats = previousNode.getGameweekStats();
 
             for (GameweekStats currentStats : currentGameweekStats) {
                 currentStats.setPositionAfterGameweek(position);
 
-                for (GameweekStats prevStats : prevGameweekStats) {
-                    if (prevStats.getUserId().equals(currentStats.getUserId())) {
-                        int positionChange = prevStats.getPositionAfterGameweek() - currentStats.getPositionAfterGameweek();
-                        currentStats.setPositionChange(positionChange);
-                        break;
+                if (prevGameweekStats != null) {
+                    for (GameweekStats prevStats : prevGameweekStats) {
+                        if (prevStats.getUserId().equals(currentStats.getUserId())) {
+                            int positionChange = prevStats.getPositionAfterGameweek() - currentStats.getPositionAfterGameweek();
+                            currentStats.setPositionChange(positionChange);
+                            break;
+                        }
                     }
                 }
                 position++;

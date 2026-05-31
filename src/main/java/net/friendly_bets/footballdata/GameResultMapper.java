@@ -18,6 +18,12 @@ public class GameResultMapper {
 
     private static final DateTimeFormatter API_DATE = DateTimeFormatter.ISO_DATE_TIME;
 
+    private final FootballDataScoreNormalizer scoreNormalizer;
+
+    public GameResultMapper(FootballDataScoreNormalizer scoreNormalizer) {
+        this.scoreNormalizer = scoreNormalizer;
+    }
+
     public GameResultRecord toNewRecord(
             FootballDataMatchDto dto,
             String leagueCode,
@@ -40,7 +46,8 @@ public class GameResultMapper {
                 .awayTeamId(awayTeam.getId())
                 .status(dto.getStatus())
                 .utcDate(parseUtc(dto.getUtcDate()))
-                .gameScore(toGameScore(dto))
+                .gameScore(toCanonicalGameScore(dto))
+                .scoreDuration(resolveScoreDuration(dto))
                 .fetchedAt(fetchedAt)
                 .provider(MatchDataProviders.FOOTBALL_DATA)
                 .sources(Map.of(MatchDataProviders.sourcesStorageKey(MatchDataProviders.FOOTBALL_DATA), source))
@@ -60,7 +67,8 @@ public class GameResultMapper {
                 .externalSeason(storageSeason)
                 .status(dto.getStatus())
                 .utcDate(parseUtc(dto.getUtcDate()))
-                .gameScore(toGameScore(dto))
+                .gameScore(scoreNormalizer.toRawApiScore(dto))
+                .scoreDuration(resolveScoreDuration(dto))
                 .home(sideSnapshot(dto.getHomeTeam().getId(), dto.getHomeTeam().getName()))
                 .away(sideSnapshot(dto.getAwayTeam().getId(), dto.getAwayTeam().getName()))
                 .apiLastUpdated(parseUtc(dto.getLastUpdated()))
@@ -68,32 +76,21 @@ public class GameResultMapper {
                 .build();
     }
 
+    public GameScore toCanonicalGameScore(FootballDataMatchDto dto) {
+        return scoreNormalizer.normalize(dto);
+    }
+
+    /** @deprecated используйте {@link #toCanonicalGameScore(FootballDataMatchDto)} */
+    @Deprecated
     public GameScore toGameScore(FootballDataMatchDto dto) {
-        if (dto.getScore() == null || !FootballDataMatchStatuses.hasScore(dto.getStatus())) {
-            return null;
-        }
+        return toCanonicalGameScore(dto);
+    }
 
-        FootballDataMatchDto.Score score = dto.getScore();
-        GameScore.GameScoreBuilder builder = GameScore.builder();
-
-        if (score.getFullTime() != null && score.getFullTime().getHome() != null && score.getFullTime().getAway() != null) {
-            builder.fullTime(formatScore(score.getFullTime().getHome(), score.getFullTime().getAway()));
+    public String resolveScoreDuration(FootballDataMatchDto dto) {
+        if (dto == null || dto.getScore() == null) {
+            return FootballDataScoreNormalizer.DURATION_REGULAR;
         }
-        if (score.getHalfTime() != null && score.getHalfTime().getHome() != null && score.getHalfTime().getAway() != null) {
-            builder.firstTime(formatScore(score.getHalfTime().getHome(), score.getHalfTime().getAway()));
-        }
-        if (score.getExtraTime() != null && score.getExtraTime().getHome() != null && score.getExtraTime().getAway() != null) {
-            builder.overTime(formatScore(score.getExtraTime().getHome(), score.getExtraTime().getAway()));
-        }
-        if (score.getPenalties() != null && score.getPenalties().getHome() != null && score.getPenalties().getAway() != null) {
-            builder.penalty(formatScore(score.getPenalties().getHome(), score.getPenalties().getAway()));
-        }
-
-        GameScore gameScore = builder.build();
-        if (gameScore.getFullTime() == null) {
-            return null;
-        }
-        return gameScore;
+        return FootballDataScoreNormalizer.normalizeDuration(dto.getScore().getDuration());
     }
 
     private static GameResultSideSnapshot sideSnapshot(int externalTeamId, String externalName) {
@@ -101,10 +98,6 @@ public class GameResultMapper {
                 .externalId(String.valueOf(externalTeamId))
                 .externalName(externalName)
                 .build();
-    }
-
-    private static String formatScore(int home, int away) {
-        return home + ":" + away;
     }
 
     private static LocalDateTime parseUtc(String value) {

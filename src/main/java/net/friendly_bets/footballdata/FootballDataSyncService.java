@@ -1,42 +1,29 @@
 package net.friendly_bets.footballdata;
 
 import lombok.RequiredArgsConstructor;
-import net.friendly_bets.exceptions.BadRequestException;
+import net.friendly_bets.api_football.ApiFootballSecondarySyncService;
 import net.friendly_bets.dto.ExternalCompetitionInfoDto;
+import net.friendly_bets.exceptions.BadRequestException;
 import net.friendly_bets.footballdata.client.FootballDataClient;
 import net.friendly_bets.footballdata.client.dto.FootballDataMatchDto;
 import net.friendly_bets.footballdata.client.dto.FootballDataMatchdayResponse;
 import net.friendly_bets.footballdata.config.FootballDataProperties;
-import net.friendly_bets.models.Bet;
-import net.friendly_bets.models.ExpandedMatchdaySlot;
-import net.friendly_bets.models.GameResult;
-import net.friendly_bets.models.League;
-import net.friendly_bets.models.Season;
-import net.friendly_bets.models.Team;
-import net.friendly_bets.models.TournamentFormat;
-import net.friendly_bets.services.GetEntityService;
-import net.friendly_bets.services.TournamentFormatExpander;
-import net.friendly_bets.wc26.WcBerlinSlotMatchFilter;
+import net.friendly_bets.gameresults.GameResultFinalizer;
+import net.friendly_bets.gameresults.MatchResultStabilizationService;
+import net.friendly_bets.models.*;
 import net.friendly_bets.models.gameresults.GameResultRecord;
 import net.friendly_bets.models.gameresults.GameResultsSync;
 import net.friendly_bets.models.gameresults.GameResultsSyncStatus;
-import net.friendly_bets.repositories.BetsRepository;
-import net.friendly_bets.gameresults.GameResultFinalizer;
-import net.friendly_bets.repositories.GameResultRecordRepository;
-import net.friendly_bets.repositories.GameResultsSyncRepository;
-import net.friendly_bets.repositories.LeaguesRepository;
-import net.friendly_bets.repositories.SeasonsRepository;
+import net.friendly_bets.repositories.*;
+import net.friendly_bets.services.GetEntityService;
+import net.friendly_bets.services.TournamentFormatExpander;
+import net.friendly_bets.wc26.WcBerlinSlotMatchFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -63,13 +50,17 @@ public class FootballDataSyncService {
     private final GameResultCollector gameResultCollector;
     private final FootballDataMatchdaySupport matchdaySupport;
     private final ApiSyncIssueService apiSyncIssueService;
+    private final ApiFootballSecondarySyncService apiFootballSecondarySyncService;
+    private final MatchResultStabilizationService stabilizationService;
 
     public void registerPollingForSeason(String seasonId) {
         getEntityService.getSeasonOrThrow(seasonId);
         collectMatchdayKeysForSeasonId(seasonId).forEach(this::ensurePolling);
     }
 
-    /** Регистрирует опрос тура при новой открытой ставке. */
+    /**
+     * Регистрирует опрос тура при новой открытой ставке.
+     */
     public void registerPollingForOpenedBet(Bet bet) {
         if (bet.getBetStatus() != Bet.BetStatus.OPENED || bet.getMatchDay() == null || bet.getMatchDay().isBlank()) {
             return;
@@ -209,6 +200,8 @@ public class FootballDataSyncService {
                     externalCompetitionCode,
                     now
             );
+            apiFootballSecondarySyncService.enrichIncoming(
+                    incoming, homeTeam, awayTeam, leagueCode, storageSeason, now);
 
             Optional<GameResultRecord> existing = gameResultRecordRepository
                     .findByLeagueCodeAndMatchdayAndSeasonAndHomeTeamIdAndAwayTeamId(
@@ -230,6 +223,7 @@ public class FootballDataSyncService {
                     finishedCount++;
                 }
             } else {
+                stabilizationService.updateStabilityCounters(incoming, now);
                 gameResultFinalizer.tryFinalize(incoming, now);
                 gameResultRecordRepository.save(incoming);
                 if (incoming.isFinalized()) {

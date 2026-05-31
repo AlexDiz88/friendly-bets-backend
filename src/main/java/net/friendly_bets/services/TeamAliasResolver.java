@@ -73,6 +73,53 @@ public class TeamAliasResolver {
         return Optional.empty();
     }
 
+    public Optional<Team> resolveApiFootball(Integer apiFootballTeamId, String apiFootballTeamName) {
+        if (apiFootballTeamName != null && !apiFootballTeamName.isBlank()) {
+            Optional<Team> byAliasName = teamsRepository.findByExternalAliasName(
+                    TeamTitleUtils.API_FOOTBALL_PROVIDER, apiFootballTeamName);
+            if (byAliasName.isPresent()) {
+                return byAliasName;
+            }
+        }
+        if (apiFootballTeamId != null && apiFootballTeamId > 0) {
+            return teamsRepository.findByExternalAliasId(
+                    TeamTitleUtils.API_FOOTBALL_PROVIDER, apiFootballTeamId);
+        }
+        return Optional.empty();
+    }
+
+    public Optional<Integer> resolveApiFootballTeamId(Team team) {
+        if (team == null || team.getExternalAliases() == null) {
+            return Optional.empty();
+        }
+        for (TeamExternalAlias alias : team.getExternalAliases()) {
+            if (TeamTitleUtils.API_FOOTBALL_PROVIDER.equals(alias.getProvider())
+                    && alias.getExternalId() != null
+                    && alias.getExternalId() > 0) {
+                return Optional.of(alias.getExternalId());
+            }
+        }
+        return Optional.empty();
+    }
+
+    public boolean teamMatchesApiFootballSide(Team team, int apiFootballTeamId, String apiFootballTeamName) {
+        if (team == null) {
+            return false;
+        }
+        if (apiFootballTeamName != null && !apiFootballTeamName.isBlank()
+                && team.getExternalAliases() != null) {
+            for (TeamExternalAlias alias : team.getExternalAliases()) {
+                if (TeamTitleUtils.API_FOOTBALL_PROVIDER.equals(alias.getProvider())
+                        && apiFootballTeamName.equals(alias.getExternalName())) {
+                    return true;
+                }
+            }
+        }
+        return resolveApiFootballTeamId(team)
+                .map(id -> id.equals(apiFootballTeamId))
+                .orElse(false);
+    }
+
     /**
      * football-data.org team id для внутренней команды (обратное сопоставление к {@link #resolveFootballData}).
      */
