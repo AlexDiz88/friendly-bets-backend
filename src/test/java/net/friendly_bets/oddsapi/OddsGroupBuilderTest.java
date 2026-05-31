@@ -105,8 +105,9 @@ class OddsGroupBuilderTest {
                 .findFirst()
                 .orElseThrow();
         assertEquals(3, cs.getRows().size());
-        assertTrue(cs.getRows().stream().anyMatch(r -> "1-0".equals(r.getDisplayLabel())));
-        assertTrue(cs.getRows().stream().anyMatch(r -> "2-1".equals(r.getDisplayLabel())));
+        assertEquals("0-0", cs.getRows().get(0).getDisplayLabel());
+        assertEquals("1-0", cs.getRows().get(1).getDisplayLabel());
+        assertEquals("0-1", cs.getRows().get(2).getDisplayLabel());
     }
 
     @Test

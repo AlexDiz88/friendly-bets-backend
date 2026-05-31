@@ -21,7 +21,6 @@ public final class OddsSelectionBetTitleMapper {
             throw new BadRequestException("betMarketNotAllowedForSelfService");
         }
         if (category == OddsMarketCategory.EXCLUDED
-                || category == OddsMarketCategory.CORRECT_SCORE
                 || category == OddsMarketCategory.OTHER) {
             throw new BadRequestException("betMarketNotAllowedForSelfService");
         }
@@ -54,6 +53,7 @@ public final class OddsSelectionBetTitleMapper {
                         .build();
             }
             case HANDICAP -> code = mapHandicap(line, selection);
+            case CORRECT_SCORE -> code = mapCorrectScore(row.getSelectionCode());
             default -> throw new BadRequestException("betMarketNotAllowedForSelfService");
         }
 
@@ -94,6 +94,15 @@ public final class OddsSelectionBetTitleMapper {
         boolean over = "OVER".equals(selection);
         String prefix = home ? "HOME_TEAM" : "AWAY_TEAM";
         String name = prefix + "_" + (over ? "OVER" : "UNDER") + "_" + suffix;
+        return findEnum(name).orElseThrow(() -> new BadRequestException("betMarketNotAllowedForSelfService"));
+    }
+
+    private static BetTitleCode mapCorrectScore(String selection) {
+        int[] score = OddsCorrectScoreUtils.parseScore(selection);
+        if (score == null) {
+            throw new BadRequestException("betMarketNotAllowedForSelfService");
+        }
+        String name = "GAME_SCORE_" + score[0] + "_" + score[1];
         return findEnum(name).orElseThrow(() -> new BadRequestException("betMarketNotAllowedForSelfService"));
     }
 

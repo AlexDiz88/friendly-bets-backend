@@ -78,6 +78,9 @@ public class OddsPresentationService {
         List<OddsMarketGroup> groups = OddsGroupBuilder.build(bookmakerMarkets, canonicalByLower, matchContext);
         OddsSelectionKey.enrichGroups(groups);
         enrichBetTitles(groups);
+        groups = groups.stream()
+                .filter(g -> g.getRows() != null && !g.getRows().isEmpty())
+                .toList();
 
         return OddsEventMarketsDto.builder()
                 .gameResultId(gameResultId)
@@ -208,13 +211,23 @@ public class OddsPresentationService {
             if (group.getRows() == null || group.getCategory() == null) {
                 continue;
             }
+            OddsMarketCategory category;
+            try {
+                category = OddsMarketCategory.valueOf(group.getCategory());
+            } catch (IllegalArgumentException e) {
+                continue;
+            }
+            List<net.friendly_bets.models.odds.OddsLineRow> bettable = new ArrayList<>();
             for (var row : group.getRows()) {
                 try {
                     row.setBetTitle(OddsSelectionBetTitleMapper.toBetTitle(group.getCategory(), row));
+                    row.setDisplayLabel(OddsDisplayLabelFormatter.format(category, row));
+                    bettable.add(row);
                 } catch (BadRequestException ignored) {
                     row.setBetTitle(null);
                 }
             }
+            group.setRows(bettable);
         }
     }
 }

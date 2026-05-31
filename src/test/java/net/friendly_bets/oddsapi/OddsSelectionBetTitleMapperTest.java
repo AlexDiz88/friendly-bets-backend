@@ -40,4 +40,18 @@ class OddsSelectionBetTitleMapperTest {
         assertEquals(BetTitleCode.BOTH_TEAMS_SCORE.getLabel(), title.getLabel());
         assertEquals(true, title.isNot());
     }
+
+    @Test
+    @DisplayName("maps correct score 1-0 to GAME_SCORE_1_0")
+    void mapsCorrectScore() {
+        OddsLineRow row = OddsLineRow.builder()
+                .selectionCode("1-0")
+                .displayLabel("1-0")
+                .build();
+
+        BetTitle title = OddsSelectionBetTitleMapper.toBetTitle("CORRECT_SCORE", row);
+
+        assertEquals(BetTitleCode.GAME_SCORE_1_0.getCode(), title.getCode());
+        assertEquals("Счёт 1:0", title.getLabel());
+    }
 }

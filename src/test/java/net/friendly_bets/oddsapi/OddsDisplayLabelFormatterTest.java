@@ -1,0 +1,58 @@
+package net.friendly_bets.oddsapi;
+
+import net.friendly_bets.models.BetTitle;
+import net.friendly_bets.models.enums.BetTitleCode;
+import net.friendly_bets.models.odds.OddsLineRow;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+class OddsDisplayLabelFormatterTest {
+
+    @Test
+    @DisplayName("formats handicap with space before parenthesis")
+    void formatsHandicap() {
+        OddsLineRow row = OddsLineRow.builder()
+                .line("-2.5")
+                .selectionCode("HOME")
+                .betTitle(BetTitle.builder()
+                        .code(BetTitleCode.HANDICAP_HOME_MINUS_2_5.getCode())
+                        .label("Ф1(-2.5)")
+                        .build())
+                .build();
+
+        assertEquals("Ф1 (-2.5)", OddsDisplayLabelFormatter.format(OddsMarketCategory.HANDICAP, row));
+    }
+
+    @Test
+    @DisplayName("formats totals as ТБ/ТМ with line")
+    void formatsTotals() {
+        OddsLineRow row = OddsLineRow.builder()
+                .line("2.5")
+                .selectionCode("OVER")
+                .betTitle(BetTitle.builder()
+                        .code(BetTitleCode.TOTAL_OVER_2_5.getCode())
+                        .label("ТБ 2.5")
+                        .build())
+                .build();
+
+        assertEquals("ТБ 2.5", OddsDisplayLabelFormatter.format(OddsMarketCategory.TOTALS, row));
+    }
+
+    @Test
+    @DisplayName("shortens home team total label")
+    void shortensHomeTeamTotal() {
+        OddsLineRow row = OddsLineRow.builder()
+                .line("1.5")
+                .selectionCode("OVER")
+                .betTitle(BetTitle.builder()
+                        .code(BetTitleCode.HOME_TEAM_OVER_1_5.getCode())
+                        .label("Хозяева ИТБ 1.5")
+                        .build())
+                .build();
+
+        assertEquals("ИТБ 1.5", OddsDisplayLabelFormatter.format(OddsMarketCategory.TEAM_TOTAL_HOME, row));
+    }
+}

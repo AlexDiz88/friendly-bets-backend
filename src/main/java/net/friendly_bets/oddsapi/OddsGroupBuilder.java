@@ -144,6 +144,9 @@ public final class OddsGroupBuilder {
     }
 
     private static Comparator<OddsLineRow> rowComparator(OddsMarketCategory category) {
+        if (category == OddsMarketCategory.CORRECT_SCORE) {
+            return Comparator.comparingInt(r -> OddsCorrectScoreUtils.sortKey(r.getSelectionCode()));
+        }
         return Comparator
                 .comparingDouble((OddsLineRow r) -> parseLine(r.getLine()))
                 .thenComparingInt(r -> selectionOrder(category, r.getSelectionCode()));

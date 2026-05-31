@@ -71,6 +71,11 @@ public class BetsService {
 
         validateBet(newOpenedBet);
         checkIfBetAlreadyExists(betsRepository, newOpenedBet);
+        calendarsService.getLeagueMatchdayNode(
+                newOpenedBet.getCalendarNodeId(),
+                newOpenedBet.getLeagueId(),
+                newOpenedBet.getMatchDay()
+        );
         Team homeTeam = getEntityService.getTeamOrThrow(newOpenedBet.getHomeTeamId());
         Team awayTeam = getEntityService.getTeamOrThrow(newOpenedBet.getAwayTeamId());
 
@@ -99,6 +104,12 @@ public class BetsService {
         Season season = getEntityService.getSeasonOrThrow(newEmptyBet.getSeasonId());
         League league = getEntityService.getLeagueOrThrow(newEmptyBet.getLeagueId());
         leagueMatchdayService.validateMatchDayForLeague(league, newEmptyBet.getMatchDay());
+
+        calendarsService.getLeagueMatchdayNode(
+                newEmptyBet.getCalendarNodeId(),
+                newEmptyBet.getLeagueId(),
+                newEmptyBet.getMatchDay()
+        );
 
         Bet emptyBet = createNewEmptyBet(newEmptyBet, moderator, user, season, league);
 
