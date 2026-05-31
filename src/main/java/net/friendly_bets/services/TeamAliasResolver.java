@@ -58,6 +58,13 @@ public class TeamAliasResolver {
         return Optional.empty();
     }
 
+    public boolean oddsApiAliasesMapped(Integer oddsApiTeamId, String oddsApiTeamName) {
+        boolean idOk = oddsApiTeamId == null || oddsApiTeamId <= 0 || resolveOddsApiById(oddsApiTeamId).isPresent();
+        boolean nameOk = oddsApiTeamName == null || oddsApiTeamName.isBlank()
+                || resolveOddsApiByName(oddsApiTeamName).isPresent();
+        return idOk && nameOk;
+    }
+
     public Optional<Team> resolveOddsApiById(Integer oddsApiTeamId) {
         if (oddsApiTeamId == null || oddsApiTeamId <= 0) {
             return Optional.empty();

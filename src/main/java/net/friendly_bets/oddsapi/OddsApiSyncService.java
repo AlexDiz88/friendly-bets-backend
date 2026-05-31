@@ -93,6 +93,7 @@ public class OddsApiSyncService {
         int oddsDocumentsSaved = 0;
         int matchesSkippedStarted = 0;
         int mappingFailures = 0;
+        int teamMappingFailures = 0;
 
         List<String> bookmakers;
         try {
@@ -140,15 +141,17 @@ public class OddsApiSyncService {
             oddsDocumentsSaved += leagueResult.oddsDocumentsSaved();
             matchesSkippedStarted += leagueResult.matchesSkippedStarted();
             mappingFailures += leagueResult.mappingFailures();
+            teamMappingFailures += leagueResult.teamMappingFailures();
         }
 
         log.info(
-                "odds-api sync tick: leagues={}, eligible={}, saved={}, skippedStarted={}, mappingFailures={}",
+                "odds-api sync tick: leagues={}, eligible={}, saved={}, skippedStarted={}, mappingFailures={}, teamMappingFailures={}",
                 leaguesProcessed,
                 matchesEligible,
                 oddsDocumentsSaved,
                 matchesSkippedStarted,
-                mappingFailures
+                mappingFailures,
+                teamMappingFailures
         );
 
         return OddsApiSyncResult.builder()
@@ -157,6 +160,7 @@ public class OddsApiSyncService {
                 .oddsDocumentsSaved(oddsDocumentsSaved)
                 .matchesSkippedStarted(matchesSkippedStarted)
                 .mappingFailures(mappingFailures)
+                .teamMappingFailures(teamMappingFailures)
                 .build();
     }
 
@@ -190,7 +194,7 @@ public class OddsApiSyncService {
             if (failWhenNoPendingMatches) {
                 throw new BadRequestException("oddsSyncNoMatchdayMatches");
             }
-            return new LeagueMatchdaySyncCounters(0, 0, 0, matchesSkippedStarted, 0);
+            return new LeagueMatchdaySyncCounters(0, 0, 0, matchesSkippedStarted, 0, 0);
         }
 
         List<OddsApiEventDto> leagueEvents;
@@ -198,20 +202,22 @@ public class OddsApiSyncService {
             leagueEvents = oddsApiClient.fetchEvents(leagueSlug, "pending");
         } catch (Exception e) {
             log.warn("odds-api events fetch failed for {}: {}", leagueSlug, e.getMessage());
-            return new LeagueMatchdaySyncCounters(0, pending.size(), 0, matchesSkippedStarted, pending.size());
+            return new LeagueMatchdaySyncCounters(0, pending.size(), 0, matchesSkippedStarted, pending.size(), 0);
         }
 
         List<OddsApiEventDto> slotEvents = eventMatcher.eventsForPendingMatches(pending, leagueEvents);
 
         Map<Long, GameResultRecord> eventIdToMatch = new LinkedHashMap<>();
         int mappingFailures = 0;
+        OddsTeamMappingCollector teamMappingCollector = new OddsTeamMappingCollector();
         for (GameResultRecord match : pending) {
             Optional<Long> eventId = eventMatcher.resolveAndPersistEventId(
                     match,
                     slotEvents,
                     leagueCode,
                     season,
-                    matchday
+                    matchday,
+                    teamMappingCollector
             );
             if (eventId.isEmpty()) {
                 mappingFailures++;
@@ -233,12 +239,23 @@ public class OddsApiSyncService {
             }
         }
 
+        if (teamMappingCollector.getIssueCount() > 0) {
+            OddsTeamMappingLog.logSyncSummary(
+                    log,
+                    teamMappingCollector.getIssueCount(),
+                    leagueCode,
+                    matchday,
+                    season
+            );
+        }
+
         return new LeagueMatchdaySyncCounters(
                 1,
                 pending.size(),
                 oddsDocumentsSaved,
                 matchesSkippedStarted,
-                mappingFailures
+                mappingFailures,
+                teamMappingCollector.getIssueCount()
         );
     }
 
@@ -270,7 +287,8 @@ public class OddsApiSyncService {
             int matchesEligible,
             int oddsDocumentsSaved,
             int matchesSkippedStarted,
-            int mappingFailures
+            int mappingFailures,
+            int teamMappingFailures
     ) {
         OddsApiSyncResult toResult() {
             return OddsApiSyncResult.builder()
@@ -279,6 +297,7 @@ public class OddsApiSyncService {
                     .oddsDocumentsSaved(oddsDocumentsSaved)
                     .matchesSkippedStarted(matchesSkippedStarted)
                     .mappingFailures(mappingFailures)
+                    .teamMappingFailures(teamMappingFailures)
                     .build();
         }
     }

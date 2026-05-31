@@ -13,6 +13,8 @@ import net.friendly_bets.repositories.GameResultRecordRepository;
 import net.friendly_bets.services.GetEntityService;
 import net.friendly_bets.services.TeamAliasResolver;
 import net.friendly_bets.utils.TeamTitleUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
@@ -28,6 +30,8 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class OddsApiEventMatcher {
 
+    private static final Logger log = LoggerFactory.getLogger(OddsApiEventMatcher.class);
+
     private final TeamAliasResolver teamAliasResolver;
     private final GetEntityService getEntityService;
     private final ApiSyncIssueService apiSyncIssueService;
@@ -40,6 +44,17 @@ public class OddsApiEventMatcher {
             String leagueCode,
             String season,
             int matchday
+    ) {
+        return resolveAndPersistEventId(match, leagueEvents, leagueCode, season, matchday, null);
+    }
+
+    public Optional<Long> resolveAndPersistEventId(
+            GameResultRecord match,
+            List<OddsApiEventDto> leagueEvents,
+            String leagueCode,
+            String season,
+            int matchday,
+            OddsTeamMappingCollector teamMappingCollector
     ) {
         if (match == null) {
             return Optional.empty();
@@ -54,7 +69,7 @@ public class OddsApiEventMatcher {
             if (event == null || event.getId() == null) {
                 continue;
             }
-            if (sidesMatch(match, event)) {
+            if (sidesMatch(match, event, teamMappingCollector)) {
                 matched.add(event);
             }
         }
@@ -121,25 +136,32 @@ public class OddsApiEventMatcher {
         return filtered;
     }
 
-    private boolean sidesMatch(GameResultRecord match, OddsApiEventDto event) {
-        return sideMatches(match, event, true) && sideMatches(match, event, false);
+    private boolean sidesMatch(
+            GameResultRecord match,
+            OddsApiEventDto event,
+            OddsTeamMappingCollector teamMappingCollector
+    ) {
+        return sideMatches(match, event, true, teamMappingCollector)
+                && sideMatches(match, event, false, teamMappingCollector);
     }
 
-    private boolean sideMatches(GameResultRecord match, OddsApiEventDto event, boolean home) {
+    private boolean sideMatches(
+            GameResultRecord match,
+            OddsApiEventDto event,
+            boolean home,
+            OddsTeamMappingCollector teamMappingCollector
+    ) {
         String apiName = home ? event.getHome() : event.getAway();
         Integer apiId = home ? event.getHomeId() : event.getAwayId();
         String teamId = home ? match.getHomeTeamId() : match.getAwayTeamId();
         String fdName = externalName(match, home);
-        boolean idChipRecorded = false;
+
+        recordMissingOddsApiAliases(match, home, apiName, apiId, teamId, teamMappingCollector);
 
         if (apiId != null && apiId > 0) {
             Optional<Team> byId = teamAliasResolver.resolveOddsApiById(apiId);
             if (byId.isPresent() && teamId != null && teamId.equals(byId.get().getId())) {
                 return true;
-            }
-            if (byId.isEmpty() && apiName != null && !apiName.isBlank()) {
-                apiSyncIssueService.recordOddsTeamMappingMissing(match, home, apiName, apiId);
-                idChipRecorded = true;
             }
         }
 
@@ -159,19 +181,47 @@ public class OddsApiEventMatcher {
             }
         }
 
-        if (TeamNameNormalizer.namesMatch(fdName, apiName)) {
-            return true;
+        return TeamNameNormalizer.namesMatch(fdName, apiName);
+    }
+
+    private void recordMissingOddsApiAliases(
+            GameResultRecord match,
+            boolean home,
+            String apiName,
+            Integer apiId,
+            String internalTeamId,
+            OddsTeamMappingCollector teamMappingCollector
+    ) {
+        if (apiName == null || apiName.isBlank()) {
+            return;
+        }
+        if (teamAliasResolver.oddsApiAliasesMapped(apiId, apiName)) {
+            return;
         }
 
-        if (!idChipRecorded && apiName != null && !apiName.isBlank()) {
-            apiSyncIssueService.recordOddsTeamMappingMissing(
-                    match,
-                    home,
-                    apiName,
-                    apiId
-            );
+        String side = home ? "home" : "away";
+        boolean idMissing = apiId != null && apiId > 0 && teamAliasResolver.resolveOddsApiById(apiId).isEmpty();
+        boolean nameMissing = teamAliasResolver.resolveOddsApiByName(apiName).isEmpty();
+
+        String sideKey = match.getId() + ":" + side + ":" + apiId + ":" + apiName;
+        if (teamMappingCollector != null && !teamMappingCollector.registerSideIssue(sideKey)) {
+            return;
         }
-        return false;
+
+        int issueNumber = teamMappingCollector != null ? teamMappingCollector.getIssueCount() : 0;
+        OddsTeamMappingLog.logIssue(
+                log,
+                issueNumber,
+                match,
+                side,
+                internalTeamId,
+                apiName,
+                apiId,
+                idMissing,
+                nameMissing
+        );
+
+        apiSyncIssueService.recordOddsTeamMappingMissing(match, home, apiName, apiId);
     }
 
     private boolean matchesInternalTeam(Team team, String apiName, Integer apiId) {

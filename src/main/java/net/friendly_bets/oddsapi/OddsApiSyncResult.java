@@ -12,4 +12,5 @@ public class OddsApiSyncResult {
     int oddsDocumentsSaved;
     int matchesSkippedStarted;
     int mappingFailures;
+    int teamMappingFailures;
 }

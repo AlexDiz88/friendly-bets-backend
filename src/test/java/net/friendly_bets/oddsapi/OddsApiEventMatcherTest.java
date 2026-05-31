@@ -74,6 +74,7 @@ class OddsApiEventMatcherTest {
         event.setAway("Liverpool FC");
         event.setDate(match.getUtcDate().atZone(java.time.ZoneOffset.UTC).toString());
 
+        when(teamAliasResolver.oddsApiAliasesMapped(any(), any())).thenReturn(true);
         when(teamAliasResolver.resolveOddsApiById(any())).thenReturn(Optional.empty());
         when(teamAliasResolver.resolveOddsApiByName(any())).thenReturn(Optional.empty());
         Team home = Team.builder().id("home-id").title("ManUnited").build();
@@ -95,8 +96,46 @@ class OddsApiEventMatcherTest {
     }
 
     @Test
+    void resolve_countsTeamMappingIssuesWhenAliasMissing() {
+        GameResultRecord match = buildMatch("gr4", "home-id", "away-id");
+        OddsApiEventDto event = new OddsApiEventDto();
+        event.setId(55L);
+        event.setHome("Manchester United FC");
+        event.setHomeId(9001);
+        event.setAway("Liverpool FC");
+        event.setAwayId(9002);
+        event.setDate(match.getUtcDate().atZone(java.time.ZoneOffset.UTC).toString());
+
+        when(teamAliasResolver.oddsApiAliasesMapped(any(), any())).thenReturn(false);
+        when(teamAliasResolver.resolveOddsApiById(any())).thenReturn(Optional.empty());
+        when(teamAliasResolver.resolveOddsApiByName(any())).thenReturn(Optional.empty());
+        Team home = Team.builder().id("home-id").title("ManUnited").build();
+        Team away = Team.builder().id("away-id").title("Liverpool").build();
+        when(getEntityService.getTeamOrThrow("home-id")).thenReturn(home);
+        when(getEntityService.getTeamOrThrow("away-id")).thenReturn(away);
+
+        OddsTeamMappingCollector collector = new OddsTeamMappingCollector();
+        Optional<Long> result = matcher.resolveAndPersistEventId(
+                match,
+                List.of(event),
+                "EPL",
+                "2025",
+                5,
+                collector
+        );
+
+        assertTrue(result.isPresent());
+        assertEquals(2, collector.getIssueCount());
+        verify(apiSyncIssueService).recordOddsTeamMappingMissing(
+                eq(match), eq(true), eq("Manchester United FC"), eq(9001));
+        verify(apiSyncIssueService).recordOddsTeamMappingMissing(
+                eq(match), eq(false), eq("Liverpool FC"), eq(9002));
+    }
+
+    @Test
     void resolve_recordsIssueWhenNoEvent() {
         GameResultRecord match = buildMatch("gr3", "h", "a");
+        when(teamAliasResolver.oddsApiAliasesMapped(any(), any())).thenReturn(true);
         when(teamAliasResolver.resolveOddsApiById(any())).thenReturn(Optional.empty());
         when(teamAliasResolver.resolveOddsApiByName(any())).thenReturn(Optional.empty());
         when(getEntityService.getTeamOrThrow(any())).thenReturn(Team.builder().id("x").title("X").build());

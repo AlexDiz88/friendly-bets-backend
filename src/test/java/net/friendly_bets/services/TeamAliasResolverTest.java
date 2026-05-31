@@ -11,6 +11,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.when;
 
@@ -115,5 +116,20 @@ class TeamAliasResolverTest {
                 .thenReturn(Optional.empty());
 
         assertTrue(resolver.resolveWc26Code("KOR").isEmpty());
+    }
+
+    @Test
+    @DisplayName("oddsApiAliasesMapped requires both id and name aliases when present")
+    void oddsApiAliasesMapped_requiresBothWhenPresent() {
+        resolver = new TeamAliasResolver(teamsRepository);
+        when(teamsRepository.findByExternalAliasId("odds-api.io", 42))
+                .thenReturn(Optional.of(Team.builder().id("t1").title("T1").build()));
+        when(teamsRepository.findByExternalAliasName("odds-api.io", "Team A"))
+                .thenReturn(Optional.of(Team.builder().id("t1").title("T1").build()));
+        when(teamsRepository.findByExternalAliasName("odds-api.io", "Team B"))
+                .thenReturn(Optional.empty());
+
+        assertTrue(resolver.oddsApiAliasesMapped(42, "Team A"));
+        assertFalse(resolver.oddsApiAliasesMapped(42, "Team B"));
     }
 }

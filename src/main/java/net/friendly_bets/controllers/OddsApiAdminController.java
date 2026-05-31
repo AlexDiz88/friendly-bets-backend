@@ -44,7 +44,8 @@ public class OddsApiAdminController {
                 "matchesEligible", result.getMatchesEligible(),
                 "oddsDocumentsSaved", result.getOddsDocumentsSaved(),
                 "matchesSkippedStarted", result.getMatchesSkippedStarted(),
-                "mappingFailures", result.getMappingFailures()
+                "mappingFailures", result.getMappingFailures(),
+                "teamMappingFailures", result.getTeamMappingFailures()
         ));
     }
 }

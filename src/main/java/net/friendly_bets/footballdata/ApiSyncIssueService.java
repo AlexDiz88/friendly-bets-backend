@@ -128,11 +128,7 @@ public class ApiSyncIssueService {
             return;
         }
         String externalId = oddsApiTeamId != null ? String.valueOf(oddsApiTeamId) : null;
-        if (oddsApiTeamId != null && oddsApiTeamId > 0) {
-            if (teamAliasResolver.resolveOddsApiById(oddsApiTeamId).isPresent()) {
-                return;
-            }
-        } else if (teamAliasResolver.resolveOddsApiByName(oddsApiTeamName).isPresent()) {
+        if (teamAliasResolver.oddsApiAliasesMapped(oddsApiTeamId, oddsApiTeamName)) {
             return;
         }
         apiSyncIssueRepository.save(ApiSyncIssue.builder()
@@ -340,11 +336,7 @@ public class ApiSyncIssueService {
         }
         int parsedId = parseExternalId(externalId);
         if (MatchDataProviders.ODDS_API.equals(provider)) {
-            if (parsedId > 0) {
-                if (teamAliasResolver.resolveOddsApiById(parsedId).isPresent()) {
-                    return;
-                }
-            } else if (teamAliasResolver.resolveOddsApiByName(name).isPresent()) {
+            if (teamAliasResolver.oddsApiAliasesMapped(parsedId > 0 ? parsedId : null, name)) {
                 return;
             }
         } else if (MatchDataProviders.API_FOOTBALL.equals(provider)) {
