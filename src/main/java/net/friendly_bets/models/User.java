@@ -49,4 +49,12 @@ public class User {
 
     @Field(name = "language")
     private String language;
+
+    /** light | dark | system — предпочитаемая тема интерфейса */
+    @Field(name = "theme_preference")
+    private String themePreference;
+
+    /** Показывать переключатель темы в шапке сайта */
+    @Field(name = "show_theme_toggle")
+    private Boolean showThemeToggle;
 }

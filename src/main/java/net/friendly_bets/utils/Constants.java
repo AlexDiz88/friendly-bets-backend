@@ -15,6 +15,11 @@ public class Constants {
     public static final String LANGUAGE_RU = "ru";
     public static final List<String> SUPPORTED_LANGUAGES = List.of(LANGUAGE_EN, LANGUAGE_DE, LANGUAGE_RU);
 
+    public static final String THEME_LIGHT = "light";
+    public static final String THEME_DARK = "dark";
+    public static final String THEME_SYSTEM = "system";
+    public static final List<String> SUPPORTED_THEME_PREFERENCES = List.of(THEME_LIGHT, THEME_DARK, THEME_SYSTEM);
+
 
     public static final List<Bet.BetStatus> WRL_STATUSES = List.of(
             Bet.BetStatus.WON,

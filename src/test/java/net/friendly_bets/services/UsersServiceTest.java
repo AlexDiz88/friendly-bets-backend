@@ -2,6 +2,7 @@ package net.friendly_bets.services;
 
 import net.friendly_bets.dto.UpdatedEmailDto;
 import net.friendly_bets.dto.UpdatedPasswordDto;
+import net.friendly_bets.dto.UpdatedThemeSettingsDto;
 import net.friendly_bets.dto.UpdatedUsernameDto;
 import net.friendly_bets.dto.UserDto;
 import net.friendly_bets.exceptions.BadRequestException;
@@ -310,6 +311,60 @@ class UsersServiceTest {
 
     private static Stream<String> unsupportedLanguagesProvider() {
         return Stream.of("-en", "_de_", "'ru'", "eng", "Deutsch", "ру");
+    }
+
+    // ------------------------------------------------------------------------------------------------------ //
+
+    @ParameterizedTest
+    @DisplayName("Should return updated UserDto with new theme settings when values are valid")
+    @MethodSource("supportedThemePreferencesProvider")
+    void changeThemeSettings_ReturnsUpdatedUserDto_WhenThemeSettingsAreValid(
+            String inputThemePreference,
+            String expectedThemePreference,
+            boolean showThemeToggle) {
+        // given
+        when(getEntityService.getUserOrThrow(userId)).thenReturn(user);
+        when(usersRepository.save(any(User.class))).thenReturn(user);
+        UpdatedThemeSettingsDto dto = new UpdatedThemeSettingsDto(inputThemePreference, showThemeToggle);
+
+        // when
+        UserDto actualResult = usersService.changeThemeSettings(userId, dto);
+
+        // then
+        assertNotNull(actualResult);
+        assertEquals(expectedThemePreference, actualResult.getThemePreference());
+        assertEquals(showThemeToggle, actualResult.getShowThemeToggle());
+        verify(usersRepository, times(1)).save(user);
+    }
+
+    private static Stream<org.junit.jupiter.params.provider.Arguments> supportedThemePreferencesProvider() {
+        return Stream.of(
+                org.junit.jupiter.params.provider.Arguments.of("light", "light", true),
+                org.junit.jupiter.params.provider.Arguments.of("dark", "dark", false),
+                org.junit.jupiter.params.provider.Arguments.of("system", "system", true),
+                org.junit.jupiter.params.provider.Arguments.of(" LIGHT ", "light", true),
+                org.junit.jupiter.params.provider.Arguments.of("Dark", "dark", false)
+        );
+    }
+
+    @ParameterizedTest
+    @DisplayName("Should throw BadRequestException when theme preference is not supported")
+    @MethodSource("unsupportedThemePreferencesProvider")
+    void changeThemeSettings_ThrowsBadRequestException_WhenThemePreferenceIsNotSupported(String unsupportedThemePreference) {
+        // given
+        when(getEntityService.getUserOrThrow(userId)).thenReturn(user);
+        UpdatedThemeSettingsDto dto = new UpdatedThemeSettingsDto(unsupportedThemePreference, true);
+
+        // when + then
+        BadRequestException exception = assertThrows(BadRequestException.class,
+                () -> usersService.changeThemeSettings(userId, dto));
+
+        assertEquals("themePreferenceNotSupported", exception.getMessage());
+        verify(usersRepository, never()).save(any(User.class));
+    }
+
+    private static Stream<String> unsupportedThemePreferencesProvider() {
+        return Stream.of("auto", "night", "day", "system-dark", "");
     }
 
 }
