@@ -49,7 +49,7 @@ class ApiSyncIssueServiceTest {
                         .build()
         ));
         when(teamAliasResolver.resolveFootballData(123, "United States")).thenReturn(Optional.empty());
-        when(teamAliasResolver.resolveOddsApi(456, "United States")).thenReturn(Optional.empty());
+        when(teamAliasResolver.resolveOddsApiById(456)).thenReturn(Optional.empty());
 
         List<UnmappedExternalTeamNameDto> hints = apiSyncIssueService.getUnmappedTeamNameHints();
 

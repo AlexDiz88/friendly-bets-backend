@@ -23,6 +23,36 @@ class TeamAliasResolverTest {
     TeamAliasResolver resolver = null;
 
     @Test
+    @DisplayName("resolveOddsApi prefers id over name when both match different teams")
+    void resolveOddsApi_prefersIdOverName() {
+        resolver = new TeamAliasResolver(teamsRepository);
+        when(teamsRepository.findByExternalAliasId("odds-api.io", 100))
+                .thenReturn(Optional.of(Team.builder().id("by-id").title("ById").build()));
+        when(teamsRepository.findByExternalAliasName("odds-api.io", "Other Name"))
+                .thenReturn(Optional.of(Team.builder().id("by-name").title("ByName").build()));
+
+        Optional<Team> team = resolver.resolveOddsApi(100, "Other Name");
+
+        assertTrue(team.isPresent());
+        assertEquals("by-id", team.get().getId());
+    }
+
+    @Test
+    @DisplayName("resolveOddsApi falls back to name when id is missing")
+    void resolveOddsApi_fallsBackToName() {
+        resolver = new TeamAliasResolver(teamsRepository);
+        when(teamsRepository.findByExternalAliasId("odds-api.io", 999))
+                .thenReturn(Optional.empty());
+        when(teamsRepository.findByExternalAliasName("odds-api.io", "Brighton & Hove Albion"))
+                .thenReturn(Optional.of(Team.builder().id("bha1").title("Brighton").build()));
+
+        Optional<Team> team = resolver.resolveOddsApi(999, "Brighton & Hove Albion");
+
+        assertTrue(team.isPresent());
+        assertEquals("bha1", team.get().getId());
+    }
+
+    @Test
     @DisplayName("resolveFootballData matches by saved external alias name")
     void resolveFootballData_matchesByAliasName() {
         resolver = new TeamAliasResolver(teamsRepository);

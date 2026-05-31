@@ -130,10 +130,22 @@ public class OddsApiEventMatcher {
         Integer apiId = home ? event.getHomeId() : event.getAwayId();
         String teamId = home ? match.getHomeTeamId() : match.getAwayTeamId();
         String fdName = externalName(match, home);
+        boolean idChipRecorded = false;
 
-        Optional<Team> byAlias = teamAliasResolver.resolveOddsApi(apiId, apiName);
-        if (byAlias.isPresent() && teamId != null) {
-            return teamId.equals(byAlias.get().getId());
+        if (apiId != null && apiId > 0) {
+            Optional<Team> byId = teamAliasResolver.resolveOddsApiById(apiId);
+            if (byId.isPresent() && teamId != null && teamId.equals(byId.get().getId())) {
+                return true;
+            }
+            if (byId.isEmpty() && apiName != null && !apiName.isBlank()) {
+                apiSyncIssueService.recordOddsTeamMappingMissing(match, home, apiName, apiId);
+                idChipRecorded = true;
+            }
+        }
+
+        Optional<Team> byName = teamAliasResolver.resolveOddsApiByName(apiName);
+        if (byName.isPresent() && teamId != null && teamId.equals(byName.get().getId())) {
+            return true;
         }
 
         if (teamId != null && !teamId.isBlank()) {
@@ -151,7 +163,7 @@ public class OddsApiEventMatcher {
             return true;
         }
 
-        if (apiName != null && !apiName.isBlank()) {
+        if (!idChipRecorded && apiName != null && !apiName.isBlank()) {
             apiSyncIssueService.recordOddsTeamMappingMissing(
                     match,
                     home,
@@ -166,6 +178,12 @@ public class OddsApiEventMatcher {
         if (team == null) {
             return false;
         }
+        if (apiId != null && apiId > 0) {
+            Optional<Team> byId = teamAliasResolver.resolveOddsApiById(apiId);
+            if (byId.isPresent()) {
+                return team.getId().equals(byId.get().getId());
+            }
+        }
         if (apiName != null && TeamNameNormalizer.namesMatch(TeamTitleUtils.effectiveTitle(team), apiName)) {
             return true;
         }
@@ -177,7 +195,7 @@ public class OddsApiEventMatcher {
                 return true;
             }
         }
-        return teamAliasResolver.resolveOddsApi(apiId, apiName)
+        return teamAliasResolver.resolveOddsApiByName(apiName)
                 .map(t -> t.getId().equals(team.getId()))
                 .orElse(false);
     }

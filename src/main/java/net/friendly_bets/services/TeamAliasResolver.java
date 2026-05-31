@@ -58,19 +58,28 @@ public class TeamAliasResolver {
         return Optional.empty();
     }
 
+    public Optional<Team> resolveOddsApiById(Integer oddsApiTeamId) {
+        if (oddsApiTeamId == null || oddsApiTeamId <= 0) {
+            return Optional.empty();
+        }
+        return teamsRepository.findByExternalAliasId(
+                TeamTitleUtils.ODDS_API_PROVIDER, oddsApiTeamId);
+    }
+
+    public Optional<Team> resolveOddsApiByName(String oddsApiTeamName) {
+        if (oddsApiTeamName == null || oddsApiTeamName.isBlank()) {
+            return Optional.empty();
+        }
+        return teamsRepository.findByExternalAliasName(
+                TeamTitleUtils.ODDS_API_PROVIDER, oddsApiTeamName);
+    }
+
     public Optional<Team> resolveOddsApi(Integer oddsApiTeamId, String oddsApiTeamName) {
-        if (oddsApiTeamName != null && !oddsApiTeamName.isBlank()) {
-            Optional<Team> byAliasName = teamsRepository.findByExternalAliasName(
-                    TeamTitleUtils.ODDS_API_PROVIDER, oddsApiTeamName);
-            if (byAliasName.isPresent()) {
-                return byAliasName;
-            }
+        Optional<Team> byId = resolveOddsApiById(oddsApiTeamId);
+        if (byId.isPresent()) {
+            return byId;
         }
-        if (oddsApiTeamId != null && oddsApiTeamId > 0) {
-            return teamsRepository.findByExternalAliasId(
-                    TeamTitleUtils.ODDS_API_PROVIDER, oddsApiTeamId);
-        }
-        return Optional.empty();
+        return resolveOddsApiByName(oddsApiTeamName);
     }
 
     public Optional<Team> resolveApiFootball(Integer apiFootballTeamId, String apiFootballTeamName) {

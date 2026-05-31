@@ -74,7 +74,8 @@ class OddsApiEventMatcherTest {
         event.setAway("Liverpool FC");
         event.setDate(match.getUtcDate().atZone(java.time.ZoneOffset.UTC).toString());
 
-        when(teamAliasResolver.resolveOddsApi(any(), any())).thenReturn(Optional.empty());
+        when(teamAliasResolver.resolveOddsApiById(any())).thenReturn(Optional.empty());
+        when(teamAliasResolver.resolveOddsApiByName(any())).thenReturn(Optional.empty());
         Team home = Team.builder().id("home-id").title("ManUnited").build();
         Team away = Team.builder().id("away-id").title("Liverpool").build();
         when(getEntityService.getTeamOrThrow("home-id")).thenReturn(home);
@@ -96,7 +97,8 @@ class OddsApiEventMatcherTest {
     @Test
     void resolve_recordsIssueWhenNoEvent() {
         GameResultRecord match = buildMatch("gr3", "h", "a");
-        when(teamAliasResolver.resolveOddsApi(any(), any())).thenReturn(Optional.empty());
+        when(teamAliasResolver.resolveOddsApiById(any())).thenReturn(Optional.empty());
+        when(teamAliasResolver.resolveOddsApiByName(any())).thenReturn(Optional.empty());
         when(getEntityService.getTeamOrThrow(any())).thenReturn(Team.builder().id("x").title("X").build());
 
         Optional<Long> result = matcher.resolveAndPersistEventId(match, List.of(), "EPL", "2025", 1);
