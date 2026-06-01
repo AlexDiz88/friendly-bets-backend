@@ -2,6 +2,7 @@ package net.friendly_bets.footballdata;
 
 import lombok.RequiredArgsConstructor;
 import net.friendly_bets.dto.UnmappedExternalTeamNameDto;
+import net.friendly_bets.exceptions.NotFoundException;
 import net.friendly_bets.footballdata.client.dto.FootballDataMatchDto;
 import net.friendly_bets.gameresults.GameScoreValidator;
 import net.friendly_bets.gameresults.MatchDataProviders;
@@ -295,7 +296,50 @@ public class ApiSyncIssueService {
     }
 
     public List<ApiSyncIssue> getLatest() {
+        purgeResolvedTeamMappingIssues();
         return apiSyncIssueRepository.findTop200ByOrderByCreatedAtDesc();
+    }
+
+    public void deleteById(String id) {
+        if (id == null || id.isBlank() || !apiSyncIssueRepository.existsById(id)) {
+            throw new NotFoundException("ApiSyncIssue", id);
+        }
+        apiSyncIssueRepository.deleteById(id);
+    }
+
+    /**
+     * Removes {@code TEAM_MAPPING_MISSING} entries for one external team once its alias is saved.
+     */
+    public int purgeTeamMappingIssuesForExternalTeam(
+            String provider,
+            String externalName,
+            Integer externalId
+    ) {
+        if (!isExternalTeamMapped(provider, externalId, externalName)) {
+            return 0;
+        }
+        List<String> toDelete = collectMatchingTeamMappingIssueIds(provider, externalName, externalId);
+        if (toDelete.isEmpty()) {
+            return 0;
+        }
+        apiSyncIssueRepository.deleteAllById(toDelete);
+        return toDelete.size();
+    }
+
+    /** Drops resolved team-mapping issues so refresh reflects current aliases. */
+    public int purgeResolvedTeamMappingIssues() {
+        List<ApiSyncIssue> all = apiSyncIssueRepository.findTop200ByOrderByCreatedAtDesc();
+        List<String> toDelete = new ArrayList<>();
+        for (ApiSyncIssue issue : all) {
+            if (isResolvedTeamMappingIssue(issue)) {
+                toDelete.add(issue.getId());
+            }
+        }
+        if (toDelete.isEmpty()) {
+            return 0;
+        }
+        apiSyncIssueRepository.deleteAllById(toDelete);
+        return toDelete.size();
     }
 
     public void clearAll() {
@@ -380,5 +424,88 @@ public class ApiSyncIssueService {
         } catch (NumberFormatException e) {
             return 0;
         }
+    }
+
+    private boolean isResolvedTeamMappingIssue(ApiSyncIssue issue) {
+        if (issue == null || !ApiSyncIssue.IssueType.TEAM_MAPPING_MISSING.name().equals(issue.getIssueType())) {
+            return false;
+        }
+        String provider = issue.getProvider() != null
+                ? issue.getProvider()
+                : MatchDataProviders.FOOTBALL_DATA;
+        if (issue.getHomeTeamName() != null || issue.getHomeTeamExternalId() != null) {
+            return isExternalTeamMapped(
+                    provider,
+                    parseExternalId(issue.getHomeTeamExternalId()),
+                    issue.getHomeTeamName()
+            );
+        }
+        if (issue.getAwayTeamName() != null || issue.getAwayTeamExternalId() != null) {
+            return isExternalTeamMapped(
+                    provider,
+                    parseExternalId(issue.getAwayTeamExternalId()),
+                    issue.getAwayTeamName()
+            );
+        }
+        return false;
+    }
+
+    private List<String> collectMatchingTeamMappingIssueIds(
+            String provider,
+            String externalName,
+            Integer externalId
+    ) {
+        List<String> toDelete = new ArrayList<>();
+        for (ApiSyncIssue issue : apiSyncIssueRepository.findTop200ByOrderByCreatedAtDesc()) {
+            if (!ApiSyncIssue.IssueType.TEAM_MAPPING_MISSING.name().equals(issue.getIssueType())) {
+                continue;
+            }
+            if (!providerEquals(issue.getProvider(), provider)) {
+                continue;
+            }
+            if (issueMatchesExternalTeam(issue, externalName, externalId)) {
+                toDelete.add(issue.getId());
+            }
+        }
+        return toDelete;
+    }
+
+    private static boolean providerEquals(String issueProvider, String provider) {
+        String left = issueProvider != null ? issueProvider : MatchDataProviders.FOOTBALL_DATA;
+        String right = provider != null ? provider : MatchDataProviders.FOOTBALL_DATA;
+        return left.equals(right);
+    }
+
+    private static boolean issueMatchesExternalTeam(
+            ApiSyncIssue issue,
+            String externalName,
+            Integer externalId
+    ) {
+        return matchesSide(externalName, externalId, issue.getHomeTeamName(), issue.getHomeTeamExternalId())
+                || matchesSide(externalName, externalId, issue.getAwayTeamName(), issue.getAwayTeamExternalId());
+    }
+
+    private static boolean matchesSide(
+            String externalName,
+            Integer externalId,
+            String issueName,
+            String issueExternalId
+    ) {
+        if (externalId != null && externalId > 0 && issueExternalId != null
+                && String.valueOf(externalId).equals(issueExternalId.trim())) {
+            return true;
+        }
+        return externalName != null && !externalName.isBlank() && externalName.equals(issueName);
+    }
+
+    private boolean isExternalTeamMapped(String provider, Integer externalId, String externalName) {
+        if (MatchDataProviders.ODDS_API.equals(provider)) {
+            return teamAliasResolver.oddsApiAliasesMapped(externalId, externalName);
+        }
+        if (MatchDataProviders.API_FOOTBALL.equals(provider)) {
+            return teamAliasResolver.resolveApiFootball(externalId, externalName).isPresent();
+        }
+        int footballDataId = externalId != null && externalId > 0 ? externalId : 0;
+        return teamAliasResolver.resolveFootballData(footballDataId, externalName).isPresent();
     }
 }

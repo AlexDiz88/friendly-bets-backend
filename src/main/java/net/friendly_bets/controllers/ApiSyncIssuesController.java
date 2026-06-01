@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -40,6 +41,13 @@ public class ApiSyncIssuesController {
     @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<List<UnmappedExternalTeamNameDto>> getUnmappedTeamNames() {
         return ResponseEntity.ok(apiSyncIssueService.getUnmappedTeamNameHints());
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('ADMIN') || hasAuthority('MODERATOR')")
+    public ResponseEntity<Map<String, Object>> deleteById(@PathVariable String id) {
+        apiSyncIssueService.deleteById(id);
+        return ResponseEntity.ok(Map.of("message", "apiSyncIssueDeleted"));
     }
 
     @DeleteMapping

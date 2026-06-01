@@ -10,6 +10,7 @@ import net.friendly_bets.dto.TeamExternalAliasDto;
 import net.friendly_bets.dto.TeamsPage;
 import net.friendly_bets.dto.UpdateTeamDto;
 import net.friendly_bets.exceptions.ConflictException;
+import net.friendly_bets.footballdata.ApiSyncIssueService;
 import net.friendly_bets.models.Team;
 import net.friendly_bets.models.TeamDisplayNames;
 import net.friendly_bets.models.TeamExternalAlias;
@@ -31,6 +32,7 @@ public class TeamsService {
 
     TeamsRepository teamsRepository;
     GetEntityService getEntityService;
+    ApiSyncIssueService apiSyncIssueService;
 
     public TeamsPage getAll() {
         List<Team> allTeams = teamsRepository.findAll();
@@ -67,6 +69,7 @@ public class TeamsService {
                 .build();
 
         teamsRepository.save(team);
+        purgeTeamMappingIssuesForAliases(aliases);
         return TeamDto.from(team);
     }
 
@@ -93,7 +96,26 @@ public class TeamsService {
         }
 
         teamsRepository.save(team);
+        if (update.getExternalAliases() != null) {
+            purgeTeamMappingIssuesForAliases(team.getExternalAliases());
+        }
         return TeamDto.from(team);
+    }
+
+    private void purgeTeamMappingIssuesForAliases(List<TeamExternalAlias> aliases) {
+        if (aliases == null) {
+            return;
+        }
+        for (TeamExternalAlias alias : aliases) {
+            if (alias.getProvider() == null) {
+                continue;
+            }
+            apiSyncIssueService.purgeTeamMappingIssuesForExternalTeam(
+                    alias.getProvider(),
+                    alias.getExternalName(),
+                    alias.getExternalId()
+            );
+        }
     }
 
     private static List<TeamExternalAlias> buildAliases(
