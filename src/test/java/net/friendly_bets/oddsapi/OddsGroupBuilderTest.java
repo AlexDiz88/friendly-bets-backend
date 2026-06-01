@@ -134,7 +134,20 @@ class OddsGroupBuilderTest {
                 .findFirst();
         assertTrue(handicap.isPresent());
         assertEquals(2, handicap.get().getRows().size());
-        assertTrue(handicap.get().getRows().stream().allMatch(r -> "-1".equals(r.getLine())));
+
+        OddsLineRow home = handicap.get().getRows().stream()
+                .filter(r -> "HOME".equals(r.getSelectionCode()))
+                .findFirst()
+                .orElseThrow();
+        OddsLineRow away = handicap.get().getRows().stream()
+                .filter(r -> "AWAY".equals(r.getSelectionCode()))
+                .findFirst()
+                .orElseThrow();
+
+        assertEquals("-1", home.getLine());
+        assertEquals("-1", away.getLine());
+        assertEquals("Ф1 (-1)", OddsDisplayLabelFormatter.format(OddsMarketCategory.HANDICAP, home));
+        assertEquals("Ф2 (+1)", OddsDisplayLabelFormatter.format(OddsMarketCategory.HANDICAP, away));
     }
 
     private OddsApiMarketDto market(String name, String oddsJson) throws Exception {

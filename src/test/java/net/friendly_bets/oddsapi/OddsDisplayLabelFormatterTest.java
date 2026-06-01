@@ -7,7 +7,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class OddsDisplayLabelFormatterTest {
 
@@ -24,6 +23,32 @@ class OddsDisplayLabelFormatterTest {
                 .build();
 
         assertEquals("Ф1 (-2.5)", OddsDisplayLabelFormatter.format(OddsMarketCategory.HANDICAP, row));
+    }
+
+    @Test
+    @DisplayName("formats away handicap with inverted sign")
+    void formatsAwayHandicap() {
+        OddsLineRow row = OddsLineRow.builder()
+                .line("-2.5")
+                .selectionCode("AWAY")
+                .betTitle(BetTitle.builder()
+                        .code(BetTitleCode.HANDICAP_AWAY_PLUS_2_5.getCode())
+                        .label("Ф2(+2.5)")
+                        .build())
+                .build();
+
+        assertEquals("Ф2 (+2.5)", OddsDisplayLabelFormatter.format(OddsMarketCategory.HANDICAP, row));
+    }
+
+    @Test
+    @DisplayName("formats raw away handicap from api hdp")
+    void formatsRawAwayHandicap() {
+        OddsLineRow row = OddsLineRow.builder()
+                .line("-3.5")
+                .selectionCode("AWAY")
+                .build();
+
+        assertEquals("Ф2 (+3.5)", OddsDisplayLabelFormatter.format(OddsMarketCategory.HANDICAP, row));
     }
 
     @Test

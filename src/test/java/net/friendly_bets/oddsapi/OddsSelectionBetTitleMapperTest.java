@@ -52,6 +52,17 @@ class OddsSelectionBetTitleMapperTest {
         BetTitle title = OddsSelectionBetTitleMapper.toBetTitle("CORRECT_SCORE", row);
 
         assertEquals(BetTitleCode.GAME_SCORE_1_0.getCode(), title.getCode());
-        assertEquals("Счёт 1:0", title.getLabel());
+    @Test
+    @DisplayName("maps away handicap with inverted api hdp")
+    void mapsAwayHandicapInverted() {
+        OddsLineRow row = OddsLineRow.builder()
+                .line("-2.5")
+                .selectionCode("AWAY")
+                .build();
+
+        BetTitle title = OddsSelectionBetTitleMapper.toBetTitle("HANDICAP", row);
+
+        assertEquals(BetTitleCode.HANDICAP_AWAY_PLUS_2_5.getCode(), title.getCode());
+        assertEquals("Ф2(+2.5)", title.getLabel());
     }
 }

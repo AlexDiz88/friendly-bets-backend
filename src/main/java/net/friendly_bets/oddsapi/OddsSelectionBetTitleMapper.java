@@ -107,20 +107,20 @@ public final class OddsSelectionBetTitleMapper {
     }
 
     private static BetTitleCode mapHandicap(String line, String selection) {
-        double h = parseLine(line);
         boolean home = "HOME".equals(selection);
-        String suffix = handicapSuffix(h, home);
+        double effective = OddsHandicapLine.effectiveLine(line, home);
+        String suffix = handicapSuffix(effective, home);
         String prefix = home ? "HANDICAP_HOME" : "HANDICAP_AWAY";
         return findEnum(prefix + suffix)
                 .orElseThrow(() -> new BadRequestException("betMarketNotAllowedForSelfService"));
     }
 
-    private static String handicapSuffix(double line, boolean home) {
-        if (line == 0) {
+    private static String handicapSuffix(double effectiveLine, boolean home) {
+        if (Math.abs(effectiveLine) < 1e-9) {
             return "_0";
         }
-        String sign = line > 0 ? "PLUS" : "MINUS";
-        String value = formatLine(Math.abs(line));
+        String sign = effectiveLine > 0 ? "PLUS" : "MINUS";
+        String value = formatLine(Math.abs(effectiveLine));
         return "_" + sign + "_" + value;
     }
 

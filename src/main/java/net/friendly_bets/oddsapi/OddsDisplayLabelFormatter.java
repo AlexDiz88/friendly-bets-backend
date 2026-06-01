@@ -69,11 +69,12 @@ public final class OddsDisplayLabelFormatter {
 
     private static String formatHandicapRaw(String line, OddsSelectionCode code) {
         String side = code == OddsSelectionCode.HOME ? "Ф1" : "Ф2";
-        String formattedLine = formatLineValue(line);
-        if (formattedLine.isEmpty()) {
+        boolean home = code == OddsSelectionCode.HOME;
+        double effective = OddsHandicapLine.effectiveLine(line, home);
+        if (Math.abs(effective) < 1e-9 && (line == null || line.isBlank())) {
             return side;
         }
-        return side + " (" + formattedLine + ")";
+        return side + " (" + OddsHandicapLine.formatSigned(effective) + ")";
     }
 
     private static String formatTotalRaw(String line, OddsSelectionCode code) {
