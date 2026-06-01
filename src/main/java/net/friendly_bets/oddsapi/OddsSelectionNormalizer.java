@@ -23,7 +23,7 @@ public final class OddsSelectionNormalizer {
         String key = rawSelectionKey.trim().toLowerCase(Locale.ROOT);
 
         return switch (category) {
-            case MATCH_RESULT -> normalizeMatchResult(key);
+            case MATCH_RESULT, HALF_TIME_RESULT -> normalizeMatchResult(key);
             case DOUBLE_CHANCE -> normalizeDoubleChance(key, match);
             case HANDICAP -> normalizeSide(key);
             case TOTALS, TEAM_TOTAL_HOME, TEAM_TOTAL_AWAY -> normalizeOverUnder(key);
@@ -34,9 +34,9 @@ public final class OddsSelectionNormalizer {
 
     private static Optional<OddsSelectionCode> normalizeMatchResult(String key) {
         return switch (key) {
-            case "home" -> Optional.of(OddsSelectionCode.HOME);
-            case "draw" -> Optional.of(OddsSelectionCode.DRAW);
-            case "away" -> Optional.of(OddsSelectionCode.AWAY);
+            case "home", "1" -> Optional.of(OddsSelectionCode.HOME);
+            case "draw", "x" -> Optional.of(OddsSelectionCode.DRAW);
+            case "away", "2" -> Optional.of(OddsSelectionCode.AWAY);
             default -> Optional.empty();
         };
     }

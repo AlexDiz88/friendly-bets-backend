@@ -9,7 +9,15 @@ class OddsMarketCatalogTest {
     @Test
     void resolvesHandicapAliases() {
         assertEquals(OddsMarketCategory.HANDICAP, OddsMarketCatalog.resolveCategory("Spread"));
+        assertEquals(OddsMarketCategory.HANDICAP, OddsMarketCatalog.resolveCategory("Handicap"));
         assertEquals(OddsMarketCategory.HANDICAP, OddsMarketCatalog.resolveCategory("Alternative Asian Handicap"));
+    }
+
+    @Test
+    void resolvesHalfTimeMarkets() {
+        assertEquals(OddsMarketCategory.HALF_TIME_RESULT, OddsMarketCatalog.resolveCategory("Half Time Result"));
+        assertEquals(OddsMarketCategory.BTTS, OddsMarketCatalog.resolveCategory("Both Teams To Score HT"));
+        assertEquals(OddsMarketCategory.BTTS, OddsMarketCatalog.resolveCategory("Both Teams To Score 2H"));
     }
 
     @Test

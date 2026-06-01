@@ -50,6 +50,14 @@ public enum OddsSelectionCode {
                 default -> 99;
             };
         }
+        if (category == OddsMarketCategory.HALF_TIME_RESULT) {
+            return switch (this) {
+                case HOME -> 1;
+                case DRAW -> 2;
+                case AWAY -> 3;
+                default -> 99;
+            };
+        }
         if (category == OddsMarketCategory.TOTALS || category == OddsMarketCategory.TEAM_TOTAL_HOME
                 || category == OddsMarketCategory.TEAM_TOTAL_AWAY) {
             return switch (this) {

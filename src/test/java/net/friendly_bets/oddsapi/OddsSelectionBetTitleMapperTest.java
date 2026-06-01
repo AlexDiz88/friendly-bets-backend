@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class OddsSelectionBetTitleMapperTest {
 
@@ -39,6 +40,19 @@ class OddsSelectionBetTitleMapperTest {
         assertEquals(BetTitleCode.BOTH_TEAMS_SCORE.getCode(), title.getCode());
         assertEquals(BetTitleCode.BOTH_TEAMS_SCORE.getLabel(), title.getLabel());
         assertEquals(true, title.isNot());
+    }
+
+    @Test
+    @DisplayName("maps BTTS 1st half NO")
+    void mapsBttsFirstHalfNo() {
+        OddsLineRow row = OddsLineRow.builder()
+                .selectionCode("NO_1H")
+                .build();
+
+        BetTitle title = OddsSelectionBetTitleMapper.toBetTitle("BTTS", row);
+
+        assertEquals(BetTitleCode.BOTH_TEAMS_SCORE_1ST_HALF.getCode(), title.getCode());
+        assertTrue(title.isNot());
     }
 
     @Test

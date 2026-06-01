@@ -80,4 +80,28 @@ class OddsDisplayLabelFormatterTest {
 
         assertEquals("ИТБ 1.5", OddsDisplayLabelFormatter.format(OddsMarketCategory.TEAM_TOTAL_HOME, row));
     }
+
+    @Test
+    @DisplayName("formats BTTS yes and no labels")
+    void formatsBttsLabels() {
+        OddsLineRow yes = OddsLineRow.builder()
+                .selectionCode("YES")
+                .betTitle(BetTitle.builder()
+                        .code(BetTitleCode.BOTH_TEAMS_SCORE.getCode())
+                        .label("Обе забьют")
+                        .isNot(false)
+                        .build())
+                .build();
+        OddsLineRow no = OddsLineRow.builder()
+                .selectionCode("NO")
+                .betTitle(BetTitle.builder()
+                        .code(BetTitleCode.BOTH_TEAMS_SCORE.getCode())
+                        .label("Обе забьют")
+                        .isNot(true)
+                        .build())
+                .build();
+
+        assertEquals("Обе забьют", OddsDisplayLabelFormatter.format(OddsMarketCategory.BTTS, yes));
+        assertEquals("Обе забьют — нет", OddsDisplayLabelFormatter.format(OddsMarketCategory.BTTS, no));
+    }
 }

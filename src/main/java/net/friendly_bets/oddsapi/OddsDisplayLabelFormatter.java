@@ -12,6 +12,9 @@ public final class OddsDisplayLabelFormatter {
     }
 
     public static String format(OddsMarketCategory category, OddsLineRow row) {
+        if (category == OddsMarketCategory.BTTS) {
+            return formatBttsRaw(row);
+        }
         BetTitle betTitle = row.getBetTitle();
         if (betTitle != null && betTitle.getLabel() != null && !betTitle.getLabel().isBlank()) {
             return formatFromBetTitle(category, betTitle.getLabel());
@@ -23,6 +26,8 @@ public final class OddsDisplayLabelFormatter {
         return switch (category) {
             case HANDICAP -> formatHandicapLabel(label);
             case TEAM_TOTAL_HOME, TEAM_TOTAL_AWAY -> shortenTeamTotalLabel(label);
+            case BTTS -> label;
+            case HALF_TIME_RESULT -> label;
             default -> label;
         };
     }
@@ -32,6 +37,9 @@ public final class OddsDisplayLabelFormatter {
         String selection = row.getSelectionCode();
         if (selection == null) {
             return row.getDisplayLabel() != null ? row.getDisplayLabel() : "";
+        }
+        if (category == OddsMarketCategory.BTTS) {
+            return formatBttsRaw(row);
         }
         OddsSelectionCode code;
         try {
@@ -43,8 +51,26 @@ public final class OddsDisplayLabelFormatter {
             case HANDICAP -> formatHandicapRaw(line, code);
             case TOTALS -> formatTotalRaw(line, code);
             case TEAM_TOTAL_HOME, TEAM_TOTAL_AWAY -> formatTeamTotalRaw(line, code);
+            case HALF_TIME_RESULT -> code.displayLabel();
             default -> code.displayLabel();
         };
+    }
+
+    private static String formatBttsRaw(OddsLineRow row) {
+        BetTitle betTitle = row.getBetTitle();
+        if (betTitle != null && betTitle.getLabel() != null && !betTitle.getLabel().isBlank()) {
+            if (betTitle.isNot()) {
+                return betTitle.getLabel() + " — нет";
+            }
+            return betTitle.getLabel();
+        }
+        String base = OddsBttsScope.baseSelectionCode(row.getSelectionCode());
+        try {
+            OddsSelectionCode code = OddsSelectionCode.valueOf(base);
+            return code.displayLabel();
+        } catch (IllegalArgumentException e) {
+            return row.getDisplayLabel() != null ? row.getDisplayLabel() : "";
+        }
     }
 
     /** «Ф1(-2.5)» → «Ф1 (-2.5)» */

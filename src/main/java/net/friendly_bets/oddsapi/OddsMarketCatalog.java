@@ -16,20 +16,23 @@ public final class OddsMarketCatalog {
         if (name.equals("ml")) {
             return OddsMarketCategory.MATCH_RESULT;
         }
+        if (name.equals("half time result")) {
+            return OddsMarketCategory.HALF_TIME_RESULT;
+        }
         if (name.equals("double chance")) {
             return OddsMarketCategory.DOUBLE_CHANCE;
         }
         if (name.contains("european handicap")) {
             return OddsMarketCategory.EXCLUDED;
         }
-        if (name.equals("spread") || name.contains("asian handicap")) {
+        if (isHandicapMarket(name)) {
             return OddsMarketCategory.HANDICAP;
         }
         if (name.equals("totals") || name.equals("goals over/under")
                 || name.equals("alternative goal line")) {
             return OddsMarketCategory.TOTALS;
         }
-        if (name.startsWith("both teams to score") && !name.contains("ht") && !name.contains("2h")) {
+        if (name.startsWith("both teams to score")) {
             return OddsMarketCategory.BTTS;
         }
         if (name.equals("team total home") || name.equals("team total goals home")) {
@@ -53,7 +56,16 @@ public final class OddsMarketCatalog {
         return OddsMarketCategory.OTHER;
     }
 
+    private static boolean isHandicapMarket(String name) {
+        return name.equals("spread")
+                || name.equals("handicap")
+                || name.contains("asian handicap");
+    }
+
     private static boolean isHalfTimeOrExcludedVariant(String name) {
+        if (name.startsWith("both teams to score") || name.equals("half time result")) {
+            return false;
+        }
         return name.contains(" ht") || name.endsWith(" ht")
                 || name.contains("half time")
                 || name.contains("1st half")
@@ -68,6 +80,7 @@ public final class OddsMarketCatalog {
     public static String i18nGroupKey(OddsMarketCategory category) {
         return switch (category) {
             case MATCH_RESULT -> "matchResult";
+            case HALF_TIME_RESULT -> "halfTimeResult";
             case DOUBLE_CHANCE -> "doubleChance";
             case HANDICAP -> "handicap";
             case TOTALS -> "totals";

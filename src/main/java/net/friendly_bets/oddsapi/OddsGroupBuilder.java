@@ -41,6 +41,9 @@ public final class OddsGroupBuilder {
                 }
                 Map<String, OddsLineRow> categoryRows = rowsByCategory.computeIfAbsent(
                         category, k -> new LinkedHashMap<>());
+                OddsBttsScope bttsScope = category == OddsMarketCategory.BTTS
+                        ? OddsBttsScope.fromMarketName(market.getName())
+                        : null;
 
                 for (ParsedOddsMarket.ParsedOddsLine line : market.getLines()) {
                     if (category == OddsMarketCategory.CORRECT_SCORE || category == OddsMarketCategory.OTHER) {
@@ -52,11 +55,15 @@ public final class OddsGroupBuilder {
                     OddsSelectionNormalizer.normalizeLinePrices(
                             category, line.getPrices(), match, normalized);
 
+                    String canonicalLine = canonicalStoredLine(category, line.getLine());
                     for (Map.Entry<OddsSelectionCode, String> price : normalized.entrySet()) {
-                        String key = rowKey(category, line.getLine(), price.getKey().name());
+                        String selectionCode = category == OddsMarketCategory.BTTS
+                                ? bttsScope.selectionCode(price.getKey())
+                                : price.getKey().name();
+                        String key = rowKey(category, canonicalLine, selectionCode, bttsScope);
                         OddsLineRow row = categoryRows.computeIfAbsent(key, k -> OddsLineRow.builder()
-                                .line(categoryUsesLine(category) ? line.getLine() : null)
-                                .selectionCode(price.getKey().name())
+                                .line(categoryUsesLine(category) ? canonicalLine : null)
+                                .selectionCode(selectionCode)
                                 .displayLabel(price.getKey().displayLabel())
                                 .bookmakerOdds(new LinkedHashMap<>())
                                 .build());
@@ -96,7 +103,7 @@ public final class OddsGroupBuilder {
             }
             String key = category == OddsMarketCategory.OTHER
                     ? otherRowKey(marketName, selection)
-                    : rowKey(category, line.getLine(), selection);
+                    : rowKey(category, line.getLine(), selection, null);
             String displayLabel = category == OddsMarketCategory.OTHER
                     ? formatOtherDisplayLabel(marketName, selection)
                     : formatCorrectScoreLabel(selection);
@@ -128,6 +135,16 @@ public final class OddsGroupBuilder {
                 || category == OddsMarketCategory.TEAM_TOTAL_AWAY;
     }
 
+    private static String canonicalStoredLine(OddsMarketCategory category, String line) {
+        if (!categoryUsesLine(category) || line == null || line.isBlank()) {
+            return line;
+        }
+        if (category == OddsMarketCategory.HANDICAP) {
+            return OddsHandicapLine.canonicalApiLine(line);
+        }
+        return OddsHandicapLine.canonicalApiLine(line);
+    }
+
     private static String otherRowKey(String marketName, String selection) {
         String market = marketName == null || marketName.isBlank()
                 ? ""
@@ -135,7 +152,18 @@ public final class OddsGroupBuilder {
         return market + "|" + selection.trim();
     }
 
-    private static String rowKey(OddsMarketCategory category, String line, String selection) {
+    private static String rowKey(
+            OddsMarketCategory category,
+            String line,
+            String selection,
+            OddsBttsScope bttsScope
+    ) {
+        if (category == OddsMarketCategory.BTTS && bttsScope != null) {
+            return bttsScope.name() + "|" + selection;
+        }
+        if (category == OddsMarketCategory.HANDICAP) {
+            return handicapRowKey(line, selection);
+        }
         if (!categoryUsesLine(category)) {
             return selection;
         }
@@ -143,13 +171,39 @@ public final class OddsGroupBuilder {
         return linePart + "|" + selection;
     }
 
+    private static String handicapRowKey(String apiLine, String selection) {
+        boolean home = "HOME".equals(selection);
+        double effective = OddsHandicapLine.effectiveLine(apiLine, home);
+        return OddsHandicapLine.formatSortKey(effective) + "|" + selection;
+    }
+
     private static Comparator<OddsLineRow> rowComparator(OddsMarketCategory category) {
         if (category == OddsMarketCategory.CORRECT_SCORE) {
             return Comparator.comparingInt(r -> OddsCorrectScoreUtils.sortKey(r.getSelectionCode()));
         }
+        if (category == OddsMarketCategory.BTTS) {
+            return Comparator
+                    .comparingInt((OddsLineRow r) -> OddsBttsScope.fromSelectionCode(r.getSelectionCode()).getSortOrder())
+                    .thenComparingInt(r -> selectionOrder(category, r.getSelectionCode()));
+        }
+        if (category == OddsMarketCategory.HANDICAP) {
+            return Comparator
+                    .comparingDouble(OddsGroupBuilder::handicapAbsSortKey)
+                    .thenComparingDouble(OddsGroupBuilder::handicapEffectiveSortKey)
+                    .thenComparingInt(r -> selectionOrder(category, r.getSelectionCode()));
+        }
         return Comparator
                 .comparingDouble((OddsLineRow r) -> parseLine(r.getLine()))
                 .thenComparingInt(r -> selectionOrder(category, r.getSelectionCode()));
+    }
+
+    private static double handicapEffectiveSortKey(OddsLineRow row) {
+        boolean home = "HOME".equals(row.getSelectionCode());
+        return OddsHandicapLine.effectiveLine(row.getLine(), home);
+    }
+
+    private static double handicapAbsSortKey(OddsLineRow row) {
+        return Math.abs(handicapEffectiveSortKey(row));
     }
 
     private static double parseLine(String line) {
@@ -167,8 +221,11 @@ public final class OddsGroupBuilder {
         if (selectionCode == null) {
             return 99;
         }
+        String base = category == OddsMarketCategory.BTTS
+                ? OddsBttsScope.baseSelectionCode(selectionCode)
+                : selectionCode;
         try {
-            return OddsSelectionCode.valueOf(selectionCode).orderWithinGroup(category);
+            return OddsSelectionCode.valueOf(base).orderWithinGroup(category);
         } catch (IllegalArgumentException e) {
             return 99;
         }

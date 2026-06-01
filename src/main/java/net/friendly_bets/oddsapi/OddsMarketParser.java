@@ -73,7 +73,9 @@ public final class OddsMarketParser {
         if (hdp == null || hdp.isNull()) {
             return null;
         }
-        return hdp.isNumber() ? String.valueOf(hdp.asDouble()) : hdp.asText();
+        return hdp.isNumber()
+                ? OddsHandicapLine.canonicalApiLine(String.valueOf(hdp.asDouble()))
+                : OddsHandicapLine.canonicalApiLine(hdp.asText());
     }
 
     private static Map<String, String> extractPrices(JsonNode row) {

@@ -36,4 +36,23 @@ public final class OddsHandicapLine {
         }
         return Double.parseDouble(line.trim().replace(',', '.'));
     }
+
+    /** Нормализует api-линию: {@code -1.0} → {@code -1}, {@code 2.5} без изменений. */
+    public static String canonicalApiLine(String line) {
+        if (line == null || line.isBlank()) {
+            return line;
+        }
+        return formatSortKey(parse(line));
+    }
+
+    /** Числовой ключ для сортировки и слияния строк с одинаковой эффективной форой. */
+    public static String formatSortKey(double value) {
+        if (Math.abs(value) < 1e-9) {
+            return "0";
+        }
+        if (value == Math.floor(value)) {
+            return String.valueOf((int) Math.round(value));
+        }
+        return String.valueOf(value);
+    }
 }
