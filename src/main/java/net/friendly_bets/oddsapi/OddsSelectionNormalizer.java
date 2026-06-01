@@ -54,13 +54,25 @@ public final class OddsSelectionNormalizer {
     }
 
     static Optional<OddsSelectionCode> resolveDoubleChanceFromLabel(String label, OddsMatchContext match) {
-        if (match == null) {
+        if (match == null || label == null || label.isBlank()) {
             return Optional.empty();
         }
-        String text = label.toLowerCase(Locale.ROOT);
-        boolean hasDraw = containsDraw(text);
-        boolean hasHome = mentionsTeam(text, match.getHomeTeamName());
-        boolean hasAway = mentionsTeam(text, match.getAwayTeamName());
+        boolean hasDraw = false;
+        boolean hasHome = false;
+        boolean hasAway = false;
+        for (String segment : label.toLowerCase(Locale.ROOT).split("\\s+or\\s+")) {
+            String part = segment.trim();
+            if (part.isEmpty()) {
+                continue;
+            }
+            if (containsDraw(part)) {
+                hasDraw = true;
+            } else if (teamSegmentMatches(part, match.getHomeTeamName())) {
+                hasHome = true;
+            } else if (teamSegmentMatches(part, match.getAwayTeamName())) {
+                hasAway = true;
+            }
+        }
 
         if (hasHome && hasDraw && !hasAway) {
             return Optional.of(OddsSelectionCode.DC_1X);
@@ -74,30 +86,21 @@ public final class OddsSelectionNormalizer {
         return Optional.empty();
     }
 
-    private static boolean containsDraw(String text) {
-        return text.contains("draw") || text.equals("x") || text.contains(" ничья")
-                || text.startsWith("x ") || text.endsWith(" x");
-    }
-
-    private static boolean mentionsTeam(String text, String teamName) {
+    private static boolean teamSegmentMatches(String segment, String teamName) {
         if (teamName == null || teamName.isBlank()) {
             return false;
         }
-        if (TeamNameNormalizer.namesMatch(text, teamName)) {
-            return true;
-        }
-        String normalizedTeam = TeamNameNormalizer.normalize(teamName);
-        if (normalizedTeam.isEmpty()) {
+        String canonicalSegment = OddsTeamAliases.canonicalForMatch(segment);
+        String canonicalTeam = OddsTeamAliases.canonicalForMatch(teamName);
+        if (canonicalSegment.isEmpty() || canonicalTeam.isEmpty()) {
             return false;
         }
-        String[] tokens = normalizedTeam.split("\\s+");
-        int matched = 0;
-        for (String token : tokens) {
-            if (token.length() >= 3 && text.contains(token)) {
-                matched++;
-            }
-        }
-        return matched > 0 && matched >= Math.min(2, tokens.length);
+        return TeamNameNormalizer.namesMatch(canonicalSegment, canonicalTeam);
+    }
+
+    private static boolean containsDraw(String text) {
+        return text.contains("draw") || text.equals("x") || text.contains(" ничья")
+                || text.startsWith("x ") || text.endsWith(" x");
     }
 
     private static Optional<OddsSelectionCode> normalizeSide(String key) {

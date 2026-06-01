@@ -29,8 +29,14 @@ public final class OddsMarketCatalog {
             return OddsMarketCategory.HANDICAP;
         }
         if (name.equals("totals") || name.equals("goals over/under")
-                || name.equals("alternative goal line")) {
+                || name.equals("alternative total goals")) {
             return OddsMarketCategory.TOTALS;
+        }
+        if (name.equals("exact total goals")) {
+            return OddsMarketCategory.EXACT_TOTAL_GOALS;
+        }
+        if (name.equals("alternative goal line")) {
+            return OddsMarketCategory.EXCLUDED;
         }
         if (name.startsWith("both teams to score")) {
             return OddsMarketCategory.BTTS;
@@ -85,6 +91,8 @@ public final class OddsMarketCatalog {
             case HANDICAP -> "handicap";
             case TOTALS -> "totals";
             case BTTS -> "btts";
+            case GOALS -> "goals";
+            case EXACT_TOTAL_GOALS -> "exactTotalGoals";
             case TEAM_TOTAL_HOME -> "teamTotalHome";
             case TEAM_TOTAL_AWAY -> "teamTotalAway";
             case CORRECT_SCORE -> "correctScore";

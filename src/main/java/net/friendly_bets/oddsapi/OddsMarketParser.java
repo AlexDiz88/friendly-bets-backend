@@ -116,7 +116,8 @@ public final class OddsMarketParser {
     }
 
     private static boolean isMetaKey(String key) {
-        return "hdp".equals(key) || "handicap".equals(key) || "max".equals(key) || "label".equals(key);
+        return "hdp".equals(key) || "handicap".equals(key) || "max".equals(key) || "label".equals(key)
+                || "market".equals(key);
     }
 
     private static String textOdds(JsonNode node) {

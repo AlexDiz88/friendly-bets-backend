@@ -1,20 +1,42 @@
 package net.friendly_bets.oddsapi;
 
 /**
- * Азиатская фора в API букмекеров (Bet365, 1xbet): поле {@code hdp} задаёт линию хозяев,
- * у гостей — противоположный знак (напр. hdp −2.5 → Ф1(−2.5), Ф2(+2.5)).
+ * Линия форы из поля {@code hdp} в JSON odds-api.
+ * <ul>
+ *   <li>1xbet {@code Spread}: хозяева — {@code hdp} как есть; гости — знак инвертируется
+ *       ({@code hdp=1} → Ф1(+1) и Ф2(−1) в одной строке).</li>
+ *   <li>Bet365 (любой рынок фор): хозяева и гости — {@code hdp} как в JSON, без инверсии
+ *       ({@code hdp=−1.5} → Ф1(−1.5) и Ф2(−1.5)).</li>
+ * </ul>
  */
 public final class OddsHandicapLine {
 
     private OddsHandicapLine() {
     }
 
+    /** 1xbet Spread: для гостей знак {@code hdp} инвертируется. */
+    public static final boolean INVERT_AWAY_SIGN_XBET_SPREAD = true;
+
+    /** Bet365: {@code hdp} применяется к обеим сторонам без инверсии. */
+    public static final boolean INVERT_AWAY_SIGN_BET365 = false;
+
     public static double effectiveLine(String apiLine, boolean home) {
-        return effectiveLine(parse(apiLine), home);
+        return effectiveLine(parse(apiLine), home, INVERT_AWAY_SIGN_XBET_SPREAD);
     }
 
     public static double effectiveLine(double apiLine, boolean home) {
-        return home ? apiLine : -apiLine;
+        return effectiveLine(apiLine, home, INVERT_AWAY_SIGN_XBET_SPREAD);
+    }
+
+    public static double effectiveLine(String apiLine, boolean home, boolean invertAwaySign) {
+        return effectiveLine(parse(apiLine), home, invertAwaySign);
+    }
+
+    public static double effectiveLine(double apiLine, boolean home, boolean invertAwaySign) {
+        if (home) {
+            return apiLine;
+        }
+        return invertAwaySign ? -apiLine : apiLine;
     }
 
     /** Формат как в BetTitleCode: {@code -2.5}, {@code +1.5}, {@code 0}. */
@@ -30,7 +52,7 @@ public final class OddsHandicapLine {
         return value > 0 ? "+" + n : n;
     }
 
-    static double parse(String line) {
+    public static double parse(String line) {
         if (line == null || line.isBlank()) {
             return 0;
         }

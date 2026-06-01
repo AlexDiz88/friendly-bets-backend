@@ -9,11 +9,19 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class OddsHandicapLineTest {
 
     @Test
-    void awayGetsOppositeSignOfApiHdp() {
+    void xbetSpreadAwayInvertsApiHdpSign() {
         assertEquals(-2.5, OddsHandicapLine.effectiveLine("-2.5", true));
         assertEquals(2.5, OddsHandicapLine.effectiveLine("-2.5", false));
         assertEquals(1.5, OddsHandicapLine.effectiveLine("-1.5", false));
         assertEquals(-1.5, OddsHandicapLine.effectiveLine("+1.5", false));
+        assertEquals(-1.0, OddsHandicapLine.effectiveLine("1", false));
+    }
+
+    @Test
+    void bet365AwayKeepsApiHdpSign() {
+        assertEquals(-1.5, OddsHandicapLine.effectiveLine("-1.5", true, false));
+        assertEquals(-1.5, OddsHandicapLine.effectiveLine("-1.5", false, false));
+        assertEquals(-1.0, OddsHandicapLine.effectiveLine("-1", false, false));
     }
 
     @Test

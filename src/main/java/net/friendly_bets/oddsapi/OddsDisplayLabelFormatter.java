@@ -20,19 +20,28 @@ public final class OddsDisplayLabelFormatter {
         }
         BetTitle betTitle = row.getBetTitle();
         if (betTitle != null && betTitle.getLabel() != null && !betTitle.getLabel().isBlank()) {
-            return formatFromBetTitle(category, betTitle.getLabel());
+            return formatFromBetTitle(category, betTitle);
         }
         return formatRaw(category, row);
     }
 
-    private static String formatFromBetTitle(OddsMarketCategory category, String label) {
+    private static String formatFromBetTitle(OddsMarketCategory category, BetTitle betTitle) {
+        String label = betTitle.getLabel();
         return switch (category) {
             case HANDICAP -> formatHandicapLabel(label);
             case TEAM_TOTAL_HOME, TEAM_TOTAL_AWAY -> shortenTeamTotalLabel(label);
-            case BTTS -> label;
+            case BTTS, GOALS -> formatGoalsBetTitleLabel(betTitle);
             case HALF_TIME_RESULT -> label;
             default -> label;
         };
+    }
+
+    private static String formatGoalsBetTitleLabel(BetTitle betTitle) {
+        String label = betTitle.getLabel();
+        if (betTitle.isNot()) {
+            return label + " — нет";
+        }
+        return label;
     }
 
     private static String formatRaw(OddsMarketCategory category, OddsLineRow row) {

@@ -47,6 +47,8 @@ public class OddsApiSyncService {
     private final FootballDataSyncService footballDataSyncService;
     private final OddsApiEventMatcher eventMatcher;
     private final GetEntityService getEntityService;
+    private final OddsMergedOddsService oddsMergedOddsService;
+    private final OddsMappingIssueRecorder oddsMappingIssueRecorder;
 
     /**
      * Принудительная синхронизация кэфов для тура лиги (админ / модератор).
@@ -214,6 +216,7 @@ public class OddsApiSyncService {
                 pending.add(match);
             } else {
                 matchesSkippedStarted++;
+                oddsMergedOddsService.freezeIfNeeded(match, now);
             }
         }
 
@@ -259,7 +262,8 @@ public class OddsApiSyncService {
             List<Long> batch = eventIds.subList(i, Math.min(i + 10, eventIds.size()));
             try {
                 List<OddsApiEventOddsDto> oddsResponses = oddsApiClient.fetchOddsMulti(batch, bookmakers);
-                oddsDocumentsSaved += persistOddsBatch(oddsResponses, eventIdToMatch, bookmakers, now);
+                oddsDocumentsSaved += persistOddsBatch(
+                        oddsResponses, eventIdToMatch, bookmakers, now, leagueCode, season, matchday);
             } catch (Exception e) {
                 log.warn("odds-api multi odds failed for batch {}: {}", batch, e.getMessage());
                 mappingFailures += batch.size();
@@ -333,12 +337,18 @@ public class OddsApiSyncService {
             List<OddsApiEventOddsDto> oddsResponses,
             Map<Long, GameResultRecord> eventIdToMatch,
             List<String> bookmakers,
-            LocalDateTime fetchedAt
+            LocalDateTime fetchedAt,
+            String leagueCode,
+            String season,
+            int matchday
     ) {
         int saved = 0;
         if (oddsResponses == null) {
             return 0;
         }
+        Map<String, String> canonicalByLower = OddsBookmakerKeys.mapApiKeysToConfigured(bookmakers);
+        List<String> canonicalBookmakers = new ArrayList<>(canonicalByLower.values());
+
         for (OddsApiEventOddsDto eventOdds : oddsResponses) {
             if (eventOdds == null || eventOdds.getId() == null) {
                 continue;
@@ -369,7 +379,31 @@ public class OddsApiSyncService {
                 gameResultOddsRepository.save(entity);
                 saved++;
             }
+
+            OddsMatchContext matchContext = buildMatchContext(match, eventOdds);
+            var mergeResult = oddsMergedOddsService.buildAndPersist(
+                    match,
+                    byBookmaker,
+                    canonicalByLower,
+                    matchContext,
+                    canonicalBookmakers,
+                    fetchedAt,
+                    false
+            );
+            oddsMappingIssueRecorder.recordMergeResult(match, leagueCode, season, matchday, mergeResult);
         }
         return saved;
+    }
+
+    private OddsMatchContext buildMatchContext(GameResultRecord match, OddsApiEventOddsDto eventOdds) {
+        String homeDb = getEntityService.getTeamOrThrow(match.getHomeTeamId()).getTitle();
+        String awayDb = getEntityService.getTeamOrThrow(match.getAwayTeamId()).getTitle();
+        String home = eventOdds != null && eventOdds.getHome() != null && !eventOdds.getHome().isBlank()
+                ? eventOdds.getHome().trim()
+                : homeDb;
+        String away = eventOdds != null && eventOdds.getAway() != null && !eventOdds.getAway().isBlank()
+                ? eventOdds.getAway().trim()
+                : awayDb;
+        return OddsMatchContext.of(home, away);
     }
 }

@@ -21,4 +21,6 @@ public interface ApiSyncIssueRepository extends MongoRepository<ApiSyncIssue, St
     );
 
     boolean existsByIssueType(String issueType);
+
+    boolean existsByIssueTypeIn(java.util.Collection<String> issueTypes);
 }

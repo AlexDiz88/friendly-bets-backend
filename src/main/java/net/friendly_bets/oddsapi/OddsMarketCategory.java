@@ -11,6 +11,8 @@ public enum OddsMarketCategory {
     TOTALS(4, false),
     HALF_TIME_RESULT(5, false),
     BTTS(6, false),
+    GOALS(7, false),
+    EXACT_TOTAL_GOALS(8, true),
     CORRECT_SCORE(10, true),
     TEAM_TOTAL_HOME(11, true),
     TEAM_TOTAL_AWAY(12, true),

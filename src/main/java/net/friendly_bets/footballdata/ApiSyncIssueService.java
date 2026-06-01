@@ -116,6 +116,100 @@ public class ApiSyncIssueService {
         recordUnmappedOddsApiTeamNameHint(oddsApiTeamName, oddsApiTeamId, home, match);
     }
 
+    public void recordOddsMarketUnmapped(
+            GameResultRecord match,
+            String leagueCode,
+            String season,
+            int matchday,
+            String bookmaker,
+            String marketName,
+            String message
+    ) {
+        recordOddsMappingIssue(
+                match,
+                leagueCode,
+                season,
+                matchday,
+                ApiSyncIssue.IssueType.ODDS_MARKET_UNMAPPED,
+                bookmaker + " · " + marketName + (message != null ? " · " + message : ""));
+    }
+
+    public void recordOddsSelectionUnmapped(
+            GameResultRecord match,
+            String leagueCode,
+            String season,
+            int matchday,
+            String bookmaker,
+            String marketName,
+            String message
+    ) {
+        recordOddsMappingIssue(
+                match,
+                leagueCode,
+                season,
+                matchday,
+                ApiSyncIssue.IssueType.ODDS_SELECTION_UNMAPPED,
+                bookmaker + " · " + marketName + (message != null ? " · " + message : ""));
+    }
+
+    public void recordOddsQuoteMismatch(
+            GameResultRecord match,
+            String leagueCode,
+            String season,
+            int matchday,
+            String message
+    ) {
+        recordOddsMappingIssue(
+                match,
+                leagueCode,
+                season,
+                matchday,
+                ApiSyncIssue.IssueType.ODDS_QUOTE_MISMATCH,
+                message);
+    }
+
+    public void recordOddsQuoteRejected(
+            GameResultRecord match,
+            String leagueCode,
+            String season,
+            int matchday,
+            String bookmaker,
+            String marketName,
+            String message
+    ) {
+        recordOddsMappingIssue(
+                match,
+                leagueCode,
+                season,
+                matchday,
+                ApiSyncIssue.IssueType.ODDS_QUOTE_REJECTED,
+                bookmaker + " · " + marketName + (message != null ? " · " + message : ""));
+    }
+
+    private void recordOddsMappingIssue(
+            GameResultRecord match,
+            String leagueCode,
+            String season,
+            int matchday,
+            ApiSyncIssue.IssueType issueType,
+            String message
+    ) {
+        GameResultSourceSnapshot source = match != null ? match.footballDataSource() : null;
+        apiSyncIssueRepository.save(ApiSyncIssue.builder()
+                .createdAt(LocalDateTime.now())
+                .provider(MatchDataProviders.ODDS_API)
+                .issueType(issueType.name())
+                .leagueCode(leagueCode)
+                .season(season)
+                .matchday(matchday)
+                .gameResultId(match != null ? match.getId() : null)
+                .externalMatchId(source != null ? source.getExternalMatchId() : null)
+                .homeTeamName(sideName(source, true))
+                .awayTeamName(sideName(source, false))
+                .message(message)
+                .build());
+    }
+
     /**
      * Hint for admin team form chips ({@code UnmappedTeamNameHints}). Safe to call from odds demo refresh.
      */
@@ -352,6 +446,15 @@ public class ApiSyncIssueService {
 
     public boolean hasScoreChangeIssues() {
         return apiSyncIssueRepository.existsByIssueType(ApiSyncIssue.IssueType.API_SCORE_CHANGED.name());
+    }
+
+    public boolean hasOddsMappingIssues() {
+        return apiSyncIssueRepository.existsByIssueTypeIn(List.of(
+                ApiSyncIssue.IssueType.ODDS_MARKET_UNMAPPED.name(),
+                ApiSyncIssue.IssueType.ODDS_SELECTION_UNMAPPED.name(),
+                ApiSyncIssue.IssueType.ODDS_QUOTE_MISMATCH.name(),
+                ApiSyncIssue.IssueType.ODDS_QUOTE_REJECTED.name()
+        ));
     }
 
     public List<UnmappedExternalTeamNameDto> getUnmappedTeamNameHints() {

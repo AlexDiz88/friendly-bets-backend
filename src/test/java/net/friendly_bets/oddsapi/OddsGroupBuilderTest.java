@@ -49,7 +49,7 @@ class OddsGroupBuilderTest {
                 .findFirst()
                 .orElseThrow();
         assertEquals("1.103", dc1x.getBookmakerOdds().get("1xbet"));
-        assertEquals("1.111", dc1x.getBookmakerOdds().get("Bet365"));
+        assertTrue(dc1x.getBookmakerOdds().get("Bet365") == null);
     }
 
     @Test
@@ -169,7 +169,7 @@ class OddsGroupBuilderTest {
     }
 
     @Test
-    void mergesHandicapAcrossMarketNamesWithInvertedAwayLine() throws Exception {
+    void mergesHandicapHomeMinusOneAcrossBookmakers() throws Exception {
         OddsApiMarketDto spread = market("Spread", """
                 [{"hdp":-1,"home":"1.790","away":"2.030"}]
                 """);
@@ -187,25 +187,31 @@ class OddsGroupBuilderTest {
                 OddsMatchContext.of("Mexico", "South Africa")
         );
 
-        Optional<OddsMarketGroup> handicap = groups.stream()
+        OddsMarketGroup handicap = groups.stream()
                 .filter(g -> "HANDICAP".equals(g.getCategory()))
-                .findFirst();
-        assertTrue(handicap.isPresent());
-        assertEquals(2, handicap.get().getRows().size());
-
-        OddsLineRow home = handicap.get().getRows().stream()
-                .filter(r -> "HOME".equals(r.getSelectionCode()))
-                .findFirst()
-                .orElseThrow();
-        OddsLineRow away = handicap.get().getRows().stream()
-                .filter(r -> "AWAY".equals(r.getSelectionCode()))
                 .findFirst()
                 .orElseThrow();
 
-        assertEquals("-1", home.getLine());
-        assertEquals("1", away.getLine());
-        assertEquals("Ф1 (-1)", OddsDisplayLabelFormatter.format(OddsMarketCategory.HANDICAP, home));
-        assertEquals("Ф2 (+1)", OddsDisplayLabelFormatter.format(OddsMarketCategory.HANDICAP, away));
+        OddsLineRow homeMinusOne = handicap.getRows().stream()
+                .filter(r -> "HOME".equals(r.getSelectionCode()) && "-1".equals(r.getLine()))
+                .findFirst()
+                .orElseThrow();
+        assertEquals("1.790", homeMinusOne.getBookmakerOdds().get("1xbet"));
+        assertEquals("1.800", homeMinusOne.getBookmakerOdds().get("Bet365"));
+
+        OddsLineRow xbetAwayPlusOne = handicap.getRows().stream()
+                .filter(r -> "AWAY".equals(r.getSelectionCode()) && "1".equals(r.getLine()))
+                .findFirst()
+                .orElseThrow();
+        assertEquals("2.030", xbetAwayPlusOne.getBookmakerOdds().get("1xbet"));
+        org.junit.jupiter.api.Assertions.assertNull(xbetAwayPlusOne.getBookmakerOdds().get("Bet365"));
+
+        OddsLineRow bet365AwayMinusOne = handicap.getRows().stream()
+                .filter(r -> "AWAY".equals(r.getSelectionCode()) && "-1".equals(r.getLine()))
+                .findFirst()
+                .orElseThrow();
+        assertEquals("2.050", bet365AwayMinusOne.getBookmakerOdds().get("Bet365"));
+        org.junit.jupiter.api.Assertions.assertNull(bet365AwayMinusOne.getBookmakerOdds().get("1xbet"));
     }
 
     @Test
@@ -271,17 +277,20 @@ class OddsGroupBuilderTest {
     }
 
     @Test
-    void ignoresSwappedAwayOddsFromSecondBookmakerOnPlusHandicap() throws Exception {
-        OddsApiMarketDto spread = market("Spread", """
-                [{"hdp":-1,"home":"4.650","away":"1.148"}]
+    void mergesHandicapByBetTitleAcrossSpreadAndAsianMarketNames() throws Exception {
+        OddsApiMarketDto xbet = market("Spread", """
+                [
+                  {"hdp":-1,"home":"4.650","away":"1.148"},
+                  {"hdp":1,"home":"1.144","away":"4.700"}
+                ]
                 """);
-        OddsApiMarketDto swapped = market("Alternative Asian Handicap", """
+        OddsApiMarketDto bet365 = market("Alternative Asian Handicap", """
                 [{"hdp":-1,"home":"1.148","away":"4.650"}]
                 """);
 
         Map<String, List<OddsApiMarketDto>> byBk = new LinkedHashMap<>();
-        byBk.put("1xbet", List.of(spread));
-        byBk.put("Bet365", List.of(swapped));
+        byBk.put("1xbet", List.of(xbet));
+        byBk.put("Bet365", List.of(bet365));
 
         List<OddsMarketGroup> groups = OddsGroupBuilder.build(
                 byBk,
@@ -294,16 +303,115 @@ class OddsGroupBuilderTest {
                 .findFirst()
                 .orElseThrow();
 
-        OddsLineRow awayPlusOne = handicap.getRows().stream()
-                .filter(r -> "AWAY".equals(r.getSelectionCode()) && "1".equals(r.getLine()))
+        OddsLineRow awayMinusOne = handicap.getRows().stream()
+                .filter(r -> "AWAY".equals(r.getSelectionCode()) && "-1".equals(r.getLine()))
+                .findFirst()
+                .orElseThrow();
+        assertEquals("4.700", awayMinusOne.getBookmakerOdds().get("1xbet"));
+        assertEquals("4.650", awayMinusOne.getBookmakerOdds().get("Bet365"));
+    }
+
+    @Test
+    void keepsCorrectScoreLineOnlyFromOneBookmaker() throws Exception {
+        OddsApiMarketDto xbetCs = market("Correct Score", """
+                [{"label":"3-0","over":"9.500"},{"label":"0-1","over":"15.000"}]
+                """);
+
+        Map<String, List<OddsApiMarketDto>> byBk = Map.of("1xbet", List.of(xbetCs));
+
+        List<OddsMarketGroup> groups = OddsGroupBuilder.build(
+                byBk,
+                OddsBookmakerKeys.mapApiKeysToConfigured(List.of("1xbet")),
+                OddsMatchContext.of("Mexico", "South Africa")
+        );
+
+        OddsMarketGroup cs = groups.stream()
+                .filter(g -> "CORRECT_SCORE".equals(g.getCategory()))
+                .findFirst()
+                .orElseThrow();
+        assertEquals(2, cs.getRows().size());
+        assertTrue(cs.getRows().stream().anyMatch(r -> "3-0".equals(r.getSelectionCode())));
+        assertTrue(cs.getRows().stream().anyMatch(r -> "0-1".equals(r.getSelectionCode())));
+    }
+
+    @Test
+    void mapsXbetSpreadRowToTwoHandicapBetsPerUserExamples() throws Exception {
+        OddsApiMarketDto spread = market("Spread", """
+                [
+                  {"hdp":1,"home":"1.144","away":"4.700"},
+                  {"hdp":-1.5,"home":"5.550","away":"1.089"}
+                ]
+                """);
+
+        Map<String, List<OddsApiMarketDto>> byBk = Map.of("1xbet", List.of(spread));
+
+        List<OddsMarketGroup> groups = OddsGroupBuilder.build(
+                byBk,
+                OddsBookmakerKeys.mapApiKeysToConfigured(List.of("1xbet")),
+                OddsMatchContext.of("Korea Republic", "Czechia")
+        );
+
+        OddsMarketGroup handicap = groups.stream()
+                .filter(g -> "HANDICAP".equals(g.getCategory()))
                 .findFirst()
                 .orElseThrow();
 
-        assertEquals("1.148", awayPlusOne.getBookmakerOdds().get("1xbet"));
-        org.junit.jupiter.api.Assertions.assertNull(awayPlusOne.getBookmakerOdds().get("Bet365"));
+        OddsLineRow homePlusOne = handicap.getRows().stream()
+                .filter(r -> "HOME".equals(r.getSelectionCode()) && "1".equals(r.getLine()))
+                .findFirst()
+                .orElseThrow();
+        assertEquals("1.144", homePlusOne.getBookmakerOdds().get("1xbet"));
 
-        OddsSelectionKey.applyBestOdds(awayPlusOne, OddsMarketCategory.HANDICAP);
-        assertEquals("1.148", awayPlusOne.getBestOdds());
+        OddsLineRow awayMinusOneFromHdpPlusOne = handicap.getRows().stream()
+                .filter(r -> "AWAY".equals(r.getSelectionCode()) && "-1".equals(r.getLine())
+                        && "4.700".equals(r.getBookmakerOdds().get("1xbet")))
+                .findFirst()
+                .orElseThrow();
+
+        OddsLineRow homeMinusOneFive = handicap.getRows().stream()
+                .filter(r -> "HOME".equals(r.getSelectionCode()) && "-1.5".equals(r.getLine()))
+                .findFirst()
+                .orElseThrow();
+        assertEquals("5.550", homeMinusOneFive.getBookmakerOdds().get("1xbet"));
+
+        OddsLineRow awayPlusOneFive = handicap.getRows().stream()
+                .filter(r -> "AWAY".equals(r.getSelectionCode()) && "1.5".equals(r.getLine()))
+                .findFirst()
+                .orElseThrow();
+        assertEquals("1.089", awayPlusOneFive.getBookmakerOdds().get("1xbet"));
+        org.junit.jupiter.api.Assertions.assertNotNull(awayMinusOneFromHdpPlusOne);
+    }
+
+    @Test
+    void mapsBet365HandicapRowWithSameSignForBothSides() throws Exception {
+        OddsApiMarketDto asian = market("Alternative Asian Handicap", """
+                [{"hdp":-1.5,"home":"5.750","away":"5.900"}]
+                """);
+
+        Map<String, List<OddsApiMarketDto>> byBk = Map.of("Bet365", List.of(asian));
+
+        List<OddsMarketGroup> groups = OddsGroupBuilder.build(
+                byBk,
+                OddsBookmakerKeys.mapApiKeysToConfigured(List.of("Bet365")),
+                OddsMatchContext.of("Korea Republic", "Czechia")
+        );
+
+        OddsMarketGroup handicap = groups.stream()
+                .filter(g -> "HANDICAP".equals(g.getCategory()))
+                .findFirst()
+                .orElseThrow();
+
+        OddsLineRow home = handicap.getRows().stream()
+                .filter(r -> "HOME".equals(r.getSelectionCode()) && "-1.5".equals(r.getLine()))
+                .findFirst()
+                .orElseThrow();
+        assertEquals("5.750", home.getBookmakerOdds().get("Bet365"));
+
+        OddsLineRow away = handicap.getRows().stream()
+                .filter(r -> "AWAY".equals(r.getSelectionCode()) && "-1.5".equals(r.getLine()))
+                .findFirst()
+                .orElseThrow();
+        assertEquals("5.900", away.getBookmakerOdds().get("Bet365"));
     }
 
     private OddsApiMarketDto market(String name, String oddsJson) throws Exception {

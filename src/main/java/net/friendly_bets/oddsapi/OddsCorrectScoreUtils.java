@@ -3,14 +3,14 @@ package net.friendly_bets.oddsapi;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-final class OddsCorrectScoreUtils {
+public final class OddsCorrectScoreUtils {
 
     private static final Pattern SCORE = Pattern.compile("^(\\d+)\\s*[-:]\\s*(\\d+)$");
 
     private OddsCorrectScoreUtils() {
     }
 
-    static int[] parseScore(String selection) {
+    public static int[] parseScore(String selection) {
         if (selection == null || selection.isBlank()) {
             return null;
         }
@@ -25,7 +25,7 @@ final class OddsCorrectScoreUtils {
      * Порядок: сумма голов ↑, |h−a| ↑, голы хозяев ↓, гостей ↑.
      * 0-0, 1-0, 0-1, 1-1, 2-0, …
      */
-    static int sortKey(String selection) {
+    public static int sortKey(String selection) {
         int[] score = parseScore(selection);
         if (score == null) {
             return Integer.MAX_VALUE;

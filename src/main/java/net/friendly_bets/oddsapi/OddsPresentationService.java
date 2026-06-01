@@ -5,6 +5,7 @@ import net.friendly_bets.dto.OddsEventMarketsDto;
 import net.friendly_bets.exceptions.BadRequestException;
 import net.friendly_bets.exceptions.NotFoundException;
 import net.friendly_bets.models.gameresults.GameResultRecord;
+import net.friendly_bets.models.odds.GameResultMergedOdds;
 import net.friendly_bets.models.odds.GameResultOdds;
 import net.friendly_bets.models.odds.OddsMarketGroup;
 import net.friendly_bets.oddsapi.client.OddsApiClient;
@@ -12,10 +13,10 @@ import net.friendly_bets.oddsapi.client.dto.OddsApiEventDto;
 import net.friendly_bets.oddsapi.client.dto.OddsApiEventOddsDto;
 import net.friendly_bets.oddsapi.client.dto.OddsApiMarketDto;
 import net.friendly_bets.oddsapi.config.OddsApiProperties;
+import net.friendly_bets.oddsapi.mapping.BetTitleKey;
 import net.friendly_bets.repositories.GameResultOddsRepository;
 import net.friendly_bets.repositories.GameResultRecordRepository;
 import net.friendly_bets.services.GetEntityService;
-import net.friendly_bets.services.TeamAliasResolver;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -35,6 +36,7 @@ public class OddsPresentationService {
     private final OddsApiProperties properties;
     private final OddsApiEventMatcher eventMatcher;
     private final GetEntityService getEntityService;
+    private final OddsMergedOddsService oddsMergedOddsService;
 
     public OddsEventMarketsDto getMarketsForGameResult(String gameResultId) {
         if (!oddsApiClient.isConfigured()) {
@@ -53,45 +55,64 @@ public class OddsPresentationService {
         }
 
         Map<String, String> canonicalByLower = OddsBookmakerKeys.mapApiKeysToConfigured(bookmakers);
+        List<String> canonicalBookmakers = new ArrayList<>(canonicalByLower.values());
+
+        Optional<GameResultMergedOdds> mergedSnapshot = oddsMergedOddsService.findByGameResultId(gameResultId);
+        if (mergedSnapshot.isPresent() && mergedSnapshot.get().getFrozenAt() != null) {
+            return toDto(match, mergedSnapshot.get().getMarketGroups(), mergedSnapshot.get().getFetchedAt(), canonicalBookmakers);
+        }
+
         List<GameResultOdds> cached = gameResultOddsRepository.findByGameResultId(gameResultId);
         boolean stale = isStale(cached, now);
 
-        Map<String, List<OddsApiMarketDto>> bookmakerMarkets;
+        List<OddsMarketGroup> groups;
         LocalDateTime fetchedAt;
-        if (stale) {
-            bookmakerMarkets = refreshFromApi(match, bookmakers, now);
-            fetchedAt = now;
+
+        if (!stale && mergedSnapshot.isPresent() && mergedSnapshot.get().getMarketGroups() != null
+                && !mergedSnapshot.get().getMarketGroups().isEmpty()) {
+            groups = mergedSnapshot.get().getMarketGroups();
+            fetchedAt = mergedSnapshot.get().getFetchedAt() != null ? mergedSnapshot.get().getFetchedAt() : now;
         } else {
-            bookmakerMarkets = fromCached(cached);
-            fetchedAt = cached.stream()
+            Map<String, List<OddsApiMarketDto>> bookmakerMarkets = stale
+                    ? refreshFromApi(match, bookmakers, now)
+                    : fromCached(cached);
+            fetchedAt = stale ? now : cached.stream()
                     .map(GameResultOdds::getFetchedAt)
                     .filter(java.util.Objects::nonNull)
                     .max(LocalDateTime::compareTo)
                     .orElse(now);
+
+            if (bookmakerMarkets.isEmpty()) {
+                if (mergedSnapshot.isPresent() && mergedSnapshot.get().getMarketGroups() != null) {
+                    groups = mergedSnapshot.get().getMarketGroups();
+                    fetchedAt = mergedSnapshot.get().getFetchedAt() != null ? mergedSnapshot.get().getFetchedAt() : now;
+                } else {
+                    throw new BadRequestException("oddsNotAvailable");
+                }
+            } else {
+                OddsMatchContext matchContext = buildMatchContext(match);
+                var mergeResult = oddsMergedOddsService.buildAndPersist(
+                        match,
+                        bookmakerMarkets,
+                        canonicalByLower,
+                        matchContext,
+                        canonicalBookmakers,
+                        fetchedAt,
+                        false
+                );
+                groups = mergeResult.getMarketGroups();
+            }
         }
 
-        if (bookmakerMarkets.isEmpty()) {
-            throw new BadRequestException("oddsNotAvailable");
-        }
-
-        OddsMatchContext matchContext = buildMatchContext(match);
-        List<OddsMarketGroup> groups = OddsGroupBuilder.build(bookmakerMarkets, canonicalByLower, matchContext);
-        OddsSelectionKey.enrichGroups(groups);
-        enrichBetTitles(groups);
         groups = groups.stream()
                 .filter(g -> g.getRows() != null && !g.getRows().isEmpty())
                 .toList();
 
-        return OddsEventMarketsDto.builder()
-                .gameResultId(gameResultId)
-                .homeTeamId(match.getHomeTeamId())
-                .awayTeamId(match.getAwayTeamId())
-                .status(match.getStatus())
-                .kickoffUtc(match.getUtcDate())
-                .bookmakers(new ArrayList<>(canonicalByLower.values()))
-                .marketGroups(groups)
-                .fetchedAt(fetchedAt)
-                .build();
+        if (groups.isEmpty()) {
+            throw new BadRequestException("oddsNotAvailable");
+        }
+
+        return toDto(match, groups, fetchedAt, canonicalBookmakers);
     }
 
     public Map<String, List<OddsApiMarketDto>> refreshFromApi(
@@ -99,6 +120,9 @@ public class OddsPresentationService {
             List<String> bookmakers,
             LocalDateTime fetchedAt
     ) {
+        if (!GameResultNotStarted.isNotStarted(match, fetchedAt)) {
+            return Map.of();
+        }
         Long eventId = resolveEventId(match);
         List<OddsApiEventOddsDto> responses = oddsApiClient.fetchOddsMulti(List.of(eventId), bookmakers);
         if (responses == null || responses.isEmpty()) {
@@ -144,6 +168,40 @@ public class OddsPresentationService {
                             ? row.getBookmakerOdds().get(bookmaker)
                             : null;
                     if (odds == null || odds.isBlank()) {
+                        odds = row.getBestOdds();
+                    }
+                    if (odds == null || odds.isBlank()) {
+                        return Optional.empty();
+                    }
+                    return Optional.of(new OddsLineSelection(group.getCategory(), row, odds));
+                }
+            }
+        }
+        return Optional.empty();
+    }
+
+    public Optional<OddsLineSelection> findByBetTitle(
+            String gameResultId,
+            short betTitleCode,
+            boolean isNot,
+            String bookmaker
+    ) {
+        BetTitleKey key = new BetTitleKey(betTitleCode, isNot);
+        OddsEventMarketsDto markets = getMarketsForGameResult(gameResultId);
+        for (OddsMarketGroup group : markets.getMarketGroups()) {
+            if (group.getRows() == null) {
+                continue;
+            }
+            for (var row : group.getRows()) {
+                BetTitleKey rowKey = BetTitleKey.from(row.getBetTitle());
+                if (key.equals(rowKey)) {
+                    String odds = row.getBookmakerOdds() != null
+                            ? row.getBookmakerOdds().get(bookmaker)
+                            : null;
+                    if (odds == null || odds.isBlank()) {
+                        odds = row.getBestOdds();
+                    }
+                    if (odds == null || odds.isBlank()) {
                         return Optional.empty();
                     }
                     return Optional.of(new OddsLineSelection(group.getCategory(), row, odds));
@@ -154,6 +212,24 @@ public class OddsPresentationService {
     }
 
     public record OddsLineSelection(String category, net.friendly_bets.models.odds.OddsLineRow row, String odds) {
+    }
+
+    private OddsEventMarketsDto toDto(
+            GameResultRecord match,
+            List<OddsMarketGroup> groups,
+            LocalDateTime fetchedAt,
+            List<String> bookmakers
+    ) {
+        return OddsEventMarketsDto.builder()
+                .gameResultId(match.getId())
+                .homeTeamId(match.getHomeTeamId())
+                .awayTeamId(match.getAwayTeamId())
+                .status(match.getStatus())
+                .kickoffUtc(match.getUtcDate())
+                .bookmakers(bookmakers)
+                .marketGroups(groups)
+                .fetchedAt(fetchedAt)
+                .build();
     }
 
     private Long resolveEventId(GameResultRecord match) {
@@ -201,33 +277,5 @@ public class OddsPresentationService {
         String home = getEntityService.getTeamOrThrow(match.getHomeTeamId()).getTitle();
         String away = getEntityService.getTeamOrThrow(match.getAwayTeamId()).getTitle();
         return OddsMatchContext.of(home, away);
-    }
-
-    private void enrichBetTitles(List<OddsMarketGroup> groups) {
-        if (groups == null) {
-            return;
-        }
-        for (OddsMarketGroup group : groups) {
-            if (group.getRows() == null || group.getCategory() == null) {
-                continue;
-            }
-            OddsMarketCategory category;
-            try {
-                category = OddsMarketCategory.valueOf(group.getCategory());
-            } catch (IllegalArgumentException e) {
-                continue;
-            }
-            List<net.friendly_bets.models.odds.OddsLineRow> bettable = new ArrayList<>();
-            for (var row : group.getRows()) {
-                try {
-                    row.setBetTitle(OddsSelectionBetTitleMapper.toBetTitle(group.getCategory(), row));
-                    row.setDisplayLabel(OddsDisplayLabelFormatter.format(category, row));
-                    bettable.add(row);
-                } catch (BadRequestException ignored) {
-                    row.setBetTitle(null);
-                }
-            }
-            group.setRows(bettable);
-        }
     }
 }

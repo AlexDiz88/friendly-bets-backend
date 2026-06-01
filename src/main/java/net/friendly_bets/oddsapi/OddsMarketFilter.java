@@ -18,7 +18,8 @@ public final class OddsMarketFilter {
             "corners spread",
             "corners totals",
             "corners totals home",
-            "corners totals away"
+            "corners totals away",
+            "number of goals in match"
     );
 
     private OddsMarketFilter() {

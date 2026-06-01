@@ -1,6 +1,7 @@
 package net.friendly_bets.controllers;
 
 import lombok.RequiredArgsConstructor;
+import net.friendly_bets.dto.OddsDemoDebugDto;
 import net.friendly_bets.dto.OddsDemoEventDetailDto;
 import net.friendly_bets.dto.OddsDemoEventSummaryDto;
 import net.friendly_bets.dto.OddsDemoRefreshResultDto;
@@ -33,6 +34,12 @@ public class OddsDemoController {
     @PreAuthorize("permitAll()")
     public ResponseEntity<OddsDemoEventDetailDto> getEvent(@PathVariable long eventId) {
         return ResponseEntity.ok(oddsDemoService.getByEventId(eventId));
+    }
+
+    @GetMapping("/events/{eventId}/debug")
+    @PreAuthorize("hasAuthority('ADMIN') || hasAuthority('MODERATOR')")
+    public ResponseEntity<OddsDemoDebugDto> getEventDebug(@PathVariable long eventId) {
+        return ResponseEntity.ok(oddsDemoService.getDebugByEventId(eventId));
     }
 
     @PostMapping("/leagues/{leagueSlug}/refresh")

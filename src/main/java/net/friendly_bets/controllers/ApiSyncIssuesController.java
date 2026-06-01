@@ -33,7 +33,8 @@ public class ApiSyncIssuesController {
     public ResponseEntity<Map<String, Boolean>> getStatus() {
         return ResponseEntity.ok(Map.of(
                 "hasIssues", apiSyncIssueService.hasIssues(),
-                "hasScoreChangeIssues", apiSyncIssueService.hasScoreChangeIssues()
+                "hasScoreChangeIssues", apiSyncIssueService.hasScoreChangeIssues(),
+                "hasOddsMappingIssues", apiSyncIssueService.hasOddsMappingIssues()
         ));
     }
 
