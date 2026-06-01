@@ -1,5 +1,7 @@
 package net.friendly_bets.oddsapi;
 
+import net.friendly_bets.models.enums.BetTitleCode;
+
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -25,6 +27,18 @@ public final class OddsCorrectScoreUtils {
      * Порядок: сумма голов ↑, |h−a| ↑, голы хозяев ↓, гостей ↑.
      * 0-0, 1-0, 0-1, 1-1, 2-0, …
      */
+    /** {@code GAME_SCORE_3_1} → {@code 3-1} для сортировки и ключей строк. */
+    public static String selectionCodeForBetTitle(BetTitleCode code) {
+        if (code == null) {
+            return null;
+        }
+        String name = code.name();
+        if (!name.startsWith("GAME_SCORE_")) {
+            return null;
+        }
+        return name.substring("GAME_SCORE_".length()).replace('_', '-');
+    }
+
     public static int sortKey(String selection) {
         int[] score = parseScore(selection);
         if (score == null) {

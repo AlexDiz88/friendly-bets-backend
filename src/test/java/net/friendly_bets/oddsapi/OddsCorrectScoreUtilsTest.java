@@ -1,5 +1,6 @@
 package net.friendly_bets.oddsapi;
 
+import net.friendly_bets.models.enums.BetTitleCode;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -12,6 +13,12 @@ class OddsCorrectScoreUtilsTest {
     void parsesHyphenAndColonScores() {
         assertNotNull(OddsCorrectScoreUtils.parseScore("1-0"));
         assertNotNull(OddsCorrectScoreUtils.parseScore("2:1"));
+    }
+
+    @Test
+    void selectionCodeForBetTitle() {
+        assertEquals("0-0", OddsCorrectScoreUtils.selectionCodeForBetTitle(BetTitleCode.GAME_SCORE_0_0));
+        assertEquals("3-1", OddsCorrectScoreUtils.selectionCodeForBetTitle(BetTitleCode.GAME_SCORE_3_1));
     }
 
     @Test

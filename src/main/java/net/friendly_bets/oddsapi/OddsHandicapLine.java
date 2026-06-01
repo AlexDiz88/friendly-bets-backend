@@ -5,8 +5,8 @@ package net.friendly_bets.oddsapi;
  * <ul>
  *   <li>1xbet {@code Spread}: хозяева — {@code hdp} как есть; гости — знак инвертируется
  *       ({@code hdp=1} → Ф1(+1) и Ф2(−1) в одной строке).</li>
- *   <li>Bet365 (любой рынок фор): хозяева и гости — {@code hdp} как в JSON, без инверсии
- *       ({@code hdp=−1.5} → Ф1(−1.5) и Ф2(−1.5)).</li>
+ *   <li>Bet365 (Spread / Asian Handicap): хозяева — {@code hdp} как есть; гости — знак инвертируется
+ *       ({@code hdp=−1.5} → Ф1(−1.5) и Ф2(+1.5)).</li>
  * </ul>
  */
 public final class OddsHandicapLine {
@@ -17,8 +17,8 @@ public final class OddsHandicapLine {
     /** 1xbet Spread: для гостей знак {@code hdp} инвертируется. */
     public static final boolean INVERT_AWAY_SIGN_XBET_SPREAD = true;
 
-    /** Bet365: {@code hdp} применяется к обеим сторонам без инверсии. */
-    public static final boolean INVERT_AWAY_SIGN_BET365 = false;
+    /** Bet365: колонка {@code away} — зеркальная линия, знак {@code hdp} инвертируется. */
+    public static final boolean INVERT_AWAY_SIGN_BET365 = true;
 
     public static double effectiveLine(String apiLine, boolean home) {
         return effectiveLine(parse(apiLine), home, INVERT_AWAY_SIGN_XBET_SPREAD);

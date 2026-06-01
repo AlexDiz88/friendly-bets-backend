@@ -34,8 +34,9 @@ public class OddsMappingIssueRecorder {
                 continue;
             }
             String message = buildMessage(rejected);
-            log.warn("odds mapping rejected: gameResultId={} bookmaker={} market={} reason={} {}",
+            log.warn("odds mapping rejected: gameResultId={} oddsApiEventId={} bookmaker={} market={} reason={} {}",
                     match != null ? match.getId() : null,
+                    oddsApiEventId(match),
                     rejected.getBookmaker(),
                     rejected.getMarketName(),
                     rejected.getRejectReason(),
@@ -44,8 +45,10 @@ public class OddsMappingIssueRecorder {
         }
         for (OddsCrossBookmakerMismatch mismatch : mergeResult.getMismatches()) {
             String message = formatCrossBookmakerMismatchMessage(mismatch);
-            log.warn("odds cross-bookmaker mismatch: gameResultId={} {}",
-                    match != null ? match.getId() : null, message);
+            log.warn("odds cross-bookmaker mismatch: gameResultId={} oddsApiEventId={} {}",
+                    match != null ? match.getId() : null,
+                    oddsApiEventId(match),
+                    message);
             apiSyncIssueService.recordOddsQuoteMismatch(match, leagueCode, season, matchday, message);
         }
     }
@@ -103,6 +106,13 @@ public class OddsMappingIssueRecorder {
                     match, leagueCode, season, matchday,
                     rejected.getBookmaker(), rejected.getMarketName(), message);
         }
+    }
+
+    private static Long oddsApiEventId(GameResultRecord match) {
+        if (match == null || match.getOddsApiEventId() == null || match.getOddsApiEventId() <= 0) {
+            return null;
+        }
+        return match.getOddsApiEventId();
     }
 
     private static String buildMessage(MappedOddsQuote rejected) {

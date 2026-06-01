@@ -206,8 +206,16 @@ public class ApiSyncIssueService {
                 .externalMatchId(source != null ? source.getExternalMatchId() : null)
                 .homeTeamName(sideName(source, true))
                 .awayTeamName(sideName(source, false))
-                .message(message)
+                .message(withOddsApiEventId(match, message))
                 .build());
+    }
+
+    private static String withOddsApiEventId(GameResultRecord match, String message) {
+        if (match == null || match.getOddsApiEventId() == null || match.getOddsApiEventId() <= 0) {
+            return message;
+        }
+        return "oddsApiEventId=" + match.getOddsApiEventId()
+                + (message != null && !message.isBlank() ? " · " + message : "");
     }
 
     /**

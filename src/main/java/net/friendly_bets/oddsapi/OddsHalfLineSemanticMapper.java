@@ -30,7 +30,7 @@ public final class OddsHalfLineSemanticMapper {
         }
         return switch (selection) {
             case UNDER -> Optional.of(new SemanticBet(
-                    BetTitleCode.GAME_SCORE_0_0, false, OddsMarketCategory.GOALS));
+                    BetTitleCode.GAME_SCORE_0_0, false, OddsMarketCategory.CORRECT_SCORE));
             case OVER -> Optional.of(new SemanticBet(
                     BetTitleCode.ANY_TEAM_WILL_SCORE, false, OddsMarketCategory.GOALS));
             default -> Optional.empty();

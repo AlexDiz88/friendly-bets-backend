@@ -8,7 +8,8 @@ import java.util.Locale;
 
 /**
  * Bet365: маппинг только колонки {@code bookmakers["Bet365"]}.
- * Все рынки фор (Spread, Asian Handicap, Alternative Asian Handicap) — hdp как в JSON, без инверсии у гостей.
+ * Рынки фор: {@code hdp} — линия хозяев; колонка {@code away} — зеркальная линия гостей
+ * (как у 1xbet Spread), знак {@code hdp} для гостей инвертируется.
  */
 @Component
 public class Bet365OddsAdapter extends AbstractOddsBookmakerAdapter {
@@ -20,10 +21,9 @@ public class Bet365OddsAdapter extends AbstractOddsBookmakerAdapter {
         return BOOKMAKER;
     }
 
-    /** Bet365: {@code hdp} для хозяев и гостей без инверсии знака (все рынки фор). */
     @Override
     protected boolean invertAwayHandicapSign(String marketName) {
-        return false;
+        return true;
     }
 
     /**

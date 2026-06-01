@@ -21,6 +21,7 @@ class OddsHalfLineSemanticMapperTest {
         var under = OddsHalfLineSemanticMapper.mapMatchTotal(0.5, OddsSelectionCode.UNDER).orElseThrow();
         assertEquals(BetTitleCode.GAME_SCORE_0_0, under.code());
         assertFalse(under.isNot());
+        assertEquals(OddsMarketCategory.CORRECT_SCORE, under.displayCategory());
 
         var over = OddsHalfLineSemanticMapper.mapMatchTotal(0.5, OddsSelectionCode.OVER).orElseThrow();
         assertEquals(BetTitleCode.ANY_TEAM_WILL_SCORE, over.code());

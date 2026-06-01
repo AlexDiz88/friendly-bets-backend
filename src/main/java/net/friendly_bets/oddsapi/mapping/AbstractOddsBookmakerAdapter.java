@@ -239,15 +239,21 @@ public abstract class AbstractOddsBookmakerAdapter implements OddsBookmakerAdapt
                 .label(semantic.code().getLabel())
                 .isNot(semantic.isNot())
                 .build();
-        return MappedOddsQuote.builder()
+        MappedOddsQuote.MappedOddsQuoteBuilder builder = MappedOddsQuote.builder()
                 .bookmaker(bookmakerKey())
                 .marketName(marketName)
                 .rawRowJson(rawRow)
                 .category(semantic.displayCategory())
                 .betTitle(betTitle)
                 .odds(odds)
-                .mappingStatus(OddsMappingStatus.OK)
-                .build();
+                .mappingStatus(OddsMappingStatus.OK);
+        if (semantic.displayCategory() == OddsMarketCategory.CORRECT_SCORE) {
+            String selection = OddsCorrectScoreUtils.selectionCodeForBetTitle(semantic.code());
+            if (selection != null) {
+                builder.selectionCode(selection);
+            }
+        }
+        return builder.build();
     }
 
     private List<MappedOddsQuote> mapExactTotalGoalsRow(
@@ -280,7 +286,7 @@ public abstract class AbstractOddsBookmakerAdapter implements OddsBookmakerAdapt
             OddsHalfLineSemanticMapper.SemanticBet semantic = new OddsHalfLineSemanticMapper.SemanticBet(
                     net.friendly_bets.models.enums.BetTitleCode.GAME_SCORE_0_0,
                     false,
-                    OddsMarketCategory.GOALS
+                    OddsMarketCategory.CORRECT_SCORE
             );
             quotes.add(buildSemanticQuote(marketName, rawRow, semantic, entry.getValue()));
         }

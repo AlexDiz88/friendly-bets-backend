@@ -121,9 +121,6 @@ public final class OddsDisplayLabelFormatter {
             return side;
         }
         double effective = OddsHandicapLine.parse(line);
-        if (Math.abs(effective) < 1e-9) {
-            return side;
-        }
         return side + " (" + OddsHandicapLine.formatSigned(effective) + ")";
     }
 

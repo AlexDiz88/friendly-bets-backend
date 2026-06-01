@@ -52,6 +52,22 @@ class OddsDisplayLabelFormatterTest {
     }
 
     @Test
+    @DisplayName("formats zero handicap line")
+    void formatsZeroHandicap() {
+        OddsLineRow home = OddsLineRow.builder()
+                .line("0")
+                .selectionCode("HOME")
+                .build();
+        OddsLineRow away = OddsLineRow.builder()
+                .line("0")
+                .selectionCode("AWAY")
+                .build();
+
+        assertEquals("Ф1 (0)", OddsDisplayLabelFormatter.format(OddsMarketCategory.HANDICAP, home));
+        assertEquals("Ф2 (0)", OddsDisplayLabelFormatter.format(OddsMarketCategory.HANDICAP, away));
+    }
+
+    @Test
     @DisplayName("formats totals as ТБ/ТМ with line")
     void formatsTotals() {
         OddsLineRow row = OddsLineRow.builder()

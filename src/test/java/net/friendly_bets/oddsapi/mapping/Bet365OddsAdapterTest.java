@@ -28,6 +28,8 @@ class Bet365OddsAdapterTest {
         assertTrue(quotes.stream().anyMatch(q -> q.isOk()
                 && q.getBetTitle().getCode() == BetTitleCode.HANDICAP_HOME_MINUS_1_0.getCode()));
         assertTrue(quotes.stream().anyMatch(q -> q.isOk()
+                && q.getBetTitle().getCode() == BetTitleCode.HANDICAP_AWAY_PLUS_1_0.getCode()));
+        assertTrue(quotes.stream().noneMatch(q -> q.isOk()
                 && q.getBetTitle().getCode() == BetTitleCode.HANDICAP_AWAY_MINUS_1_0.getCode()));
     }
 

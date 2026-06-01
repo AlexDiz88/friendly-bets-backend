@@ -9,7 +9,7 @@
  * </p>
  * <ul>
  *   <li>{@link XbetOddsAdapter} — у гостей на форе инвертируется знак {@code hdp}.</li>
- *   <li>{@link Bet365OddsAdapter} — {@code hdp} как в JSON, без инверсии у гостей.</li>
+ *   <li>{@link Bet365OddsAdapter} — у гостей на форе инвертируется знак {@code hdp} (зеркальная колонка {@code away}).</li>
  * </ul>
  * <p>Результат: {@link MappedOddsQuote} с {@code betTitle} = enum {@link net.friendly_bets.models.enums.BetTitleCode}.</p>
  *

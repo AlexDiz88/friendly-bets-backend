@@ -3,10 +3,13 @@ package net.friendly_bets.oddsapi.mapping;
 import net.friendly_bets.models.BetTitle;
 import net.friendly_bets.models.odds.OddsLineRow;
 import net.friendly_bets.models.odds.OddsMarketGroup;
+import net.friendly_bets.oddsapi.OddsBttsScope;
+import net.friendly_bets.oddsapi.OddsCorrectScoreUtils;
 import net.friendly_bets.oddsapi.OddsDisplayLabelFormatter;
 import net.friendly_bets.oddsapi.OddsMarketCatalog;
 import net.friendly_bets.oddsapi.OddsMarketCategory;
 import net.friendly_bets.oddsapi.OddsSelectionKey;
+import net.friendly_bets.models.enums.BetTitleCode;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -139,7 +142,32 @@ public final class OddsMerger {
                     .comparingDouble((OddsLineRow r) -> parseLine(r.getLine()))
                     .thenComparingInt(r -> selectionOrder(category, r.getSelectionCode()));
         }
-        return Comparator.comparingInt(r -> selectionOrder(category, r.getSelectionCode()));
+        if (category == OddsMarketCategory.BTTS) {
+            return Comparator
+                    .<OddsLineRow>comparingInt(r -> selectionOrder(category, r.getSelectionCode()))
+                    .thenComparingInt(r -> OddsBttsScope.fromSelectionCode(r.getSelectionCode()).getSortOrder());
+        }
+        if (category == OddsMarketCategory.CORRECT_SCORE) {
+            return Comparator.comparingInt(OddsMerger::correctScoreSortKey);
+        }
+        return Comparator.<OddsLineRow>comparingInt(r -> selectionOrder(category, r.getSelectionCode()));
+    }
+
+    private static int correctScoreSortKey(OddsLineRow row) {
+        String selection = row.getSelectionCode();
+        if (selection != null && !selection.isBlank() && OddsCorrectScoreUtils.parseScore(selection) != null) {
+            return OddsCorrectScoreUtils.sortKey(selection);
+        }
+        if (row.getBetTitle() != null) {
+            BetTitleCode code = BetTitleCode.fromCode(row.getBetTitle().getCode());
+            if (code != null) {
+                String derived = OddsCorrectScoreUtils.selectionCodeForBetTitle(code);
+                if (derived != null) {
+                    return OddsCorrectScoreUtils.sortKey(derived);
+                }
+            }
+        }
+        return Integer.MAX_VALUE;
     }
 
     private static double parseLine(String line) {

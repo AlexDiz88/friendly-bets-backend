@@ -18,10 +18,10 @@ class OddsHandicapLineTest {
     }
 
     @Test
-    void bet365AwayKeepsApiHdpSign() {
-        assertEquals(-1.5, OddsHandicapLine.effectiveLine("-1.5", true, false));
-        assertEquals(-1.5, OddsHandicapLine.effectiveLine("-1.5", false, false));
-        assertEquals(-1.0, OddsHandicapLine.effectiveLine("-1", false, false));
+    void bet365AwayInvertsApiHdpSign() {
+        assertEquals(-1.5, OddsHandicapLine.effectiveLine("-1.5", true, OddsHandicapLine.INVERT_AWAY_SIGN_BET365));
+        assertEquals(1.5, OddsHandicapLine.effectiveLine("-1.5", false, OddsHandicapLine.INVERT_AWAY_SIGN_BET365));
+        assertEquals(1.0, OddsHandicapLine.effectiveLine("-1", false, OddsHandicapLine.INVERT_AWAY_SIGN_BET365));
     }
 
     @Test
