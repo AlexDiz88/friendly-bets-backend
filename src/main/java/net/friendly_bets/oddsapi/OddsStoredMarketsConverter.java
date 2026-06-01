@@ -48,7 +48,9 @@ public final class OddsStoredMarketsConverter {
             if (outcome == null || outcome.getLabel() == null || outcome.getOdds() == null) {
                 continue;
             }
-            String lineKey = outcome.getLine() != null ? outcome.getLine() : "";
+            String lineKey = outcome.getLine() != null
+                    ? OddsHandicapLine.canonicalApiLine(outcome.getLine())
+                    : "";
             ObjectNode row = byLine.computeIfAbsent(lineKey, k -> {
                 ObjectNode node = MAPPER.createObjectNode();
                 if (!k.isBlank()) {

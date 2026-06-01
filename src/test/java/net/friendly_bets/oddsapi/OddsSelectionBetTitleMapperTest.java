@@ -66,6 +66,22 @@ class OddsSelectionBetTitleMapperTest {
         BetTitle title = OddsSelectionBetTitleMapper.toBetTitle("CORRECT_SCORE", row);
 
         assertEquals(BetTitleCode.GAME_SCORE_1_0.getCode(), title.getCode());
+    }
+
+    @Test
+    @DisplayName("maps integer home handicap to HANDICAP_HOME_MINUS_2_0")
+    void mapsIntegerHomeHandicap() {
+        OddsLineRow row = OddsLineRow.builder()
+                .line("-2")
+                .selectionCode("HOME")
+                .build();
+
+        BetTitle title = OddsSelectionBetTitleMapper.toBetTitle("HANDICAP", row);
+
+        assertEquals(BetTitleCode.HANDICAP_HOME_MINUS_2_0.getCode(), title.getCode());
+        assertEquals("Ф1(-2)", title.getLabel());
+    }
+
     @Test
     @DisplayName("maps away handicap with inverted api hdp")
     void mapsAwayHandicapInverted() {

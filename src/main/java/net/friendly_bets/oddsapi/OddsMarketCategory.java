@@ -6,14 +6,14 @@ import lombok.Getter;
 public enum OddsMarketCategory {
 
     MATCH_RESULT(1, false),
-    HALF_TIME_RESULT(2, false),
-    DOUBLE_CHANCE(3, false),
-    HANDICAP(4, false),
-    TOTALS(5, false),
+    DOUBLE_CHANCE(2, false),
+    HANDICAP(3, false),
+    TOTALS(4, false),
+    HALF_TIME_RESULT(5, false),
     BTTS(6, false),
+    CORRECT_SCORE(10, true),
     TEAM_TOTAL_HOME(11, true),
     TEAM_TOTAL_AWAY(12, true),
-    CORRECT_SCORE(20, true),
     OTHER(30, true),
     EXCLUDED(99, true);
 

@@ -144,9 +144,10 @@ public final class OddsSelectionBetTitleMapper {
         return formatLine(parseLine(line));
     }
 
+    /** Суффикс enum BetTitleCode: {@code 2_0}, {@code 1_5}. */
     private static String formatLine(double value) {
         if (value == Math.floor(value)) {
-            return String.valueOf((int) value);
+            return ((int) value) + "_0";
         }
         return String.valueOf(value).replace('.', '_');
     }
