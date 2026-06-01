@@ -20,6 +20,7 @@ import net.friendly_bets.oddsapi.mapping.MappedOddsQuote;
 import net.friendly_bets.oddsapi.mapping.OddsBookmakerAdapterRegistry;
 import net.friendly_bets.oddsapi.mapping.OddsMergeResult;
 import net.friendly_bets.oddsapi.mapping.OddsMappingPipeline;
+import net.friendly_bets.oddsapi.poisson.OddsResultTotalEnricher;
 import net.friendly_bets.repositories.OddsDemoSnapshotRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -101,7 +102,11 @@ public class OddsDemoService {
                         ? oddsDto.getBookmakers()
                         : Map.of();
                 OddsMergeResult mergeResult = oddsMappingPipeline.build(rawByBookmaker, canonicalByLower, matchContext);
-                OddsSelectionKey.enrichGroups(mergeResult.getMarketGroups());
+                var marketGroups = mergeResult.getMarketGroups();
+                OddsSelectionKey.enrichGroups(marketGroups);
+                OddsResultTotalEnricher.appendCalculatedGroups(
+                        marketGroups, new ArrayList<>(canonicalByLower.values()));
+                OddsResultTotalEnricher.applyCategoryMetadata(marketGroups);
 
                 oddsDemoSnapshotRepository.save(OddsDemoSnapshot.builder()
                         .oddsApiEventId(event.getId())
@@ -111,7 +116,7 @@ public class OddsDemoService {
                         .leagueSlug(leagueSlug.trim())
                         .status(event.getStatus())
                         .bookmakers(new ArrayList<>(canonicalByLower.values()))
-                        .marketGroups(mergeResult.getMarketGroups())
+                        .marketGroups(marketGroups)
                         .rawBookmakers(copyRawBookmakers(rawByBookmaker, canonicalByLower))
                         .fetchedAt(fetchedAt)
                         .build());
@@ -136,7 +141,15 @@ public class OddsDemoService {
     public OddsDemoEventDetailDto getByEventId(long eventId) {
         OddsDemoSnapshot snapshot = oddsDemoSnapshotRepository.findByOddsApiEventId(eventId)
                 .orElseThrow(() -> new NotFoundException("oddsDemoEvent", String.valueOf(eventId)));
-        return OddsDemoEventDetailDto.from(snapshot);
+        OddsDemoEventDetailDto dto = OddsDemoEventDetailDto.from(snapshot);
+        if (dto.getMarketGroups() != null) {
+            var groups = new ArrayList<>(dto.getMarketGroups());
+            OddsSelectionKey.enrichGroups(groups);
+            OddsResultTotalEnricher.appendCalculatedGroups(groups, snapshot.getBookmakers());
+            OddsResultTotalEnricher.applyCategoryMetadata(groups);
+            dto.setMarketGroups(groups);
+        }
+        return dto;
     }
 
     public OddsDemoDebugDto getDebugByEventId(long eventId) {
@@ -172,6 +185,10 @@ public class OddsDemoService {
         }
 
         OddsMergeResult mergeResult = oddsMappingPipeline.build(raw, canonicalByLower, matchContext);
+        var mergedGroups = mergeResult.getMarketGroups();
+        OddsSelectionKey.enrichGroups(mergedGroups);
+        OddsResultTotalEnricher.appendCalculatedGroups(mergedGroups, snapshot.getBookmakers());
+        OddsResultTotalEnricher.applyCategoryMetadata(mergedGroups);
 
         return OddsDemoDebugDto.builder()
                 .oddsApiEventId(snapshot.getOddsApiEventId())
@@ -181,7 +198,7 @@ public class OddsDemoService {
                 .fetchedAt(snapshot.getFetchedAt())
                 .rawBookmakers(toRawBookmakersView(raw))
                 .mappingTraceByBookmaker(traceByBookmaker)
-                .mergedMarketGroups(mergeResult.getMarketGroups())
+                .mergedMarketGroups(mergedGroups)
                 .mappingIssues(issues)
                 .build();
     }

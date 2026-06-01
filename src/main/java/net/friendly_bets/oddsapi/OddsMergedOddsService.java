@@ -6,6 +6,7 @@ import net.friendly_bets.models.odds.GameResultMergedOdds;
 import net.friendly_bets.models.odds.OddsMarketGroup;
 import net.friendly_bets.oddsapi.mapping.OddsMappingPipeline;
 import net.friendly_bets.oddsapi.mapping.OddsMergeResult;
+import net.friendly_bets.oddsapi.poisson.OddsResultTotalEnricher;
 import net.friendly_bets.repositories.GameResultMergedOddsRepository;
 import org.springframework.stereotype.Service;
 
@@ -38,6 +39,8 @@ public class OddsMergedOddsService {
         List<OddsMarketGroup> groups = mergeResult.getMarketGroups();
         OddsSelectionKey.enrichGroups(groups);
         enrichBetTitles(groups);
+        OddsResultTotalEnricher.appendCalculatedGroups(groups, bookmakers);
+        OddsResultTotalEnricher.applyCategoryMetadata(groups);
 
         if (match == null || match.getId() == null) {
             return mergeResult;

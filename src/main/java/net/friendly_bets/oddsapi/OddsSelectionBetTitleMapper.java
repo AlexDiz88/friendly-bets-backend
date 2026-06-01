@@ -31,6 +31,12 @@ public final class OddsSelectionBetTitleMapper {
         boolean isNot = false;
 
         switch (category) {
+            case RESULT_TOTAL_OVER, RESULT_TOTAL_UNDER -> {
+                if (row.getBetTitle() != null) {
+                    return row.getBetTitle();
+                }
+                throw new BadRequestException("betMarketNotAllowedForSelfService");
+            }
             case MATCH_RESULT -> code = mapMatchResult(selection);
             case HALF_TIME_RESULT -> code = mapHalfTimeResult(selection);
             case DOUBLE_CHANCE -> code = mapDoubleChance(selection);

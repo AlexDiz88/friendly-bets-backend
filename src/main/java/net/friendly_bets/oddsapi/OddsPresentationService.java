@@ -14,6 +14,7 @@ import net.friendly_bets.oddsapi.client.dto.OddsApiEventOddsDto;
 import net.friendly_bets.oddsapi.client.dto.OddsApiMarketDto;
 import net.friendly_bets.oddsapi.config.OddsApiProperties;
 import net.friendly_bets.oddsapi.mapping.BetTitleKey;
+import net.friendly_bets.oddsapi.poisson.OddsResultTotalEnricher;
 import net.friendly_bets.repositories.GameResultOddsRepository;
 import net.friendly_bets.repositories.GameResultRecordRepository;
 import net.friendly_bets.services.GetEntityService;
@@ -59,7 +60,9 @@ public class OddsPresentationService {
 
         Optional<GameResultMergedOdds> mergedSnapshot = oddsMergedOddsService.findByGameResultId(gameResultId);
         if (mergedSnapshot.isPresent() && mergedSnapshot.get().getFrozenAt() != null) {
-            return toDto(match, mergedSnapshot.get().getMarketGroups(), mergedSnapshot.get().getFetchedAt(), canonicalBookmakers);
+            List<OddsMarketGroup> frozenGroups = new ArrayList<>(mergedSnapshot.get().getMarketGroups());
+            prepareMarketGroupsForPresentation(frozenGroups, canonicalBookmakers);
+            return toDto(match, frozenGroups, mergedSnapshot.get().getFetchedAt(), canonicalBookmakers);
         }
 
         List<GameResultOdds> cached = gameResultOddsRepository.findByGameResultId(gameResultId);
@@ -104,15 +107,23 @@ public class OddsPresentationService {
             }
         }
 
-        groups = groups.stream()
+        List<OddsMarketGroup> presentationGroups = new ArrayList<>(groups);
+        prepareMarketGroupsForPresentation(presentationGroups, canonicalBookmakers);
+        presentationGroups = presentationGroups.stream()
                 .filter(g -> g.getRows() != null && !g.getRows().isEmpty())
                 .toList();
 
-        if (groups.isEmpty()) {
+        if (presentationGroups.isEmpty()) {
             throw new BadRequestException("oddsNotAvailable");
         }
 
-        return toDto(match, groups, fetchedAt, canonicalBookmakers);
+        return toDto(match, presentationGroups, fetchedAt, canonicalBookmakers);
+    }
+
+    private void prepareMarketGroupsForPresentation(List<OddsMarketGroup> groups, List<String> bookmakers) {
+        OddsSelectionKey.enrichGroups(groups);
+        OddsResultTotalEnricher.appendCalculatedGroups(groups, bookmakers);
+        OddsResultTotalEnricher.applyCategoryMetadata(groups);
     }
 
     public Map<String, List<OddsApiMarketDto>> refreshFromApi(

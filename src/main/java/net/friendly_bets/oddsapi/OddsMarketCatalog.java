@@ -90,6 +90,8 @@ public final class OddsMarketCatalog {
             case DOUBLE_CHANCE -> "doubleChance";
             case HANDICAP -> "handicap";
             case TOTALS -> "totals";
+            case RESULT_TOTAL_OVER -> "resultTotalOver";
+            case RESULT_TOTAL_UNDER -> "resultTotalUnder";
             case BTTS -> "btts";
             case GOALS -> "goals";
             case EXACT_TOTAL_GOALS -> "exactTotalGoals";
