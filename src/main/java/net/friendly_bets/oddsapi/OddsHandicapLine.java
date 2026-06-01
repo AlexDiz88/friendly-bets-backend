@@ -45,6 +45,28 @@ public final class OddsHandicapLine {
         return formatSortKey(parse(line));
     }
 
+    /**
+     * Отсекает явно перепутанные котировки (напр. кэф «минусовой» форы на строке «+1»).
+     * У плюсовой форы кэф обычно заметно ниже 3; у минусовой — выше ~1.2.
+     */
+    public static boolean isImplausibleQuote(double effectiveLine, String oddsRaw) {
+        if (oddsRaw == null || oddsRaw.isBlank() || "—".equals(oddsRaw.trim())) {
+            return false;
+        }
+        try {
+            double odds = Double.parseDouble(oddsRaw.trim().replace(',', '.'));
+            if (effectiveLine > 0.01 && odds > 2.8) {
+                return true;
+            }
+            if (effectiveLine < -0.01 && odds < 1.2) {
+                return true;
+            }
+        } catch (NumberFormatException ignored) {
+            return false;
+        }
+        return false;
+    }
+
     /** Числовой ключ для сортировки и слияния строк с одинаковой эффективной форой. */
     public static String formatSortKey(double value) {
         if (Math.abs(value) < 1e-9) {

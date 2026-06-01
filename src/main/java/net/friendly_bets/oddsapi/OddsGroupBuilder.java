@@ -60,9 +60,23 @@ public final class OddsGroupBuilder {
                         String selectionCode = category == OddsMarketCategory.BTTS
                                 ? bttsScope.selectionCode(price.getKey())
                                 : price.getKey().name();
-                        String key = rowKey(category, canonicalLine, selectionCode, bttsScope);
-                        OddsLineRow row = categoryRows.computeIfAbsent(key, k -> OddsLineRow.builder()
-                                .line(categoryUsesLine(category) ? canonicalLine : null)
+                        final String mergeKey;
+                        final String lineForRow;
+                        if (category == OddsMarketCategory.HANDICAP) {
+                            boolean home = "HOME".equals(selectionCode);
+                            double effective = OddsHandicapLine.effectiveLine(canonicalLine, home);
+                            if (OddsHandicapLine.isImplausibleQuote(effective, price.getValue())) {
+                                continue;
+                            }
+                            String effectiveKey = OddsHandicapLine.formatSortKey(effective);
+                            mergeKey = effectiveKey + "|" + selectionCode;
+                            lineForRow = effectiveKey;
+                        } else {
+                            mergeKey = rowKey(category, canonicalLine, selectionCode, bttsScope);
+                            lineForRow = canonicalLine;
+                        }
+                        OddsLineRow row = categoryRows.computeIfAbsent(mergeKey, k -> OddsLineRow.builder()
+                                .line(categoryUsesLine(category) ? lineForRow : null)
                                 .selectionCode(selectionCode)
                                 .displayLabel(price.getKey().displayLabel())
                                 .bookmakerOdds(new LinkedHashMap<>())
@@ -198,8 +212,7 @@ public final class OddsGroupBuilder {
     }
 
     private static double handicapEffectiveSortKey(OddsLineRow row) {
-        boolean home = "HOME".equals(row.getSelectionCode());
-        return OddsHandicapLine.effectiveLine(row.getLine(), home);
+        return OddsHandicapLine.parse(row.getLine());
     }
 
     private static double handicapAbsSortKey(OddsLineRow row) {

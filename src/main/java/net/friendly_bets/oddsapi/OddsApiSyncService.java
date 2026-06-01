@@ -6,6 +6,7 @@ import net.friendly_bets.exceptions.BadRequestException;
 import net.friendly_bets.footballdata.FootballDataCompetitionMapping;
 import net.friendly_bets.footballdata.FootballDataCompetitionService;
 import net.friendly_bets.footballdata.FootballDataMatchdaySupport;
+import net.friendly_bets.footballdata.FootballDataSyncService;
 import net.friendly_bets.models.League;
 import net.friendly_bets.models.Season;
 import net.friendly_bets.models.gameresults.GameResultRecord;
@@ -16,7 +17,6 @@ import net.friendly_bets.oddsapi.client.dto.OddsApiEventOddsDto;
 import net.friendly_bets.oddsapi.client.dto.OddsApiMarketDto;
 import net.friendly_bets.oddsapi.config.OddsApiProperties;
 import net.friendly_bets.repositories.GameResultOddsRepository;
-import net.friendly_bets.repositories.GameResultRecordRepository;
 import net.friendly_bets.repositories.SeasonsRepository;
 import net.friendly_bets.services.GetEntityService;
 import org.slf4j.Logger;
@@ -25,10 +25,12 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -41,8 +43,8 @@ public class OddsApiSyncService {
     private final SeasonsRepository seasonsRepository;
     private final FootballDataCompetitionService footballDataCompetitionService;
     private final FootballDataMatchdaySupport matchdaySupport;
-    private final GameResultRecordRepository gameResultRecordRepository;
     private final GameResultOddsRepository gameResultOddsRepository;
+    private final FootballDataSyncService footballDataSyncService;
     private final OddsApiEventMatcher eventMatcher;
     private final GetEntityService getEntityService;
 
@@ -50,6 +52,19 @@ public class OddsApiSyncService {
      * Принудительная синхронизация кэфов для тура лиги (админ / модератор).
      */
     public OddsApiSyncResult syncMatchday(String leagueId, int matchday, String season) {
+        return syncMatchday(leagueId, matchday, season, null);
+    }
+
+    /**
+     * Синхронизация кэфов для слота тура. При {@code gameResultIds} — только указанные матчи
+     * (как на экране «Результаты матчей»); иначе все матчи слота с учётом Berlin-фильтра.
+     */
+    public OddsApiSyncResult syncMatchday(
+            String leagueId,
+            int matchday,
+            String season,
+            List<String> gameResultIds
+    ) {
         List<String> bookmakers = requireSyncReady();
         League league = getEntityService.getLeagueOrThrow(leagueId);
         if (league.getLeagueCode() == null) {
@@ -69,7 +84,8 @@ public class OddsApiSyncService {
                 leagueSlug.get(),
                 bookmakers,
                 now,
-                true
+                true,
+                gameResultIds
         );
         return counters.toResult();
     }
@@ -85,7 +101,6 @@ public class OddsApiSyncService {
         }
 
         Season season = active.get();
-        String externalSeasonYear = matchdaySupport.resolveFootballDataSeasonYear(season);
         LocalDateTime now = LocalDateTime.now();
 
         int leaguesProcessed = 0;
@@ -119,29 +134,33 @@ public class OddsApiSyncService {
                 continue;
             }
 
+            String leagueSeason = matchdaySupport.resolveFootballDataSeasonYear(season, league.getLeagueCode());
             ExternalCompetitionInfoDto info = footballDataCompetitionService.getCompetitionInfoForLeague(
                     league.getId(),
-                    externalSeasonYear
+                    leagueSeason
             );
-            int matchday = info.getCurrentMatchday();
+            List<Integer> slotOrders = OddsApiSyncMatchdayWindow.resolveSlotOrders(info, league.getLeagueCode());
 
-            LeagueMatchdaySyncCounters leagueResult = syncLeagueMatchday(
-                    league,
-                    matchday,
-                    externalSeasonYear,
-                    leagueSlug.get(),
-                    bookmakers,
-                    now,
-                    false
-            );
-            if (leagueResult.leaguesProcessed() > 0) {
-                leaguesProcessed += leagueResult.leaguesProcessed();
+            for (int matchday : slotOrders) {
+                LeagueMatchdaySyncCounters leagueResult = syncLeagueMatchday(
+                        league,
+                        matchday,
+                        leagueSeason,
+                        leagueSlug.get(),
+                        bookmakers,
+                        now,
+                        false,
+                        null
+                );
+                if (leagueResult.leaguesProcessed() > 0) {
+                    leaguesProcessed += leagueResult.leaguesProcessed();
+                }
+                matchesEligible += leagueResult.matchesEligible();
+                oddsDocumentsSaved += leagueResult.oddsDocumentsSaved();
+                matchesSkippedStarted += leagueResult.matchesSkippedStarted();
+                mappingFailures += leagueResult.mappingFailures();
+                teamMappingFailures += leagueResult.teamMappingFailures();
             }
-            matchesEligible += leagueResult.matchesEligible();
-            oddsDocumentsSaved += leagueResult.oddsDocumentsSaved();
-            matchesSkippedStarted += leagueResult.matchesSkippedStarted();
-            mappingFailures += leagueResult.mappingFailures();
-            teamMappingFailures += leagueResult.teamMappingFailures();
         }
 
         log.info(
@@ -171,14 +190,22 @@ public class OddsApiSyncService {
             String leagueSlug,
             List<String> bookmakers,
             LocalDateTime now,
-            boolean failWhenNoPendingMatches
+            boolean failWhenNoPendingMatches,
+            List<String> gameResultIds
     ) {
         String leagueCode = league.getLeagueCode().name();
-        List<GameResultRecord> matches = gameResultRecordRepository.findByLeagueCodeAndMatchdayAndSeason(
+        List<GameResultRecord> matches = footballDataSyncService.getMatches(
                 leagueCode,
                 matchday,
-                season
+                season,
+                league.getId()
         );
+        if (gameResultIds != null && !gameResultIds.isEmpty()) {
+            Set<String> allowed = new HashSet<>(gameResultIds);
+            matches = matches.stream()
+                    .filter(m -> m.getId() != null && allowed.contains(m.getId()))
+                    .toList();
+        }
 
         List<GameResultRecord> pending = new ArrayList<>();
         int matchesSkippedStarted = 0;

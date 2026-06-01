@@ -86,7 +86,7 @@ class OddsSelectionBetTitleMapperTest {
     @DisplayName("maps away handicap with inverted api hdp")
     void mapsAwayHandicapInverted() {
         OddsLineRow row = OddsLineRow.builder()
-                .line("-2.5")
+                .line("2.5")
                 .selectionCode("AWAY")
                 .build();
 

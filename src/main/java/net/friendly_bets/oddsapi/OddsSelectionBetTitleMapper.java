@@ -124,7 +124,7 @@ public final class OddsSelectionBetTitleMapper {
 
     private static BetTitleCode mapHandicap(String line, String selection) {
         boolean home = "HOME".equals(selection);
-        double effective = OddsHandicapLine.effectiveLine(line, home);
+        double effective = OddsHandicapLine.parse(line);
         String suffix = handicapSuffix(effective, home);
         String prefix = home ? "HANDICAP_HOME" : "HANDICAP_AWAY";
         return findEnum(prefix + suffix)

@@ -15,6 +15,9 @@ public final class OddsDisplayLabelFormatter {
         if (category == OddsMarketCategory.BTTS) {
             return formatBttsRaw(row);
         }
+        if (category == OddsMarketCategory.HANDICAP) {
+            return formatHandicapRow(row);
+        }
         BetTitle betTitle = row.getBetTitle();
         if (betTitle != null && betTitle.getLabel() != null && !betTitle.getLabel().isBlank()) {
             return formatFromBetTitle(category, betTitle.getLabel());
@@ -93,11 +96,23 @@ public final class OddsDisplayLabelFormatter {
         return label;
     }
 
+    private static String formatHandicapRow(OddsLineRow row) {
+        OddsSelectionCode code;
+        try {
+            code = OddsSelectionCode.valueOf(row.getSelectionCode());
+        } catch (IllegalArgumentException e) {
+            return row.getDisplayLabel() != null ? row.getDisplayLabel() : "";
+        }
+        return formatHandicapRaw(row.getLine(), code);
+    }
+
     private static String formatHandicapRaw(String line, OddsSelectionCode code) {
         String side = code == OddsSelectionCode.HOME ? "Ф1" : "Ф2";
-        boolean home = code == OddsSelectionCode.HOME;
-        double effective = OddsHandicapLine.effectiveLine(line, home);
-        if (Math.abs(effective) < 1e-9 && (line == null || line.isBlank())) {
+        if (line == null || line.isBlank()) {
+            return side;
+        }
+        double effective = OddsHandicapLine.parse(line);
+        if (Math.abs(effective) < 1e-9) {
             return side;
         }
         return side + " (" + OddsHandicapLine.formatSigned(effective) + ")";

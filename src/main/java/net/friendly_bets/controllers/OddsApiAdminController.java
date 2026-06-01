@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -31,9 +32,10 @@ public class OddsApiAdminController {
     public ResponseEntity<Map<String, Object>> syncMatchday(
             @RequestParam String leagueId,
             @RequestParam int matchday,
-            @RequestParam String season
+            @RequestParam String season,
+            @RequestParam(required = false) List<String> gameResultIds
     ) {
-        OddsApiSyncResult result = oddsApiSyncService.syncMatchday(leagueId, matchday, season);
+        OddsApiSyncResult result = oddsApiSyncService.syncMatchday(leagueId, matchday, season, gameResultIds);
         return syncResponse(result);
     }
 

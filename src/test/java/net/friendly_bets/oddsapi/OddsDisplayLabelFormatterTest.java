@@ -29,7 +29,7 @@ class OddsDisplayLabelFormatterTest {
     @DisplayName("formats away handicap with inverted sign")
     void formatsAwayHandicap() {
         OddsLineRow row = OddsLineRow.builder()
-                .line("-2.5")
+                .line("2.5")
                 .selectionCode("AWAY")
                 .betTitle(BetTitle.builder()
                         .code(BetTitleCode.HANDICAP_AWAY_PLUS_2_5.getCode())
@@ -44,7 +44,7 @@ class OddsDisplayLabelFormatterTest {
     @DisplayName("formats raw away handicap from api hdp")
     void formatsRawAwayHandicap() {
         OddsLineRow row = OddsLineRow.builder()
-                .line("-3.5")
+                .line("3.5")
                 .selectionCode("AWAY")
                 .build();
 
