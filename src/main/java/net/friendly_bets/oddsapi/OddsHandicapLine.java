@@ -5,8 +5,7 @@ package net.friendly_bets.oddsapi;
  * <ul>
  *   <li>1xbet {@code Spread}: хозяева — {@code hdp} как есть; гости — знак инвертируется
  *       ({@code hdp=1} → Ф1(+1) и Ф2(−1) в одной строке).</li>
- *   <li>Bet365 (Spread / Asian Handicap): хозяева — {@code hdp} как есть; гости — знак инвертируется
- *       ({@code hdp=−1.5} → Ф1(−1.5) и Ф2(+1.5)).</li>
+ *   <li>Bet365 (Spread, Asian Handicap, …): у гостей знак {@code hdp} инвертируется (как 1xbet Spread).</li>
  * </ul>
  */
 public final class OddsHandicapLine {
@@ -17,15 +16,11 @@ public final class OddsHandicapLine {
     /** 1xbet Spread: для гостей знак {@code hdp} инвертируется. */
     public static final boolean INVERT_AWAY_SIGN_XBET_SPREAD = true;
 
-    /** Bet365: колонка {@code away} — зеркальная линия, знак {@code hdp} инвертируется. */
+    /** Bet365: для гостей знак {@code hdp} инвертируется на всех handicap-рынках. */
     public static final boolean INVERT_AWAY_SIGN_BET365 = true;
 
     public static double effectiveLine(String apiLine, boolean home) {
         return effectiveLine(parse(apiLine), home, INVERT_AWAY_SIGN_XBET_SPREAD);
-    }
-
-    public static double effectiveLine(double apiLine, boolean home) {
-        return effectiveLine(apiLine, home, INVERT_AWAY_SIGN_XBET_SPREAD);
     }
 
     public static double effectiveLine(String apiLine, boolean home, boolean invertAwaySign) {
@@ -65,28 +60,6 @@ public final class OddsHandicapLine {
             return line;
         }
         return formatSortKey(parse(line));
-    }
-
-    /**
-     * Отсекает явно перепутанные котировки (напр. кэф «минусовой» форы на строке «+1»).
-     * У плюсовой форы кэф обычно заметно ниже 3; у минусовой — выше ~1.2.
-     */
-    public static boolean isImplausibleQuote(double effectiveLine, String oddsRaw) {
-        if (oddsRaw == null || oddsRaw.isBlank() || "—".equals(oddsRaw.trim())) {
-            return false;
-        }
-        try {
-            double odds = Double.parseDouble(oddsRaw.trim().replace(',', '.'));
-            if (effectiveLine > 0.01 && odds > 2.8) {
-                return true;
-            }
-            if (effectiveLine < -0.01 && odds < 1.2) {
-                return true;
-            }
-        } catch (NumberFormatException ignored) {
-            return false;
-        }
-        return false;
     }
 
     /** Числовой ключ для сортировки и слияния строк с одинаковой эффективной форой. */

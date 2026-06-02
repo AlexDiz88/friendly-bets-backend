@@ -62,7 +62,7 @@ public class OddsMappingIssueRecorder {
                 labelSuffix = " (" + label.trim() + ")";
             }
         }
-        return "betTitle=" + key + labelSuffix
+        return "Есть возможные проблемы с кэфами: betTitle=" + key + labelSuffix
                 + " " + mismatch.getBookmakerA() + "=" + mismatch.getOddsA()
                 + " " + mismatch.getBookmakerB() + "=" + mismatch.getOddsB();
     }
@@ -78,7 +78,6 @@ public class OddsMappingIssueRecorder {
             case SELECTION_UNMAPPED -> rejected.getCategory() == OddsMarketCategory.DOUBLE_CHANCE
                     || rejected.getCategory() == OddsMarketCategory.MATCH_RESULT
                     || rejected.getCategory() == OddsMarketCategory.HALF_TIME_RESULT;
-            case HANDICAP_IMPLAUSIBLE -> true;
         };
     }
 
@@ -100,8 +99,7 @@ public class OddsMappingIssueRecorder {
             apiSyncIssueService.recordOddsSelectionUnmapped(
                     match, leagueCode, season, matchday,
                     rejected.getBookmaker(), rejected.getMarketName(), message);
-        } else if (reason == OddsRejectReason.HANDICAP_IMPLAUSIBLE
-                || reason == OddsRejectReason.HANDICAP_ROW_INCOMPLETE) {
+        } else if (reason == OddsRejectReason.HANDICAP_ROW_INCOMPLETE) {
             apiSyncIssueService.recordOddsQuoteRejected(
                     match, leagueCode, season, matchday,
                     rejected.getBookmaker(), rejected.getMarketName(), message);

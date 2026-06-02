@@ -208,7 +208,7 @@ public class OddsDemoService {
             }
         }
 
-        OddsMergeResult mergeResult = oddsMappingPipeline.build(raw, canonicalByLower, matchContext);
+        OddsMergeResult mergeResult = oddsMappingPipeline.build(raw, canonicalByLower, matchContext, true);
         var mergedGroups = mergeResult.getMarketGroups();
         OddsSelectionKey.enrichGroups(mergedGroups);
         OddsResultTotalEnricher.appendCalculatedGroups(mergedGroups, snapshot.getBookmakers());
@@ -384,10 +384,12 @@ public class OddsDemoService {
         Map<String, List<OddsApiMarketDto>> rawByBookmaker = oddsDto != null && oddsDto.getBookmakers() != null
                 ? oddsDto.getBookmakers()
                 : Map.of();
-        OddsMergeResult mergeResult = oddsMappingPipeline.build(rawByBookmaker, canonicalByLower, matchContext);
+        OddsMergeResult mergeResult = oddsMappingPipeline.build(
+                rawByBookmaker, canonicalByLower, matchContext, true);
+        List<String> orderedBookmakers = orderBookmakersFromRaw(rawByBookmaker, canonicalByLower);
         var marketGroups = mergeResult.getMarketGroups();
         OddsSelectionKey.enrichGroups(marketGroups);
-        OddsResultTotalEnricher.appendCalculatedGroups(marketGroups, new ArrayList<>(canonicalByLower.values()));
+        OddsResultTotalEnricher.appendCalculatedGroups(marketGroups, orderedBookmakers);
         OddsResultTotalEnricher.applyCategoryMetadata(marketGroups);
 
         Optional<OddsDemoSnapshot> existing = oddsDemoSnapshotRepository.findIdByOddsApiEventId(eventId);
@@ -398,7 +400,7 @@ public class OddsDemoService {
         snapshot.setEventDate(eventMeta != null ? eventMeta.getDate() : oddsDto != null ? oddsDto.getDate() : null);
         snapshot.setLeagueSlug(leagueSlug);
         snapshot.setStatus(eventMeta != null ? eventMeta.getStatus() : oddsDto != null ? oddsDto.getStatus() : null);
-        snapshot.setBookmakers(new ArrayList<>(canonicalByLower.values()));
+        snapshot.setBookmakers(orderedBookmakers);
         snapshot.setMarketGroups(marketGroups);
         snapshot.setRawBookmakers(copyRawBookmakers(rawByBookmaker, canonicalByLower));
         snapshot.setFetchedAt(LocalDateTime.now());
@@ -411,5 +413,29 @@ public class OddsDemoService {
                 event.getHome(), event.getHomeId(), true, null);
         apiSyncIssueService.recordUnmappedOddsApiTeamNameHint(
                 event.getAway(), event.getAwayId(), false, null);
+    }
+
+    /** Порядок колонок как в raw JSON odds-api (1xbet перед Bet365). */
+    private static List<String> orderBookmakersFromRaw(
+            Map<String, List<OddsApiMarketDto>> rawByBookmaker,
+            Map<String, String> canonicalByLower
+    ) {
+        List<String> ordered = new ArrayList<>();
+        if (rawByBookmaker != null) {
+            for (String apiKey : rawByBookmaker.keySet()) {
+                String canonical = OddsBookmakerKeys.resolveCanonical(apiKey, canonicalByLower);
+                if (canonical != null && !ordered.contains(canonical)) {
+                    ordered.add(canonical);
+                }
+            }
+        }
+        if (canonicalByLower != null) {
+            for (String canonical : canonicalByLower.values()) {
+                if (!ordered.contains(canonical)) {
+                    ordered.add(canonical);
+                }
+            }
+        }
+        return ordered;
     }
 }

@@ -1,5 +1,6 @@
 package net.friendly_bets.footballdata;
 
+import net.friendly_bets.gameresults.GameResultFinalizer;
 import net.friendly_bets.gameresults.MatchDataProviders;
 import net.friendly_bets.gameresults.MatchResultStabilizationService;
 import net.friendly_bets.models.GameScore;
@@ -17,8 +18,6 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;

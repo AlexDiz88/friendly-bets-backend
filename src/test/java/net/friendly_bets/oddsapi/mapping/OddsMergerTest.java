@@ -167,4 +167,48 @@ class OddsMergerTest {
                 .noneMatch(r -> r.getBetTitle() != null
                         && r.getBetTitle().getCode() == title.getCode()));
     }
+
+    @Test
+    void includesCrossBookmakerMismatchWhenDemoMode() {
+        BetTitle title = BetTitle.builder()
+                .code(BetTitleCode.HANDICAP_AWAY_PLUS_1_0.getCode())
+                .label(BetTitleCode.HANDICAP_AWAY_PLUS_1_0.getLabel())
+                .isNot(false)
+                .build();
+
+        List<MappedOddsQuote> quotes = List.of(
+                MappedOddsQuote.builder()
+                        .bookmaker("1xbet")
+                        .marketName("Spread")
+                        .category(OddsMarketCategory.HANDICAP)
+                        .betTitle(title)
+                        .odds("1.15")
+                        .mappingStatus(OddsMappingStatus.OK)
+                        .selectionCode("AWAY")
+                        .line("1")
+                        .build(),
+                MappedOddsQuote.builder()
+                        .bookmaker("Bet365")
+                        .marketName("Spread")
+                        .category(OddsMarketCategory.HANDICAP)
+                        .betTitle(title)
+                        .odds("4.65")
+                        .mappingStatus(OddsMappingStatus.OK)
+                        .selectionCode("AWAY")
+                        .line("1")
+                        .build()
+        );
+
+        OddsMergeResult result = OddsMerger.merge(quotes, true);
+        assertTrue(result.getMismatches().size() >= 1);
+        OddsLineRow row = result.getMarketGroups().stream()
+                .filter(g -> "HANDICAP".equals(g.getCategory()))
+                .flatMap(g -> g.getRows().stream())
+                .filter(r -> r.getBetTitle() != null && r.getBetTitle().getCode() == title.getCode())
+                .findFirst()
+                .orElseThrow();
+        assertEquals("1.15", row.getBookmakerOdds().get("1xbet"));
+        assertEquals("4.65", row.getBookmakerOdds().get("Bet365"));
+        assertTrue(row.isCrossBookmakerMismatch());
+    }
 }

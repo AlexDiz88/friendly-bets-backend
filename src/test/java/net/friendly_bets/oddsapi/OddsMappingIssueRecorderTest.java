@@ -30,7 +30,7 @@ class OddsMappingIssueRecorderTest {
                 .build();
 
         assertEquals(
-                "betTitle=103:0 (П2) 1xbet=60.000 Bet365=34.000",
+                "Есть возможные проблемы с кэфами: betTitle=103:0 (П2) 1xbet=60.000 Bet365=34.000",
                 OddsMappingIssueRecorder.formatCrossBookmakerMismatchMessage(mismatch));
     }
 }

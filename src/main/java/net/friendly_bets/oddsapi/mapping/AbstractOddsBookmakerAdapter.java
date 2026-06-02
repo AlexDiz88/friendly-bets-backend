@@ -31,7 +31,7 @@ import java.util.Optional;
  * Данные других букмекеров здесь недоступны и не используются.
  * <p>
  * Форы: одна строка API {@code {hdp, home, away}} → до двух ставок; правило знака {@code hdp}
- * для гостей — {@link #invertAwayHandicapSign(String)} (переопределяют Xbet/Bet365).
+ * для гостей — {@link #invertAwayHandicapSign(String)} ({@link XbetOddsAdapter}, {@link Bet365OddsAdapter} Spread).
  */
 public abstract class AbstractOddsBookmakerAdapter implements OddsBookmakerAdapter {
 
@@ -77,7 +77,7 @@ public abstract class AbstractOddsBookmakerAdapter implements OddsBookmakerAdapt
         return OddsMarketCatalog.resolveCategory(marketName);
     }
 
-    /** Инверсия знака {@code hdp} для гостей — только у 1xbet; Bet365 переопределяет в {@code false}. */
+    /** Инверсия знака {@code hdp} для гостей — переопределяют {@link XbetOddsAdapter} и {@link Bet365OddsAdapter}. */
     protected boolean invertAwayHandicapSign(String marketName) {
         return false;
     }
@@ -127,11 +127,6 @@ public abstract class AbstractOddsBookmakerAdapter implements OddsBookmakerAdapt
                     OddsRejectReason.HANDICAP_ROW_INCOMPLETE, "missing " + selectionCode);
         }
         double effective = OddsHandicapLine.effectiveLine(apiLine, home, invertAwayHandicapSign(marketName));
-        if (OddsHandicapLine.isImplausibleQuote(effective, odds)) {
-            return reject(marketName, rawRow, OddsMarketCategory.HANDICAP,
-                    OddsRejectReason.HANDICAP_IMPLAUSIBLE,
-                    selectionCode + " line=" + OddsHandicapLine.formatSortKey(effective) + " odds=" + odds);
-        }
         String lineForRow = OddsHandicapLine.formatSortKey(effective);
         OddsLineRow row = OddsLineRow.builder()
                 .line(lineForRow)

@@ -195,6 +195,23 @@ public class ApiSyncIssueService {
             String message
     ) {
         GameResultSourceSnapshot source = match != null ? match.footballDataSource() : null;
+        String provider = MatchDataProviders.ODDS_API;
+        String type = issueType.name();
+        String gameResultId = match != null ? match.getId() : null;
+        if (gameResultId != null && !gameResultId.isBlank()) {
+            Optional<ApiSyncIssue> existingIssue = apiSyncIssueRepository
+                    .findFirstByProviderAndIssueTypeAndGameResultIdAndMessage(
+                            provider, type, gameResultId, message);
+            if (existingIssue.isPresent()) {
+                ApiSyncIssue issue = existingIssue.get();
+                issue.setCreatedAt(LocalDateTime.now());
+                issue.setMatchday(matchday);
+                issue.setLeagueCode(leagueCode);
+                issue.setSeason(season);
+                apiSyncIssueRepository.save(issue);
+                return;
+            }
+        }
         apiSyncIssueRepository.save(ApiSyncIssue.builder()
                 .createdAt(LocalDateTime.now())
                 .provider(MatchDataProviders.ODDS_API)
@@ -399,7 +416,68 @@ public class ApiSyncIssueService {
 
     public List<ApiSyncIssue> getLatest() {
         purgeResolvedTeamMappingIssues();
-        return apiSyncIssueRepository.findTop200ByOrderByCreatedAtDesc();
+        return dedupeOddsMappingIssues(apiSyncIssueRepository.findTop200ByOrderByCreatedAtDesc());
+    }
+
+    /** Одна и та же odds-проблема не дублируется — обновляется дата последнего появления. */
+    private static List<ApiSyncIssue> dedupeOddsMappingIssues(List<ApiSyncIssue> issues) {
+        if (issues == null || issues.isEmpty()) {
+            return List.of();
+        }
+        Map<String, ApiSyncIssue> byKey = new LinkedHashMap<>();
+        for (ApiSyncIssue issue : issues) {
+            if (issue == null) {
+                continue;
+            }
+            if (!isDedupableOddsIssue(issue)) {
+                byKey.put("other:" + issue.getId(), issue);
+                continue;
+            }
+            String key = oddsIssueDedupKey(issue);
+            ApiSyncIssue existing = byKey.get(key);
+            if (existing == null || isNewer(issue, existing)) {
+                byKey.put(key, issue);
+            }
+        }
+        List<ApiSyncIssue> result = new ArrayList<>(byKey.values());
+        result.sort((a, b) -> {
+            if (a.getCreatedAt() == null) {
+                return 1;
+            }
+            if (b.getCreatedAt() == null) {
+                return -1;
+            }
+            return b.getCreatedAt().compareTo(a.getCreatedAt());
+        });
+        return result;
+    }
+
+    private static boolean isDedupableOddsIssue(ApiSyncIssue issue) {
+        if (!MatchDataProviders.ODDS_API.equals(issue.getProvider())) {
+            return false;
+        }
+        String type = issue.getIssueType();
+        return ApiSyncIssue.IssueType.ODDS_MARKET_UNMAPPED.name().equals(type)
+                || ApiSyncIssue.IssueType.ODDS_SELECTION_UNMAPPED.name().equals(type)
+                || ApiSyncIssue.IssueType.ODDS_QUOTE_MISMATCH.name().equals(type)
+                || ApiSyncIssue.IssueType.ODDS_QUOTE_REJECTED.name().equals(type);
+    }
+
+    private static String oddsIssueDedupKey(ApiSyncIssue issue) {
+        return issue.getProvider() + "\0"
+                + issue.getIssueType() + "\0"
+                + (issue.getGameResultId() != null ? issue.getGameResultId() : "") + "\0"
+                + (issue.getMessage() != null ? issue.getMessage() : "");
+    }
+
+    private static boolean isNewer(ApiSyncIssue candidate, ApiSyncIssue existing) {
+        if (candidate.getCreatedAt() == null) {
+            return false;
+        }
+        if (existing.getCreatedAt() == null) {
+            return true;
+        }
+        return candidate.getCreatedAt().isAfter(existing.getCreatedAt());
     }
 
     public void deleteById(String id) {

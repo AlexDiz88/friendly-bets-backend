@@ -29,6 +29,10 @@ public final class OddsMerger {
     }
 
     public static OddsMergeResult merge(List<MappedOddsQuote> quotes) {
+        return merge(quotes, false);
+    }
+
+    public static OddsMergeResult merge(List<MappedOddsQuote> quotes, boolean includeCrossBookmakerMismatchRows) {
         List<MappedOddsQuote> rejected = new ArrayList<>();
         List<MappedOddsQuote> okQuotes = new ArrayList<>();
         if (quotes != null) {
@@ -59,28 +63,31 @@ public final class OddsMerger {
             List<MappedOddsQuote> group = entry.getValue();
             Map<String, String> bookmakerOdds = mergeBookmakerOdds(group);
             Map<String, String> bookmakerSourcePaths = mergeBookmakerSourcePaths(group, bookmakerOdds);
-            if (OddsMappingValidator.isCrossBookmakerMismatch(bookmakerOdds)) {
+            boolean crossBookmakerMismatch = OddsMappingValidator.isCrossBookmakerMismatch(bookmakerOdds);
+            if (crossBookmakerMismatch) {
                 OddsCrossBookmakerMismatch mismatch = OddsMappingValidator.firstMismatch(key, group);
                 if (mismatch != null) {
                     mismatches.add(mismatch);
                 }
-                // Fail-closed: при расхождении >50% в UI не попадает ни один кэф из группы.
-                for (MappedOddsQuote q : group) {
-                    rejected.add(MappedOddsQuote.builder()
-                            .bookmaker(q.getBookmaker())
-                            .marketName(q.getMarketName())
-                            .rawRowJson(q.getRawRowJson())
-                            .category(q.getCategory())
-                            .betTitle(q.getBetTitle())
-                            .odds(q.getOdds())
-                            .mappingStatus(OddsMappingStatus.REJECTED)
-                            .rejectReason(OddsRejectReason.CROSS_BOOKMAKER_MISMATCH)
-                            .rejectDetail("odds diverge across bookmakers")
-                            .selectionCode(q.getSelectionCode())
-                            .line(q.getLine())
-                            .build());
+                if (!includeCrossBookmakerMismatchRows) {
+                    // Fail-closed: при расхождении >50% в prod UI не попадает ни один кэф из группы.
+                    for (MappedOddsQuote q : group) {
+                        rejected.add(MappedOddsQuote.builder()
+                                .bookmaker(q.getBookmaker())
+                                .marketName(q.getMarketName())
+                                .rawRowJson(q.getRawRowJson())
+                                .category(q.getCategory())
+                                .betTitle(q.getBetTitle())
+                                .odds(q.getOdds())
+                                .mappingStatus(OddsMappingStatus.REJECTED)
+                                .rejectReason(OddsRejectReason.CROSS_BOOKMAKER_MISMATCH)
+                                .rejectDetail("odds diverge across bookmakers")
+                                .selectionCode(q.getSelectionCode())
+                                .line(q.getLine())
+                                .build());
+                    }
+                    continue;
                 }
-                continue;
             }
 
             MappedOddsQuote first = group.get(0);
@@ -92,10 +99,13 @@ public final class OddsMerger {
                     .betTitle(betTitle)
                     .bookmakerOdds(bookmakerOdds)
                     .bookmakerSourcePaths(bookmakerSourcePaths)
+                    .crossBookmakerMismatch(crossBookmakerMismatch)
                     .build();
             row.setDisplayLabel(OddsDisplayLabelFormatter.format(category, row));
-            // Best odds = max кэф среди БК в этой группе (после успешной сверки).
-            OddsSelectionKey.applyBestOdds(row, category);
+            if (!crossBookmakerMismatch) {
+                // Best odds = max кэф среди БК в этой группе (после успешной сверки).
+                OddsSelectionKey.applyBestOdds(row);
+            }
 
             rowsByCategory
                     .computeIfAbsent(category, c -> new LinkedHashMap<>())

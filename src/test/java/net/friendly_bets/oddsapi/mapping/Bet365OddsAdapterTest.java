@@ -34,6 +34,38 @@ class Bet365OddsAdapterTest {
     }
 
     @Test
+    void mapsAlternativeAsianHandicapWithAwaySignInversion() throws Exception {
+        OddsApiMarketDto asian = market("Alternative Asian Handicap", """
+                [
+                  {"hdp":-1.5,"home":"5.500","away":"6.000"},
+                  {"hdp":1,"home":"1.170","away":"1.200"}
+                ]
+                """);
+
+        List<MappedOddsQuote> quotes = adapter.mapMarkets(
+                List.of(asian),
+                OddsMatchContext.of("South Korea", "Czechia")
+        );
+
+        assertTrue(quotes.stream().anyMatch(q -> q.isOk()
+                && q.getSelectionCode().equals("HOME")
+                && "-1.5".equals(q.getLine())
+                && "5.500".equals(q.getOdds())));
+        assertTrue(quotes.stream().anyMatch(q -> q.isOk()
+                && q.getSelectionCode().equals("AWAY")
+                && "1.5".equals(q.getLine())
+                && "6.000".equals(q.getOdds())));
+        assertTrue(quotes.stream().anyMatch(q -> q.isOk()
+                && q.getBetTitle().getCode() == BetTitleCode.HANDICAP_HOME_PLUS_1_0.getCode()
+                && "1.170".equals(q.getOdds())));
+        assertTrue(quotes.stream().anyMatch(q -> q.isOk()
+                && q.getBetTitle().getCode() == BetTitleCode.HANDICAP_AWAY_MINUS_1_0.getCode()
+                && "1.200".equals(q.getOdds())));
+        assertTrue(quotes.stream().noneMatch(q -> q.isOk()
+                && q.getBetTitle().getCode() == BetTitleCode.HANDICAP_AWAY_PLUS_1_0.getCode()));
+    }
+
+    @Test
     void skipsDoubleChanceMarket() throws Exception {
         OddsApiMarketDto dc = market("Double Chance", """
                 [{"label":"Mexico or Draw","under":"1.111"}]

@@ -20,6 +20,13 @@ public interface ApiSyncIssueRepository extends MongoRepository<ApiSyncIssue, St
             String gameResultId
     );
 
+    Optional<ApiSyncIssue> findFirstByProviderAndIssueTypeAndGameResultIdAndMessage(
+            String provider,
+            String issueType,
+            String gameResultId,
+            String message
+    );
+
     boolean existsByIssueType(String issueType);
 
     boolean existsByIssueTypeIn(java.util.Collection<String> issueTypes);

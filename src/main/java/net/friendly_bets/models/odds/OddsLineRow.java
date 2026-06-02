@@ -45,4 +45,8 @@ public class OddsLineRow {
 
     @Field(name = "bet_title")
     private BetTitle betTitle;
+
+    /** Demo / debug: кэфы БК расходятся &gt;50%, строка показана для анализа. */
+    @Field(name = "cross_bookmaker_mismatch")
+    private boolean crossBookmakerMismatch;
 }

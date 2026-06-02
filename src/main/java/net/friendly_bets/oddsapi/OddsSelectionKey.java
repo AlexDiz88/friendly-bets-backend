@@ -42,26 +42,18 @@ public final class OddsSelectionKey {
             }
             for (OddsLineRow row : group.getRows()) {
                 row.setSelectionKey(build(category, group.getGroupKey(), row));
-                applyBestOdds(row, category);
+                applyBestOdds(row);
             }
         }
     }
 
     public static void applyBestOdds(OddsLineRow row) {
-        applyBestOdds(row, null);
-    }
-
-    public static void applyBestOdds(OddsLineRow row, OddsMarketCategory category) {
         if (row.getBookmakerOdds() == null || row.getBookmakerOdds().isEmpty()) {
             return;
         }
         String bestBk = null;
         double bestVal = -1;
         for (Map.Entry<String, String> e : row.getBookmakerOdds().entrySet()) {
-            if (category == OddsMarketCategory.HANDICAP
-                    && isImplausibleHandicapRowQuote(row, e.getValue())) {
-                continue;
-            }
             double v = parseOdds(e.getValue());
             if (v > bestVal) {
                 bestVal = v;
@@ -71,17 +63,6 @@ public final class OddsSelectionKey {
         if (bestBk != null) {
             row.setBestBookmaker(bestBk);
             row.setBestOdds(row.getBookmakerOdds().get(bestBk));
-        }
-    }
-
-    private static boolean isImplausibleHandicapRowQuote(OddsLineRow row, String oddsRaw) {
-        if (row.getLine() == null || row.getLine().isBlank()) {
-            return false;
-        }
-        try {
-            return OddsHandicapLine.isImplausibleQuote(OddsHandicapLine.parse(row.getLine()), oddsRaw);
-        } catch (NumberFormatException e) {
-            return false;
         }
     }
 
