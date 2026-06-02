@@ -58,6 +58,7 @@ public final class OddsMerger {
             BetTitleKey key = entry.getKey();
             List<MappedOddsQuote> group = entry.getValue();
             Map<String, String> bookmakerOdds = mergeBookmakerOdds(group);
+            Map<String, String> bookmakerSourcePaths = mergeBookmakerSourcePaths(group, bookmakerOdds);
             if (OddsMappingValidator.isCrossBookmakerMismatch(bookmakerOdds)) {
                 OddsCrossBookmakerMismatch mismatch = OddsMappingValidator.firstMismatch(key, group);
                 if (mismatch != null) {
@@ -90,6 +91,7 @@ public final class OddsMerger {
                     .selectionCode(first.getSelectionCode())
                     .betTitle(betTitle)
                     .bookmakerOdds(bookmakerOdds)
+                    .bookmakerSourcePaths(bookmakerSourcePaths)
                     .build();
             row.setDisplayLabel(OddsDisplayLabelFormatter.format(category, row));
             // Best odds = max кэф среди БК в этой группе (после успешной сверки).
@@ -193,6 +195,26 @@ public final class OddsMerger {
             }
         }
         return bookmakerOdds;
+    }
+
+    private static Map<String, String> mergeBookmakerSourcePaths(
+            List<MappedOddsQuote> group,
+            Map<String, String> bookmakerOdds
+    ) {
+        Map<String, String> sourcePaths = new LinkedHashMap<>();
+        for (MappedOddsQuote q : group) {
+            String bk = q.getBookmaker();
+            String odds = q.getOdds();
+            String path = q.getSourcePath();
+            if (bk == null || odds == null || path == null || path.isBlank()) {
+                continue;
+            }
+            String selectedOdds = bookmakerOdds.get(bk);
+            if (selectedOdds != null && selectedOdds.equals(odds)) {
+                sourcePaths.put(bk, path);
+            }
+        }
+        return sourcePaths;
     }
 
     private static double parseOddsValue(String raw) {

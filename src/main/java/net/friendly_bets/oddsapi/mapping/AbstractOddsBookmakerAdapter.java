@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import net.friendly_bets.exceptions.BadRequestException;
 import net.friendly_bets.models.BetTitle;
 import net.friendly_bets.models.odds.OddsLineRow;
+import net.friendly_bets.oddsapi.OddsApiSourcePath;
 import net.friendly_bets.oddsapi.OddsBttsScope;
 import net.friendly_bets.oddsapi.OddsCorrectScoreUtils;
 import net.friendly_bets.oddsapi.OddsExactTotalGoalsParser;
@@ -149,6 +150,7 @@ public abstract class AbstractOddsBookmakerAdapter implements OddsBookmakerAdapt
                     .mappingStatus(OddsMappingStatus.OK)
                     .selectionCode(selectionCode)
                     .line(lineForRow)
+                    .sourcePath(OddsApiSourcePath.format(marketName, home ? "home" : "away", apiLine))
                     .build();
         } catch (BadRequestException e) {
             return reject(marketName, rawRow, OddsMarketCategory.HANDICAP,
@@ -165,10 +167,7 @@ public abstract class AbstractOddsBookmakerAdapter implements OddsBookmakerAdapt
             OddsMatchContext matchContext
     ) {
         List<MappedOddsQuote> quotes = new ArrayList<>();
-        Map<OddsSelectionCode, String> normalized = new LinkedHashMap<>();
-        OddsSelectionNormalizer.normalizeLinePrices(category, line.getPrices(), matchContext, normalized);
-
-        if (normalized.isEmpty()) {
+        if (line.getPrices() == null || line.getPrices().isEmpty()) {
             quotes.add(reject(marketName, rawRow, category,
                     OddsRejectReason.SELECTION_UNMAPPED, "no normalized selections"));
             return quotes;
@@ -180,16 +179,25 @@ public abstract class AbstractOddsBookmakerAdapter implements OddsBookmakerAdapt
         }
 
         double lineValue = parseLineValue(canonicalLine);
-        for (Map.Entry<OddsSelectionCode, String> price : normalized.entrySet()) {
+        for (Map.Entry<String, String> rawPrice : line.getPrices().entrySet()) {
+            Optional<OddsSelectionCode> codeOpt = OddsSelectionNormalizer.normalize(
+                    category, rawPrice.getKey(), matchContext);
+            if (codeOpt.isEmpty()) {
+                continue;
+            }
+            OddsSelectionCode selection = codeOpt.get();
+            String odds = rawPrice.getValue();
+            String jsonFieldKey = rawPrice.getKey();
             Optional<OddsHalfLineSemanticMapper.SemanticBet> semantic =
-                    resolveSemanticBet(category, lineValue, price.getKey());
+                    resolveSemanticBet(category, lineValue, selection);
             if (semantic.isPresent()) {
-                quotes.add(buildSemanticQuote(marketName, rawRow, semantic.get(), price.getValue()));
+                quotes.add(buildSemanticQuote(
+                        marketName, rawRow, semantic.get(), odds, jsonFieldKey, canonicalLine));
                 continue;
             }
             String selectionCode = category == OddsMarketCategory.BTTS && bttsScope != null
-                    ? bttsScope.selectionCode(price.getKey())
-                    : price.getKey().name();
+                    ? bttsScope.selectionCode(selection)
+                    : selection.name();
             String lineForRow = categoryUsesLine(category) ? canonicalLine : null;
             OddsLineRow row = OddsLineRow.builder()
                     .line(lineForRow)
@@ -203,14 +211,19 @@ public abstract class AbstractOddsBookmakerAdapter implements OddsBookmakerAdapt
                         .rawRowJson(rawRow)
                         .category(category)
                         .betTitle(betTitle)
-                        .odds(price.getValue())
+                        .odds(odds)
                         .mappingStatus(OddsMappingStatus.OK)
                         .selectionCode(selectionCode)
                         .line(lineForRow)
+                        .sourcePath(OddsApiSourcePath.format(marketName, jsonFieldKey, lineForRow))
                         .build());
             } catch (BadRequestException e) {
                 // Линия/исход вне BetTitleCode — без rejected quote.
             }
+        }
+        if (quotes.isEmpty()) {
+            quotes.add(reject(marketName, rawRow, category,
+                    OddsRejectReason.SELECTION_UNMAPPED, "no normalized selections"));
         }
         return quotes;
     }
@@ -232,7 +245,9 @@ public abstract class AbstractOddsBookmakerAdapter implements OddsBookmakerAdapt
             String marketName,
             String rawRow,
             OddsHalfLineSemanticMapper.SemanticBet semantic,
-            String odds
+            String odds,
+            String jsonFieldKey,
+            String line
     ) {
         BetTitle betTitle = BetTitle.builder()
                 .code(semantic.code().getCode())
@@ -246,7 +261,8 @@ public abstract class AbstractOddsBookmakerAdapter implements OddsBookmakerAdapt
                 .category(semantic.displayCategory())
                 .betTitle(betTitle)
                 .odds(odds)
-                .mappingStatus(OddsMappingStatus.OK);
+                .mappingStatus(OddsMappingStatus.OK)
+                .sourcePath(OddsApiSourcePath.format(marketName, jsonFieldKey, line));
         if (semantic.displayCategory() == OddsMarketCategory.CORRECT_SCORE) {
             String selection = OddsCorrectScoreUtils.selectionCodeForBetTitle(semantic.code());
             if (selection != null) {
@@ -263,18 +279,24 @@ public abstract class AbstractOddsBookmakerAdapter implements OddsBookmakerAdapt
     ) {
         List<MappedOddsQuote> quotes = new ArrayList<>();
         if (line.getLine() != null && !line.getLine().isBlank()) {
-            Map<OddsSelectionCode, String> normalized = new LinkedHashMap<>();
-            OddsSelectionNormalizer.normalizeLinePrices(
-                    OddsMarketCategory.TOTALS, line.getPrices(), null, normalized);
-            double lineValue = parseLineValue(OddsHandicapLine.canonicalApiLine(line.getLine()));
-            for (Map.Entry<OddsSelectionCode, String> price : normalized.entrySet()) {
-                Optional<OddsHalfLineSemanticMapper.SemanticBet> semantic =
-                        OddsHalfLineSemanticMapper.mapMatchTotal(lineValue, price.getKey());
-                if (semantic.isPresent()) {
-                    quotes.add(buildSemanticQuote(marketName, rawRow, semantic.get(), price.getValue()));
+            String apiLine = line.getLine();
+            double lineValue = parseLineValue(OddsHandicapLine.canonicalApiLine(apiLine));
+            for (Map.Entry<String, String> rawPrice : line.getPrices().entrySet()) {
+                Optional<OddsSelectionCode> codeOpt = OddsSelectionNormalizer.normalize(
+                        OddsMarketCategory.TOTALS, rawPrice.getKey(), null);
+                if (codeOpt.isEmpty()) {
                     continue;
                 }
-                quotes.addAll(mapStandardTotalsLine(marketName, rawRow, line.getLine(), price));
+                OddsSelectionCode selection = codeOpt.get();
+                Optional<OddsHalfLineSemanticMapper.SemanticBet> semantic =
+                        OddsHalfLineSemanticMapper.mapMatchTotal(lineValue, selection);
+                if (semantic.isPresent()) {
+                    quotes.add(buildSemanticQuote(
+                            marketName, rawRow, semantic.get(), rawPrice.getValue(), rawPrice.getKey(), apiLine));
+                    continue;
+                }
+                quotes.addAll(mapStandardTotalsLine(
+                        marketName, rawRow, apiLine, rawPrice.getKey(), selection, rawPrice.getValue()));
             }
             return quotes;
         }
@@ -288,7 +310,8 @@ public abstract class AbstractOddsBookmakerAdapter implements OddsBookmakerAdapt
                     false,
                     OddsMarketCategory.CORRECT_SCORE
             );
-            quotes.add(buildSemanticQuote(marketName, rawRow, semantic, entry.getValue()));
+            quotes.add(buildSemanticQuote(
+                    marketName, rawRow, semantic, entry.getValue(), entry.getKey(), null));
         }
         return quotes;
     }
@@ -297,12 +320,14 @@ public abstract class AbstractOddsBookmakerAdapter implements OddsBookmakerAdapt
             String marketName,
             String rawRow,
             String apiLine,
-            Map.Entry<OddsSelectionCode, String> price
+            String jsonFieldKey,
+            OddsSelectionCode selectionCode,
+            String odds
     ) {
         String canonicalLine = OddsHandicapLine.canonicalApiLine(apiLine);
         OddsLineRow row = OddsLineRow.builder()
                 .line(canonicalLine)
-                .selectionCode(price.getKey().name())
+                .selectionCode(selectionCode.name())
                 .build();
         try {
             BetTitle betTitle = OddsSelectionBetTitleMapper.toBetTitle(
@@ -313,10 +338,11 @@ public abstract class AbstractOddsBookmakerAdapter implements OddsBookmakerAdapt
                     .rawRowJson(rawRow)
                     .category(OddsMarketCategory.TOTALS)
                     .betTitle(betTitle)
-                    .odds(price.getValue())
+                    .odds(odds)
                     .mappingStatus(OddsMappingStatus.OK)
-                    .selectionCode(price.getKey().name())
+                    .selectionCode(selectionCode.name())
                     .line(canonicalLine)
+                    .sourcePath(OddsApiSourcePath.format(marketName, jsonFieldKey, canonicalLine))
                     .build());
         } catch (BadRequestException e) {
             return List.of();
@@ -359,6 +385,7 @@ public abstract class AbstractOddsBookmakerAdapter implements OddsBookmakerAdapt
                         .odds(entry.getValue())
                         .mappingStatus(OddsMappingStatus.OK)
                         .selectionCode(selection.trim())
+                        .sourcePath(OddsApiSourcePath.format(marketName, selection.trim(), null))
                         .build());
             } catch (BadRequestException e) {
                 // Счёт вне whitelist BetTitleCode — пропускаем без issue.

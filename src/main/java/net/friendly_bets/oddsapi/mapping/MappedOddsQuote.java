@@ -25,6 +25,8 @@ public class MappedOddsQuote {
     String rejectDetail;
     String selectionCode;
     String line;
+    /** Путь к полю в JSON API, напр. {@code ML.home}. */
+    String sourcePath;
 
     public BetTitleKey betTitleKey() {
         return BetTitleKey.from(betTitle);

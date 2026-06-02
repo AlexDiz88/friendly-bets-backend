@@ -9,8 +9,6 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 import org.springframework.data.mongodb.core.mapping.MongoId;
 
-import net.friendly_bets.oddsapi.client.dto.OddsApiMarketDto;
-
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -60,7 +58,7 @@ public class OddsDemoSnapshot {
 
     @Field(name = "raw_bookmakers")
     @Builder.Default
-    private Map<String, List<OddsApiMarketDto>> rawBookmakers = new LinkedHashMap<>();
+    private Map<String, List<OddsMarket>> rawBookmakers = new LinkedHashMap<>();
 
     @Field(name = "fetched_at")
     private LocalDateTime fetchedAt;

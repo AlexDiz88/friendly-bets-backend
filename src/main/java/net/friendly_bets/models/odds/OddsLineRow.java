@@ -30,6 +30,10 @@ public class OddsLineRow {
     @Builder.Default
     private Map<String, String> bookmakerOdds = new LinkedHashMap<>();
 
+    @Field(name = "bookmaker_source_paths")
+    @Builder.Default
+    private Map<String, String> bookmakerSourcePaths = new LinkedHashMap<>();
+
     @Field(name = "selection_key")
     private String selectionKey;
 

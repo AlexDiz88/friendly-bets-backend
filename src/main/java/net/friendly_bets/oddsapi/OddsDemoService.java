@@ -1,8 +1,10 @@
 package net.friendly_bets.oddsapi;
 
 import lombok.RequiredArgsConstructor;
+import net.friendly_bets.dto.OddsDemoClearResultDto;
 import net.friendly_bets.dto.OddsDemoDebugDto;
 import net.friendly_bets.dto.OddsDemoEventDetailDto;
+import net.friendly_bets.dto.OddsDemoEventIdDto;
 import net.friendly_bets.dto.OddsDemoEventSummaryDto;
 import net.friendly_bets.dto.OddsDemoRefreshResultDto;
 import net.friendly_bets.dto.OddsMappingTraceEntryDto;
@@ -10,6 +12,7 @@ import net.friendly_bets.exceptions.BadRequestException;
 import net.friendly_bets.exceptions.NotFoundException;
 import net.friendly_bets.footballdata.ApiSyncIssueService;
 import net.friendly_bets.models.odds.OddsDemoSnapshot;
+import net.friendly_bets.models.odds.OddsMarket;
 import net.friendly_bets.models.odds.OddsMarketGroup;
 import net.friendly_bets.oddsapi.client.OddsApiClient;
 import net.friendly_bets.oddsapi.client.dto.OddsApiEventDto;
@@ -33,6 +36,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -50,40 +54,54 @@ public class OddsDemoService {
     private final OddsBookmakerAdapterRegistry adapterRegistry;
 
     public OddsDemoRefreshResultDto refreshLeagueDemo(String leagueSlug, Integer limit) {
-        if (!oddsApiClient.isConfigured()) {
-            throw new BadRequestException("oddsApiKeyNotConfigured");
-        }
-        if (leagueSlug == null || leagueSlug.isBlank()) {
-            throw new BadRequestException("leagueSlugRequired");
-        }
+        List<String> bookmakers = requireBookmakers();
+        String slug = requireLeagueSlug(leagueSlug);
 
         int maxEvents = limit != null && limit > 0 ? Math.min(limit, 50) : DEFAULT_DEMO_LIMIT;
-        List<String> bookmakers = properties.getBookmakers();
-        if (bookmakers == null || bookmakers.isEmpty()) {
-            throw new BadRequestException("oddsApiBookmakersNotConfigured");
-        }
-
-        Map<String, String> canonicalByLower = OddsBookmakerKeys.mapApiKeysToConfigured(bookmakers);
-        List<OddsApiEventDto> events = oddsApiClient.fetchEvents(leagueSlug.trim(), "pending");
-        events = events.stream().filter(this::isDemoEventEligible).toList();
+        List<OddsApiEventDto> events = fetchEligibleEvents(slug);
         if (events.isEmpty()) {
             return OddsDemoRefreshResultDto.builder()
-                    .leagueSlug(leagueSlug)
+                    .leagueSlug(slug)
                     .eventsStored(0)
                     .build();
         }
 
-        oddsDemoSnapshotRepository.deleteByLeagueSlug(leagueSlug.trim());
+        oddsDemoSnapshotRepository.deleteByLeagueSlug(slug);
 
         List<OddsApiEventDto> slice = events.size() <= maxEvents ? events : events.subList(0, maxEvents);
-        LocalDateTime fetchedAt = LocalDateTime.now();
+        int stored = storeEventsBatch(slug, slice, bookmakers);
+        log.info("odds demo refresh: league={} stored={} bookmakers={}", slug, stored, bookmakers);
+        return OddsDemoRefreshResultDto.builder()
+                .leagueSlug(slug)
+                .eventsStored(stored)
+                .bookmakers(bookmakers)
+                .build();
+    }
+
+    public OddsDemoRefreshResultDto refreshEventsByIds(String leagueSlug, List<Long> eventIds) {
+        List<String> bookmakers = requireBookmakers();
+        String slug = requireLeagueSlug(leagueSlug);
+        if (eventIds == null || eventIds.isEmpty()) {
+            throw new BadRequestException("oddsDemoEventIdsRequired");
+        }
+
+        List<Long> uniqueIds = eventIds.stream()
+                .filter(id -> id != null && id > 0)
+                .distinct()
+                .limit(50)
+                .toList();
+        if (uniqueIds.isEmpty()) {
+            throw new BadRequestException("oddsDemoEventIdsRequired");
+        }
+
+        Map<Long, OddsApiEventDto> eventMeta = fetchEligibleEvents(slug).stream()
+                .filter(e -> e.getId() != null)
+                .collect(Collectors.toMap(OddsApiEventDto::getId, e -> e, (a, b) -> a, LinkedHashMap::new));
+
         int stored = 0;
-
-        for (int i = 0; i < slice.size(); i += 10) {
-            List<OddsApiEventDto> batchEvents = slice.subList(i, Math.min(i + 10, slice.size()));
-            List<Long> eventIds = batchEvents.stream().map(OddsApiEventDto::getId).toList();
-            List<OddsApiEventOddsDto> oddsList = oddsApiClient.fetchOddsMulti(eventIds, bookmakers);
-
+        for (int i = 0; i < uniqueIds.size(); i += 10) {
+            List<Long> batchIds = uniqueIds.subList(i, Math.min(i + 10, uniqueIds.size()));
+            List<OddsApiEventOddsDto> oddsList = oddsApiClient.fetchOddsMulti(batchIds, bookmakers);
             Map<Long, OddsApiEventOddsDto> oddsById = new LinkedHashMap<>();
             for (OddsApiEventOddsDto odds : oddsList) {
                 if (odds != null && odds.getId() != null) {
@@ -91,45 +109,53 @@ public class OddsDemoService {
                 }
             }
 
-            for (OddsApiEventDto event : batchEvents) {
-                if (event == null || event.getId() == null) {
-                    continue;
+            for (Long eventId : batchIds) {
+                OddsApiEventDto meta = eventMeta.get(eventId);
+                OddsApiEventOddsDto oddsDto = oddsById.get(eventId);
+                if (meta != null) {
+                    recordUnmappedTeamHints(meta);
                 }
-                recordUnmappedTeamHints(event);
-                OddsApiEventOddsDto oddsDto = oddsById.get(event.getId());
-                OddsMatchContext matchContext = OddsMatchContext.of(event.getHome(), event.getAway());
-                Map<String, List<OddsApiMarketDto>> rawByBookmaker = oddsDto != null && oddsDto.getBookmakers() != null
-                        ? oddsDto.getBookmakers()
-                        : Map.of();
-                OddsMergeResult mergeResult = oddsMappingPipeline.build(rawByBookmaker, canonicalByLower, matchContext);
-                var marketGroups = mergeResult.getMarketGroups();
-                OddsSelectionKey.enrichGroups(marketGroups);
-                OddsResultTotalEnricher.appendCalculatedGroups(
-                        marketGroups, new ArrayList<>(canonicalByLower.values()));
-                OddsResultTotalEnricher.applyCategoryMetadata(marketGroups);
-
-                oddsDemoSnapshotRepository.save(OddsDemoSnapshot.builder()
-                        .oddsApiEventId(event.getId())
-                        .home(event.getHome())
-                        .away(event.getAway())
-                        .eventDate(event.getDate())
-                        .leagueSlug(leagueSlug.trim())
-                        .status(event.getStatus())
-                        .bookmakers(new ArrayList<>(canonicalByLower.values()))
-                        .marketGroups(marketGroups)
-                        .rawBookmakers(copyRawBookmakers(rawByBookmaker, canonicalByLower))
-                        .fetchedAt(fetchedAt)
-                        .build());
-                stored++;
+                if (storeEventSnapshot(slug, eventId, meta, oddsDto, bookmakers)) {
+                    stored++;
+                }
             }
         }
 
-        log.info("odds demo refresh: league={} stored={} bookmakers={}", leagueSlug, stored, bookmakers);
+        log.info("odds demo refresh by ids: league={} requested={} stored={}", slug, uniqueIds.size(), stored);
         return OddsDemoRefreshResultDto.builder()
-                .leagueSlug(leagueSlug)
+                .leagueSlug(slug)
                 .eventsStored(stored)
                 .bookmakers(bookmakers)
                 .build();
+    }
+
+    public List<OddsDemoEventIdDto> listEventIdsFromApi(String leagueSlug, Integer limit) {
+        String slug = requireLeagueSlug(leagueSlug);
+        int maxEvents = limit != null && limit > 0 ? Math.min(limit, 100) : 50;
+        return fetchEligibleEvents(slug).stream()
+                .limit(maxEvents)
+                .map(OddsDemoEventIdDto::from)
+                .toList();
+    }
+
+    public void deleteEvent(long eventId) {
+        if (oddsDemoSnapshotRepository.findByOddsApiEventId(eventId).isEmpty()) {
+            throw new NotFoundException("oddsDemoEvent", String.valueOf(eventId));
+        }
+        oddsDemoSnapshotRepository.deleteByOddsApiEventId(eventId);
+    }
+
+    public OddsDemoClearResultDto clearLeague(String leagueSlug) {
+        String slug = requireLeagueSlug(leagueSlug);
+        long count = oddsDemoSnapshotRepository.countByLeagueSlug(slug);
+        oddsDemoSnapshotRepository.deleteByLeagueSlug(slug);
+        return OddsDemoClearResultDto.builder().deletedCount((int) count).build();
+    }
+
+    public OddsDemoClearResultDto clearAll() {
+        long count = oddsDemoSnapshotRepository.count();
+        oddsDemoSnapshotRepository.deleteAll();
+        return OddsDemoClearResultDto.builder().deletedCount((int) count).build();
     }
 
     public List<OddsDemoEventSummaryDto> listByLeague(String leagueSlug) {
@@ -166,9 +192,7 @@ public class OddsDemoService {
 
         Map<String, List<OddsMappingTraceEntryDto>> traceByBookmaker = new LinkedHashMap<>();
         List<String> issues = new ArrayList<>();
-        Map<String, List<OddsApiMarketDto>> raw = snapshot.getRawBookmakers() != null
-                ? snapshot.getRawBookmakers()
-                : Map.of();
+        Map<String, List<OddsApiMarketDto>> raw = toApiRawBookmakers(snapshot.getRawBookmakers());
 
         for (String bookmaker : snapshot.getBookmakers() != null ? snapshot.getBookmakers() : List.<String>of()) {
             List<OddsApiMarketDto> markets = raw.get(bookmaker);
@@ -221,6 +245,17 @@ public class OddsDemoService {
                 .build();
     }
 
+    private static Map<String, List<OddsApiMarketDto>> toApiRawBookmakers(Map<String, List<OddsMarket>> stored) {
+        Map<String, List<OddsApiMarketDto>> raw = new LinkedHashMap<>();
+        if (stored == null) {
+            return raw;
+        }
+        for (Map.Entry<String, List<OddsMarket>> entry : stored.entrySet()) {
+            raw.put(entry.getKey(), OddsStoredMarketsConverter.toApiMarkets(entry.getValue()));
+        }
+        return raw;
+    }
+
     private static Map<String, List<Object>> toRawBookmakersView(Map<String, List<OddsApiMarketDto>> raw) {
         Map<String, List<Object>> view = new LinkedHashMap<>();
         if (raw == null) {
@@ -236,18 +271,18 @@ public class OddsDemoService {
         return view;
     }
 
-    private Map<String, List<OddsApiMarketDto>> copyRawBookmakers(
+    private Map<String, List<OddsMarket>> copyRawBookmakers(
             Map<String, List<OddsApiMarketDto>> fromApi,
             Map<String, String> canonicalByLower
     ) {
-        Map<String, List<OddsApiMarketDto>> result = new LinkedHashMap<>();
+        Map<String, List<OddsMarket>> result = new LinkedHashMap<>();
         if (fromApi == null) {
             return result;
         }
         for (Map.Entry<String, List<OddsApiMarketDto>> entry : fromApi.entrySet()) {
             String canonical = OddsBookmakerKeys.resolveCanonical(entry.getKey(), canonicalByLower);
             if (canonical != null && entry.getValue() != null) {
-                result.put(canonical, entry.getValue());
+                result.put(canonical, OddsApiMarketMapper.toMarkets(entry.getValue()));
             }
         }
         return result;
@@ -273,6 +308,102 @@ public class OddsDemoService {
         } catch (DateTimeParseException e) {
             return true;
         }
+    }
+
+    private List<String> requireBookmakers() {
+        if (!oddsApiClient.isConfigured()) {
+            throw new BadRequestException("oddsApiKeyNotConfigured");
+        }
+        List<String> bookmakers = properties.getBookmakers();
+        if (bookmakers == null || bookmakers.isEmpty()) {
+            throw new BadRequestException("oddsApiBookmakersNotConfigured");
+        }
+        return bookmakers;
+    }
+
+    private String requireLeagueSlug(String leagueSlug) {
+        if (leagueSlug == null || leagueSlug.isBlank()) {
+            throw new BadRequestException("leagueSlugRequired");
+        }
+        return leagueSlug.trim();
+    }
+
+    private List<OddsApiEventDto> fetchEligibleEvents(String leagueSlug) {
+        requireBookmakers();
+        return oddsApiClient.fetchEvents(leagueSlug, "pending").stream()
+                .filter(this::isDemoEventEligible)
+                .toList();
+    }
+
+    private int storeEventsBatch(String leagueSlug, List<OddsApiEventDto> events, List<String> bookmakers) {
+        int stored = 0;
+        for (int i = 0; i < events.size(); i += 10) {
+            List<OddsApiEventDto> batchEvents = events.subList(i, Math.min(i + 10, events.size()));
+            List<Long> eventIds = batchEvents.stream().map(OddsApiEventDto::getId).toList();
+            List<OddsApiEventOddsDto> oddsList = oddsApiClient.fetchOddsMulti(eventIds, bookmakers);
+
+            Map<Long, OddsApiEventOddsDto> oddsById = new LinkedHashMap<>();
+            for (OddsApiEventOddsDto odds : oddsList) {
+                if (odds != null && odds.getId() != null) {
+                    oddsById.put(odds.getId(), odds);
+                }
+            }
+
+            for (OddsApiEventDto event : batchEvents) {
+                if (event == null || event.getId() == null) {
+                    continue;
+                }
+                recordUnmappedTeamHints(event);
+                if (storeEventSnapshot(leagueSlug, event.getId(), event, oddsById.get(event.getId()), bookmakers)) {
+                    stored++;
+                }
+            }
+        }
+        return stored;
+    }
+
+    private boolean storeEventSnapshot(
+            String leagueSlug,
+            Long eventId,
+            OddsApiEventDto eventMeta,
+            OddsApiEventOddsDto oddsDto,
+            List<String> bookmakers
+    ) {
+        if (eventId == null) {
+            return false;
+        }
+
+        String home = eventMeta != null ? eventMeta.getHome() : oddsDto != null ? oddsDto.getHome() : null;
+        String away = eventMeta != null ? eventMeta.getAway() : oddsDto != null ? oddsDto.getAway() : null;
+        if (home == null || away == null) {
+            return false;
+        }
+
+        Map<String, String> canonicalByLower = OddsBookmakerKeys.mapApiKeysToConfigured(bookmakers);
+        OddsMatchContext matchContext = OddsMatchContext.of(home, away);
+        Map<String, List<OddsApiMarketDto>> rawByBookmaker = oddsDto != null && oddsDto.getBookmakers() != null
+                ? oddsDto.getBookmakers()
+                : Map.of();
+        OddsMergeResult mergeResult = oddsMappingPipeline.build(rawByBookmaker, canonicalByLower, matchContext);
+        var marketGroups = mergeResult.getMarketGroups();
+        OddsSelectionKey.enrichGroups(marketGroups);
+        OddsResultTotalEnricher.appendCalculatedGroups(marketGroups, new ArrayList<>(canonicalByLower.values()));
+        OddsResultTotalEnricher.applyCategoryMetadata(marketGroups);
+
+        Optional<OddsDemoSnapshot> existing = oddsDemoSnapshotRepository.findIdByOddsApiEventId(eventId);
+        OddsDemoSnapshot snapshot = existing.orElseGet(OddsDemoSnapshot::new);
+        snapshot.setOddsApiEventId(eventId);
+        snapshot.setHome(home);
+        snapshot.setAway(away);
+        snapshot.setEventDate(eventMeta != null ? eventMeta.getDate() : oddsDto != null ? oddsDto.getDate() : null);
+        snapshot.setLeagueSlug(leagueSlug);
+        snapshot.setStatus(eventMeta != null ? eventMeta.getStatus() : oddsDto != null ? oddsDto.getStatus() : null);
+        snapshot.setBookmakers(new ArrayList<>(canonicalByLower.values()));
+        snapshot.setMarketGroups(marketGroups);
+        snapshot.setRawBookmakers(copyRawBookmakers(rawByBookmaker, canonicalByLower));
+        snapshot.setFetchedAt(LocalDateTime.now());
+        oddsDemoSnapshotRepository.save(snapshot);
+        return true;
     }
 
     private void recordUnmappedTeamHints(OddsApiEventDto event) {
