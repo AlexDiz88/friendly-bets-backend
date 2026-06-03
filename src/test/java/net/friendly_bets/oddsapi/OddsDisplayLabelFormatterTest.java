@@ -52,6 +52,20 @@ class OddsDisplayLabelFormatterTest {
     }
 
     @Test
+    @DisplayName("falls back to bet title label when selection code is marathon raw name")
+    void formatsHandicapFromBetTitleWhenSelectionCodeNotHomeAway() {
+        OddsLineRow row = OddsLineRow.builder()
+                .selectionCode("Мексика (-1)")
+                .betTitle(BetTitle.builder()
+                        .code(BetTitleCode.HANDICAP_HOME_MINUS_1_0.getCode())
+                        .label("Ф1(-1)")
+                        .build())
+                .build();
+
+        assertEquals("Ф1 (-1)", OddsDisplayLabelFormatter.format(OddsMarketCategory.HANDICAP, row));
+    }
+
+    @Test
     @DisplayName("formats zero handicap line")
     void formatsZeroHandicap() {
         OddsLineRow home = OddsLineRow.builder()

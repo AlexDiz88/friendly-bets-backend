@@ -110,6 +110,10 @@ public final class OddsDisplayLabelFormatter {
         try {
             code = OddsSelectionCode.valueOf(row.getSelectionCode());
         } catch (IllegalArgumentException e) {
+            BetTitle betTitle = row.getBetTitle();
+            if (betTitle != null && betTitle.getLabel() != null && !betTitle.getLabel().isBlank()) {
+                return formatHandicapLabel(betTitle.getLabel());
+            }
             return row.getDisplayLabel() != null ? row.getDisplayLabel() : "";
         }
         return formatHandicapRaw(row.getLine(), code);

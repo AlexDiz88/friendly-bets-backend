@@ -101,6 +101,10 @@ public class GameResultRecord {
     @Field(name = "odds_api_event_id")
     private Long oddsApiEventId;
 
+    /** treeId события new.marathonbet.ru после успешного сопоставления. */
+    @Field(name = "marathonbet_tree_id")
+    private Long marathonbetTreeId;
+
     public boolean isFinalized() {
         return finalizedAt != null;
     }

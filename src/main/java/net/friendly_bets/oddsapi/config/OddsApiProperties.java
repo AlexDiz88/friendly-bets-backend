@@ -27,4 +27,8 @@ public class OddsApiProperties {
     private int eventWindowHours = 6;
     /** Max age of cached odds before on-demand refresh (minutes). */
     private int presentationStaleMinutes = 15;
+    /**
+     * When true and Marathonbet primary succeeded for WC, scheduled odds-api tick skips WC leagues.
+     */
+    private boolean fallbackOnlyForWc = false;
 }

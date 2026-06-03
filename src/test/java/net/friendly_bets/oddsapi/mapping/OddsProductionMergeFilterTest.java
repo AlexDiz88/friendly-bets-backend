@@ -1,5 +1,6 @@
 package net.friendly_bets.oddsapi.mapping;
 
+import net.friendly_bets.marathonbet.MarathonbetBookmaker;
 import net.friendly_bets.models.BetTitle;
 import net.friendly_bets.models.enums.BetTitleCode;
 import net.friendly_bets.oddsapi.OddsMarketCategory;
@@ -58,6 +59,24 @@ class OddsProductionMergeFilterTest {
                 .betTitle(BetTitle.builder()
                         .code(BetTitleCode.HANDICAP_AWAY_MINUS_1_0.getCode())
                         .label(BetTitleCode.HANDICAP_AWAY_MINUS_1_0.getLabel())
+                        .isNot(false)
+                        .build())
+                .build();
+
+        assertTrue(OddsProductionMergeFilter.includeInProductionMerge(quote));
+    }
+
+    @Test
+    void includesMarathonbetHandicapInProductionMerge() {
+        MappedOddsQuote quote = MappedOddsQuote.builder()
+                .bookmaker(MarathonbetBookmaker.KEY)
+                .marketName("Победа с учетом форы")
+                .category(OddsMarketCategory.HANDICAP)
+                .mappingStatus(OddsMappingStatus.OK)
+                .odds("1.52")
+                .betTitle(BetTitle.builder()
+                        .code(BetTitleCode.HANDICAP_HOME_MINUS_1_0.getCode())
+                        .label(BetTitleCode.HANDICAP_HOME_MINUS_1_0.getLabel())
                         .isNot(false)
                         .build())
                 .build();

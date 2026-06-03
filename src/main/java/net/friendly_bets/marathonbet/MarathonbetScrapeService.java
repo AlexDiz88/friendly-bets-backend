@@ -3,63 +3,55 @@ package net.friendly_bets.marathonbet;
 import com.fasterxml.jackson.databind.JsonNode;
 import lombok.RequiredArgsConstructor;
 import net.friendly_bets.dto.MarathonbetMarketDto;
-import net.friendly_bets.dto.MarathonbetMarketSelectionDto;
 import net.friendly_bets.dto.MarathonbetScrapeResultDto;
 import net.friendly_bets.exceptions.BadRequestException;
 import net.friendly_bets.marathonbet.client.MarathonbetEventLineClient;
+import net.friendly_bets.marathonbet.client.MarathonbetPanHeaders;
+import net.friendly_bets.marathonbet.config.MarathonbetProperties;
 import org.springframework.stereotype.Service;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.Iterator;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
 public class MarathonbetScrapeService {
 
-    private static final String BASE_URL = "https://new.marathonbet.ru";
+    private static final String BASE_URL = MarathonbetPanHeaders.BASE_URL;
 
     private final MarathonbetEventLineClient eventLineClient;
+    private final MarathonbetProperties properties;
 
     public MarathonbetScrapeResultDto scrapeByTreeId(long treeId) {
         if (treeId <= 0) {
             throw new BadRequestException("marathonbetInvalidTreeId");
         }
         JsonNode root = eventLineClient.fetchEventSnapshot(treeId);
-        JsonNode marketsNode = root.get("markets");
-        if (marketsNode == null || !marketsNode.isObject()) {
-            throw new BadRequestException("marathonbetParseFailed");
+        Set<String> models = new HashSet<>();
+        if (properties.getTournamentMarketModels() != null) {
+            models.addAll(properties.getTournamentMarketModels());
         }
-
-        List<MarathonbetMarketDto> matchResult = new ArrayList<>();
-        List<MarathonbetMarketDto> handicaps = new ArrayList<>();
-        Iterator<String> fieldNames = marketsNode.fieldNames();
-        while (fieldNames.hasNext()) {
-            JsonNode market = marketsNode.get(fieldNames.next());
-            if (market == null || market.isNull()) {
-                continue;
-            }
-            String model = text(market.get("model"));
-            MarathonbetMarketDto dto = toMarketDto(market);
-            if ("MTCH_R".equals(model)) {
-                matchResult.add(dto);
-            } else if ("MTCH_HB".equals(model)) {
-                handicaps.add(dto);
-            }
+        if (properties.getSseExtraMarketModels() != null) {
+            models.addAll(properties.getSseExtraMarketModels());
         }
-
-        handicaps.sort(Comparator.comparing(MarathonbetMarketDto::getName));
+        models.add("MTCH_DC");
+        MarathonbetExtractedMarkets extracted = MarathonbetMarketExtractor.extract(root, models);
 
         List<String> warnings = new ArrayList<>();
-        if (matchResult.isEmpty()) {
+        if (extracted.getMatchResultMarkets().isEmpty()) {
             warnings.add("matchResultNotFound");
         }
-        if (handicaps.isEmpty()) {
+        if (extracted.getHandicapMarkets().isEmpty()) {
             warnings.add("handicapNotFound");
+        }
+        if (extracted.getTotalMarkets().isEmpty()) {
+            warnings.add("totalNotFound");
+        }
+        if (extracted.getCorrectScoreMarkets().isEmpty()) {
+            warnings.add("correctScoreNotFound");
         }
 
         Long displayTime = root.hasNonNull("displayTime") ? root.get("displayTime").asLong() : null;
@@ -68,76 +60,23 @@ public class MarathonbetScrapeService {
         return MarathonbetScrapeResultDto.builder()
                 .treeId(treeId)
                 .eventId(root.hasNonNull("eventId") ? root.get("eventId").asLong() : null)
-                .eventName(text(root.get("name")))
-                .competitionHeader(text(root.get("header")))
-                .homeTeam(memberName(root, "homeTeam"))
-                .awayTeam(memberName(root, "awayTeam"))
+                .eventName(MarathonbetMarketExtractor.text(root.get("name")))
+                .competitionHeader(MarathonbetMarketExtractor.text(root.get("header")))
+                .homeTeam(MarathonbetMarketExtractor.memberName(root, "homeTeam"))
+                .awayTeam(MarathonbetMarketExtractor.memberName(root, "awayTeam"))
                 .startTime(startTime)
                 .sourceUrl(BASE_URL + "/su/sport/event/" + treeId)
                 .fetchedAt(Instant.now())
-                .matchResultMarkets(matchResult)
-                .handicapMarkets(handicaps)
+                .matchResultMarkets(extracted.getMatchResultMarkets())
+                .handicapMarkets(extracted.getHandicapMarkets())
+                .totalMarkets(extracted.getTotalMarkets())
+                .correctScoreMarkets(extracted.getCorrectScoreMarkets())
+                .doubleChanceMarkets(extracted.getDoubleChanceMarkets())
                 .warnings(warnings)
                 .build();
     }
 
-    private static MarathonbetMarketDto toMarketDto(JsonNode market) {
-        List<MarathonbetMarketSelectionDto> selections = new ArrayList<>();
-        JsonNode selectionsNode = market.get("selections");
-        if (selectionsNode != null && selectionsNode.isObject()) {
-            Iterator<String> ids = selectionsNode.fieldNames();
-            while (ids.hasNext()) {
-                JsonNode sel = selectionsNode.get(ids.next());
-                if (sel == null || sel.isNull()) {
-                    continue;
-                }
-                BigDecimal odds = decimalOdds(sel.get("coeff"));
-                selections.add(MarathonbetMarketSelectionDto.builder()
-                        .name(text(sel.get("name")))
-                        .odds(odds)
-                        .build());
-            }
-        }
-        return MarathonbetMarketDto.builder()
-                .model(text(market.get("model")))
-                .name(text(market.get("name")))
-                .selections(selections)
-                .build();
-    }
-
-    private static BigDecimal decimalOdds(JsonNode coeffNode) {
-        if (coeffNode == null || coeffNode.isNull()) {
-            return null;
-        }
-        JsonNode price = coeffNode.get("price");
-        if (price == null || !price.has("n") || !price.has("d")) {
-            return null;
-        }
-        int n = price.get("n").asInt();
-        int d = price.get("d").asInt();
-        if (d == 0) {
-            return null;
-        }
-        return BigDecimal.valueOf(1.0 + (double) n / d).setScale(3, RoundingMode.HALF_UP);
-    }
-
-    private static String memberName(JsonNode root, String teamField) {
-        JsonNode team = root.get(teamField);
-        if (team == null) {
-            return null;
-        }
-        JsonNode members = team.get("members");
-        if (members == null || !members.isArray() || members.isEmpty()) {
-            return null;
-        }
-        return text(members.get(0).get("name"));
-    }
-
-    private static String text(JsonNode node) {
-        if (node == null || node.isNull()) {
-            return null;
-        }
-        String value = node.asText();
-        return value.isBlank() ? null : value;
+    public JsonNode fetchEventSnapshot(long treeId) {
+        return eventLineClient.fetchEventSnapshot(treeId);
     }
 }

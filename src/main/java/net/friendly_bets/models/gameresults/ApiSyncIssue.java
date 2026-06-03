@@ -20,7 +20,8 @@ public class ApiSyncIssue {
 
     public enum Provider {
         FOOTBALL_DATA,
-        ODDS_API
+        ODDS_API,
+        MARATHONBET
     }
 
     public enum IssueType {
@@ -35,7 +36,8 @@ public class ApiSyncIssue {
         ODDS_MARKET_UNMAPPED,
         ODDS_SELECTION_UNMAPPED,
         ODDS_QUOTE_MISMATCH,
-        ODDS_QUOTE_REJECTED
+        ODDS_QUOTE_REJECTED,
+        MARATHONBET_FETCH_FAILED
     }
 
     @MongoId

@@ -6,6 +6,7 @@ public final class MatchDataProviders {
     public static final String FOOTBALL_DATA = "football-data";
     public static final String ODDS_API = "odds-api.io";
     public static final String API_FOOTBALL = "api-football";
+    public static final String MARATHONBET = "marathonbet";
 
     private MatchDataProviders() {
     }

@@ -8,6 +8,7 @@ import java.math.BigDecimal;
 @Value
 @Builder
 public class MarathonbetMarketSelectionDto {
+    Long selId;
     String name;
     BigDecimal odds;
 }

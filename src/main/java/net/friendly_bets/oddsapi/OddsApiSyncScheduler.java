@@ -12,14 +12,14 @@ public class OddsApiSyncScheduler {
 
     private static final Logger log = LoggerFactory.getLogger(OddsApiSyncScheduler.class);
 
-    private final OddsApiSyncService oddsApiSyncService;
+    private final OddsSyncCoordinator oddsSyncCoordinator;
 
     @Scheduled(fixedDelayString = "${odds-api.sync-interval-ms}")
     public void syncOdds() {
         try {
-            oddsApiSyncService.runTick();
+            oddsSyncCoordinator.runScheduledSync();
         } catch (Exception e) {
-            log.warn("odds-api sync tick failed: {}", e.getMessage());
+            log.warn("odds sync tick failed: {}", e.getMessage());
         }
     }
 }

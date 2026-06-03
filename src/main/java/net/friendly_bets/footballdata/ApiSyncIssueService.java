@@ -687,7 +687,64 @@ public class ApiSyncIssueService {
         return externalName != null && !externalName.isBlank() && externalName.equals(issueName);
     }
 
+    public void recordMarathonbetEventMappingMissing(
+            GameResultRecord match,
+            String leagueCode,
+            String season,
+            int matchday,
+            String message
+    ) {
+        if (match == null || match.getId() == null) {
+            return;
+        }
+        if (apiSyncIssueRepository.existsByProviderAndIssueTypeAndGameResultId(
+                MatchDataProviders.MARATHONBET,
+                ApiSyncIssue.IssueType.EVENT_MAPPING_MISSING.name(),
+                match.getId())) {
+            return;
+        }
+        GameResultSourceSnapshot source = match.footballDataSource();
+        apiSyncIssueRepository.save(ApiSyncIssue.builder()
+                .createdAt(LocalDateTime.now())
+                .provider(MatchDataProviders.MARATHONBET)
+                .issueType(ApiSyncIssue.IssueType.EVENT_MAPPING_MISSING.name())
+                .leagueCode(leagueCode)
+                .season(season)
+                .matchday(matchday)
+                .gameResultId(match.getId())
+                .externalMatchId(source != null ? source.getExternalMatchId() : null)
+                .homeTeamName(sideName(source, true))
+                .awayTeamName(sideName(source, false))
+                .message(message)
+                .build());
+    }
+
+    public void recordMarathonbetFetchFailed(String leagueCode, String season, String message) {
+        apiSyncIssueRepository.save(ApiSyncIssue.builder()
+                .createdAt(LocalDateTime.now())
+                .provider(MatchDataProviders.MARATHONBET)
+                .issueType(ApiSyncIssue.IssueType.MARATHONBET_FETCH_FAILED.name())
+                .leagueCode(leagueCode)
+                .season(season)
+                .message(message)
+                .build());
+    }
+
+    public void recordMarathonbetPrimaryUnavailable(String leagueCode, String season, String message) {
+        apiSyncIssueRepository.save(ApiSyncIssue.builder()
+                .createdAt(LocalDateTime.now())
+                .provider(MatchDataProviders.MARATHONBET)
+                .issueType(ApiSyncIssue.IssueType.PRIMARY_PROVIDER_UNAVAILABLE.name())
+                .leagueCode(leagueCode)
+                .season(season)
+                .message(message)
+                .build());
+    }
+
     private boolean isExternalTeamMapped(String provider, Integer externalId, String externalName) {
+        if (MatchDataProviders.MARATHONBET.equals(provider)) {
+            return teamAliasResolver.resolveMarathonbetByName(externalName).isPresent();
+        }
         if (MatchDataProviders.ODDS_API.equals(provider)) {
             return teamAliasResolver.oddsApiAliasesMapped(externalId, externalName);
         }

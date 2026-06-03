@@ -11,6 +11,7 @@ public final class TeamTitleUtils {
     /** {@link net.friendly_bets.gameresults.MatchDataProviders#ODDS_API} */
     public static final String ODDS_API_PROVIDER = "odds-api.io";
     public static final String API_FOOTBALL_PROVIDER = "api-football";
+    public static final String MARATHONBET_PROVIDER = "marathonbet";
 
     private TeamTitleUtils() {
     }

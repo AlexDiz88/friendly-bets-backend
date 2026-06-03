@@ -81,6 +81,14 @@ public class TeamAliasResolver {
                 TeamTitleUtils.ODDS_API_PROVIDER, oddsApiTeamName);
     }
 
+    public Optional<Team> resolveMarathonbetByName(String marathonTeamName) {
+        if (marathonTeamName == null || marathonTeamName.isBlank()) {
+            return Optional.empty();
+        }
+        return teamsRepository.findByExternalAliasName(
+                TeamTitleUtils.MARATHONBET_PROVIDER, marathonTeamName.trim());
+    }
+
     public Optional<Team> resolveOddsApi(Integer oddsApiTeamId, String oddsApiTeamName) {
         Optional<Team> byId = resolveOddsApiById(oddsApiTeamId);
         if (byId.isPresent()) {

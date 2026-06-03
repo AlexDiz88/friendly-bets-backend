@@ -61,32 +61,32 @@ public class OddsPresentationService {
         Optional<GameResultMergedOdds> mergedSnapshot = oddsMergedOddsService.findByGameResultId(gameResultId);
         if (mergedSnapshot.isPresent() && mergedSnapshot.get().getFrozenAt() != null) {
             List<OddsMarketGroup> frozenGroups = new ArrayList<>(mergedSnapshot.get().getMarketGroups());
-            prepareMarketGroupsForPresentation(frozenGroups, canonicalBookmakers);
-            return toDto(match, frozenGroups, mergedSnapshot.get().getFetchedAt(), canonicalBookmakers);
+            List<String> presentationBookmakers = resolvePresentationBookmakers(mergedSnapshot, canonicalBookmakers);
+            prepareMarketGroupsForPresentation(frozenGroups, presentationBookmakers);
+            return toDto(match, frozenGroups, mergedSnapshot.get().getFetchedAt(), presentationBookmakers);
         }
-
-        List<GameResultOdds> cached = gameResultOddsRepository.findByGameResultId(gameResultId);
-        boolean stale = isStale(cached, now);
 
         List<OddsMarketGroup> groups;
         LocalDateTime fetchedAt;
 
-        if (!stale && mergedSnapshot.isPresent() && mergedSnapshot.get().getMarketGroups() != null
-                && !mergedSnapshot.get().getMarketGroups().isEmpty()) {
+        if (isMergedSnapshotUsable(mergedSnapshot, now)) {
             groups = mergedSnapshot.get().getMarketGroups();
             fetchedAt = mergedSnapshot.get().getFetchedAt() != null ? mergedSnapshot.get().getFetchedAt() : now;
         } else {
-            Map<String, List<OddsApiMarketDto>> bookmakerMarkets = stale
+            List<GameResultOdds> cached = gameResultOddsRepository.findByGameResultId(gameResultId);
+            boolean oddsApiCacheStale = isStale(cached, now);
+            Map<String, List<OddsApiMarketDto>> bookmakerMarkets = oddsApiCacheStale
                     ? refreshFromApi(match, bookmakers, now)
                     : fromCached(cached);
-            fetchedAt = stale ? now : cached.stream()
+            fetchedAt = oddsApiCacheStale ? now : cached.stream()
                     .map(GameResultOdds::getFetchedAt)
                     .filter(java.util.Objects::nonNull)
                     .max(LocalDateTime::compareTo)
                     .orElse(now);
 
             if (bookmakerMarkets.isEmpty()) {
-                if (mergedSnapshot.isPresent() && mergedSnapshot.get().getMarketGroups() != null) {
+                if (mergedSnapshot.isPresent() && mergedSnapshot.get().getMarketGroups() != null
+                        && !mergedSnapshot.get().getMarketGroups().isEmpty()) {
                     groups = mergedSnapshot.get().getMarketGroups();
                     fetchedAt = mergedSnapshot.get().getFetchedAt() != null ? mergedSnapshot.get().getFetchedAt() : now;
                 } else {
@@ -108,7 +108,8 @@ public class OddsPresentationService {
         }
 
         List<OddsMarketGroup> presentationGroups = new ArrayList<>(groups);
-        prepareMarketGroupsForPresentation(presentationGroups, canonicalBookmakers);
+        List<String> presentationBookmakers = resolvePresentationBookmakers(mergedSnapshot, canonicalBookmakers);
+        prepareMarketGroupsForPresentation(presentationGroups, presentationBookmakers);
         presentationGroups = presentationGroups.stream()
                 .filter(g -> g.getRows() != null && !g.getRows().isEmpty())
                 .toList();
@@ -117,10 +118,24 @@ public class OddsPresentationService {
             throw new BadRequestException("oddsNotAvailable");
         }
 
-        return toDto(match, presentationGroups, fetchedAt, canonicalBookmakers);
+        return toDto(match, presentationGroups, fetchedAt, presentationBookmakers);
+    }
+
+    private List<String> resolvePresentationBookmakers(
+            Optional<GameResultMergedOdds> mergedSnapshot,
+            List<String> oddsApiBookmakers
+    ) {
+        if (mergedSnapshot.isPresent()) {
+            List<String> fromMerged = mergedSnapshot.get().getBookmakers();
+            if (fromMerged != null && !fromMerged.isEmpty()) {
+                return new ArrayList<>(fromMerged);
+            }
+        }
+        return oddsApiBookmakers;
     }
 
     private void prepareMarketGroupsForPresentation(List<OddsMarketGroup> groups, List<String> bookmakers) {
+        oddsMergedOddsService.enrichBetTitles(groups);
         OddsSelectionKey.enrichGroups(groups);
         OddsResultTotalEnricher.appendCalculatedGroups(groups, bookmakers);
         OddsResultTotalEnricher.applyCategoryMetadata(groups);
@@ -261,6 +276,26 @@ public class OddsPresentationService {
                 match.getMatchday()
         );
         return resolved.orElseThrow(() -> new BadRequestException("oddsEventNotMapped"));
+    }
+
+    private boolean isMergedSnapshotUsable(Optional<GameResultMergedOdds> mergedSnapshot, LocalDateTime now) {
+        if (mergedSnapshot.isEmpty()) {
+            return false;
+        }
+        GameResultMergedOdds merged = mergedSnapshot.get();
+        if (merged.getMarketGroups() == null || merged.getMarketGroups().isEmpty()) {
+            return false;
+        }
+        return !isMergedStale(merged, now);
+    }
+
+    private boolean isMergedStale(GameResultMergedOdds merged, LocalDateTime now) {
+        if (merged.getFetchedAt() == null) {
+            return true;
+        }
+        int minutes = properties.getPresentationStaleMinutes();
+        LocalDateTime threshold = now.minusMinutes(Math.max(1, minutes));
+        return merged.getFetchedAt().isBefore(threshold);
     }
 
     private boolean isStale(List<GameResultOdds> cached, LocalDateTime now) {

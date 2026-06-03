@@ -9,7 +9,9 @@ import net.friendly_bets.footballdata.FootballDataMatchdaySupport;
 import net.friendly_bets.footballdata.FootballDataSyncService;
 import net.friendly_bets.models.League;
 import net.friendly_bets.models.Season;
+import net.friendly_bets.marathonbet.MarathonbetBookmaker;
 import net.friendly_bets.models.gameresults.GameResultRecord;
+import net.friendly_bets.models.odds.GameResultMergedOdds;
 import net.friendly_bets.models.odds.GameResultOdds;
 import net.friendly_bets.oddsapi.client.OddsApiClient;
 import net.friendly_bets.oddsapi.client.dto.OddsApiEventDto;
@@ -58,6 +60,25 @@ public class OddsApiSyncService {
     }
 
     /**
+     * Fallback для Marathonbet: синхронизация odds-api по коду лиги (напр. WC).
+     */
+    public OddsApiSyncResult syncMatchdayByLeagueCode(
+            String leagueCode,
+            int matchday,
+            String season,
+            List<String> gameResultIds
+    ) {
+        Season active = seasonsRepository.findSeasonByStatus(Season.Status.ACTIVE)
+                .orElseThrow(() -> new BadRequestException("seasonDatesRequired"));
+        League league = active.getLeagues().stream()
+                .filter(l -> l != null && l.getLeagueCode() != null
+                        && leagueCode.equals(l.getLeagueCode().name()))
+                .findFirst()
+                .orElseThrow(() -> new BadRequestException("leagueNotFound"));
+        return syncMatchday(league.getId(), matchday, season, gameResultIds);
+    }
+
+    /**
      * Синхронизация кэфов для слота тура. При {@code gameResultIds} — только указанные матчи
      * (как на экране «Результаты матчей»); иначе все матчи слота с учётом Berlin-фильтра.
      */
@@ -93,9 +114,17 @@ public class OddsApiSyncService {
     }
 
     public OddsApiSyncResult runTick() {
+        return runTickExcludingLeagues(List.of());
+    }
+
+    public OddsApiSyncResult runTickExcludingLeagues(List<String> excludeLeagueCodes) {
         if (!properties.isSyncEnabled() || !oddsApiClient.isConfigured()) {
             return OddsApiSyncResult.builder().build();
         }
+
+        Set<String> excluded = excludeLeagueCodes != null
+                ? new HashSet<>(excludeLeagueCodes)
+                : Set.of();
 
         Optional<Season> active = seasonsRepository.findSeasonByStatus(Season.Status.ACTIVE);
         if (active.isEmpty() || active.get().getLeagues() == null) {
@@ -122,6 +151,9 @@ public class OddsApiSyncService {
 
         for (League league : season.getLeagues()) {
             if (league == null || league.getLeagueCode() == null) {
+                continue;
+            }
+            if (excluded.contains(league.getLeagueCode().name())) {
                 continue;
             }
             if (!FootballDataCompetitionMapping.isSupported(league.getLeagueCode())) {
@@ -380,19 +412,48 @@ public class OddsApiSyncService {
                 saved++;
             }
 
-            OddsMatchContext matchContext = buildMatchContext(match, eventOdds);
-            var mergeResult = oddsMergedOddsService.buildAndPersist(
-                    match,
-                    byBookmaker,
-                    canonicalByLower,
-                    matchContext,
-                    canonicalBookmakers,
-                    fetchedAt,
-                    false
-            );
-            oddsMappingIssueRecorder.recordMergeResult(match, leagueCode, season, matchday, mergeResult);
+            if (!shouldSkipOddsApiMergeForFreshMarathon(match, fetchedAt)) {
+                OddsMatchContext matchContext = buildMatchContext(match, eventOdds);
+                var mergeResult = oddsMergedOddsService.buildAndPersist(
+                        match,
+                        byBookmaker,
+                        canonicalByLower,
+                        matchContext,
+                        canonicalBookmakers,
+                        fetchedAt,
+                        false
+                );
+                oddsMappingIssueRecorder.recordMergeResult(match, leagueCode, season, matchday, mergeResult);
+            }
         }
         return saved;
+    }
+
+    /**
+     * Не перезаписывать свежий prod-merge Marathonbet для ЧМ, если odds-api — только fallback.
+     */
+    private boolean shouldSkipOddsApiMergeForFreshMarathon(GameResultRecord match, LocalDateTime now) {
+        if (!properties.isFallbackOnlyForWc()
+                || !League.LeagueCode.WC.name().equals(match.getLeagueCode())) {
+            return false;
+        }
+        Optional<GameResultMergedOdds> merged = oddsMergedOddsService.findByGameResultId(match.getId());
+        if (merged.isEmpty()) {
+            return false;
+        }
+        GameResultMergedOdds doc = merged.get();
+        boolean hasMarathon = doc.getBookmakers() != null
+                && doc.getBookmakers().stream()
+                .anyMatch(b -> MarathonbetBookmaker.KEY.equalsIgnoreCase(b));
+        if (!hasMarathon || doc.getMarketGroups() == null || doc.getMarketGroups().isEmpty()) {
+            return false;
+        }
+        if (doc.getFetchedAt() == null) {
+            return false;
+        }
+        int minutes = properties.getPresentationStaleMinutes();
+        LocalDateTime threshold = now.minusMinutes(Math.max(1, minutes));
+        return !doc.getFetchedAt().isBefore(threshold);
     }
 
     private OddsMatchContext buildMatchContext(GameResultRecord match, OddsApiEventOddsDto eventOdds) {

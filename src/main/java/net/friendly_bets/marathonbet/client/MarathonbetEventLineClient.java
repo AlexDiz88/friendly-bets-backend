@@ -19,7 +19,6 @@ import java.time.Duration;
 @RequiredArgsConstructor
 public class MarathonbetEventLineClient {
 
-    private static final String BASE_URL = "https://new.marathonbet.ru";
     private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(20);
     private static final Duration READ_TIMEOUT = Duration.ofSeconds(180);
 
@@ -29,20 +28,14 @@ public class MarathonbetEventLineClient {
             .build();
 
     public JsonNode fetchEventSnapshot(long treeId) {
-        String url = BASE_URL + "/eag/event-line/api/v1/events/" + treeId;
-        HttpRequest request = HttpRequest.newBuilder()
+        String url = MarathonbetPanHeaders.BASE_URL + "/eag/event-line/api/v1/events/" + treeId;
+        HttpRequest.Builder builder = HttpRequest.newBuilder()
                 .uri(URI.create(url))
                 .timeout(READ_TIMEOUT)
                 .header("Accept", "text/event-stream")
-                .header("Accept-Language", "ru-RU")
-                .header("X-Pan-Source", "REDESIGN_WEB")
-                .header("X-Pan-Version", "MOBILE-SSR-2.5.4")
-                .header("X-Pan-Target", "BROWSER")
-                .header("X-Country-Code", "RU")
-                .header("Referer", BASE_URL + "/su/sport/event/" + treeId)
-                .header("User-Agent", "FriendlyBets/1.0 (admin scrape)")
-                .GET()
-                .build();
+                .GET();
+        MarathonbetPanHeaders.apply(builder, MarathonbetPanHeaders.BASE_URL + "/su/sport/event/" + treeId);
+        HttpRequest request = builder.build();
 
         try {
             HttpResponse<java.io.InputStream> response = httpClient.send(

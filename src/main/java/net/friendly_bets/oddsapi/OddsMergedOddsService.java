@@ -4,8 +4,11 @@ import lombok.RequiredArgsConstructor;
 import net.friendly_bets.models.gameresults.GameResultRecord;
 import net.friendly_bets.models.odds.GameResultMergedOdds;
 import net.friendly_bets.models.odds.OddsMarketGroup;
+import net.friendly_bets.oddsapi.mapping.MappedOddsQuote;
 import net.friendly_bets.oddsapi.mapping.OddsMappingPipeline;
 import net.friendly_bets.oddsapi.mapping.OddsMergeResult;
+import net.friendly_bets.oddsapi.mapping.OddsMerger;
+import net.friendly_bets.oddsapi.mapping.OddsProductionMergeFilter;
 import net.friendly_bets.oddsapi.poisson.OddsResultTotalEnricher;
 import net.friendly_bets.repositories.GameResultMergedOddsRepository;
 import org.springframework.stereotype.Service;
@@ -68,6 +71,53 @@ public class OddsMergedOddsService {
         return mergedOddsRepository.findByGameResultId(gameResultId);
     }
 
+    /**
+     * Persist merged odds from pre-mapped quotes (e.g. Marathonbet scrape).
+     */
+    public OddsMergeResult buildAndPersistFromQuotes(
+            GameResultRecord match,
+            List<MappedOddsQuote> quotes,
+            List<String> bookmakers,
+            LocalDateTime fetchedAt,
+            boolean frozen
+    ) {
+        List<MappedOddsQuote> prodMergeInput = new ArrayList<>();
+        if (quotes != null) {
+            for (MappedOddsQuote quote : quotes) {
+                if (!quote.isOk() || OddsProductionMergeFilter.includeInProductionMerge(quote)) {
+                    prodMergeInput.add(quote);
+                }
+            }
+        }
+        OddsMergeResult mergeResult = OddsMerger.merge(prodMergeInput, false);
+        List<OddsMarketGroup> groups = mergeResult.getMarketGroups();
+        OddsSelectionKey.enrichGroups(groups);
+        enrichBetTitles(groups);
+        OddsResultTotalEnricher.appendCalculatedGroups(groups, bookmakers);
+        OddsResultTotalEnricher.applyCategoryMetadata(groups);
+
+        if (match == null || match.getId() == null) {
+            return mergeResult;
+        }
+
+        Optional<GameResultMergedOdds> existing = mergedOddsRepository.findByGameResultId(match.getId());
+        if (existing.isPresent() && existing.get().getFrozenAt() != null) {
+            return mergeResult;
+        }
+
+        GameResultMergedOdds entity = existing.orElse(GameResultMergedOdds.builder()
+                .gameResultId(match.getId())
+                .build());
+        entity.setFetchedAt(fetchedAt);
+        entity.setBookmakers(bookmakers != null ? new ArrayList<>(bookmakers) : List.of());
+        entity.setMarketGroups(groups);
+        if (frozen) {
+            entity.setFrozenAt(fetchedAt);
+        }
+        mergedOddsRepository.save(entity);
+        return mergeResult;
+    }
+
     public void freezeIfNeeded(GameResultRecord match, LocalDateTime now) {
         if (match == null || match.getId() == null || GameResultNotStarted.isNotStarted(match, now)) {
             return;
@@ -80,7 +130,8 @@ public class OddsMergedOddsService {
         });
     }
 
-    private void enrichBetTitles(List<OddsMarketGroup> groups) {
+    /** Подписи строк и betTitle для UI (в т.ч. при чтении снимка из MongoDB). */
+    public void enrichBetTitles(List<OddsMarketGroup> groups) {
         if (groups == null) {
             return;
         }
@@ -89,15 +140,18 @@ public class OddsMergedOddsService {
                 continue;
             }
             List<net.friendly_bets.models.odds.OddsLineRow> bettable = new ArrayList<>();
+            OddsMarketCategory category = OddsMarketCategory.valueOf(group.getCategory());
             for (var row : group.getRows()) {
                 if (row.getBetTitle() != null) {
+                    if (row.getDisplayLabel() == null || row.getDisplayLabel().isBlank()) {
+                        row.setDisplayLabel(OddsDisplayLabelFormatter.format(category, row));
+                    }
                     bettable.add(row);
                     continue;
                 }
                 try {
                     row.setBetTitle(OddsSelectionBetTitleMapper.toBetTitle(group.getCategory(), row));
-                    row.setDisplayLabel(OddsDisplayLabelFormatter.format(
-                            OddsMarketCategory.valueOf(group.getCategory()), row));
+                    row.setDisplayLabel(OddsDisplayLabelFormatter.format(category, row));
                     bettable.add(row);
                 } catch (Exception ignored) {
                     row.setBetTitle(null);
