@@ -6,6 +6,7 @@ import net.friendly_bets.models.odds.OddsMarketGroup;
 import net.friendly_bets.oddsapi.OddsBttsScope;
 import net.friendly_bets.oddsapi.OddsCorrectScoreUtils;
 import net.friendly_bets.oddsapi.OddsDisplayLabelFormatter;
+import net.friendly_bets.oddsapi.OddsLineRowDeduper;
 import net.friendly_bets.oddsapi.OddsMarketCatalog;
 import net.friendly_bets.oddsapi.OddsMarketCategory;
 import net.friendly_bets.oddsapi.OddsSelectionKey;
@@ -115,7 +116,7 @@ public final class OddsMerger {
         List<OddsMarketGroup> groups = new ArrayList<>();
         for (Map.Entry<OddsMarketCategory, Map<BetTitleKey, OddsLineRow>> entry : rowsByCategory.entrySet()) {
             OddsMarketCategory category = entry.getKey();
-            List<OddsLineRow> rows = new ArrayList<>(entry.getValue().values());
+            List<OddsLineRow> rows = OddsLineRowDeduper.dedupeRows(new ArrayList<>(entry.getValue().values()));
             sortRows(category, rows);
             groups.add(OddsMarketGroup.builder()
                     .category(category.name())
@@ -154,12 +155,25 @@ public final class OddsMerger {
                     .comparingDouble((OddsLineRow r) -> parseLine(r.getLine()))
                     .thenComparingInt(r -> selectionOrder(category, r.getSelectionCode()));
         }
+        if (category == OddsMarketCategory.HALF_TOTALS) {
+            return Comparator
+                    .comparingInt(OddsMerger::matchResultSortKey)
+                    .thenComparingDouble((OddsLineRow r) -> parseLine(r.getLine()))
+                    .thenComparingInt(r -> selectionOrder(category, r.getSelectionCode()));
+        }
+        if (category == OddsMarketCategory.MATCH_RESULT) {
+            return Comparator
+                    .comparingInt(OddsMerger::matchResultSortKey)
+                    .thenComparingInt(r -> selectionOrder(category, r.getSelectionCode()));
+        }
         if (category == OddsMarketCategory.BTTS) {
             return Comparator
                     .<OddsLineRow>comparingInt(r -> selectionOrder(category, r.getSelectionCode()))
                     .thenComparingInt(r -> OddsBttsScope.fromSelectionCode(r.getSelectionCode()).getSortOrder());
         }
-        if (category == OddsMarketCategory.CORRECT_SCORE) {
+        if (category == OddsMarketCategory.CORRECT_SCORE
+                || category == OddsMarketCategory.FIRST_HALF_CORRECT_SCORE
+                || category == OddsMarketCategory.SECOND_HALF_CORRECT_SCORE) {
             return Comparator.comparingInt(OddsMerger::correctScoreSortKey);
         }
         return Comparator.<OddsLineRow>comparingInt(r -> selectionOrder(category, r.getSelectionCode()));
@@ -177,6 +191,16 @@ public final class OddsMerger {
                 if (derived != null) {
                     return OddsCorrectScoreUtils.sortKey(derived);
                 }
+            }
+        }
+        return Integer.MAX_VALUE;
+    }
+
+    private static int matchResultSortKey(OddsLineRow row) {
+        if (row.getBetTitle() != null) {
+            BetTitleCode code = BetTitleCode.fromCode(row.getBetTitle().getCode());
+            if (code != null) {
+                return code.getCode();
             }
         }
         return Integer.MAX_VALUE;

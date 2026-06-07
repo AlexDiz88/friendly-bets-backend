@@ -38,7 +38,7 @@ public final class OddsSelectionBetTitleMapper {
                 throw new BadRequestException("betMarketNotAllowedForSelfService");
             }
             case MATCH_RESULT -> code = mapMatchResult(selection);
-            case HALF_TIME_RESULT -> code = mapHalfTimeResult(selection);
+            case HALF_TOTALS -> code = mapHalfTotal(line, selection);
             case DOUBLE_CHANCE -> code = mapDoubleChance(selection);
             case TOTALS -> code = mapTotal(line, selection);
             case TEAM_TOTAL_HOME -> code = mapTeamTotal(line, selection, true);
@@ -48,6 +48,8 @@ public final class OddsSelectionBetTitleMapper {
             }
             case HANDICAP -> code = mapHandicap(line, selection);
             case CORRECT_SCORE -> code = mapCorrectScore(row.getSelectionCode());
+            case FIRST_HALF_CORRECT_SCORE, SECOND_HALF_CORRECT_SCORE -> code = mapHalfCorrectScore(
+                    category, row.getSelectionCode());
             default -> throw new BadRequestException("betMarketNotAllowedForSelfService");
         }
 
@@ -86,6 +88,15 @@ public final class OddsSelectionBetTitleMapper {
         };
     }
 
+    public static BetTitle toHalfTimeResultBetTitle(OddsLineRow row) {
+        BetTitleCode code = mapHalfTimeResult(row.getSelectionCode());
+        return BetTitle.builder()
+                .code(code.getCode())
+                .label(code.getLabel())
+                .isNot(false)
+                .build();
+    }
+
     private static BetTitleCode mapHalfTimeResult(String selection) {
         return switch (selection) {
             case "HOME" -> BetTitleCode.FIRST_HALF_HOME_WIN;
@@ -105,9 +116,17 @@ public final class OddsSelectionBetTitleMapper {
     }
 
     private static BetTitleCode mapTotal(String line, String selection) {
+        return mapPeriodTotal("", line, selection);
+    }
+
+    private static BetTitleCode mapHalfTotal(String line, String selection) {
+        return mapPeriodTotal("FIRST_HALF_", line, selection);
+    }
+
+    private static BetTitleCode mapPeriodTotal(String periodPrefix, String line, String selection) {
         String suffix = lineToSuffix(line);
         boolean over = "OVER".equals(selection);
-        String name = "TOTAL_" + (over ? "OVER" : "UNDER") + "_" + suffix;
+        String name = periodPrefix + "TOTAL_" + (over ? "OVER" : "UNDER") + "_" + suffix;
         return findEnum(name).orElseThrow(() -> new BadRequestException("betMarketNotAllowedForSelfService"));
     }
 
@@ -120,11 +139,22 @@ public final class OddsSelectionBetTitleMapper {
     }
 
     private static BetTitleCode mapCorrectScore(String selection) {
+        return mapPeriodCorrectScore("GAME_SCORE_", selection);
+    }
+
+    private static BetTitleCode mapHalfCorrectScore(OddsMarketCategory category, String selection) {
+        String prefix = category == OddsMarketCategory.FIRST_HALF_CORRECT_SCORE
+                ? "FIRST_HALF_SCORE_"
+                : "SECOND_HALF_SCORE_";
+        return mapPeriodCorrectScore(prefix, selection);
+    }
+
+    private static BetTitleCode mapPeriodCorrectScore(String prefix, String selection) {
         int[] score = OddsCorrectScoreUtils.parseScore(selection);
         if (score == null) {
             throw new BadRequestException("betMarketNotAllowedForSelfService");
         }
-        String name = "GAME_SCORE_" + score[0] + "_" + score[1];
+        String name = prefix + score[0] + "_" + score[1];
         return findEnum(name).orElseThrow(() -> new BadRequestException("betMarketNotAllowedForSelfService"));
     }
 

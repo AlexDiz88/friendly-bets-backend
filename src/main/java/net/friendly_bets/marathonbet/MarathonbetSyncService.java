@@ -123,7 +123,6 @@ public class MarathonbetSyncService {
                         league,
                         matchday,
                         season,
-                        tournamentRoot,
                         prematch,
                         null,
                         false
@@ -203,7 +202,6 @@ public class MarathonbetSyncService {
                 league,
                 matchday,
                 resolvedSeason,
-                tournamentRoot,
                 prematch,
                 gameResultIds,
                 true
@@ -240,7 +238,6 @@ public class MarathonbetSyncService {
             League league,
             int matchday,
             String season,
-            JsonNode tournamentRoot,
             List<MarathonbetPrematchEvent> prematch,
             List<String> gameResultIds,
             boolean failWhenNoPending
@@ -276,7 +273,6 @@ public class MarathonbetSyncService {
             return new SlotSyncCounters(0, 0, 0, 0, 0, List.of());
         }
 
-        Set<String> models = tournamentModels();
         int matched = 0;
         int saved = 0;
         int sseCalls = 0;
@@ -301,26 +297,10 @@ public class MarathonbetSyncService {
             matched++;
             MarathonbetPrematchEvent event = eventOpt.get();
             try {
-                boolean usedSse = false;
-                JsonNode eventRoot = MarathonbetTournamentParser.eventNodeByTreeId(
-                        tournamentRoot,
-                        event.getTreeId()
-                );
-                MarathonbetExtractedMarkets extracted = MarathonbetMarketExtractor.extract(
-                        eventRoot,
-                        models
-                );
-                if (needsCorrectScoreSse(extracted)) {
-                    Thread.sleep(properties.getSseDelayMs());
-                    eventRoot = scrapeService.fetchEventSnapshot(event.getTreeId());
-                    usedSse = true;
-                    sseCalls++;
-                    Set<String> allModels = new HashSet<>(models);
-                    if (properties.getSseExtraMarketModels() != null) {
-                        allModels.addAll(properties.getSseExtraMarketModels());
-                    }
-                    extracted = MarathonbetMarketExtractor.extract(eventRoot, allModels);
-                }
+                Thread.sleep(properties.getSseDelayMs());
+                JsonNode eventRoot = scrapeService.fetchEventSnapshot(event.getTreeId());
+                sseCalls++;
+                MarathonbetExtractedMarkets extracted = MarathonbetMarketExtractor.extractAll(eventRoot);
                 List<MappedOddsQuote> quotes = betTitleMapper.map(
                         extracted,
                         event.getHomeTeam(),
@@ -344,9 +324,7 @@ public class MarathonbetSyncService {
                     failures++;
                     failedIds.add(match.getId());
                 }
-                if (usedSse) {
-                    log.debug("marathonbet SSE used for treeId={}", event.getTreeId());
-                }
+                log.debug("marathonbet SSE snapshot for treeId={}", event.getTreeId());
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 failures++;
@@ -368,24 +346,6 @@ public class MarathonbetSyncService {
                 failures,
                 failedIds
         );
-    }
-
-    private boolean needsCorrectScoreSse(MarathonbetExtractedMarkets extracted) {
-        if (!properties.isFetchCorrectScoreViaSse()) {
-            return false;
-        }
-        return extracted.getCorrectScoreMarkets() == null || extracted.getCorrectScoreMarkets().isEmpty();
-    }
-
-    private Set<String> tournamentModels() {
-        Set<String> models = new HashSet<>();
-        if (properties.getTournamentMarketModels() != null) {
-            models.addAll(properties.getTournamentMarketModels());
-        }
-        if (properties.getSseExtraMarketModels() != null && !properties.isFetchCorrectScoreViaSse()) {
-            models.addAll(properties.getSseExtraMarketModels());
-        }
-        return models;
     }
 
     private boolean isPrimaryLeague(String leagueCode) {

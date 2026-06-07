@@ -199,7 +199,9 @@ public abstract class AbstractOddsBookmakerAdapter implements OddsBookmakerAdapt
                     .selectionCode(selectionCode)
                     .build();
             try {
-                BetTitle betTitle = OddsSelectionBetTitleMapper.toBetTitle(category.name(), row);
+                BetTitle betTitle = OddsMarketCatalog.isFirstHalfResultMarket(marketName)
+                        ? OddsSelectionBetTitleMapper.toHalfTimeResultBetTitle(row)
+                        : OddsSelectionBetTitleMapper.toBetTitle(category.name(), row);
                 quotes.add(MappedOddsQuote.builder()
                         .bookmaker(bookmakerKey())
                         .marketName(marketName)

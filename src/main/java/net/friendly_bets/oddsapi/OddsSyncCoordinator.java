@@ -5,7 +5,6 @@ import net.friendly_bets.marathonbet.MarathonbetSyncResult;
 import net.friendly_bets.marathonbet.MarathonbetSyncService;
 import net.friendly_bets.marathonbet.config.MarathonbetProperties;
 import net.friendly_bets.models.League;
-import net.friendly_bets.oddsapi.config.OddsApiProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -13,7 +12,7 @@ import org.springframework.stereotype.Component;
 import java.util.List;
 
 /**
- * Scheduled odds: Marathonbet primary for WC, odds-api as fallback.
+ * Scheduled odds: Marathonbet primary for WC (SSE per match), odds-api только как fallback.
  */
 @Component
 @RequiredArgsConstructor
@@ -24,7 +23,6 @@ public class OddsSyncCoordinator {
     private final MarathonbetProperties marathonbetProperties;
     private final MarathonbetSyncService marathonbetSyncService;
     private final OddsApiSyncService oddsApiSyncService;
-    private final OddsApiProperties oddsApiProperties;
 
     public void runScheduledSync() {
         MarathonbetSyncResult marathonResult = null;
@@ -36,41 +34,33 @@ public class OddsSyncCoordinator {
             }
         }
 
-        if (marathonResult != null
-                && marathonbetProperties.isFallbackToOddsApi()
-                && !marathonResult.isTournamentFetched()) {
+        if (!marathonbetProperties.isFallbackToOddsApi()) {
+            if (marathonResult == null) {
+                oddsApiSyncService.runTick();
+            }
+            return;
+        }
+
+        if (marathonResult == null) {
             oddsApiSyncService.runTick();
             return;
         }
 
-        if (marathonResult != null
-                && marathonbetProperties.isFallbackToOddsApi()
-                && marathonResult.getFailedGameResultIds() != null
+        if (!marathonResult.isTournamentFetched()) {
+            log.info("odds-api tick: full fallback (marathonbet tournament fetch failed)");
+            oddsApiSyncService.runTick();
+            return;
+        }
+
+        if (marathonResult.getFailedGameResultIds() != null
                 && !marathonResult.getFailedGameResultIds().isEmpty()
                 && marathonResult.getLeagueCode() != null
                 && marathonResult.getSeason() != null) {
             fallbackFailedMatches(marathonResult);
         }
 
-        boolean skipWcOddsApi = marathonResult != null
-                && marathonResult.shouldSkipOddsApiForWc(marathonbetProperties.getSkipOddsApiMinMatchRatio());
-        if (skipWcOddsApi && oddsApiProperties.isFallbackOnlyForWc()) {
-            log.info("odds-api tick: skipping WC (marathonbet match ratio {}%)",
-                    Math.round(marathonResult.matchRatio() * 100));
-            oddsApiSyncService.runTickExcludingLeagues(List.of(League.LeagueCode.WC.name()));
-            return;
-        }
-
-        if (marathonResult == null || !marathonbetProperties.isFallbackToOddsApi()) {
-            oddsApiSyncService.runTick();
-            return;
-        }
-
-        if (!skipWcOddsApi) {
-            oddsApiSyncService.runTick();
-        } else {
-            oddsApiSyncService.runTickExcludingLeagues(List.of(League.LeagueCode.WC.name()));
-        }
+        log.info("odds-api tick: excluding WC (marathonbet primary OK)");
+        oddsApiSyncService.runTickExcludingLeagues(List.of(League.LeagueCode.WC.name()));
     }
 
     private void fallbackFailedMatches(MarathonbetSyncResult marathonResult) {

@@ -17,7 +17,7 @@ public final class OddsMarketCatalog {
             return OddsMarketCategory.MATCH_RESULT;
         }
         if (name.equals("half time result")) {
-            return OddsMarketCategory.HALF_TIME_RESULT;
+            return OddsMarketCategory.MATCH_RESULT;
         }
         if (name.equals("double chance")) {
             return OddsMarketCategory.DOUBLE_CHANCE;
@@ -86,10 +86,12 @@ public final class OddsMarketCatalog {
     public static String i18nGroupKey(OddsMarketCategory category) {
         return switch (category) {
             case MATCH_RESULT -> "matchResult";
-            case HALF_TIME_RESULT -> "halfTimeResult";
             case DOUBLE_CHANCE -> "doubleChance";
             case HANDICAP -> "handicap";
             case TOTALS -> "totals";
+            case HALF_TOTALS -> "halfTotals";
+            case HALF_FULL -> "halfFull";
+            case FIRST_SECOND_HALF -> "firstSecondHalf";
             case RESULT_TOTAL_OVER -> "resultTotalOver";
             case RESULT_TOTAL_UNDER -> "resultTotalUnder";
             case BTTS -> "btts";
@@ -98,8 +100,15 @@ public final class OddsMarketCatalog {
             case TEAM_TOTAL_HOME -> "teamTotalHome";
             case TEAM_TOTAL_AWAY -> "teamTotalAway";
             case CORRECT_SCORE -> "correctScore";
+            case FIRST_HALF_CORRECT_SCORE -> "firstHalfCorrectScore";
+            case SECOND_HALF_CORRECT_SCORE -> "secondHalfCorrectScore";
             case OTHER -> "other";
             case EXCLUDED -> "excluded";
         };
+    }
+
+    public static boolean isFirstHalfResultMarket(String marketName) {
+        return marketName != null
+                && "half time result".equals(marketName.trim().toLowerCase(Locale.ROOT));
     }
 }

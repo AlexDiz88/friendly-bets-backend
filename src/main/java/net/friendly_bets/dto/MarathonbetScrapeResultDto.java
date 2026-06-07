@@ -23,5 +23,6 @@ public class MarathonbetScrapeResultDto {
     List<MarathonbetMarketDto> totalMarkets;
     List<MarathonbetMarketDto> correctScoreMarkets;
     List<MarathonbetMarketDto> doubleChanceMarkets;
+    List<MarathonbetMarketDto> resultTotalMarkets;
     List<String> warnings;
 }

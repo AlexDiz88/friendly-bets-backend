@@ -76,8 +76,7 @@ public class OddsMappingIssueRecorder {
             case MARKET_EXCLUDED, MARKET_UNMAPPED, BET_TITLE_UNMAPPED, HANDICAP_ROW_INCOMPLETE,
                     CROSS_BOOKMAKER_MISMATCH -> false;
             case SELECTION_UNMAPPED -> rejected.getCategory() == OddsMarketCategory.DOUBLE_CHANCE
-                    || rejected.getCategory() == OddsMarketCategory.MATCH_RESULT
-                    || rejected.getCategory() == OddsMarketCategory.HALF_TIME_RESULT;
+                    || rejected.getCategory() == OddsMarketCategory.MATCH_RESULT;
         };
     }
 

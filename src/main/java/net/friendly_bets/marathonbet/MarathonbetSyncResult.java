@@ -35,8 +35,4 @@ public class MarathonbetSyncResult {
         }
         return (double) matchesMatched / matchesEligible;
     }
-
-    public boolean shouldSkipOddsApiForWc(double minRatio) {
-        return tournamentFetched && matchRatio() >= minRatio;
-    }
 }

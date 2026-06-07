@@ -30,4 +30,9 @@ public class OddsMarketGroup {
     @Field(name = "rows")
     @Builder.Default
     private List<OddsLineRow> rows = new ArrayList<>();
+
+    /** Вложенные подгруппы (напр. «П1 + Тотал» внутри «Результат + Тотал»). */
+    @Field(name = "subgroups")
+    @Builder.Default
+    private List<OddsMarketGroup> subgroups = new ArrayList<>();
 }

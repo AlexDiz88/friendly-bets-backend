@@ -15,7 +15,7 @@ class OddsMarketCatalogTest {
 
     @Test
     void resolvesHalfTimeMarkets() {
-        assertEquals(OddsMarketCategory.HALF_TIME_RESULT, OddsMarketCatalog.resolveCategory("Half Time Result"));
+        assertEquals(OddsMarketCategory.MATCH_RESULT, OddsMarketCatalog.resolveCategory("Half Time Result"));
         assertEquals(OddsMarketCategory.BTTS, OddsMarketCatalog.resolveCategory("Both Teams To Score HT"));
         assertEquals(OddsMarketCategory.BTTS, OddsMarketCatalog.resolveCategory("Both Teams To Score 2H"));
     }

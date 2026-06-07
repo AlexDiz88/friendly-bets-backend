@@ -135,7 +135,7 @@ class OddsGroupBuilderTest {
         );
 
         OddsMarketGroup ht = groups.stream()
-                .filter(g -> "HALF_TIME_RESULT".equals(g.getCategory()))
+                .filter(g -> "MATCH_RESULT".equals(g.getCategory()))
                 .findFirst()
                 .orElseThrow();
         assertEquals(3, ht.getRows().size());

@@ -17,23 +17,47 @@ public final class MarathonbetMarketExtractor {
     private MarathonbetMarketExtractor() {
     }
 
+    /**
+     * @deprecated Используйте {@link #extractAll(JsonNode)} — tournament JSON больше не несёт prod-кэфы.
+     */
+    @Deprecated
     public static MarathonbetExtractedMarkets extract(JsonNode root, Set<String> models) {
+        if (models != null && !models.isEmpty()) {
+            return extractFiltered(root, models);
+        }
+        return extractAll(root);
+    }
+
+    public static MarathonbetExtractedMarkets extractAll(JsonNode root) {
         JsonNode marketsNode = root != null ? root.get("markets") : null;
         if (marketsNode == null || !marketsNode.isObject()) {
-            return MarathonbetExtractedMarkets.builder()
-                    .matchResultMarkets(List.of())
-                    .handicapMarkets(List.of())
-                    .totalMarkets(List.of())
-                    .correctScoreMarkets(List.of())
-                    .doubleChanceMarkets(List.of())
-                    .build();
+            return empty();
         }
 
         List<MarathonbetMarketDto> matchResult = new ArrayList<>();
+        List<MarathonbetMarketDto> halfTimeResult = new ArrayList<>();
+        List<MarathonbetMarketDto> secondHalfResult = new ArrayList<>();
         List<MarathonbetMarketDto> handicaps = new ArrayList<>();
+        List<MarathonbetMarketDto> halfTimeHandicaps = new ArrayList<>();
+        List<MarathonbetMarketDto> secondHalfHandicaps = new ArrayList<>();
         List<MarathonbetMarketDto> totals = new ArrayList<>();
+        List<MarathonbetMarketDto> halfTimeTotals = new ArrayList<>();
+        List<MarathonbetMarketDto> secondHalfTotals = new ArrayList<>();
+        List<MarathonbetMarketDto> teamTotalHome = new ArrayList<>();
+        List<MarathonbetMarketDto> teamTotalAway = new ArrayList<>();
         List<MarathonbetMarketDto> correctScore = new ArrayList<>();
+        List<MarathonbetMarketDto> firstHalfCorrectScore = new ArrayList<>();
+        List<MarathonbetMarketDto> secondHalfCorrectScore = new ArrayList<>();
         List<MarathonbetMarketDto> doubleChance = new ArrayList<>();
+        List<MarathonbetMarketDto> halfTimeDoubleChance = new ArrayList<>();
+        List<MarathonbetMarketDto> secondHalfDoubleChance = new ArrayList<>();
+        List<MarathonbetMarketDto> resultTotal = new ArrayList<>();
+        List<MarathonbetMarketDto> goals = new ArrayList<>();
+        List<MarathonbetMarketDto> cleanWin = new ArrayList<>();
+        List<MarathonbetMarketDto> scoreDiff = new ArrayList<>();
+        List<MarathonbetMarketDto> halfFull = new ArrayList<>();
+        List<MarathonbetMarketDto> firstSecondHalf = new ArrayList<>();
+        List<MarathonbetMarketDto> bttsResult = new ArrayList<>();
 
         Iterator<String> fieldNames = marketsNode.fieldNames();
         while (fieldNames.hasNext()) {
@@ -42,39 +66,196 @@ public final class MarathonbetMarketExtractor {
                 continue;
             }
             String model = text(market.get("model"));
-            if (model == null || (models != null && !models.isEmpty() && !models.contains(model))) {
+            if (!MarathonbetAllowedMarkets.isAllowedModel(model)) {
                 continue;
             }
             MarathonbetMarketDto dto = toMarketDto(market);
-            switch (model) {
-                case "MTCH_R", "MTCH_R1", "MTCH_R2" -> matchResult.add(dto);
-                case "MTCH_HB", "MTCH_HB1", "MTCH_HB2" -> handicaps.add(dto);
-                case "MTCH_TTLG", "MTCH_TTLG1", "MTCH_TTLG2" -> totals.add(dto);
-                case "MTCH_DC", "MTCH_DC1", "MTCH_DC2" -> doubleChance.add(dto);
-                case "MTCH_CSDYN", "MTCH_CSW1DYN", "MTCH_CSW2DYN" -> correctScore.add(dto);
-                default -> {
-                    if (model != null && model.startsWith("MTCH_CS")) {
-                        correctScore.add(dto);
-                    }
-                }
+            if (MarathonbetProdMarketFilter.isIgnoredForProd(dto)) {
+                continue;
+            }
+            MarathonbetMarketBucket bucket = MarathonbetAllowedMarkets.bucketFor(model).orElseThrow();
+            switch (bucket) {
+                case MATCH_RESULT -> matchResult.add(dto);
+                case HALF_TIME_RESULT -> halfTimeResult.add(dto);
+                case SECOND_HALF_RESULT -> secondHalfResult.add(dto);
+                case DOUBLE_CHANCE -> doubleChance.add(dto);
+                case HALF_TIME_DOUBLE_CHANCE -> halfTimeDoubleChance.add(dto);
+                case SECOND_HALF_DOUBLE_CHANCE -> secondHalfDoubleChance.add(dto);
+                case HANDICAP -> handicaps.add(dto);
+                case HALF_TIME_HANDICAP -> halfTimeHandicaps.add(dto);
+                case SECOND_HALF_HANDICAP -> secondHalfHandicaps.add(dto);
+                case TOTALS -> totals.add(dto);
+                case HALF_TIME_TOTALS -> halfTimeTotals.add(dto);
+                case SECOND_HALF_TOTALS -> secondHalfTotals.add(dto);
+                case TEAM_TOTAL_HOME -> teamTotalHome.add(dto);
+                case TEAM_TOTAL_AWAY -> teamTotalAway.add(dto);
+                case CORRECT_SCORE -> correctScore.add(dto);
+                case FIRST_HALF_CORRECT_SCORE -> firstHalfCorrectScore.add(dto);
+                case SECOND_HALF_CORRECT_SCORE -> secondHalfCorrectScore.add(dto);
+                case RESULT_TOTAL -> resultTotal.add(dto);
+                case GOALS -> goals.add(dto);
+                case CLEAN_WIN -> cleanWin.add(dto);
+                case SCORE_DIFF -> scoreDiff.add(dto);
+                case HALF_FULL -> halfFull.add(dto);
+                case FIRST_SECOND_HALF -> firstSecondHalf.add(dto);
+                case BTTS_RESULT -> bttsResult.add(dto);
             }
         }
 
         handicaps.sort(handicapComparator());
+        halfTimeHandicaps.sort(handicapComparator());
+        secondHalfHandicaps.sort(handicapComparator());
         totals.sort(totalComparator());
+        halfTimeTotals.sort(totalComparator());
+        secondHalfTotals.sort(totalComparator());
+        teamTotalHome.sort(totalComparator());
+        teamTotalAway.sort(totalComparator());
         correctScore.sort(correctScoreComparator());
+        firstHalfCorrectScore.sort(correctScoreComparator());
+        secondHalfCorrectScore.sort(correctScoreComparator());
 
         return MarathonbetExtractedMarkets.builder()
                 .matchResultMarkets(matchResult)
+                .halfTimeResultMarkets(halfTimeResult)
+                .secondHalfResultMarkets(secondHalfResult)
                 .handicapMarkets(handicaps)
+                .halfTimeHandicapMarkets(halfTimeHandicaps)
+                .secondHalfHandicapMarkets(secondHalfHandicaps)
                 .totalMarkets(totals)
+                .halfTimeTotalMarkets(halfTimeTotals)
+                .secondHalfTotalMarkets(secondHalfTotals)
+                .teamTotalHomeMarkets(teamTotalHome)
+                .teamTotalAwayMarkets(teamTotalAway)
                 .correctScoreMarkets(correctScore)
+                .firstHalfCorrectScoreMarkets(firstHalfCorrectScore)
+                .secondHalfCorrectScoreMarkets(secondHalfCorrectScore)
                 .doubleChanceMarkets(doubleChance)
+                .halfTimeDoubleChanceMarkets(halfTimeDoubleChance)
+                .secondHalfDoubleChanceMarkets(secondHalfDoubleChance)
+                .resultTotalMarkets(resultTotal)
+                .goalsMarkets(goals)
+                .cleanWinMarkets(cleanWin)
+                .scoreDiffMarkets(scoreDiff)
+                .halfFullMarkets(halfFull)
+                .firstSecondHalfMarkets(firstSecondHalf)
+                .bttsResultMarkets(bttsResult)
                 .build();
     }
 
-    public static MarathonbetExtractedMarkets extractAll(JsonNode root) {
-        return extract(root, null);
+    private static MarathonbetExtractedMarkets extractFiltered(JsonNode root, Set<String> models) {
+        JsonNode marketsNode = root != null ? root.get("markets") : null;
+        if (marketsNode == null || !marketsNode.isObject()) {
+            return empty();
+        }
+        List<MarathonbetMarketDto> matchResult = new ArrayList<>();
+        List<MarathonbetMarketDto> handicaps = new ArrayList<>();
+        List<MarathonbetMarketDto> totals = new ArrayList<>();
+        List<MarathonbetMarketDto> correctScore = new ArrayList<>();
+        List<MarathonbetMarketDto> doubleChance = new ArrayList<>();
+        List<MarathonbetMarketDto> resultTotal = new ArrayList<>();
+
+        Iterator<String> fieldNames = marketsNode.fieldNames();
+        while (fieldNames.hasNext()) {
+            JsonNode market = marketsNode.get(fieldNames.next());
+            if (market == null || market.isNull()) {
+                continue;
+            }
+            String model = text(market.get("model"));
+            if (model == null || !models.contains(model)) {
+                continue;
+            }
+            MarathonbetMarketDto dto = toMarketDto(market);
+            if (MarathonbetProdMarketFilter.isIgnoredForProd(dto)) {
+                continue;
+            }
+            OptionalBucket bucket = legacyBucket(model);
+            if (bucket == null) {
+                continue;
+            }
+            switch (bucket) {
+                case MATCH_RESULT -> matchResult.add(dto);
+                case HANDICAP -> handicaps.add(dto);
+                case TOTALS -> totals.add(dto);
+                case CORRECT_SCORE -> correctScore.add(dto);
+                case DOUBLE_CHANCE -> doubleChance.add(dto);
+                case RESULT_TOTAL -> resultTotal.add(dto);
+            }
+        }
+        handicaps.sort(handicapComparator());
+        totals.sort(totalComparator());
+        correctScore.sort(correctScoreComparator());
+        return MarathonbetExtractedMarkets.builder()
+                .matchResultMarkets(matchResult)
+                .halfTimeResultMarkets(List.of())
+                .secondHalfResultMarkets(List.of())
+                .handicapMarkets(handicaps)
+                .halfTimeHandicapMarkets(List.of())
+                .secondHalfHandicapMarkets(List.of())
+                .totalMarkets(totals)
+                .halfTimeTotalMarkets(List.of())
+                .secondHalfTotalMarkets(List.of())
+                .teamTotalHomeMarkets(List.of())
+                .teamTotalAwayMarkets(List.of())
+                .correctScoreMarkets(correctScore)
+                .firstHalfCorrectScoreMarkets(List.of())
+                .secondHalfCorrectScoreMarkets(List.of())
+                .doubleChanceMarkets(doubleChance)
+                .halfTimeDoubleChanceMarkets(List.of())
+                .secondHalfDoubleChanceMarkets(List.of())
+                .resultTotalMarkets(resultTotal)
+                .goalsMarkets(List.of())
+                .cleanWinMarkets(List.of())
+                .scoreDiffMarkets(List.of())
+                .halfFullMarkets(List.of())
+                .firstSecondHalfMarkets(List.of())
+                .bttsResultMarkets(List.of())
+                .build();
+    }
+
+    private enum OptionalBucket {
+        MATCH_RESULT, HANDICAP, TOTALS, CORRECT_SCORE, DOUBLE_CHANCE, RESULT_TOTAL
+    }
+
+    private static OptionalBucket legacyBucket(String model) {
+        return switch (model) {
+            case "MTCH_R" -> OptionalBucket.MATCH_RESULT;
+            case "MTCH_HB", "MTCH_HB1", "MTCH_HB2" -> OptionalBucket.HANDICAP;
+            case "MTCH_TTLG", "MTCH_TTLG1", "MTCH_TTLG2" -> OptionalBucket.TOTALS;
+            case "MTCH_DC", "MTCH_DC1", "MTCH_DC2" -> OptionalBucket.DOUBLE_CHANCE;
+            case "MTCH_CSDYN", "MTCH_CSW1DYN", "MTCH_CSW2DYN" -> OptionalBucket.CORRECT_SCORE;
+            default -> MarathonbetResultTotalModels.isFullTimeResultTotal(model)
+                    ? OptionalBucket.RESULT_TOTAL
+                    : (model != null && model.startsWith("MTCH_CS") ? OptionalBucket.CORRECT_SCORE : null);
+        };
+    }
+
+    private static MarathonbetExtractedMarkets empty() {
+        return MarathonbetExtractedMarkets.builder()
+                .matchResultMarkets(List.of())
+                .halfTimeResultMarkets(List.of())
+                .secondHalfResultMarkets(List.of())
+                .handicapMarkets(List.of())
+                .halfTimeHandicapMarkets(List.of())
+                .secondHalfHandicapMarkets(List.of())
+                .totalMarkets(List.of())
+                .halfTimeTotalMarkets(List.of())
+                .secondHalfTotalMarkets(List.of())
+                .teamTotalHomeMarkets(List.of())
+                .teamTotalAwayMarkets(List.of())
+                .correctScoreMarkets(List.of())
+                .firstHalfCorrectScoreMarkets(List.of())
+                .secondHalfCorrectScoreMarkets(List.of())
+                .doubleChanceMarkets(List.of())
+                .halfTimeDoubleChanceMarkets(List.of())
+                .secondHalfDoubleChanceMarkets(List.of())
+                .resultTotalMarkets(List.of())
+                .goalsMarkets(List.of())
+                .cleanWinMarkets(List.of())
+                .scoreDiffMarkets(List.of())
+                .halfFullMarkets(List.of())
+                .firstSecondHalfMarkets(List.of())
+                .bttsResultMarkets(List.of())
+                .build();
     }
 
     private static Comparator<MarathonbetMarketDto> handicapComparator() {
@@ -152,12 +333,13 @@ public final class MarathonbetMarketExtractor {
                 String.CASE_INSENSITIVE_ORDER
         ));
         String name = text(market.get("name"));
+        String model = text(market.get("model"));
         return MarathonbetMarketDto.builder()
                 .marketId(market.hasNonNull("marketId") ? market.get("marketId").asLong() : null)
-                .model(text(market.get("model")))
+                .model(model)
                 .name(name)
                 .selections(selections)
-                .ignoredForProd(MarathonbetProdMarketFilter.isIgnoredForProd(name))
+                .ignoredForProd(MarathonbetProdMarketFilter.isIgnoredForProd(model, name))
                 .build();
     }
 

@@ -31,7 +31,7 @@ public final class OddsDisplayLabelFormatter {
             case HANDICAP -> formatHandicapLabel(label);
             case TEAM_TOTAL_HOME, TEAM_TOTAL_AWAY -> shortenTeamTotalLabel(label);
             case BTTS, GOALS -> formatGoalsBetTitleLabel(betTitle);
-            case HALF_TIME_RESULT -> label;
+            case HALF_FULL, FIRST_SECOND_HALF -> label;
             default -> label;
         };
     }
@@ -61,9 +61,8 @@ public final class OddsDisplayLabelFormatter {
         }
         return switch (category) {
             case HANDICAP -> formatHandicapRaw(line, code);
-            case TOTALS -> formatTotalRaw(line, code);
+            case TOTALS, HALF_TOTALS -> formatTotalRaw(line, code);
             case TEAM_TOTAL_HOME, TEAM_TOTAL_AWAY -> formatTeamTotalRaw(line, code);
-            case HALF_TIME_RESULT -> code.displayLabel();
             default -> code.displayLabel();
         };
     }

@@ -2,19 +2,15 @@ package net.friendly_bets.marathonbet;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import lombok.RequiredArgsConstructor;
-import net.friendly_bets.dto.MarathonbetMarketDto;
 import net.friendly_bets.dto.MarathonbetScrapeResultDto;
 import net.friendly_bets.exceptions.BadRequestException;
 import net.friendly_bets.marathonbet.client.MarathonbetEventLineClient;
 import net.friendly_bets.marathonbet.client.MarathonbetPanHeaders;
-import net.friendly_bets.marathonbet.config.MarathonbetProperties;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -23,22 +19,13 @@ public class MarathonbetScrapeService {
     private static final String BASE_URL = MarathonbetPanHeaders.BASE_URL;
 
     private final MarathonbetEventLineClient eventLineClient;
-    private final MarathonbetProperties properties;
 
     public MarathonbetScrapeResultDto scrapeByTreeId(long treeId) {
         if (treeId <= 0) {
             throw new BadRequestException("marathonbetInvalidTreeId");
         }
         JsonNode root = eventLineClient.fetchEventSnapshot(treeId);
-        Set<String> models = new HashSet<>();
-        if (properties.getTournamentMarketModels() != null) {
-            models.addAll(properties.getTournamentMarketModels());
-        }
-        if (properties.getSseExtraMarketModels() != null) {
-            models.addAll(properties.getSseExtraMarketModels());
-        }
-        models.add("MTCH_DC");
-        MarathonbetExtractedMarkets extracted = MarathonbetMarketExtractor.extract(root, models);
+        MarathonbetExtractedMarkets extracted = MarathonbetMarketExtractor.extractAll(root);
 
         List<String> warnings = new ArrayList<>();
         if (extracted.getMatchResultMarkets().isEmpty()) {
@@ -52,6 +39,12 @@ public class MarathonbetScrapeService {
         }
         if (extracted.getCorrectScoreMarkets().isEmpty()) {
             warnings.add("correctScoreNotFound");
+        }
+        if (extracted.getDoubleChanceMarkets().isEmpty()) {
+            warnings.add("doubleChanceNotFound");
+        }
+        if (extracted.getResultTotalMarkets().isEmpty()) {
+            warnings.add("resultTotalNotFound");
         }
 
         Long displayTime = root.hasNonNull("displayTime") ? root.get("displayTime").asLong() : null;
@@ -72,6 +65,7 @@ public class MarathonbetScrapeService {
                 .totalMarkets(extracted.getTotalMarkets())
                 .correctScoreMarkets(extracted.getCorrectScoreMarkets())
                 .doubleChanceMarkets(extracted.getDoubleChanceMarkets())
+                .resultTotalMarkets(extracted.getResultTotalMarkets())
                 .warnings(warnings)
                 .build();
     }

@@ -43,7 +43,9 @@ public class OddsMergedOddsService {
         OddsSelectionKey.enrichGroups(groups);
         enrichBetTitles(groups);
         OddsResultTotalEnricher.appendCalculatedGroups(groups, bookmakers);
+        OddsHalfCorrectScoreSubgroupSplitter.splitIntoSubgroups(groups);
         OddsResultTotalEnricher.applyCategoryMetadata(groups);
+        OddsLineRowDeduper.dedupeMarketGroups(groups);
 
         if (match == null || match.getId() == null) {
             return mergeResult;
@@ -54,16 +56,7 @@ public class OddsMergedOddsService {
             return mergeResult;
         }
 
-        GameResultMergedOdds entity = existing.orElse(GameResultMergedOdds.builder()
-                .gameResultId(match.getId())
-                .build());
-        entity.setFetchedAt(fetchedAt);
-        entity.setBookmakers(bookmakers != null ? new ArrayList<>(bookmakers) : List.of());
-        entity.setMarketGroups(groups);
-        if (frozen) {
-            entity.setFrozenAt(fetchedAt);
-        }
-        mergedOddsRepository.save(entity);
+        persistMergedSnapshot(match.getId(), bookmakers, groups, fetchedAt, frozen);
         return mergeResult;
     }
 
@@ -94,7 +87,9 @@ public class OddsMergedOddsService {
         OddsSelectionKey.enrichGroups(groups);
         enrichBetTitles(groups);
         OddsResultTotalEnricher.appendCalculatedGroups(groups, bookmakers);
+        OddsHalfCorrectScoreSubgroupSplitter.splitIntoSubgroups(groups);
         OddsResultTotalEnricher.applyCategoryMetadata(groups);
+        OddsLineRowDeduper.dedupeMarketGroups(groups);
 
         if (match == null || match.getId() == null) {
             return mergeResult;
@@ -105,16 +100,7 @@ public class OddsMergedOddsService {
             return mergeResult;
         }
 
-        GameResultMergedOdds entity = existing.orElse(GameResultMergedOdds.builder()
-                .gameResultId(match.getId())
-                .build());
-        entity.setFetchedAt(fetchedAt);
-        entity.setBookmakers(bookmakers != null ? new ArrayList<>(bookmakers) : List.of());
-        entity.setMarketGroups(groups);
-        if (frozen) {
-            entity.setFrozenAt(fetchedAt);
-        }
-        mergedOddsRepository.save(entity);
+        persistMergedSnapshot(match.getId(), bookmakers, groups, fetchedAt, frozen);
         return mergeResult;
     }
 
@@ -130,34 +116,72 @@ public class OddsMergedOddsService {
         });
     }
 
+    /**
+     * Один документ на матч: полная замена market_groups (не append).
+     */
+    private void persistMergedSnapshot(
+            String gameResultId,
+            List<String> bookmakers,
+            List<OddsMarketGroup> groups,
+            LocalDateTime fetchedAt,
+            boolean frozen
+    ) {
+        GameResultMergedOdds entity = mergedOddsRepository.findByGameResultId(gameResultId)
+                .orElse(GameResultMergedOdds.builder()
+                        .gameResultId(gameResultId)
+                        .build());
+        entity.setFetchedAt(fetchedAt);
+        entity.setBookmakers(bookmakers != null ? new ArrayList<>(bookmakers) : List.of());
+        entity.setMarketGroups(new ArrayList<>(groups));
+        if (frozen) {
+            entity.setFrozenAt(fetchedAt);
+        }
+        mergedOddsRepository.save(entity);
+    }
+
     /** Подписи строк и betTitle для UI (в т.ч. при чтении снимка из MongoDB). */
     public void enrichBetTitles(List<OddsMarketGroup> groups) {
         if (groups == null) {
             return;
         }
         for (OddsMarketGroup group : groups) {
-            if (group.getRows() == null || group.getCategory() == null) {
-                continue;
-            }
-            List<net.friendly_bets.models.odds.OddsLineRow> bettable = new ArrayList<>();
-            OddsMarketCategory category = OddsMarketCategory.valueOf(group.getCategory());
-            for (var row : group.getRows()) {
-                if (row.getBetTitle() != null) {
-                    if (row.getDisplayLabel() == null || row.getDisplayLabel().isBlank()) {
-                        row.setDisplayLabel(OddsDisplayLabelFormatter.format(category, row));
+            enrichBetTitlesForGroup(group);
+        }
+    }
+
+    private void enrichBetTitlesForGroup(OddsMarketGroup group) {
+        if (group == null) {
+            return;
+        }
+        if (group.getRows() != null && group.getCategory() != null) {
+            try {
+                OddsMarketCategory category = OddsMarketCategory.valueOf(group.getCategory());
+                List<net.friendly_bets.models.odds.OddsLineRow> bettable = new ArrayList<>();
+                for (var row : group.getRows()) {
+                    if (row.getBetTitle() != null) {
+                        if (row.getDisplayLabel() == null || row.getDisplayLabel().isBlank()) {
+                            row.setDisplayLabel(OddsDisplayLabelFormatter.format(category, row));
+                        }
+                        bettable.add(row);
+                        continue;
                     }
-                    bettable.add(row);
-                    continue;
+                    try {
+                        row.setBetTitle(OddsSelectionBetTitleMapper.toBetTitle(group.getCategory(), row));
+                        row.setDisplayLabel(OddsDisplayLabelFormatter.format(category, row));
+                        bettable.add(row);
+                    } catch (Exception ignored) {
+                        row.setBetTitle(null);
+                    }
                 }
-                try {
-                    row.setBetTitle(OddsSelectionBetTitleMapper.toBetTitle(group.getCategory(), row));
-                    row.setDisplayLabel(OddsDisplayLabelFormatter.format(category, row));
-                    bettable.add(row);
-                } catch (Exception ignored) {
-                    row.setBetTitle(null);
-                }
+                group.setRows(bettable);
+            } catch (IllegalArgumentException ignored) {
+                // напр. RESULT_TOTAL-родитель без строк
             }
-            group.setRows(bettable);
+        }
+        if (group.getSubgroups() != null) {
+            for (OddsMarketGroup sub : group.getSubgroups()) {
+                enrichBetTitlesForGroup(sub);
+            }
         }
     }
 }

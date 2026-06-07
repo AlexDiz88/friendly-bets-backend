@@ -33,10 +33,16 @@ public final class OddsCorrectScoreUtils {
             return null;
         }
         String name = code.name();
-        if (!name.startsWith("GAME_SCORE_")) {
-            return null;
+        if (name.startsWith("GAME_SCORE_")) {
+            return name.substring("GAME_SCORE_".length()).replace('_', '-');
         }
-        return name.substring("GAME_SCORE_".length()).replace('_', '-');
+        if (name.startsWith("FIRST_HALF_SCORE_")) {
+            return name.substring("FIRST_HALF_SCORE_".length()).replace('_', '-');
+        }
+        if (name.startsWith("SECOND_HALF_SCORE_")) {
+            return name.substring("SECOND_HALF_SCORE_".length()).replace('_', '-');
+        }
+        return null;
     }
 
     public static int sortKey(String selection) {

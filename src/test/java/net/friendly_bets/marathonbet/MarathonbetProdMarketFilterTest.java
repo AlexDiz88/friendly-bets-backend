@@ -23,4 +23,20 @@ class MarathonbetProdMarketFilterTest {
                 MarathonbetMarketDto.builder().name("Канада (-1)").build()
         ));
     }
+
+    @Test
+    void ignoresVoluntaryWinAndConsecutiveGoalsModels() {
+        assertTrue(MarathonbetProdMarketFilter.isIgnoredForProd(
+                MarathonbetMarketDto.builder().model("MTCH_TEWFB").name("Волевая").build()
+        ));
+        assertTrue(MarathonbetProdMarketFilter.isIgnoredForProd(
+                MarathonbetMarketDto.builder().model("MTCH_T1NGI").name("2-й гол").build()
+        ));
+        assertTrue(MarathonbetProdMarketFilter.isIgnoredForProd(
+                MarathonbetMarketDto.builder().model("MTCH_T1GNM").name("Голы подряд").build()
+        ));
+        assertTrue(MarathonbetProdMarketFilter.isIgnoredForProd(
+                MarathonbetMarketDto.builder().model("MTCH_HB_ASN").name("Фора").build()
+        ));
+    }
 }

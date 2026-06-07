@@ -15,7 +15,11 @@ public final class OddsSelectionKey {
         String gk = groupKey != null ? groupKey : "";
         String line = row.getLine() != null ? row.getLine().trim() : "";
         String sel = row.getSelectionCode() != null ? row.getSelectionCode().trim() : "";
-        return cat + "|" + gk + "|" + line + "|" + sel;
+        String base = cat + "|" + gk + "|" + line + "|" + sel;
+        if (row.getBetTitle() != null) {
+            return base + "|" + row.getBetTitle().getCode() + "|" + (row.getBetTitle().isNot() ? "1" : "0");
+        }
+        return base;
     }
 
     public static String buildRaw(String category, String groupKey, String line, String selectionCode) {
@@ -31,9 +35,15 @@ public final class OddsSelectionKey {
             return;
         }
         for (OddsMarketGroup group : groups) {
-            if (group.getRows() == null) {
-                continue;
-            }
+            enrichGroup(group);
+        }
+    }
+
+    private static void enrichGroup(OddsMarketGroup group) {
+        if (group == null) {
+            return;
+        }
+        if (group.getRows() != null) {
             OddsMarketCategory category;
             try {
                 category = OddsMarketCategory.valueOf(group.getCategory());
@@ -43,6 +53,11 @@ public final class OddsSelectionKey {
             for (OddsLineRow row : group.getRows()) {
                 row.setSelectionKey(build(category, group.getGroupKey(), row));
                 applyBestOdds(row);
+            }
+        }
+        if (group.getSubgroups() != null) {
+            for (OddsMarketGroup sub : group.getSubgroups()) {
+                enrichGroup(sub);
             }
         }
     }

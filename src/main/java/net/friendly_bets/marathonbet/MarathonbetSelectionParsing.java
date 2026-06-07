@@ -20,6 +20,10 @@ public final class MarathonbetSelectionParsing {
             "^(?:Ничья|.+?)\\s+(\\d+)\\s*-\\s*(\\d+)$",
             Pattern.UNICODE_CASE | Pattern.CANON_EQ
     );
+    private static final Pattern RESULT_TOTAL_LINE = Pattern.compile(
+            "тотал\\s+(?:меньше|больше|голов)\\s+([\\d.,]+)",
+            Pattern.UNICODE_CASE | Pattern.CANON_EQ
+    );
 
     private MarathonbetSelectionParsing() {
     }
@@ -51,6 +55,17 @@ public final class MarathonbetSelectionParsing {
             return false;
         }
         return selectionName.trim().toLowerCase(Locale.ROOT).startsWith("больше");
+    }
+
+    public static Double parseResultTotalLine(String marketName) {
+        if (marketName == null) {
+            return null;
+        }
+        Matcher m = RESULT_TOTAL_LINE.matcher(marketName.trim());
+        if (!m.find()) {
+            return null;
+        }
+        return parseDouble(m.group(1));
     }
 
     public static int[] parseCorrectScoreHomeAway(String selectionName, String homeTeam, String awayTeam) {
