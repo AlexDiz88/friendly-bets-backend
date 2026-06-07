@@ -20,8 +20,8 @@ import net.friendly_bets.oddsapi.OddsMergedOddsService;
 import net.friendly_bets.oddsapi.mapping.MappedOddsQuote;
 import net.friendly_bets.oddsapi.mapping.OddsMergeResult;
 import net.friendly_bets.repositories.MarathonbetSyncRunRepository;
-import net.friendly_bets.repositories.SeasonsRepository;
 import net.friendly_bets.services.GetEntityService;
+import net.friendly_bets.services.RunningSeasonLookup;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -50,7 +50,7 @@ public class MarathonbetSyncService {
     private final FootballDataSyncService footballDataSyncService;
     private final FootballDataCompetitionService footballDataCompetitionService;
     private final FootballDataMatchdaySupport matchdaySupport;
-    private final SeasonsRepository seasonsRepository;
+    private final RunningSeasonLookup runningSeasonLookup;
     private final GetEntityService getEntityService;
     private final ApiSyncIssueService apiSyncIssueService;
     private final MarathonbetSyncRunRepository syncRunRepository;
@@ -60,7 +60,7 @@ public class MarathonbetSyncService {
         if (!properties.isSyncEnabled()) {
             return MarathonbetSyncResult.builder().build();
         }
-        Optional<Season> active = seasonsRepository.findSeasonByStatus(Season.Status.ACTIVE);
+        Optional<Season> active = runningSeasonLookup.findRunningSeason();
         if (active.isEmpty() || active.get().getLeagues() == null) {
             return MarathonbetSyncResult.builder().build();
         }
@@ -358,8 +358,7 @@ public class MarathonbetSyncService {
         if (requestedSeason != null && !requestedSeason.isBlank()) {
             return requestedSeason.trim();
         }
-        Season active = seasonsRepository.findSeasonByStatus(Season.Status.ACTIVE)
-                .orElseThrow(() -> new BadRequestException("seasonDatesRequired"));
+        Season active = runningSeasonLookup.findRunningSeasonOrThrow("seasonDatesRequired");
         return matchdaySupport.resolveFootballDataSeasonYear(active, league.getLeagueCode());
     }
 

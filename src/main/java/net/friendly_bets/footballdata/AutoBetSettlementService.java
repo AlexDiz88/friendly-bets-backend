@@ -6,9 +6,9 @@ import net.friendly_bets.footballdata.config.FootballDataProperties;
 import net.friendly_bets.models.GameResult;
 import net.friendly_bets.models.Season;
 import net.friendly_bets.models.User;
-import net.friendly_bets.repositories.SeasonsRepository;
 import net.friendly_bets.repositories.UsersRepository;
 import net.friendly_bets.services.BetsService;
+import net.friendly_bets.services.RunningSeasonLookup;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -24,7 +24,7 @@ public class AutoBetSettlementService {
     private static final Logger log = LoggerFactory.getLogger(AutoBetSettlementService.class);
 
     private final FootballDataProperties properties;
-    private final SeasonsRepository seasonsRepository;
+    private final RunningSeasonLookup runningSeasonLookup;
     private final UsersRepository usersRepository;
     private final GameResultCollector gameResultCollector;
     private final BetsService betsService;
@@ -33,7 +33,7 @@ public class AutoBetSettlementService {
         if (!properties.isAutoSettleEnabled()) {
             return Optional.empty();
         }
-        return seasonsRepository.findSeasonByStatus(Season.Status.ACTIVE)
+        return runningSeasonLookup.findRunningSeason()
                 .map(this::settleSeason);
     }
 

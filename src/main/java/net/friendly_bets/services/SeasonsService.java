@@ -47,6 +47,7 @@ public class SeasonsService {
     FootballDataSyncService footballDataSyncService;
     TournamentFormatExpander tournamentFormatExpander;
     LeagueMatchdayService leagueMatchdayService;
+    RunningSeasonLookup runningSeasonLookup;
 
     @Transactional
     public SeasonsPage getAll() {
@@ -126,18 +127,14 @@ public class SeasonsService {
 //            throw new BadRequestException("Сезон завершен и его статус больше нельзя изменить");
 //        }
 
-        if (status.equals("ACTIVE")) {
-            seasonsRepository.findSeasonByStatus(Season.Status.ACTIVE)
-                    .ifPresent(s -> {
-                        s.setStatus(Season.Status.PAUSED);
-                        seasonsRepository.save(s);
-                    });
+        if (Season.Status.ACTIVE.name().equals(status) || Season.Status.SCHEDULED.name().equals(status)) {
+            runningSeasonLookup.pauseOtherRunningSeasons(seasonId);
         }
 
         season.setStatus(Season.Status.valueOf(status));
         seasonsRepository.save(season);
 
-        if (Season.Status.ACTIVE.name().equals(status)) {
+        if (Season.Status.ACTIVE.name().equals(status) || Season.Status.SCHEDULED.name().equals(status)) {
             footballDataSyncService.registerPollingForSeason(seasonId);
         }
 
@@ -166,11 +163,8 @@ public class SeasonsService {
 
 
     public SeasonDto getActiveSeason() {
-        Optional<Season> seasonByStatus = seasonsRepository.findSeasonByStatus(Season.Status.ACTIVE);
-        if (seasonByStatus.isEmpty()) {
-            throw new BadRequestException("noActiveSeasonWasFounded");
-        }
-        Season season = seasonByStatus.get();
+        Season season = runningSeasonLookup.findRunningSeason()
+                .orElseThrow(() -> new BadRequestException("noActiveSeasonWasFounded"));
         return toSeasonDto(season);
     }
 
@@ -178,11 +172,9 @@ public class SeasonsService {
 
 
     public ActiveSeasonIdDto getActiveSeasonId() {
-        Optional<Season> activeSeason = seasonsRepository.findSeasonByStatus(Season.Status.ACTIVE);
-        if (activeSeason.isEmpty()) {
-            throw new BadRequestException("noActiveSeasonWasFounded");
-        }
-        return new ActiveSeasonIdDto(activeSeason.get().getId());
+        Season season = runningSeasonLookup.findRunningSeason()
+                .orElseThrow(() -> new BadRequestException("noActiveSeasonWasFounded"));
+        return new ActiveSeasonIdDto(season.getId());
     }
 
     // ------------------------------------------------------------------------------------------------------ //
@@ -209,6 +201,9 @@ public class SeasonsService {
         }
         if (user.getRole().equals(User.Role.ADMIN)) {
             throw new ConflictException("administratorNotAllowedRegisterInSeason");
+        }
+        if (season.getStatus() != Season.Status.SCHEDULED) {
+            throw new ConflictException("seasonRegistrationClosed");
         }
         if (season.getPlayers().stream().anyMatch(player -> player.getId().equals(userId))) {
             throw new ConflictException("youAlreadyRegisteredInSeason");

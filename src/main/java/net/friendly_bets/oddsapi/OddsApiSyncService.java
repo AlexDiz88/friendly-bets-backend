@@ -19,8 +19,8 @@ import net.friendly_bets.oddsapi.client.dto.OddsApiEventOddsDto;
 import net.friendly_bets.oddsapi.client.dto.OddsApiMarketDto;
 import net.friendly_bets.oddsapi.config.OddsApiProperties;
 import net.friendly_bets.repositories.GameResultOddsRepository;
-import net.friendly_bets.repositories.SeasonsRepository;
 import net.friendly_bets.services.GetEntityService;
+import net.friendly_bets.services.RunningSeasonLookup;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -42,7 +42,7 @@ public class OddsApiSyncService {
 
     private final OddsApiProperties properties;
     private final OddsApiClient oddsApiClient;
-    private final SeasonsRepository seasonsRepository;
+    private final RunningSeasonLookup runningSeasonLookup;
     private final FootballDataCompetitionService footballDataCompetitionService;
     private final FootballDataMatchdaySupport matchdaySupport;
     private final GameResultOddsRepository gameResultOddsRepository;
@@ -68,8 +68,7 @@ public class OddsApiSyncService {
             String season,
             List<String> gameResultIds
     ) {
-        Season active = seasonsRepository.findSeasonByStatus(Season.Status.ACTIVE)
-                .orElseThrow(() -> new BadRequestException("seasonDatesRequired"));
+        Season active = runningSeasonLookup.findRunningSeasonOrThrow("seasonDatesRequired");
         League league = active.getLeagues().stream()
                 .filter(l -> l != null && l.getLeagueCode() != null
                         && leagueCode.equals(l.getLeagueCode().name()))
@@ -126,7 +125,7 @@ public class OddsApiSyncService {
                 ? new HashSet<>(excludeLeagueCodes)
                 : Set.of();
 
-        Optional<Season> active = seasonsRepository.findSeasonByStatus(Season.Status.ACTIVE);
+        Optional<Season> active = runningSeasonLookup.findRunningSeason();
         if (active.isEmpty() || active.get().getLeagues() == null) {
             return OddsApiSyncResult.builder().build();
         }
@@ -340,8 +339,7 @@ public class OddsApiSyncService {
         if (requestedSeason != null && !requestedSeason.isBlank()) {
             return requestedSeason.trim();
         }
-        Season active = seasonsRepository.findSeasonByStatus(Season.Status.ACTIVE)
-                .orElseThrow(() -> new BadRequestException("seasonDatesRequired"));
+        Season active = runningSeasonLookup.findRunningSeasonOrThrow("seasonDatesRequired");
         return matchdaySupport.resolveFootballDataSeasonYear(active, league.getLeagueCode());
     }
 

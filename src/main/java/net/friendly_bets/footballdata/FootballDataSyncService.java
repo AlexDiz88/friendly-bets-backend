@@ -16,6 +16,7 @@ import net.friendly_bets.models.gameresults.GameResultsSync;
 import net.friendly_bets.models.gameresults.GameResultsSyncStatus;
 import net.friendly_bets.repositories.*;
 import net.friendly_bets.services.GetEntityService;
+import net.friendly_bets.services.RunningSeasonLookup;
 import net.friendly_bets.services.TournamentFormatExpander;
 import net.friendly_bets.wc26.WcBerlinSlotMatchFilter;
 import org.slf4j.Logger;
@@ -43,7 +44,7 @@ public class FootballDataSyncService {
     private final GameResultsSyncRepository gameResultsSyncRepository;
     private final BetsRepository betsRepository;
     private final LeaguesRepository leaguesRepository;
-    private final SeasonsRepository seasonsRepository;
+    private final RunningSeasonLookup runningSeasonLookup;
     private final GetEntityService getEntityService;
     private final TournamentFormatExpander tournamentFormatExpander;
     private final net.friendly_bets.externaldata.ExternalMatchDataFacade externalMatchDataFacade;
@@ -103,7 +104,7 @@ public class FootballDataSyncService {
         }
 
         Set<FootballDataMatchdayKey> keys = new LinkedHashSet<>();
-        seasonsRepository.findSeasonByStatus(Season.Status.ACTIVE).ifPresent(season -> {
+        runningSeasonLookup.findRunningSeason().ifPresent(season -> {
             keys.addAll(collectMatchdayKeysForSeason(season));
             addCurrentApiMatchdayKeys(keys, season);
         });
