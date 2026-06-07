@@ -35,22 +35,53 @@ public class ApiSyncIssueService {
             int matchday,
             FootballDataMatchDto matchDto
     ) {
-        String homeName = matchDto != null && matchDto.getHomeTeam() != null ? matchDto.getHomeTeam().getName() : null;
-        String awayName = matchDto != null && matchDto.getAwayTeam() != null ? matchDto.getAwayTeam().getName() : null;
-        String homeId = matchDto != null && matchDto.getHomeTeam() != null
-                ? String.valueOf(matchDto.getHomeTeam().getId()) : null;
-        String awayId = matchDto != null && matchDto.getAwayTeam() != null
-                ? String.valueOf(matchDto.getAwayTeam().getId()) : null;
-        Long externalMatchId = matchDto != null ? matchDto.getId() : null;
-
-        if (externalMatchId != null
-                && apiSyncIssueRepository.existsByProviderAndIssueTypeAndExternalMatchId(
-                MatchDataProviders.FOOTBALL_DATA,
-                ApiSyncIssue.IssueType.TEAM_MAPPING_MISSING.name(),
-                externalMatchId)) {
+        if (matchDto == null) {
             return;
         }
+        Long externalMatchId = matchDto.getId() > 0 ? matchDto.getId() : null;
+        if (matchDto.getHomeTeam() != null) {
+            recordMissingFootballDataTeamSide(
+                    leagueCode,
+                    season,
+                    matchday,
+                    externalMatchId,
+                    true,
+                    matchDto.getHomeTeam().getName(),
+                    matchDto.getHomeTeam().getId()
+            );
+        }
+        if (matchDto.getAwayTeam() != null) {
+            recordMissingFootballDataTeamSide(
+                    leagueCode,
+                    season,
+                    matchday,
+                    externalMatchId,
+                    false,
+                    matchDto.getAwayTeam().getName(),
+                    matchDto.getAwayTeam().getId()
+            );
+        }
+    }
 
+    private void recordMissingFootballDataTeamSide(
+            String leagueCode,
+            String season,
+            int matchday,
+            Long externalMatchId,
+            boolean home,
+            String teamName,
+            int teamId
+    ) {
+        if (teamName == null || teamName.isBlank()) {
+            return;
+        }
+        if (teamAliasResolver.resolveFootballData(teamId, teamName).isPresent()) {
+            return;
+        }
+        if (hasUnresolvedFootballDataTeamMappingIssue(teamName, teamId)) {
+            return;
+        }
+        String externalId = teamId > 0 ? String.valueOf(teamId) : null;
         apiSyncIssueRepository.save(ApiSyncIssue.builder()
                 .createdAt(LocalDateTime.now())
                 .provider(MatchDataProviders.FOOTBALL_DATA)
@@ -59,11 +90,27 @@ public class ApiSyncIssueService {
                 .season(season)
                 .matchday(matchday)
                 .externalMatchId(externalMatchId)
-                .homeTeamName(homeName)
-                .awayTeamName(awayName)
-                .homeTeamExternalId(homeId)
-                .awayTeamExternalId(awayId)
+                .homeTeamName(home ? teamName : null)
+                .awayTeamName(home ? null : teamName)
+                .homeTeamExternalId(home ? externalId : null)
+                .awayTeamExternalId(home ? null : externalId)
                 .build());
+    }
+
+    private boolean hasUnresolvedFootballDataTeamMappingIssue(String teamName, int teamId) {
+        for (ApiSyncIssue issue : apiSyncIssueRepository.findTop200ByOrderByCreatedAtDesc()) {
+            if (!ApiSyncIssue.IssueType.TEAM_MAPPING_MISSING.name().equals(issue.getIssueType())) {
+                continue;
+            }
+            if (!providerEquals(issue.getProvider(), MatchDataProviders.FOOTBALL_DATA)) {
+                continue;
+            }
+            if (!issueMatchesExternalTeam(issue, teamName, teamId)) {
+                continue;
+            }
+            return !isResolvedTeamMappingIssue(issue);
+        }
+        return false;
     }
 
     public void recordOddsEventMappingMissing(
@@ -498,12 +545,19 @@ public class ApiSyncIssueService {
         if (!isExternalTeamMapped(provider, externalId, externalName)) {
             return 0;
         }
-        List<String> toDelete = collectMatchingTeamMappingIssueIds(provider, externalName, externalId);
-        if (toDelete.isEmpty()) {
+        List<String> toDelete = new ArrayList<>();
+        List<ApiSyncIssue> toSave = new ArrayList<>();
+        collectTeamMappingIssueUpdates(provider, externalName, externalId, toDelete, toSave);
+        if (toDelete.isEmpty() && toSave.isEmpty()) {
             return 0;
         }
-        apiSyncIssueRepository.deleteAllById(toDelete);
-        return toDelete.size();
+        if (!toSave.isEmpty()) {
+            apiSyncIssueRepository.saveAll(toSave);
+        }
+        if (!toDelete.isEmpty()) {
+            apiSyncIssueRepository.deleteAllById(toDelete);
+        }
+        return toDelete.size() + toSave.size();
     }
 
     /** Drops resolved team-mapping issues so refresh reflects current aliases. */
@@ -622,14 +676,27 @@ public class ApiSyncIssueService {
         String provider = issue.getProvider() != null
                 ? issue.getProvider()
                 : MatchDataProviders.FOOTBALL_DATA;
-        if (issue.getHomeTeamName() != null || issue.getHomeTeamExternalId() != null) {
+        boolean hasHome = issue.getHomeTeamName() != null || issue.getHomeTeamExternalId() != null;
+        boolean hasAway = issue.getAwayTeamName() != null || issue.getAwayTeamExternalId() != null;
+        if (hasHome && hasAway) {
+            return isExternalTeamMapped(
+                    provider,
+                    parseExternalId(issue.getHomeTeamExternalId()),
+                    issue.getHomeTeamName()
+            ) && isExternalTeamMapped(
+                    provider,
+                    parseExternalId(issue.getAwayTeamExternalId()),
+                    issue.getAwayTeamName()
+            );
+        }
+        if (hasHome) {
             return isExternalTeamMapped(
                     provider,
                     parseExternalId(issue.getHomeTeamExternalId()),
                     issue.getHomeTeamName()
             );
         }
-        if (issue.getAwayTeamName() != null || issue.getAwayTeamExternalId() != null) {
+        if (hasAway) {
             return isExternalTeamMapped(
                     provider,
                     parseExternalId(issue.getAwayTeamExternalId()),
@@ -639,12 +706,13 @@ public class ApiSyncIssueService {
         return false;
     }
 
-    private List<String> collectMatchingTeamMappingIssueIds(
+    private void collectTeamMappingIssueUpdates(
             String provider,
             String externalName,
-            Integer externalId
+            Integer externalId,
+            List<String> toDelete,
+            List<ApiSyncIssue> toSave
     ) {
-        List<String> toDelete = new ArrayList<>();
         for (ApiSyncIssue issue : apiSyncIssueRepository.findTop200ByOrderByCreatedAtDesc()) {
             if (!ApiSyncIssue.IssueType.TEAM_MAPPING_MISSING.name().equals(issue.getIssueType())) {
                 continue;
@@ -652,11 +720,36 @@ public class ApiSyncIssueService {
             if (!providerEquals(issue.getProvider(), provider)) {
                 continue;
             }
-            if (issueMatchesExternalTeam(issue, externalName, externalId)) {
+            if (!issueMatchesExternalTeam(issue, externalName, externalId)) {
+                continue;
+            }
+            boolean homeMatches = matchesSide(
+                    externalName,
+                    externalId,
+                    issue.getHomeTeamName(),
+                    issue.getHomeTeamExternalId()
+            );
+            boolean awayMatches = matchesSide(
+                    externalName,
+                    externalId,
+                    issue.getAwayTeamName(),
+                    issue.getAwayTeamExternalId()
+            );
+            boolean hasHome = issue.getHomeTeamName() != null || issue.getHomeTeamExternalId() != null;
+            boolean hasAway = issue.getAwayTeamName() != null || issue.getAwayTeamExternalId() != null;
+            if (hasHome && hasAway && (homeMatches ^ awayMatches)) {
+                if (homeMatches) {
+                    issue.setHomeTeamName(null);
+                    issue.setHomeTeamExternalId(null);
+                } else {
+                    issue.setAwayTeamName(null);
+                    issue.setAwayTeamExternalId(null);
+                }
+                toSave.add(issue);
+            } else {
                 toDelete.add(issue.getId());
             }
         }
-        return toDelete;
     }
 
     private static boolean providerEquals(String issueProvider, String provider) {

@@ -2,13 +2,16 @@ package net.friendly_bets.footballdata;
 
 import net.friendly_bets.dto.UnmappedExternalTeamNameDto;
 import net.friendly_bets.exceptions.NotFoundException;
+import net.friendly_bets.footballdata.client.dto.FootballDataMatchDto;
 import net.friendly_bets.gameresults.MatchDataProviders;
+import net.friendly_bets.models.Team;
 import net.friendly_bets.models.gameresults.ApiSyncIssue;
 import net.friendly_bets.repositories.ApiSyncIssueRepository;
 import net.friendly_bets.services.TeamAliasResolver;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -17,8 +20,12 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -134,5 +141,114 @@ class ApiSyncIssueServiceTest {
         when(apiSyncIssueRepository.existsById("missing")).thenReturn(false);
 
         assertThrows(NotFoundException.class, () -> apiSyncIssueService.deleteById("missing"));
+    }
+
+    @Test
+    @DisplayName("recordMissingTeamMapping creates separate issues for each unmapped team")
+    void recordMissingTeamMapping_createsPerTeamIssues() {
+        FootballDataMatchDto matchDto = new FootballDataMatchDto();
+        matchDto.setId(42L);
+        FootballDataMatchDto.Team home = new FootballDataMatchDto.Team();
+        home.setId(1);
+        home.setName("Home FC");
+        FootballDataMatchDto.Team away = new FootballDataMatchDto.Team();
+        away.setId(2);
+        away.setName("Away FC");
+        matchDto.setHomeTeam(home);
+        matchDto.setAwayTeam(away);
+
+        when(apiSyncIssueRepository.findTop200ByOrderByCreatedAtDesc()).thenReturn(List.of());
+        when(teamAliasResolver.resolveFootballData(1, "Home FC")).thenReturn(Optional.empty());
+        when(teamAliasResolver.resolveFootballData(2, "Away FC")).thenReturn(Optional.empty());
+
+        apiSyncIssueService.recordMissingTeamMapping("PL", "2025", 3, matchDto);
+
+        ArgumentCaptor<ApiSyncIssue> captor = ArgumentCaptor.forClass(ApiSyncIssue.class);
+        verify(apiSyncIssueRepository, times(2)).save(captor.capture());
+        List<ApiSyncIssue> saved = captor.getAllValues();
+        assertEquals("Home FC", saved.get(0).getHomeTeamName());
+        assertNull(saved.get(0).getAwayTeamName());
+        assertEquals("Away FC", saved.get(1).getAwayTeamName());
+        assertNull(saved.get(1).getHomeTeamName());
+    }
+
+    @Test
+    @DisplayName("recordMissingTeamMapping skips mapped team and records only missing side")
+    void recordMissingTeamMapping_skipsMappedTeam() {
+        FootballDataMatchDto matchDto = new FootballDataMatchDto();
+        matchDto.setId(42L);
+        FootballDataMatchDto.Team home = new FootballDataMatchDto.Team();
+        home.setId(1);
+        home.setName("Home FC");
+        FootballDataMatchDto.Team away = new FootballDataMatchDto.Team();
+        away.setId(2);
+        away.setName("Away FC");
+        matchDto.setHomeTeam(home);
+        matchDto.setAwayTeam(away);
+
+        when(apiSyncIssueRepository.findTop200ByOrderByCreatedAtDesc()).thenReturn(List.of());
+        when(teamAliasResolver.resolveFootballData(1, "Home FC")).thenReturn(Optional.of(new Team()));
+        when(teamAliasResolver.resolveFootballData(2, "Away FC")).thenReturn(Optional.empty());
+
+        apiSyncIssueService.recordMissingTeamMapping("PL", "2025", 3, matchDto);
+
+        ArgumentCaptor<ApiSyncIssue> captor = ArgumentCaptor.forClass(ApiSyncIssue.class);
+        verify(apiSyncIssueRepository, times(1)).save(captor.capture());
+        assertEquals("Away FC", captor.getValue().getAwayTeamName());
+        assertNull(captor.getValue().getHomeTeamName());
+    }
+
+    @Test
+    @DisplayName("getUnmappedTeamNameHints keeps away chip when legacy issue has mapped home side")
+    void getUnmappedTeamNameHints_legacyIssueKeepsUnmappedAway() {
+        when(apiSyncIssueRepository.findTop200ByOrderByCreatedAtDesc()).thenReturn(List.of(
+                ApiSyncIssue.builder()
+                        .issueType(ApiSyncIssue.IssueType.TEAM_MAPPING_MISSING.name())
+                        .provider(MatchDataProviders.FOOTBALL_DATA)
+                        .homeTeamName("Home FC")
+                        .homeTeamExternalId("1")
+                        .awayTeamName("Away FC")
+                        .awayTeamExternalId("2")
+                        .build()
+        ));
+        when(teamAliasResolver.resolveFootballData(1, "Home FC")).thenReturn(Optional.of(new Team()));
+        when(teamAliasResolver.resolveFootballData(2, "Away FC")).thenReturn(Optional.empty());
+
+        List<UnmappedExternalTeamNameDto> hints = apiSyncIssueService.getUnmappedTeamNameHints();
+
+        assertEquals(1, hints.size());
+        assertEquals("Away FC", hints.get(0).getExternalName());
+        assertEquals(Integer.valueOf(2), hints.get(0).getExternalId());
+        verify(apiSyncIssueRepository, never()).deleteAllById(any());
+    }
+
+    @Test
+    @DisplayName("purgeTeamMappingIssuesForExternalTeam trims legacy issue instead of deleting both sides")
+    void purgeTeamMappingIssuesForExternalTeam_trimsLegacyCombinedIssue() {
+        ApiSyncIssue legacyIssue = ApiSyncIssue.builder()
+                .id("legacy")
+                .issueType(ApiSyncIssue.IssueType.TEAM_MAPPING_MISSING.name())
+                .provider(MatchDataProviders.FOOTBALL_DATA)
+                .homeTeamName("Home FC")
+                .homeTeamExternalId("1")
+                .awayTeamName("Away FC")
+                .awayTeamExternalId("2")
+                .build();
+        when(apiSyncIssueRepository.findTop200ByOrderByCreatedAtDesc()).thenReturn(List.of(legacyIssue));
+        when(teamAliasResolver.resolveFootballData(1, "Home FC")).thenReturn(Optional.of(new Team()));
+
+        int affected = apiSyncIssueService.purgeTeamMappingIssuesForExternalTeam(
+                MatchDataProviders.FOOTBALL_DATA,
+                "Home FC",
+                1
+        );
+
+        assertEquals(1, affected);
+        ArgumentCaptor<ApiSyncIssue> captor = ArgumentCaptor.forClass(ApiSyncIssue.class);
+        verify(apiSyncIssueRepository).saveAll(captor.capture());
+        assertNull(captor.getValue().getHomeTeamName());
+        assertNull(captor.getValue().getHomeTeamExternalId());
+        assertEquals("Away FC", captor.getValue().getAwayTeamName());
+        verify(apiSyncIssueRepository, never()).deleteAllById(any());
     }
 }
