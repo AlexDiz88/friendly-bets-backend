@@ -11,8 +11,8 @@ import net.friendly_bets.marathonbet.config.MarathonbetProperties;
 import net.friendly_bets.models.League;
 import net.friendly_bets.models.Season;
 import net.friendly_bets.models.gameresults.GameResultRecord;
-import net.friendly_bets.repositories.SeasonsRepository;
 import net.friendly_bets.services.GetEntityService;
+import net.friendly_bets.services.RunningSeasonLookup;
 import net.friendly_bets.footballdata.FootballDataMatchdaySupport;
 import org.springframework.stereotype.Service;
 
@@ -29,7 +29,7 @@ public class MarathonbetSlotPreviewService {
     private final MarathonbetEventMatcher eventMatcher;
     private final FootballDataSyncService footballDataSyncService;
     private final GetEntityService getEntityService;
-    private final SeasonsRepository seasonsRepository;
+    private final RunningSeasonLookup runningSeasonLookup;
     private final FootballDataMatchdaySupport matchdaySupport;
 
     public MarathonbetSlotPreviewDto buildPreview(String leagueId, int matchday, String season) {
@@ -93,8 +93,7 @@ public class MarathonbetSlotPreviewService {
         if (requestedSeason != null && !requestedSeason.isBlank()) {
             return requestedSeason.trim();
         }
-        Season active = seasonsRepository.findSeasonByStatus(Season.Status.ACTIVE)
-                .orElseThrow(() -> new BadRequestException("seasonDatesRequired"));
+        Season active = runningSeasonLookup.findRunningSeasonOrThrow("seasonDatesRequired");
         return matchdaySupport.resolveFootballDataSeasonYear(active, league.getLeagueCode());
     }
 }
