@@ -95,11 +95,14 @@ public final class OddsMarketCatalog {
             case RESULT_TOTAL_OVER -> "resultTotalOver";
             case RESULT_TOTAL_UNDER -> "resultTotalUnder";
             case BTTS -> "btts";
+            case RESULT_BTTS -> "resultBtts";
             case GOALS -> "goals";
             case EXACT_TOTAL_GOALS -> "exactTotalGoals";
             case TEAM_TOTAL_HOME -> "teamTotalHome";
             case TEAM_TOTAL_AWAY -> "teamTotalAway";
             case CORRECT_SCORE -> "correctScore";
+            case CLEAN_WIN -> "cleanWin";
+            case WIN_GOAL_DIFFERENCE -> "winGoalDifference";
             case FIRST_HALF_CORRECT_SCORE -> "firstHalfCorrectScore";
             case SECOND_HALF_CORRECT_SCORE -> "secondHalfCorrectScore";
             case OTHER -> "other";

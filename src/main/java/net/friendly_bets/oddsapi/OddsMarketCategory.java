@@ -13,20 +13,24 @@ public enum OddsMarketCategory {
     RESULT_TOTAL_OVER(5, true),
     /** Рассчитанные кэфы «исход + тотал меньше». */
     RESULT_TOTAL_UNDER(6, true),
-    /** Тоталы 1-го и 2-го тайма. */
-    HALF_TOTALS(7, true),
+    CORRECT_SCORE(7, true),
+    FIRST_HALF_CORRECT_SCORE(8, true),
+    SECOND_HALF_CORRECT_SCORE(9, true),
     /** Тайм/Матч (HT/FT). */
-    HALF_FULL(8, true),
+    HALF_FULL(10, true),
     /** 1-й тайм / 2-й тайм. */
-    FIRST_SECOND_HALF(9, true),
-    BTTS(10, true),
-    GOALS(11, true),
-    EXACT_TOTAL_GOALS(12, true),
-    CORRECT_SCORE(13, true),
-    TEAM_TOTAL_HOME(14, true),
-    TEAM_TOTAL_AWAY(15, true),
-    FIRST_HALF_CORRECT_SCORE(16, true),
-    SECOND_HALF_CORRECT_SCORE(17, true),
+    FIRST_SECOND_HALF(11, true),
+    BTTS(12, true),
+    /** Результат матча + обе забьют. */
+    RESULT_BTTS(13, true),
+    GOALS(14, true),
+    /** Тоталы 1-го и 2-го тайма. */
+    HALF_TOTALS(15, true),
+    EXACT_TOTAL_GOALS(16, true),
+    CLEAN_WIN(17, true),
+    WIN_GOAL_DIFFERENCE(18, true),
+    TEAM_TOTAL_HOME(27, true),
+    TEAM_TOTAL_AWAY(28, true),
     OTHER(30, true),
     EXCLUDED(99, true);
 

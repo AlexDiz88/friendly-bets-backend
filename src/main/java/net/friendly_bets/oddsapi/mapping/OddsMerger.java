@@ -3,6 +3,7 @@ package net.friendly_bets.oddsapi.mapping;
 import net.friendly_bets.models.BetTitle;
 import net.friendly_bets.models.odds.OddsLineRow;
 import net.friendly_bets.models.odds.OddsMarketGroup;
+import net.friendly_bets.oddsapi.OddsBetTitleSortOrder;
 import net.friendly_bets.oddsapi.OddsBttsScope;
 import net.friendly_bets.oddsapi.OddsCorrectScoreUtils;
 import net.friendly_bets.oddsapi.OddsDisplayLabelFormatter;
@@ -171,10 +172,20 @@ public final class OddsMerger {
                     .<OddsLineRow>comparingInt(r -> selectionOrder(category, r.getSelectionCode()))
                     .thenComparingInt(r -> OddsBttsScope.fromSelectionCode(r.getSelectionCode()).getSortOrder());
         }
+        if (category == OddsMarketCategory.GOALS
+                || category == OddsMarketCategory.RESULT_BTTS
+                || category == OddsMarketCategory.CLEAN_WIN
+                || category == OddsMarketCategory.WIN_GOAL_DIFFERENCE) {
+            return OddsBetTitleSortOrder.BY_TEAM_SCOPE;
+        }
         if (category == OddsMarketCategory.CORRECT_SCORE
                 || category == OddsMarketCategory.FIRST_HALF_CORRECT_SCORE
                 || category == OddsMarketCategory.SECOND_HALF_CORRECT_SCORE) {
             return Comparator.comparingInt(OddsMerger::correctScoreSortKey);
+        }
+        if (category == OddsMarketCategory.HALF_FULL
+                || category == OddsMarketCategory.FIRST_SECOND_HALF) {
+            return Comparator.comparingInt(OddsMerger::matchResultSortKey);
         }
         return Comparator.<OddsLineRow>comparingInt(r -> selectionOrder(category, r.getSelectionCode()));
     }

@@ -179,6 +179,23 @@ class MarathonbetBetTitleMapperMarketsTest {
     }
 
     @Test
+    void mapsBttsResultToResultBttsCategory() {
+        MarathonbetMarketDto market = MarathonbetMarketDto.builder()
+                .model("MTCH_T12GW1")
+                .name("Обе команды забьют + Мексика (победа)")
+                .selections(List.of(sel("Да", "4.10"), sel("Нет", "1.194")))
+                .build();
+        MarathonbetExtractedMarkets markets = MarathonbetExtractedMarkets.builder()
+                .bttsResultMarkets(List.of(market))
+                .build();
+        List<MappedOddsQuote> quotes = mapper.map(markets, "Мексика", "ЮАР");
+        assertEquals(2, quotes.size());
+        assertTrue(quotes.stream().allMatch(q -> q.getCategory() == OddsMarketCategory.RESULT_BTTS));
+        assertTrue(quotes.stream().anyMatch(q ->
+                BetTitleCode.HOME_WIN_AND_BOTH_TEAMS_SCORE == code(q) && "YES".equals(q.getSelectionCode())));
+    }
+
+    @Test
     void mapsCleanWinAndTeamTotal() {
         MarathonbetMarketDto clean = MarathonbetMarketDto.builder()
                 .model("MTCH_T1W0")
@@ -196,7 +213,9 @@ class MarathonbetBetTitleMapperMarketsTest {
                 .build();
         List<MappedOddsQuote> quotes = mapper.map(markets, "Мексика", "ЮАР");
         assertTrue(quotes.stream().anyMatch(q ->
-                BetTitleCode.CLEAN_WIN_HOME == code(q) && "YES".equals(q.getSelectionCode())));
+                BetTitleCode.CLEAN_WIN_HOME == code(q)
+                        && q.getCategory() == OddsMarketCategory.CLEAN_WIN
+                        && "YES".equals(q.getSelectionCode())));
         assertTrue(quotes.stream().anyMatch(q ->
                 BetTitleCode.HOME_TEAM_OVER_1_5 == BetTitleCode.fromCode(q.getBetTitle().getCode())));
     }

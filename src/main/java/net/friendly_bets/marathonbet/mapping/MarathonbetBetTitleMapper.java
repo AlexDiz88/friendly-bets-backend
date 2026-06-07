@@ -605,7 +605,7 @@ public class MarathonbetBetTitleMapper {
         if (code == null) {
             return List.of();
         }
-        return mapYesNo(market, code, OddsMarketCategory.GOALS);
+        return mapYesNo(market, code, OddsMarketCategory.CLEAN_WIN);
     }
 
     private List<MappedOddsQuote> mapScoreDiff(MarathonbetMarketDto market) {
@@ -616,7 +616,7 @@ public class MarathonbetBetTitleMapper {
         if (code == null) {
             return List.of();
         }
-        return mapYesNo(market, code, OddsMarketCategory.GOALS);
+        return mapYesNo(market, code, OddsMarketCategory.WIN_GOAL_DIFFERENCE);
     }
 
     private static BetTitleCode scoreDiffCode(String model, String marketName) {
@@ -661,7 +661,7 @@ public class MarathonbetBetTitleMapper {
         if (code == null) {
             return List.of();
         }
-        return mapYesNo(market, code, OddsMarketCategory.GOALS);
+        return mapYesNo(market, code, OddsMarketCategory.RESULT_BTTS);
     }
 
     private static BetTitleCode bttsResultCode(String model) {
