@@ -3,6 +3,8 @@ package net.friendly_bets.wc26;
 import net.friendly_bets.config.WcTournamentSlots;
 import net.friendly_bets.footballdata.client.dto.FootballDataMatchDto;
 import net.friendly_bets.models.Team;
+import net.friendly_bets.models.TeamDisplayNames;
+import net.friendly_bets.models.TeamExternalAlias;
 import net.friendly_bets.models.gameresults.GameResultRecord;
 import net.friendly_bets.models.gameresults.GameResultSideSnapshot;
 import net.friendly_bets.models.gameresults.GameResultSourceSnapshot;
@@ -158,9 +160,36 @@ public final class WcBerlinSlotMatchFilter {
         if (team.getTitle() != null && fifaMatches(null, team.getTitle(), fifaCode)) {
             return true;
         }
+        if (displayNamesMatchFifa(team.getDisplayNames(), fifaCode)) {
+            return true;
+        }
+        if (externalAliasesMatchFifa(team.getExternalAliases(), fifaCode)) {
+            return true;
+        }
         return Wc26TeamCatalog.fifaCodeForKnownName(team.getTitle())
                 .map(code -> code.equalsIgnoreCase(fifaCode))
                 .orElse(false);
+    }
+
+    private static boolean displayNamesMatchFifa(TeamDisplayNames displayNames, String fifaCode) {
+        if (displayNames == null) {
+            return false;
+        }
+        return fifaMatches(null, displayNames.getEn(), fifaCode)
+                || fifaMatches(null, displayNames.getRu(), fifaCode)
+                || fifaMatches(null, displayNames.getDe(), fifaCode);
+    }
+
+    private static boolean externalAliasesMatchFifa(List<TeamExternalAlias> aliases, String fifaCode) {
+        if (aliases == null || aliases.isEmpty()) {
+            return false;
+        }
+        for (TeamExternalAlias alias : aliases) {
+            if (alias != null && fifaMatches(null, alias.getExternalName(), fifaCode)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static boolean fifaMatches(String tla, String name, String fifaCode) {

@@ -4,6 +4,8 @@ import net.friendly_bets.gameresults.MatchDataProviders;
 import net.friendly_bets.config.WcTournamentSlots;
 import net.friendly_bets.footballdata.client.dto.FootballDataMatchDto;
 import net.friendly_bets.models.Team;
+import net.friendly_bets.models.TeamDisplayNames;
+import net.friendly_bets.models.TeamExternalAlias;
 import net.friendly_bets.models.gameresults.GameResultRecord;
 import net.friendly_bets.models.gameresults.GameResultSideSnapshot;
 import net.friendly_bets.models.gameresults.GameResultSourceSnapshot;
@@ -81,6 +83,44 @@ class WcBerlinSlotMatchFilterTest {
         );
 
         List<GameResultRecord> filtered = WcBerlinSlotMatchFilter.filterGameResultRecords("1 [4]", List.of(record));
+
+        assertEquals(1, filtered.size());
+    }
+
+    @Test
+    void filterGameResultRecords_r1s6_includesPortugalCongoDrViaMappedTeamAliases() {
+        GameResultRecord record = gameResultRecord(
+                "Portugal",
+                "por-id",
+                "Congo DR",
+                "cod-id"
+        );
+        Team congoDr = Team.builder()
+                .id("cod-id")
+                .title("Congo")
+                .country("COD")
+                .displayNames(TeamDisplayNames.builder()
+                        .en("DR Congo")
+                        .ru("ДР Конго")
+                        .de("Kongo DR")
+                        .build())
+                .externalAliases(List.of(TeamExternalAlias.builder()
+                        .provider("football-data")
+                        .externalId(1934)
+                        .externalName("Congo DR")
+                        .build()))
+                .build();
+
+        List<GameResultRecord> filtered = WcBerlinSlotMatchFilter.filterGameResultRecords(
+                "1 [6]",
+                List.of(record),
+                teamId -> {
+                    if ("cod-id".equals(teamId)) {
+                        return Optional.of(congoDr);
+                    }
+                    return Optional.empty();
+                }
+        );
 
         assertEquals(1, filtered.size());
     }

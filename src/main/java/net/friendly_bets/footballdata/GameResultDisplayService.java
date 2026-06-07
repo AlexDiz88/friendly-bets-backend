@@ -42,11 +42,13 @@ public class GameResultDisplayService {
             dto.setHomeTeamTitle(t.getTitle());
             dto.setHomeTeamLogoKey(t.getLogo());
             dto.setHomeTeamDisplayNames(TeamDisplayNamesDto.from(t.getDisplayNames()));
+            dto.setHomeTeamCountry(t.getCountry());
             dto.setHomeTeamName(t.getTitle());
         } else {
             dto.setAwayTeamTitle(t.getTitle());
             dto.setAwayTeamLogoKey(t.getLogo());
             dto.setAwayTeamDisplayNames(TeamDisplayNamesDto.from(t.getDisplayNames()));
+            dto.setAwayTeamCountry(t.getCountry());
             dto.setAwayTeamName(t.getTitle());
         }
     }
