@@ -43,7 +43,7 @@ public final class Wc26TeamCatalog {
         names("KSA", "Saudi Arabia", "SaudiArabia");
         names("URU", "Uruguay");
         names("ESP", "Spain");
-        names("CPV", "Cabo Verde", "Cape Verde", "CaboVerde");
+        names("CPV", "Cabo Verde", "Cape Verde", "Cape Verde Islands", "CaboVerde");
         names("IRN", "IR Iran", "Iran");
         names("NZL", "New Zealand");
         names("BEL", "Belgium");

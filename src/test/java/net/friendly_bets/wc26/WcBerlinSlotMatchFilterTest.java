@@ -1,10 +1,17 @@
 package net.friendly_bets.wc26;
 
+import net.friendly_bets.gameresults.MatchDataProviders;
 import net.friendly_bets.config.WcTournamentSlots;
 import net.friendly_bets.footballdata.client.dto.FootballDataMatchDto;
+import net.friendly_bets.models.Team;
+import net.friendly_bets.models.gameresults.GameResultRecord;
+import net.friendly_bets.models.gameresults.GameResultSideSnapshot;
+import net.friendly_bets.models.gameresults.GameResultSourceSnapshot;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -62,6 +69,58 @@ class WcBerlinSlotMatchFilterTest {
     void fifaCodeForKnownName_recognizesInternalTitles() {
         assertTrue(Wc26TeamCatalog.fifaCodeForKnownName("SouthAfrica").isPresent());
         assertEquals("RSA", Wc26TeamCatalog.fifaCodeForKnownName("SouthAfrica").orElseThrow());
+    }
+
+    @Test
+    void filterGameResultRecords_r1s4_includesSpainCapeVerdeIslands() {
+        GameResultRecord record = gameResultRecord(
+                "Spain",
+                "esp-id",
+                "Cape Verde Islands",
+                "cpv-id"
+        );
+
+        List<GameResultRecord> filtered = WcBerlinSlotMatchFilter.filterGameResultRecords("1 [4]", List.of(record));
+
+        assertEquals(1, filtered.size());
+    }
+
+    @Test
+    void filterGameResultRecords_r1s4_usesMappedTeamCountryWhenExternalNameUnknown() {
+        GameResultRecord record = gameResultRecord(
+                "Spain",
+                "esp-id",
+                "Some Unknown Label",
+                "cpv-id"
+        );
+        Team capeVerde = Team.builder().id("cpv-id").title("CapeVerde").country("CPV").build();
+
+        List<GameResultRecord> filtered = WcBerlinSlotMatchFilter.filterGameResultRecords(
+                "1 [4]",
+                List.of(record),
+                teamId -> "cpv-id".equals(teamId) ? Optional.of(capeVerde) : Optional.empty()
+        );
+
+        assertEquals(1, filtered.size());
+    }
+
+    private static GameResultRecord gameResultRecord(
+            String homeExternalName,
+            String homeTeamId,
+            String awayExternalName,
+            String awayTeamId
+    ) {
+        return GameResultRecord.builder()
+                .homeTeamId(homeTeamId)
+                .awayTeamId(awayTeamId)
+                .sources(Map.of(
+                        MatchDataProviders.sourcesStorageKey(MatchDataProviders.FOOTBALL_DATA),
+                        GameResultSourceSnapshot.builder()
+                                .provider(MatchDataProviders.FOOTBALL_DATA)
+                                .home(GameResultSideSnapshot.builder().externalName(homeExternalName).build())
+                                .away(GameResultSideSnapshot.builder().externalName(awayExternalName).build())
+                                .build()))
+                .build();
     }
 
     private static FootballDataMatchDto match(

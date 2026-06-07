@@ -48,6 +48,7 @@ public class FootballDataSyncService {
     private final TournamentFormatExpander tournamentFormatExpander;
     private final net.friendly_bets.externaldata.ExternalMatchDataFacade externalMatchDataFacade;
     private final GameResultCollector gameResultCollector;
+    private final TeamsRepository teamsRepository;
     private final FootballDataMatchdaySupport matchdaySupport;
     private final ApiSyncIssueService apiSyncIssueService;
     private final ApiFootballSecondarySyncService apiFootballSecondarySyncService;
@@ -403,7 +404,15 @@ public class FootballDataSyncService {
     ) {
         return resolveSlotId(leagueId, slotOrder)
                 .filter(WcBerlinSlotMatchFilter::isBerlinGroupSlot)
-                .map(slotId -> WcBerlinSlotMatchFilter.filterGameResultRecords(slotId, matches))
+                .map(slotId -> WcBerlinSlotMatchFilter.filterGameResultRecords(
+                        slotId,
+                        matches,
+                        teamId -> {
+                            if (teamId == null || teamId.isBlank()) {
+                                return Optional.empty();
+                            }
+                            return teamsRepository.findById(teamId);
+                        }))
                 .orElse(matches);
     }
 

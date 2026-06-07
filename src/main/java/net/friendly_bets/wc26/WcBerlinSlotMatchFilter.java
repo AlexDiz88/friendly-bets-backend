@@ -2,6 +2,7 @@ package net.friendly_bets.wc26;
 
 import net.friendly_bets.config.WcTournamentSlots;
 import net.friendly_bets.footballdata.client.dto.FootballDataMatchDto;
+import net.friendly_bets.models.Team;
 import net.friendly_bets.models.gameresults.GameResultRecord;
 import net.friendly_bets.models.gameresults.GameResultSideSnapshot;
 import net.friendly_bets.models.gameresults.GameResultSourceSnapshot;
@@ -9,7 +10,9 @@ import net.friendly_bets.models.gameresults.GameResultSourceSnapshot;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
+import java.util.function.Function;
 
 /**
  * Keeps only matches belonging to a Berlin betting slot ({@code 1 [1]} … {@code 3 [4]}).
@@ -62,6 +65,14 @@ public final class WcBerlinSlotMatchFilter {
             String slotId,
             List<GameResultRecord> records
     ) {
+        return filterGameResultRecords(slotId, records, null);
+    }
+
+    public static List<GameResultRecord> filterGameResultRecords(
+            String slotId,
+            List<GameResultRecord> records,
+            Function<String, Optional<Team>> teamById
+    ) {
         if (!isBerlinGroupSlot(slotId) || records == null || records.isEmpty()) {
             return records == null ? List.of() : records;
         }
@@ -72,9 +83,7 @@ public final class WcBerlinSlotMatchFilter {
             if (source == null) {
                 continue;
             }
-            String homeName = sideExternalName(source.getHome());
-            String awayName = sideExternalName(source.getAway());
-            if (matchesExpectedPair(expected, null, homeName, null, awayName)) {
+            if (matchesExpectedPair(expected, record, source, teamById)) {
                 filtered.add(record);
             }
         }
@@ -105,6 +114,53 @@ public final class WcBerlinSlotMatchFilter {
             }
         }
         return false;
+    }
+
+    private static boolean matchesExpectedPair(
+            Set<ExpectedPair> expected,
+            GameResultRecord record,
+            GameResultSourceSnapshot source,
+            Function<String, Optional<Team>> teamById
+    ) {
+        String homeName = sideExternalName(source.getHome());
+        String awayName = sideExternalName(source.getAway());
+        for (ExpectedPair pair : expected) {
+            if (sideMatchesFifa(null, homeName, record.getHomeTeamId(), teamById, pair.homeFifa())
+                    && sideMatchesFifa(null, awayName, record.getAwayTeamId(), teamById, pair.awayFifa())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean sideMatchesFifa(
+            String tla,
+            String externalName,
+            String teamId,
+            Function<String, Optional<Team>> teamById,
+            String fifaCode
+    ) {
+        if (fifaMatches(tla, externalName, fifaCode)) {
+            return true;
+        }
+        if (teamById == null || teamId == null || teamId.isBlank()) {
+            return false;
+        }
+        return teamById.apply(teamId)
+                .map(team -> teamMatchesFifa(team, fifaCode))
+                .orElse(false);
+    }
+
+    private static boolean teamMatchesFifa(Team team, String fifaCode) {
+        if (team.getCountry() != null && team.getCountry().equalsIgnoreCase(fifaCode)) {
+            return true;
+        }
+        if (team.getTitle() != null && fifaMatches(null, team.getTitle(), fifaCode)) {
+            return true;
+        }
+        return Wc26TeamCatalog.fifaCodeForKnownName(team.getTitle())
+                .map(code -> code.equalsIgnoreCase(fifaCode))
+                .orElse(false);
     }
 
     private static boolean fifaMatches(String tla, String name, String fifaCode) {
