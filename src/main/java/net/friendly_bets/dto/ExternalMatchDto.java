@@ -33,6 +33,8 @@ public class ExternalMatchDto {
     private String awayTeamLogoKey;
     private TeamDisplayNamesDto homeTeamDisplayNames;
     private TeamDisplayNamesDto awayTeamDisplayNames;
+    private String homeTeamCountry;
+    private String awayTeamCountry;
     private String leagueId;
     private GameScore gameScore;
     private LocalDateTime fetchedAt;
