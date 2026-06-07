@@ -9,7 +9,6 @@ import net.friendly_bets.oddsapi.mapping.OddsMappingPipeline;
 import net.friendly_bets.oddsapi.mapping.OddsMergeResult;
 import net.friendly_bets.oddsapi.mapping.OddsMerger;
 import net.friendly_bets.oddsapi.mapping.OddsProductionMergeFilter;
-import net.friendly_bets.oddsapi.poisson.OddsResultTotalEnricher;
 import net.friendly_bets.repositories.GameResultMergedOddsRepository;
 import org.springframework.stereotype.Service;
 

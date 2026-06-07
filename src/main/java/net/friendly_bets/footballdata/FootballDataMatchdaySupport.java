@@ -32,12 +32,10 @@ public class FootballDataMatchdaySupport {
     }
 
     /**
-     * Год football-data.org с учётом лиги: для WC/EC — год турнира ({@code endDate}), для лиг — год старта.
+     * Год football-data.org из дат сезона (год старта, напр. 2024/25 → 2024; ЧМ-2026 с {@code startDate} 2026 → 2026).
      */
     public String resolveFootballDataSeasonYear(Season season, League.LeagueCode leagueCode) {
-        Integer year = usesTournamentSeasonYear(leagueCode)
-                ? SeasonCalendarUtils.resolveTournamentExternalSeasonYear(season.getStartDate(), season.getEndDate())
-                : SeasonCalendarUtils.resolveExternalSeasonYear(season.getStartDate());
+        Integer year = SeasonCalendarUtils.resolveExternalSeasonYear(season.getStartDate());
         if (year != null) {
             return String.valueOf(year);
         }
@@ -45,10 +43,6 @@ public class FootballDataMatchdaySupport {
             return properties.getDefaultSeason().trim();
         }
         throw new IllegalStateException("Cannot resolve football-data season year for season " + season.getId());
-    }
-
-    public boolean usesTournamentSeasonYear(League.LeagueCode leagueCode) {
-        return leagueCode == League.LeagueCode.WC || leagueCode == League.LeagueCode.EC;
     }
 
     public Optional<Integer> resolveSlotOrder(League league, String matchDay) {

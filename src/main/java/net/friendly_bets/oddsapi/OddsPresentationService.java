@@ -15,7 +15,6 @@ import net.friendly_bets.oddsapi.client.dto.OddsApiEventOddsDto;
 import net.friendly_bets.oddsapi.client.dto.OddsApiMarketDto;
 import net.friendly_bets.oddsapi.config.OddsApiProperties;
 import net.friendly_bets.oddsapi.mapping.BetTitleKey;
-import net.friendly_bets.oddsapi.poisson.OddsResultTotalEnricher;
 import net.friendly_bets.repositories.GameResultOddsRepository;
 import net.friendly_bets.repositories.GameResultRecordRepository;
 import net.friendly_bets.services.GetEntityService;

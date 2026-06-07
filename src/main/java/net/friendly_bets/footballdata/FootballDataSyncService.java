@@ -139,15 +139,8 @@ public class FootballDataSyncService {
 
         String leagueCode = LeagueCodePathSupport.resolveStorageLeagueCode(pathLeagueOrCompetitionCode);
         String externalCompetitionCode = LeagueCodePathSupport.toExternalCompetitionCode(leagueCode);
-        League.LeagueCode leagueCodeEnum = League.LeagueCode.valueOf(leagueCode);
 
         String resolvedSeason = resolveStorageSeason(season);
-        if (matchdaySupport.usesTournamentSeasonYear(leagueCodeEnum)) {
-            Optional<Season> activeSeason = seasonsRepository.findSeasonByStatus(Season.Status.ACTIVE);
-            if (activeSeason.isPresent()) {
-                resolvedSeason = matchdaySupport.resolveFootballDataSeasonYear(activeSeason.get(), leagueCodeEnum);
-            }
-        }
 
         FootballDataMatchdayResponse response = fetchResponse(
                 externalCompetitionCode, slotOrder, resolvedSeason, friendlyLeagueId);

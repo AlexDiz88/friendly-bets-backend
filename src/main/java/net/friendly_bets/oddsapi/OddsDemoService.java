@@ -23,7 +23,6 @@ import net.friendly_bets.oddsapi.mapping.MappedOddsQuote;
 import net.friendly_bets.oddsapi.mapping.OddsBookmakerAdapterRegistry;
 import net.friendly_bets.oddsapi.mapping.OddsMergeResult;
 import net.friendly_bets.oddsapi.mapping.OddsMappingPipeline;
-import net.friendly_bets.oddsapi.poisson.OddsResultTotalEnricher;
 import net.friendly_bets.repositories.OddsDemoSnapshotRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

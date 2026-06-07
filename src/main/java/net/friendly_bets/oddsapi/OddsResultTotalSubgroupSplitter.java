@@ -3,8 +3,6 @@ package net.friendly_bets.oddsapi;
 import net.friendly_bets.models.BetTitle;
 import net.friendly_bets.models.odds.OddsLineRow;
 import net.friendly_bets.models.odds.OddsMarketGroup;
-import net.friendly_bets.oddsapi.poisson.OddsResultTotalEnricher;
-
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;

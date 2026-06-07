@@ -41,12 +41,12 @@ class FootballDataMatchdaySupportTest {
     }
 
     @Test
-    void resolvesWcSeasonByEndYear() {
+    void resolvesWcSeasonByStartYear() {
         Season season = Season.builder()
                 .startDate(LocalDate.of(2025, 9, 1))
                 .endDate(LocalDate.of(2026, 7, 31))
                 .build();
 
-        assertEquals("2026", support.resolveFootballDataSeasonYear(season, League.LeagueCode.WC));
+        assertEquals("2025", support.resolveFootballDataSeasonYear(season, League.LeagueCode.WC));
     }
 }

@@ -1,18 +1,14 @@
-package net.friendly_bets.oddsapi.poisson;
+package net.friendly_bets.oddsapi;
 
 import net.friendly_bets.marathonbet.MarathonbetBookmaker;
 import net.friendly_bets.models.odds.OddsLineRow;
 import net.friendly_bets.models.odds.OddsMarketGroup;
-import net.friendly_bets.oddsapi.OddsMarketCatalog;
-import net.friendly_bets.oddsapi.OddsMarketCategory;
-import net.friendly_bets.oddsapi.OddsResultTotalSubgroupSplitter;
-import net.friendly_bets.oddsapi.OddsSelectionKey;
 
 import java.util.Comparator;
 import java.util.List;
 
 /**
- * Добавляет рассчитанные группы «Результат + ТБ» и «Результат + ТМ» к смерженным рынкам.
+ * Подготовка групп «Результат + Тотал» из скрапа Marathonbet (без расчёта кэфов).
  */
 public final class OddsResultTotalEnricher {
 
@@ -20,7 +16,7 @@ public final class OddsResultTotalEnricher {
     }
 
     /**
-     * Пересчитывает «Результат + ТБ/ТМ» (нужно при чтении из Mongo — в БД могут быть устаревшие группы).
+     * Актуализирует «Результат + ТБ/ТМ» при чтении из Mongo — устаревшие рассчитанные группы удаляются.
      */
     public static void appendCalculatedGroups(List<OddsMarketGroup> groups, List<String> bookmakers) {
         if (groups == null) {
@@ -32,13 +28,6 @@ public final class OddsResultTotalEnricher {
             return;
         }
         removeExistingResultTotal(groups);
-        List<OddsMarketGroup> calculated = OddsResultTotalCalculator.buildGroups(groups, bookmakers);
-        if (calculated.isEmpty()) {
-            return;
-        }
-        groups.addAll(calculated);
-        OddsResultTotalSubgroupSplitter.splitIntoSubgroups(groups);
-        sortGroups(groups);
         OddsSelectionKey.enrichGroups(groups);
     }
 
