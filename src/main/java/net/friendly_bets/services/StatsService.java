@@ -45,8 +45,10 @@ public class StatsService {
         Season season = getEntityService.getSeasonOrThrow(seasonId);
 
         List<PlayerStats> resultStats = season.getPlayers().stream()
-                .map(user -> getEntityService.getPlayerStatsOrNull(seasonId, TOTAL_ID, user))
-                .filter(playerStats -> playerStats != null && playerStats.getTotalBets() > 0)
+                .map(user -> {
+                    PlayerStats stats = getEntityService.getPlayerStatsOrNull(seasonId, TOTAL_ID, user);
+                    return stats != null ? stats : playerStatsService.createNewStats(seasonId, TOTAL_ID, user);
+                })
                 .collect(Collectors.toList());
 
         return new AllPlayersStatsPage(PlayerStatsDto.from(resultStats));

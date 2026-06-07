@@ -140,38 +140,65 @@ class StatsServiceTest {
     @DisplayName("Should return AllPlayersStatsPage when one player has stats and another player not")
     void getAllPlayersStatsBySeason_ReturnsAllPlayersStatsPage_WhenOnePlayerHasStatsAndAnotherNot() {
         // given
+        PlayerStats emptyPlayerStats = PlayerStats.builder()
+                .seasonId(seasonId)
+                .leagueId(TOTAL_ID)
+                .user(user2)
+                .totalBets(0)
+                .build();
         when(getEntityService.getSeasonOrThrow(seasonId)).thenReturn(season);
         when(getEntityService.getPlayerStatsOrNull(seasonId, TOTAL_ID, user1)).thenReturn(playerStats1);
         when(getEntityService.getPlayerStatsOrNull(seasonId, TOTAL_ID, user2)).thenReturn(null);
+        when(playerStatsService.createNewStats(seasonId, TOTAL_ID, user2)).thenReturn(emptyPlayerStats);
 
         // when
         AllPlayersStatsPage result = statsService.getAllPlayersStatsBySeason(seasonId);
 
         // then
         assertNotNull(result);
-        assertEquals(1, result.getPlayersStats().size());
+        assertEquals(2, result.getPlayersStats().size());
         assertEquals(playerStats1.getTotalBets(), result.getPlayersStats().get(0).getTotalBets());
+        assertEquals(0, result.getPlayersStats().get(1).getTotalBets());
         verify(getEntityService, times(1)).getSeasonOrThrow(seasonId);
         verify(getEntityService, times(1)).getPlayerStatsOrNull(seasonId, TOTAL_ID, user1);
         verify(getEntityService, times(1)).getPlayerStatsOrNull(seasonId, TOTAL_ID, user2);
+        verify(playerStatsService, times(1)).createNewStats(seasonId, TOTAL_ID, user2);
     }
 
     @Test
-    @DisplayName("Should return empty AllPlayersStatsPage when no players stats exist")
-    void getAllPlayersStatsBySeason_ReturnsEmptyPage_WhenNoPlayerStatsExist() {
+    @DisplayName("Should return AllPlayersStatsPage with zero stats when no player stats exist")
+    void getAllPlayersStatsBySeason_ReturnsZeroStatsForAllPlayers_WhenNoPlayerStatsExist() {
         // given
+        PlayerStats emptyPlayerStats1 = PlayerStats.builder()
+                .seasonId(seasonId)
+                .leagueId(TOTAL_ID)
+                .user(user1)
+                .totalBets(0)
+                .build();
+        PlayerStats emptyPlayerStats2 = PlayerStats.builder()
+                .seasonId(seasonId)
+                .leagueId(TOTAL_ID)
+                .user(user2)
+                .totalBets(0)
+                .build();
         when(getEntityService.getSeasonOrThrow(seasonId)).thenReturn(season);
-        when(getEntityService.getPlayerStatsOrNull(anyString(), anyString(), any())).thenReturn(null);
+        when(getEntityService.getPlayerStatsOrNull(seasonId, TOTAL_ID, user1)).thenReturn(null);
+        when(getEntityService.getPlayerStatsOrNull(seasonId, TOTAL_ID, user2)).thenReturn(null);
+        when(playerStatsService.createNewStats(seasonId, TOTAL_ID, user1)).thenReturn(emptyPlayerStats1);
+        when(playerStatsService.createNewStats(seasonId, TOTAL_ID, user2)).thenReturn(emptyPlayerStats2);
 
         // when
         AllPlayersStatsPage result = statsService.getAllPlayersStatsBySeason(seasonId);
 
         // then
         assertNotNull(result);
-        assertTrue(result.getPlayersStats().isEmpty());
+        assertEquals(2, result.getPlayersStats().size());
+        assertTrue(result.getPlayersStats().stream().allMatch(stats -> stats.getTotalBets() == 0));
         verify(getEntityService, times(1)).getSeasonOrThrow(seasonId);
         verify(getEntityService, times(1)).getPlayerStatsOrNull(seasonId, TOTAL_ID, user1);
         verify(getEntityService, times(1)).getPlayerStatsOrNull(seasonId, TOTAL_ID, user2);
+        verify(playerStatsService, times(1)).createNewStats(seasonId, TOTAL_ID, user1);
+        verify(playerStatsService, times(1)).createNewStats(seasonId, TOTAL_ID, user2);
     }
 
     // ------------------------------------------------------------------------------------------------------ //
