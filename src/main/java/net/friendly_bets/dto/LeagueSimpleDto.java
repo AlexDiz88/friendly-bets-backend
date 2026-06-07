@@ -29,12 +29,16 @@ public class LeagueSimpleDto {
     @Schema(description = "текущий игровой тур лиги", example = "14")
     private String currentMatchDay;
 
+    @Schema(description = "идентификатор формата турнира")
+    private String tournamentFormatId;
+
     public static LeagueSimpleDto from(League league) {
         return LeagueSimpleDto.builder()
                 .id(league.getId())
                 .leagueCode(league.getLeagueCode().toString())
                 .name(league.getName())
                 .currentMatchDay(league.getCurrentMatchDay())
+                .tournamentFormatId(league.getTournamentFormatId())
                 .build();
     }
 

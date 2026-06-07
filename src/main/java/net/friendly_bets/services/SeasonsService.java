@@ -14,13 +14,17 @@ import net.friendly_bets.repositories.BetsRepository;
 import net.friendly_bets.repositories.CalendarsRepository;
 import net.friendly_bets.repositories.LeaguesRepository;
 import net.friendly_bets.repositories.SeasonsRepository;
+import net.friendly_bets.footballdata.FootballDataSyncService;
+import net.friendly_bets.repositories.TournamentFormatsRepository;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import net.friendly_bets.utils.SeasonCalendarUtils;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.function.Function;
@@ -39,12 +43,16 @@ public class SeasonsService {
 
     CalendarsRepository calendarsRepository;
     BetsRepository betsRepository;
+    TournamentFormatsRepository tournamentFormatsRepository;
+    FootballDataSyncService footballDataSyncService;
+    TournamentFormatExpander tournamentFormatExpander;
+    LeagueMatchdayService leagueMatchdayService;
 
     @Transactional
     public SeasonsPage getAll() {
         List<Season> allSeasons = seasonsRepository.findAll();
         return SeasonsPage.builder()
-                .seasons(SeasonDto.from(allSeasons))
+                .seasons(allSeasons.stream().map(this::toSeasonDto).toList())
                 .build();
     }
 
@@ -56,18 +64,40 @@ public class SeasonsService {
         if (seasonsRepository.existsByTitle(newSeason.getTitle())) {
             throw new BadRequestException("seasonWithThisTitleAlreadyExist");
         }
+        SeasonCalendarUtils.validateDateRange(newSeason.getStartDate(), newSeason.getEndDate());
 
         Season season = Season.builder()
                 .createdAt(LocalDateTime.now())
                 .title(newSeason.getTitle())
+                .startDate(newSeason.getStartDate())
+                .endDate(newSeason.getEndDate())
                 .betCountPerMatchDay(newSeason.getBetCountPerMatchDay())
+                .defaultBetSize(newSeason.getDefaultBetSize())
                 .status(Season.Status.CREATED)
                 .players(new ArrayList<>())
                 .leagues(new ArrayList<>())
                 .build();
 
         seasonsRepository.save(season);
-        return SeasonDto.from(season);
+        return toSeasonDto(season);
+    }
+
+    @Transactional(readOnly = true)
+    public SeasonsWithoutDatesPage getSeasonsWithoutDates() {
+        List<SeasonWithoutDatesDto> seasons = seasonsRepository.findByStartDateIsNull().stream()
+                .map(SeasonWithoutDatesDto::from)
+                .collect(Collectors.toList());
+        return SeasonsWithoutDatesPage.builder().seasons(seasons).build();
+    }
+
+    @Transactional
+    public SeasonDto assignSeasonDates(String seasonId, UpdateSeasonDatesDto dto) {
+        Season season = getEntityService.getSeasonOrThrow(seasonId);
+        SeasonCalendarUtils.validateDateRange(dto.getStartDate(), dto.getEndDate());
+        season.setStartDate(dto.getStartDate());
+        season.setEndDate(dto.getEndDate());
+        seasonsRepository.save(season);
+        return toSeasonDto(season);
     }
 
     // ------------------------------------------------------------------------------------------------------ //
@@ -107,7 +137,11 @@ public class SeasonsService {
         season.setStatus(Season.Status.valueOf(status));
         seasonsRepository.save(season);
 
-        return SeasonDto.from(season);
+        if (Season.Status.ACTIVE.name().equals(status)) {
+            footballDataSyncService.registerPollingForSeason(seasonId);
+        }
+
+        return toSeasonDto(season);
     }
 
     // ------------------------------------------------------------------------------------------------------ //
@@ -137,7 +171,7 @@ public class SeasonsService {
             throw new BadRequestException("noActiveSeasonWasFounded");
         }
         Season season = seasonByStatus.get();
-        return SeasonDto.from(season);
+        return toSeasonDto(season);
     }
 
     // ------------------------------------------------------------------------------------------------------ //
@@ -160,7 +194,7 @@ public class SeasonsService {
             throw new BadRequestException("noScheduledSeasonWasFounded");
         }
         Season season = seasonByStatus.get();
-        return SeasonDto.from(season);
+        return toSeasonDto(season);
     }
 
     // ------------------------------------------------------------------------------------------------------ //
@@ -182,7 +216,7 @@ public class SeasonsService {
 
         season.getPlayers().add(user);
         seasonsRepository.save(season);
-        return SeasonDto.from(season);
+        return toSeasonDto(season);
     }
 
     // ------------------------------------------------------------------------------------------------------ //
@@ -190,8 +224,11 @@ public class SeasonsService {
 
     public LeaguesPage getLeaguesBySeason(String seasonId) {
         Season season = getEntityService.getSeasonOrThrow(seasonId);
+        List<LeagueDto> leagues = season.getLeagues() == null
+                ? List.of()
+                : season.getLeagues().stream().map(l -> toLeagueDto(season, l)).toList();
         return LeaguesPage.builder()
-                .leagues(LeagueDto.from(season.getLeagues()))
+                .leagues(leagues)
                 .build();
     }
 
@@ -213,11 +250,23 @@ public class SeasonsService {
             throw new ConflictException("leagueAlreadyExistInThisSeason");
         }
 
+        String formatId = newLeague.getTournamentFormatId();
+        if (!tournamentFormatsRepository.existsById(formatId)) {
+            throw new NotFoundException("TournamentFormat", formatId);
+        }
+
+        TournamentFormat format = getEntityService.getTournamentFormatOrThrow(formatId);
+        String firstSlotId = tournamentFormatExpander.expand(format).stream()
+                .findFirst()
+                .map(ExpandedMatchdaySlot::getId)
+                .orElse("1");
+
         League league = League.builder()
                 .createdAt(LocalDateTime.now())
                 .leagueCode(League.LeagueCode.valueOf(newLeague.getLeagueCode()))
                 .name(newLeague.getLeagueCode() + " " + season.getTitle())
-                .currentMatchDay("1")
+                .currentMatchDay(firstSlotId)
+                .tournamentFormatId(formatId)
                 .teams(new ArrayList<>())
                 .build();
 
@@ -225,7 +274,7 @@ public class SeasonsService {
         season.getLeagues().add(league);
         seasonsRepository.save(season);
 
-        return SeasonDto.from(season);
+        return toSeasonDto(season);
     }
 
     // ------------------------------------------------------------------------------------------------------ //
@@ -259,6 +308,60 @@ public class SeasonsService {
         leaguesRepository.save(leagueInSeason);
 
         return TeamDto.from(team);
+    }
+
+    @Transactional
+    public TeamDto removeTeamFromLeagueInSeason(String seasonId, String leagueId, String teamId) {
+        if (teamId == null || teamId.isBlank()) {
+            throw new BadRequestException("teamIdIsNull");
+        }
+        if (leagueId == null || leagueId.isBlank()) {
+            throw new BadRequestException("leagueIdIsNull");
+        }
+        if (seasonId == null || seasonId.isBlank()) {
+            throw new BadRequestException("seasonIdIsNull");
+        }
+        Season season = getEntityService.getSeasonOrThrow(seasonId);
+        Team team = getEntityService.getTeamOrThrow(teamId);
+
+        League leagueInSeason = season.getLeagues().stream()
+                .filter(l -> l.getId().equals(leagueId))
+                .findFirst()
+                .orElseThrow(() -> new NotFoundException("League", leagueId));
+
+        boolean removed = leagueInSeason.getTeams().removeIf(t -> t.getId().equals(teamId));
+        if (!removed) {
+            throw new BadRequestException("teamNotInLeagueInThisSeason");
+        }
+
+        leaguesRepository.save(leagueInSeason);
+
+        return TeamDto.from(team);
+    }
+
+    @Transactional
+    public SeasonDto removeLeagueFromSeason(String seasonId, String leagueId) {
+        if (leagueId == null || leagueId.isBlank()) {
+            throw new BadRequestException("leagueIdIsNull");
+        }
+        if (seasonId == null || seasonId.isBlank()) {
+            throw new BadRequestException("seasonIdIsNull");
+        }
+        Season season = getEntityService.getSeasonOrThrow(seasonId);
+        League league = season.getLeagues().stream()
+                .filter(l -> l.getId().equals(leagueId))
+                .findFirst()
+                .orElseThrow(() -> new NotFoundException("League", leagueId));
+
+        if (betsRepository.countBetsByLeagueAndBetStatusNot(league, Bet.BetStatus.DELETED) > 0) {
+            throw new ConflictException("leagueHasBetsCannotRemove");
+        }
+
+        season.getLeagues().removeIf(l -> l.getId().equals(leagueId));
+        seasonsRepository.save(season);
+        leaguesRepository.delete(league);
+
+        return toSeasonDto(season);
     }
 
     // ------------------------------------------------------------------------------------------------------ //
@@ -360,6 +463,47 @@ public class SeasonsService {
         response.put("failedItems", failedConversions);
 
         return response;
+    }
+
+    private SeasonDto toSeasonDto(Season season) {
+        LocalDate start = season.getStartDate();
+        LocalDate end = season.getEndDate();
+        List<LeagueDto> leagues = season.getLeagues() == null
+                ? List.of()
+                : season.getLeagues().stream()
+                .map(league -> toLeagueDto(season, league))
+                .collect(Collectors.toList());
+
+        return SeasonDto.builder()
+                .id(season.getId())
+                .title(season.getTitle())
+                .startDate(start)
+                .endDate(end)
+                .externalSeasonYear(SeasonCalendarUtils.resolveExternalSeasonYear(start))
+                .availableExternalYears(SeasonCalendarUtils.availableExternalYears(start, end))
+                .betCountPerMatchDay(season.getBetCountPerMatchDay())
+                .defaultBetSize(season.getDefaultBetSize() != null ? season.getDefaultBetSize() : 10)
+                .status(season.getStatus().name())
+                .players(UserDto.from(season.getPlayers()))
+                .leagues(leagues)
+                .build();
+    }
+
+    private LeagueDto toLeagueDto(Season season, League league) {
+        List<ExpandedMatchdaySlotDto> slots = leagueMatchdayService.expandSlotsForLeague(league);
+        String currentForUi = season.getStatus() == Season.Status.FINISHED
+                ? league.getCurrentMatchDay()
+                : leagueMatchdayService.resolveEffectiveCurrentMatchDay(league);
+        return LeagueDto.builder()
+                .id(league.getId())
+                .leagueCode(league.getLeagueCode().toString())
+                .name(league.getName())
+                .currentMatchDay(currentForUi)
+                .tournamentFormatId(league.getTournamentFormatId())
+                .matchdaySlots(slots.isEmpty() ? null : slots)
+                .teams(TeamDto.from(league.getTeams()))
+                .removable(betsRepository.countBetsByLeagueAndBetStatusNot(league, Bet.BetStatus.DELETED) == 0)
+                .build();
     }
 
 }

@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import net.friendly_bets.dto.UpdatedEmailDto;
 import net.friendly_bets.dto.UpdatedPasswordDto;
+import net.friendly_bets.dto.UpdatedThemeSettingsDto;
 import net.friendly_bets.dto.UpdatedUsernameDto;
 import net.friendly_bets.dto.UserDto;
 import net.friendly_bets.exceptions.BadRequestException;
@@ -16,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import static net.friendly_bets.utils.Constants.SUPPORTED_LANGUAGES;
+import static net.friendly_bets.utils.Constants.SUPPORTED_THEME_PREFERENCES;
 
 @RequiredArgsConstructor
 @Service
@@ -25,6 +27,7 @@ public class UsersService {
     UsersRepository usersRepository;
     PasswordEncoder passwordEncoder;
     GetEntityService getEntityService;
+    EmailVerificationService emailVerificationService;
 
     public UserDto getProfile(String currentUserId) {
         User user = getEntityService.getUserOrThrow(currentUserId);
@@ -44,7 +47,9 @@ public class UsersService {
         }
 
         user.setEmail(updatedEmailDto.getNewEmail().toLowerCase());
+        user.setEmailIsConfirmed(false);
         usersRepository.save(user);
+        emailVerificationService.sendVerificationEmail(user);
 
         return UserDto.from(user);
     }
@@ -101,6 +106,24 @@ public class UsersService {
         }
 
         user.setLanguage(language);
+        usersRepository.save(user);
+
+        return UserDto.from(user);
+    }
+
+    // ------------------------------------------------------------------------------------------------------ //
+
+    @Transactional
+    public UserDto changeThemeSettings(String currentUserId, UpdatedThemeSettingsDto updatedThemeSettingsDto) {
+        User user = getEntityService.getUserOrThrow(currentUserId);
+
+        String themePreference = updatedThemeSettingsDto.getThemePreference().trim().toLowerCase();
+        if (!SUPPORTED_THEME_PREFERENCES.contains(themePreference)) {
+            throw new BadRequestException("themePreferenceNotSupported");
+        }
+
+        user.setThemePreference(themePreference);
+        user.setShowThemeToggle(updatedThemeSettingsDto.getShowThemeToggle());
         usersRepository.save(user);
 
         return UserDto.from(user);

@@ -10,6 +10,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.tags.Tags;
 import net.friendly_bets.dto.UpdatedEmailDto;
 import net.friendly_bets.dto.UpdatedPasswordDto;
+import net.friendly_bets.dto.UpdatedThemeSettingsDto;
 import net.friendly_bets.dto.UpdatedUsernameDto;
 import net.friendly_bets.dto.UserDto;
 import net.friendly_bets.security.details.AuthenticatedUser;
@@ -84,6 +85,19 @@ public interface UsersApi {
     ResponseEntity<UserDto> changeLanguage(
             @Parameter(hidden = true) AuthenticatedUser currentUser,
             @Parameter(description = "Selected language for the user's website interface") @NotBlank String language);
+
+    @Operation(summary = "Change profile theme settings", description = "Accessible only to authenticated users")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Theme settings updated successfully",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = UserDto.class))),
+            @ApiResponse(responseCode = "400", description = "Invalid theme preference",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto"))),
+            @ApiResponse(responseCode = "403", description = "User not authenticated",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto")))
+    })
+    ResponseEntity<UserDto> changeThemeSettings(
+            @Parameter(hidden = true) AuthenticatedUser currentUser,
+            @Parameter(description = "Theme preference and header toggle visibility") @Valid UpdatedThemeSettingsDto updatedThemeSettingsDto);
 
 
 }

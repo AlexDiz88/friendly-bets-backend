@@ -9,6 +9,8 @@ public interface UsersRepository extends MongoRepository<User, String> {
     Optional<User> findByEmail(String email);
     Optional<User> findByUsername(String username);
 
+    Optional<User> findFirstByRoleOrderByCreatedAtAsc(User.Role role);
+
     boolean existsById(String id);
 
     boolean existsByEmail(String email);

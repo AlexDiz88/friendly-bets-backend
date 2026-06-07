@@ -436,12 +436,16 @@ class BetUtilsTest {
         assertEquals(originalBet.getMatchDay(), previousStateBet.getMatchDay());
         assertEquals(originalBet.getHomeTeam(), previousStateBet.getHomeTeam());
         assertEquals(originalBet.getAwayTeam(), previousStateBet.getAwayTeam());
-        assertEquals(originalBet.getBetTitle(), previousStateBet.getBetTitle());
+        assertNotSame(originalBet.getBetTitle(), previousStateBet.getBetTitle());
+        assertEquals(originalBet.getBetTitle().getCode(), previousStateBet.getBetTitle().getCode());
         assertEquals(originalBet.getBetOdds(), previousStateBet.getBetOdds());
         assertEquals(originalBet.getBetSize(), previousStateBet.getBetSize());
         assertEquals(originalBet.getBetStatus(), previousStateBet.getBetStatus());
-        assertEquals(originalBet.getGameScore(), previousStateBet.getGameScore());
+        assertNotSame(originalBet.getGameScore(), previousStateBet.getGameScore());
         assertEquals(originalBet.getBalanceChange(), previousStateBet.getBalanceChange());
+
+        originalBet.getBetTitle().setCode((short) 999);
+        assertEquals((short) 101, previousStateBet.getBetTitle().getCode());
     }
 
     // ------------------------------------------------------------------------------------------------------ //
@@ -764,6 +768,92 @@ class BetUtilsTest {
                 arguments(10, null, Bet.BetStatus.EMPTY),
                 arguments(15, 3.4, Bet.BetStatus.DELETED)
         );
+    }
+
+    @ParameterizedTest
+    @MethodSource("provideForbiddenStatusTransitions")
+    @DisplayName("Should throw BadRequestException when editing bet status between OPENED and WRL")
+    void validateEditedBetStatusTransition_ShouldThrow_WhenOpenedAndWrlStatuses(Bet.BetStatus currentStatus,
+                                                                                Bet.BetStatus newStatus) {
+        BadRequestException exception = assertThrows(BadRequestException.class,
+                () -> BetUtils.validateEditedBetStatusTransition(currentStatus, newStatus));
+
+        assertEquals("betStatusTransitionNotAllowed", exception.getMessage());
+    }
+
+    static Stream<Arguments> provideForbiddenStatusTransitions() {
+        return Stream.of(
+                arguments(Bet.BetStatus.OPENED, Bet.BetStatus.WON),
+                arguments(Bet.BetStatus.OPENED, Bet.BetStatus.LOST),
+                arguments(Bet.BetStatus.OPENED, Bet.BetStatus.RETURNED),
+                arguments(Bet.BetStatus.WON, Bet.BetStatus.OPENED),
+                arguments(Bet.BetStatus.LOST, Bet.BetStatus.OPENED),
+                arguments(Bet.BetStatus.RETURNED, Bet.BetStatus.OPENED)
+        );
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = Bet.BetStatus.class, names = {"WON", "LOST", "RETURNED"})
+    @DisplayName("Should allow editing bet status within WRL statuses")
+    void validateEditedBetStatusTransition_ShouldAllow_WhenBothStatusesAreWrl(Bet.BetStatus newStatus) {
+        assertDoesNotThrow(() -> BetUtils.validateEditedBetStatusTransition(Bet.BetStatus.WON, newStatus));
+    }
+
+    @Test
+    @DisplayName("Should reject updateEditedBetValues when bet status changes between OPENED and WRL")
+    void updateEditedBetValues_ShouldThrow_WhenOpenedBetBecomesWon() {
+        Bet bet = Bet.builder()
+                .betStatus(Bet.BetStatus.OPENED)
+                .betSize(10)
+                .betOdds(2.5)
+                .build();
+
+        BetTitle betTitle = BetTitle.builder().code((short) 101).label("betLabel").isNot(false).build();
+        EditedBetDto editedBet = EditedBetDto.builder()
+                .betTitle(betTitle)
+                .betSize(10)
+                .betOdds(2.5)
+                .gameScore(GameScore.builder().fullTime("2:1").firstTime("1:0").build())
+                .betStatus(Bet.BetStatus.WON.toString())
+                .build();
+
+        BadRequestException exception = assertThrows(BadRequestException.class,
+                () -> BetUtils.updateEditedBetValues(betsRepository, bet, editedBet, new User(), new User(), new Team(), new Team()));
+
+        assertEquals("betStatusTransitionNotAllowed", exception.getMessage());
+        assertEquals(Bet.BetStatus.OPENED, bet.getBetStatus());
+    }
+
+    @Test
+    @DisplayName("Should update balance when editing WRL bet to another WRL status")
+    void updateEditedBetValues_ShouldUpdateBalanceWhenWonBetBecomesLost() {
+        Bet bet = Bet.builder()
+                .betStatus(Bet.BetStatus.WON)
+                .betSize(10)
+                .betOdds(2.5)
+                .balanceChange(15.0)
+                .gameScore(GameScore.builder().fullTime("2:1").firstTime("1:0").build())
+                .build();
+
+        BetTitle betTitle = BetTitle.builder().code((short) 101).label("betLabel").isNot(false).build();
+        GameScore newGameScore = GameScore.builder().fullTime("0:1").firstTime("0:0").build();
+        EditedBetDto editedBet = EditedBetDto.builder()
+                .betTitle(betTitle)
+                .betSize(10)
+                .betOdds(2.5)
+                .gameScore(newGameScore)
+                .betStatus(Bet.BetStatus.LOST.toString())
+                .build();
+
+        when(betsRepository.existsBySeason_IdAndLeague_IdAndUser_IdAndMatchDayAndHomeTeam_IdAndAwayTeam_IdAndBetTitle_CodeAndBetTitle_IsNotAndBetOddsAndBetSizeAndGameScoreAndBetStatus(
+                any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+                .thenReturn(false);
+
+        BetUtils.updateEditedBetValues(betsRepository, bet, editedBet, new User(), new User(), new Team(), new Team());
+
+        assertEquals(Bet.BetStatus.LOST, bet.getBetStatus());
+        assertEquals(newGameScore, bet.getGameScore());
+        assertEquals(-10.0, bet.getBalanceChange());
     }
 
     // ------------------------------------------------------------------------------------------------------ //

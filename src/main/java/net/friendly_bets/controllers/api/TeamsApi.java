@@ -11,6 +11,7 @@ import io.swagger.v3.oas.annotations.tags.Tags;
 import net.friendly_bets.dto.NewTeamDto;
 import net.friendly_bets.dto.TeamDto;
 import net.friendly_bets.dto.TeamsPage;
+import net.friendly_bets.dto.UpdateTeamDto;
 import org.springframework.http.ResponseEntity;
 
 import javax.validation.Valid;
@@ -55,5 +56,9 @@ public interface TeamsApi {
     })
     ResponseEntity<TeamDto> createTeam(
             @Parameter(description = "Details of the new team to be created") @Valid NewTeamDto newTeam);
+
+    ResponseEntity<TeamDto> updateTeam(
+            @Parameter(description = "Team ID") @NotBlank String teamId,
+            @Parameter(description = "Fields to update") @Valid UpdateTeamDto updateTeam);
 
 }

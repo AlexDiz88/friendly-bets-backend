@@ -8,15 +8,25 @@ import net.friendly_bets.exceptions.BadRequestException;
 import net.friendly_bets.exceptions.ConflictException;
 import net.friendly_bets.models.*;
 import net.friendly_bets.models.enums.BetTitleCode;
+import net.friendly_bets.exceptions.ForbiddenException;
+import net.friendly_bets.footballdata.FootballDataMatchdaySupport;
+import net.friendly_bets.footballdata.FootballDataSyncService;
+import net.friendly_bets.models.gameresults.GameResultRecord;
+import net.friendly_bets.oddsapi.GameResultNotStarted;
 import net.friendly_bets.repositories.BetsRepository;
+import net.friendly_bets.repositories.GameResultRecordRepository;
 import net.friendly_bets.repositories.LeaguesRepository;
+import net.friendly_bets.security.details.AuthenticatedUser;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import static net.friendly_bets.utils.BetUtils.*;
@@ -36,25 +46,50 @@ public class BetsService {
     TeamStatsService teamStatsService;
     GameweekStatsService gameweekStatsService;
     BetTitleStatsService betTitleStatsService;
+    LeagueMatchdayService leagueMatchdayService;
+    FootballDataSyncService footballDataSyncService;
+    GameResultRecordRepository gameResultRecordRepository;
+    FootballDataMatchdaySupport matchdaySupport;
 
     @Transactional
-    public BetDto addOpenedBet(String moderatorId, NewBetDto newOpenedBet) {
-        validateBet(newOpenedBet);
-        checkIfBetAlreadyExists(betsRepository, newOpenedBet);
-
-        User moderator = getEntityService.getUserOrThrow(moderatorId);
+    public BetDto addOpenedBet(AuthenticatedUser currentUser, NewBetDto newOpenedBet) {
+        User createdBy = getEntityService.getUserOrThrow(currentUser.getUser().getId());
         User user = getEntityService.getUserOrThrow(newOpenedBet.getUserId());
         Season season = getEntityService.getSeasonOrThrow(newOpenedBet.getSeasonId());
         League league = getEntityService.getLeagueOrThrow(newOpenedBet.getLeagueId());
+        leagueMatchdayService.validateMatchDayForLeague(league, newOpenedBet.getMatchDay());
+
+        boolean moderatorAction = isModeratorOrAdmin(createdBy.getRole());
+        if (!moderatorAction) {
+            if (!createdBy.getId().equals(newOpenedBet.getUserId())) {
+                throw new ForbiddenException("accessDenied");
+            }
+            if (!isSeasonParticipant(season, createdBy.getId())) {
+                throw new ForbiddenException("notSeasonParticipant");
+            }
+        }
+
+        validateBet(newOpenedBet);
+        checkIfBetAlreadyExists(betsRepository, newOpenedBet);
+        calendarsService.getLeagueMatchdayNode(
+                newOpenedBet.getCalendarNodeId(),
+                newOpenedBet.getLeagueId(),
+                newOpenedBet.getMatchDay()
+        );
         Team homeTeam = getEntityService.getTeamOrThrow(newOpenedBet.getHomeTeamId());
         Team awayTeam = getEntityService.getTeamOrThrow(newOpenedBet.getAwayTeamId());
 
-        Bet openedBet = createNewOpenedBet(newOpenedBet, moderator, user, season, league, homeTeam, awayTeam);
+        if (!moderatorAction) {
+            validateMatchNotStartedForSelfBet(season, league, newOpenedBet, homeTeam.getId(), awayTeam.getId());
+        }
+
+        Bet openedBet = createNewOpenedBet(newOpenedBet, createdBy, user, season, league, homeTeam, awayTeam);
 
         betsRepository.save(openedBet);
-        updateLeagueCurrentMatchDay(leaguesRepository, betsRepository, season, league);
+        leagueMatchdayService.updateCurrentMatchDayAfterBet(season, league);
         calendarsService.addBetToCalendarNode(openedBet, newOpenedBet.getCalendarNodeId(), newOpenedBet.getLeagueId(), newOpenedBet.getMatchDay());
         playerStatsService.calculateStatsBasedOnNewOpenedBet(season.getId(), league.getId(), user, true);
+        footballDataSyncService.registerPollingForOpenedBet(openedBet);
 
         return BetDto.from(openedBet);
     }
@@ -68,11 +103,18 @@ public class BetsService {
         User user = getEntityService.getUserOrThrow(newEmptyBet.getUserId());
         Season season = getEntityService.getSeasonOrThrow(newEmptyBet.getSeasonId());
         League league = getEntityService.getLeagueOrThrow(newEmptyBet.getLeagueId());
+        leagueMatchdayService.validateMatchDayForLeague(league, newEmptyBet.getMatchDay());
+
+        calendarsService.getLeagueMatchdayNode(
+                newEmptyBet.getCalendarNodeId(),
+                newEmptyBet.getLeagueId(),
+                newEmptyBet.getMatchDay()
+        );
 
         Bet emptyBet = createNewEmptyBet(newEmptyBet, moderator, user, season, league);
 
         betsRepository.save(emptyBet);
-        updateLeagueCurrentMatchDay(leaguesRepository, betsRepository, season, league);
+        leagueMatchdayService.updateCurrentMatchDayAfterBet(season, league);
         calendarsService.addBetToCalendarNode(emptyBet, newEmptyBet.getCalendarNodeId(), newEmptyBet.getLeagueId(), newEmptyBet.getMatchDay());
         playerStatsService.calculateStatsBasedOnEmptyBet(season.getId(), league.getId(), user, newEmptyBet.getBetSize(), true);
         gameweekStatsService.calculateGameweekStats(newEmptyBet.getCalendarNodeId());
@@ -84,6 +126,11 @@ public class BetsService {
 
     @Transactional
     public BetDto setBetResult(String moderatorId, String betId, BetResult betResult) {
+        return setBetResult(moderatorId, betId, betResult, true);
+    }
+
+    @Transactional
+    public BetDto setBetResult(String moderatorId, String betId, BetResult betResult, boolean updateGameweekStats) {
         try {
             Bet.BetStatus.valueOf(betResult.getBetStatus());
         } catch (IllegalArgumentException e) {
@@ -107,7 +154,9 @@ public class BetsService {
 
         playerStatsService.calculateStatsBasedOnBetResult(seasonId, leagueId, bet.getUser(), bet, true);
         teamStatsService.calculateStatsByTeams(seasonId, leagueId, userId, bet, true);
-        gameweekStatsService.calculateGameweekStats(bet.getCalendarNodeId());
+        if (updateGameweekStats) {
+            gameweekStatsService.calculateGameweekStats(bet.getCalendarNodeId());
+        }
         betTitleStatsService.calculateStatsByBetTitle(seasonId, userId, bet, true);
 
         return BetDto.from(bet);
@@ -115,6 +164,16 @@ public class BetsService {
 
     @Transactional
     public BetsPage setBetResults(String moderatorId, String seasonId, List<GameResult> gameResults) {
+        return setBetResults(moderatorId, seasonId, gameResults, true);
+    }
+
+    @Transactional
+    public BetsPage setBetResults(
+            String moderatorId,
+            String seasonId,
+            List<GameResult> gameResults,
+            boolean updateGameweekAfterEachBet
+    ) {
         List<Bet> openedBets = betsRepository.findAllBySeason_IdAndBetStatus(seasonId, Bet.BetStatus.OPENED);
         List<Bet> processedBets = new ArrayList<>();
 
@@ -140,8 +199,8 @@ public class BetsService {
                         .betStatus(betStatus.name())
                         .build();
 
-                setBetResult(moderatorId, bet.getId(), betResult);
-                processedBets.add(bet);
+                setBetResult(moderatorId, bet.getId(), betResult, updateGameweekAfterEachBet);
+                processedBets.add(getEntityService.getBetOrThrow(bet.getId()));
             }
         }
 
@@ -222,6 +281,9 @@ public class BetsService {
         User moderator = getEntityService.getUserOrThrow(moderatorId);
         User newUser = getEntityService.getUserOrThrow(editedBet.getUserId());
         Bet bet = getEntityService.getBetOrThrow(editedBetId);
+        League league = getEntityService.getLeagueOrThrow(editedBet.getLeagueId());
+        leagueMatchdayService.validateMatchDayForLeague(league, editedBet.getMatchDay());
+        validateEditedBetStatusTransition(bet.getBetStatus(), Bet.BetStatus.valueOf(editedBet.getBetStatus()));
         Bet prevBetState = getPreviousStateOfBet(bet); // сохраняем изначальное состояние ставки до редактирования
         Team newHomeTeam = getEntityService.getTeamOrThrow(editedBet.getHomeTeamId());
         Team newAwayTeam = getEntityService.getTeamOrThrow(editedBet.getAwayTeamId());
@@ -233,15 +295,36 @@ public class BetsService {
         calendarsService.updateCalendar(prevBetState, bet);
         betsRepository.save(bet);
 
-        playerStatsService.calculateStatsBasedOnEditedBet(seasonId, leagueId, newUser, bet, true);
-        playerStatsService.calculateStatsBasedOnEditedBet(seasonId, leagueId, prevBetState.getUser(), prevBetState, false);
-        teamStatsService.calculateStatsByTeams(seasonId, leagueId, newUser.getId(), bet, true);
-        teamStatsService.calculateStatsByTeams(seasonId, leagueId, prevBetState.getUser().getId(), prevBetState, false);
-        gameweekStatsService.calculateGameweekStats(bet.getCalendarNodeId());
-        betTitleStatsService.calculateStatsByBetTitle(seasonId, newUser.getId(), bet, true);
-        betTitleStatsService.calculateStatsByBetTitle(seasonId, prevBetState.getUser().getId(), prevBetState, false);
+        revertStatsForEditedBet(prevBetState);
+        applyStatsForEditedBet(bet, seasonId, leagueId, newUser);
+        String prevCalendarNodeId = prevBetState.getCalendarNodeId();
+        String newCalendarNodeId = bet.getCalendarNodeId();
+        gameweekStatsService.calculateGameweekStats(newCalendarNodeId);
+        if (prevCalendarNodeId != null && !Objects.equals(prevCalendarNodeId, newCalendarNodeId)) {
+            gameweekStatsService.calculateGameweekStats(prevCalendarNodeId);
+        }
 
         return BetDto.from(bet);
+    }
+
+    private void revertStatsForEditedBet(Bet prevBetState) {
+        String prevSeasonId = prevBetState.getSeason().getId();
+        String prevLeagueId = prevBetState.getLeague().getId();
+        User prevUser = prevBetState.getUser();
+
+        playerStatsService.calculateStatsBasedOnEditedBet(prevSeasonId, prevLeagueId, prevUser, prevBetState, false);
+        if (WRL_STATUSES.contains(prevBetState.getBetStatus())) {
+            teamStatsService.calculateStatsByTeams(prevSeasonId, prevLeagueId, prevUser.getId(), prevBetState, false);
+            betTitleStatsService.calculateStatsByBetTitle(prevSeasonId, prevUser.getId(), prevBetState, false);
+        }
+    }
+
+    private void applyStatsForEditedBet(Bet bet, String seasonId, String leagueId, User user) {
+        playerStatsService.calculateStatsBasedOnEditedBet(seasonId, leagueId, user, bet, true);
+        if (WRL_STATUSES.contains(bet.getBetStatus())) {
+            teamStatsService.calculateStatsByTeams(seasonId, leagueId, user.getId(), bet, true);
+            betTitleStatsService.calculateStatsByBetTitle(seasonId, user.getId(), bet, true);
+        }
     }
 
     // ------------------------------------------------------------------------------------------------------ //
@@ -271,12 +354,62 @@ public class BetsService {
         updateDeletedBetValues(bet, moderator);
         BetDto betDto = BetDto.from(bet);
         bet.setBetStatus(Bet.BetStatus.DELETED);
+        bet.setCalendarNodeId(null);
 
         calendarsService.deleteBetFromCalendar(bet, deletedBetMetaData.getCalendarNodeId());
 
         betsRepository.save(bet);
 
+        String calendarNodeId = deletedBetMetaData.getCalendarNodeId();
+        if (calendarNodeId != null && !calendarNodeId.isBlank()) {
+            gameweekStatsService.calculateGameweekStats(calendarNodeId);
+        }
+
         return betDto;
+    }
+
+    private static boolean isModeratorOrAdmin(User.Role role) {
+        return role == User.Role.MODERATOR || role == User.Role.ADMIN;
+    }
+
+    private static boolean isSeasonParticipant(Season season, String userId) {
+        if (userId == null || season.getPlayers() == null) {
+            return false;
+        }
+        return season.getPlayers().stream()
+                .filter(Objects::nonNull)
+                .map(User::getId)
+                .anyMatch(userId::equals);
+    }
+
+    private void validateMatchNotStartedForSelfBet(
+            Season season,
+            League league,
+            NewBetDto newBet,
+            String homeTeamId,
+            String awayTeamId
+    ) {
+        if (league.getLeagueCode() == null) {
+            throw new BadRequestException("gameResultNotFound");
+        }
+        String storageSeason = matchdaySupport.resolveFootballDataSeasonYear(season, league.getLeagueCode());
+        List<GameResultRecord> matches = gameResultRecordRepository.findByLeagueCodeAndSeasonAndHomeTeamIdAndAwayTeamId(
+                league.getLeagueCode().name(),
+                storageSeason,
+                homeTeamId,
+                awayTeamId
+        );
+        if (matches.isEmpty()) {
+            throw new BadRequestException("gameResultNotFound");
+        }
+        Optional<Integer> slotOrder = matchdaySupport.resolveSlotOrder(league, newBet.getMatchDay());
+        GameResultRecord match = matches.stream()
+                .filter(m -> slotOrder.isEmpty() || Objects.equals(m.getMatchday(), slotOrder.get()))
+                .findFirst()
+                .orElseThrow(() -> new BadRequestException("gameResultNotFound"));
+        if (!GameResultNotStarted.isNotStarted(match, LocalDateTime.now())) {
+            throw new BadRequestException("matchAlreadyStarted");
+        }
     }
 }
 

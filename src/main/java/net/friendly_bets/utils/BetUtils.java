@@ -6,6 +6,7 @@ import net.friendly_bets.dto.NewBetDto;
 import net.friendly_bets.dto.NewEmptyBet;
 import net.friendly_bets.exceptions.BadRequestException;
 import net.friendly_bets.exceptions.ConflictException;
+import net.friendly_bets.gameresults.GameScoreConsistencyValidator;
 import net.friendly_bets.models.*;
 import net.friendly_bets.models.enums.BetTitleCode;
 import net.friendly_bets.repositories.BetsRepository;
@@ -36,66 +37,12 @@ public class BetUtils {
                 throw new BadRequestException("incorrectGameScore");
             }
 
-            boolean isGameScoreValid = isGameScoreValid(gameScore);
+            boolean isGameScoreValid = GameScoreConsistencyValidator.isConsistent(gameScore);
 
             if (!isGameScoreValid) {
                 throw new BadRequestException("incorrectGameScore");
             }
         }
-    }
-
-    private static boolean isGameScoreValid(GameScore gameScore) {
-        String fullTime = gameScore.getFullTime();
-        String firstTime = gameScore.getFirstTime();
-        String overTime = gameScore.getOverTime();
-        String penalty = gameScore.getPenalty();
-
-        int[] fullTimeScore = parseScorePart(fullTime);
-        int[] firstTimeScore = parseScorePart(firstTime);
-
-        if (fullTimeScore == null || firstTimeScore == null) {
-            return false;
-        }
-        // Количество голов в 1 тайме не может быть больше голов за весь матч
-        if (fullTimeScore[0] < firstTimeScore[0] || fullTimeScore[1] < firstTimeScore[1]) {
-            return false;
-        }
-
-        if (overTime == null && penalty == null) {
-            return true;
-        }
-        if (overTime != null) {
-            int[] overTimeScore = parseScorePart(overTime);
-
-            if (overTimeScore == null) {
-                return false;
-            }
-            // Если нет пенальти - в дополнительное время не может быть ничьи
-            if (penalty == null) {
-                return overTimeScore[0] != overTimeScore[1];
-            }
-
-            if (penalty != null) {
-                // Если есть пенальти - должна быть ничья в дополнительное время
-                if (overTimeScore[0] != overTimeScore[1]) {
-                    return false;
-                }
-
-                int[] penaltyScore = parseScorePart(penalty);
-                if (penaltyScore == null) {
-                    return false;
-                }
-                // В серии пенальти не может быть ничьи
-                if (penaltyScore[0] == penaltyScore[1]) {
-                    return false;
-                }
-
-                // Разница в счете по пенальти не может быть больше 3
-                int scoreDifference = Math.abs(penaltyScore[0] - penaltyScore[1]);
-                return scoreDifference <= 3;
-            }
-        }
-        return false;
     }
 
     private static int[] parseScorePart(String score) {
@@ -215,6 +162,29 @@ public class BetUtils {
                 .build();
     }
 
+    public static BetTitle copyBetTitle(BetTitle title) {
+        if (title == null) {
+            return null;
+        }
+        return BetTitle.builder()
+                .code(title.getCode())
+                .label(title.getLabel())
+                .isNot(title.isNot())
+                .build();
+    }
+
+    public static GameScore copyGameScore(GameScore gameScore) {
+        if (gameScore == null) {
+            return null;
+        }
+        return GameScore.builder()
+                .fullTime(gameScore.getFullTime())
+                .firstTime(gameScore.getFirstTime())
+                .overTime(gameScore.getOverTime())
+                .penalty(gameScore.getPenalty())
+                .build();
+    }
+
     public static Bet getPreviousStateOfBet(Bet bet) {
         if (bet.getBetStatus().equals(Bet.BetStatus.EMPTY) || bet.getBetStatus().equals(Bet.BetStatus.DELETED)) {
             throw new BadRequestException("emptyAndDeletedBetsCannotBeEdited");
@@ -229,12 +199,12 @@ public class BetUtils {
                 .matchDay(bet.getMatchDay())
                 .homeTeam(bet.getHomeTeam())
                 .awayTeam(bet.getAwayTeam())
-                .betTitle(bet.getBetTitle())
+                .betTitle(copyBetTitle(bet.getBetTitle()))
                 .betOdds(bet.getBetOdds())
                 .betSize(bet.getBetSize())
                 .betResultAddedAt(bet.getBetResultAddedAt())
                 .betResultAddedBy(bet.getBetResultAddedBy())
-                .gameScore(bet.getGameScore())
+                .gameScore(copyGameScore(bet.getGameScore()))
                 .betStatus(bet.getBetStatus())
                 .balanceChange(bet.getBalanceChange())
                 .updatedAt(bet.getUpdatedAt())
@@ -291,23 +261,46 @@ public class BetUtils {
         }
     }
 
+    public static void validateEditedBetStatusTransition(Bet.BetStatus currentStatus, Bet.BetStatus newStatus) {
+        if (currentStatus == newStatus) {
+            return;
+        }
+        if (currentStatus == Bet.BetStatus.OPENED && WRL_STATUSES.contains(newStatus)) {
+            throw new BadRequestException("betStatusTransitionNotAllowed");
+        }
+        if (WRL_STATUSES.contains(currentStatus) && newStatus == Bet.BetStatus.OPENED) {
+            throw new BadRequestException("betStatusTransitionNotAllowed");
+        }
+    }
+
     public static void updateEditedBetValues(BetsRepository betsRepo, Bet bet, EditedBetDto editedBet,
                                              User moderator, User user, Team homeTeam, Team awayTeam) {
+        Bet.BetStatus previousStatus = bet.getBetStatus();
+        validateEditedBetStatusTransition(previousStatus, Bet.BetStatus.valueOf(editedBet.getBetStatus()));
         updateBalanceChangeAndGameResultAndBetStatus(betsRepo, bet, editedBet);
+        if (WRL_STATUSES.contains(Bet.BetStatus.valueOf(editedBet.getBetStatus()))
+                && !WRL_STATUSES.contains(previousStatus)) {
+            bet.setBetResultAddedAt(LocalDateTime.now());
+            bet.setBetResultAddedBy(moderator);
+        }
         updateBetDetails(bet, moderator, user, editedBet, homeTeam, awayTeam);
     }
 
     private static void updateBalanceChangeAndGameResultAndBetStatus(BetsRepository betsRepository, Bet bet, EditedBetDto editedBet) {
-        Bet.BetStatus betStatus = Bet.BetStatus.valueOf(editedBet.getBetStatus());
-        checkIfBetAlreadyEdited(betsRepository, editedBet, betStatus);
+        Bet.BetStatus newStatus = Bet.BetStatus.valueOf(editedBet.getBetStatus());
+        Bet.BetStatus oldStatus = bet.getBetStatus();
+        checkIfBetAlreadyEdited(betsRepository, editedBet, newStatus);
 
-        if (WRL_STATUSES.contains(bet.getBetStatus())) {
-            checkGameScore(editedBet.getGameScore(), bet.getBetStatus());
-            updateBalanceChange(bet, betStatus, editedBet.getBetSize(), editedBet.getBetOdds());
+        if (WRL_STATUSES.contains(newStatus)) {
+            checkGameScore(editedBet.getGameScore(), newStatus);
+            updateBalanceChange(bet, newStatus, editedBet.getBetSize(), editedBet.getBetOdds());
             bet.setGameScore(editedBet.getGameScore());
+        } else if (WRL_STATUSES.contains(oldStatus)) {
+            bet.setBalanceChange(null);
+            bet.setGameScore(null);
         }
 
-        bet.setBetStatus(betStatus);
+        bet.setBetStatus(newStatus);
     }
 
     private static void updateBetDetails(Bet bet, User moderator, User user, EditedBetDto editedBet, Team homeTeam, Team awayTeam) {

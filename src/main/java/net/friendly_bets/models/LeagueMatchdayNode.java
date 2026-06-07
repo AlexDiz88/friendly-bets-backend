@@ -17,6 +17,7 @@ public class LeagueMatchdayNode {
     private League.LeagueCode leagueCode;
     private String matchDay;
     private Integer betCountLimit;
+    private Integer defaultBetSize;
     @DBRef(lazy = true)
     private List<Bet> bets;
 }

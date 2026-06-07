@@ -9,15 +9,16 @@ import java.util.List;
 public class Constants {
     public static final String TOTAL_ID = "total";
     public static final String NO_PREVIOUS_CALENDAR_NODE = "noPreviousCalendarNode";
-    public static final String AWS_AVATARS_FOLDER = "avatars";
-    public static final String AWS_IMG_FOLDER = "img";
-    public static final String AWS_LOCALES_FOLDER = "locales";
-    public static final String AWS_LOGO_FOLDER = "logo";
     public static final int MAX_AVATAR_DIMENSION = 150;
     public static final String LANGUAGE_EN = "en";
     public static final String LANGUAGE_DE = "de";
     public static final String LANGUAGE_RU = "ru";
     public static final List<String> SUPPORTED_LANGUAGES = List.of(LANGUAGE_EN, LANGUAGE_DE, LANGUAGE_RU);
+
+    public static final String THEME_LIGHT = "light";
+    public static final String THEME_DARK = "dark";
+    public static final String THEME_SYSTEM = "system";
+    public static final List<String> SUPPORTED_THEME_PREFERENCES = List.of(THEME_LIGHT, THEME_DARK, THEME_SYSTEM);
 
 
     public static final List<Bet.BetStatus> WRL_STATUSES = List.of(
@@ -40,5 +41,15 @@ public class Constants {
             Bet.BetStatus.LOST,
             Bet.BetStatus.EMPTY
     );
+
+    /** Ставки тура для UI и статистики (без аннулированных). */
+    public static List<Bet> betsVisibleInGameweek(List<Bet> bets) {
+        if (bets == null || bets.isEmpty()) {
+            return List.of();
+        }
+        return bets.stream()
+                .filter(bet -> bet.getBetStatus() != Bet.BetStatus.DELETED)
+                .toList();
+    }
 
 }

@@ -39,6 +39,9 @@ public class League {
     @Field(name = "current_match_day")
     private String currentMatchDay;
 
+    @Field(name = "tournament_format_id")
+    private String tournamentFormatId;
+
     @DBRef(lazy = true)
     @Field(name = "teams")
     private List<Team> teams;

@@ -23,6 +23,7 @@ public class SignUpService {
 
     UsersRepository usersRepository;
     PasswordEncoder passwordEncoder;
+    EmailVerificationService emailVerificationService;
 
     @Transactional
     public UserDto signUp(NewUserDto newUser) {
@@ -39,6 +40,7 @@ public class SignUpService {
                 .build();
 
         usersRepository.save(user);
+        emailVerificationService.sendVerificationEmail(user);
 
         return UserDto.from(user);
     }

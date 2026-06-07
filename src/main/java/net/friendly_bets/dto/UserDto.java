@@ -33,17 +33,29 @@ public class UserDto {
     @Schema(description = "язык пользователя", example = "ru")
     private String language;
 
+    @Schema(description = "предпочитаемая тема: light, dark или system", example = "system")
+    private String themePreference;
+
+    @Schema(description = "показывать переключатель темы в шапке")
+    private Boolean showThemeToggle;
+
     @Schema(description = "аватар пользователя в формате base64")
     private String avatar;
+
+    @Schema(description = "подтверждён ли email")
+    private Boolean emailIsConfirmed;
 
 
     public static UserDto from(User user) {
         return UserDto.builder()
                 .id(user.getId())
                 .email(user.getEmail())
+                .emailIsConfirmed(user.getEmailIsConfirmed())
                 .role(user.getRole().toString())
                 .username(user.getUsername())
                 .language(user.getLanguage())
+                .themePreference(user.getThemePreference())
+                .showThemeToggle(user.getShowThemeToggle())
                 .avatar(user.getAvatar() != null ?
                         Base64.getEncoder().encodeToString(user.getAvatar().getData()) : null)
                 .build();

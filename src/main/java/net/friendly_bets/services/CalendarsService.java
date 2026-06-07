@@ -8,6 +8,7 @@ import net.friendly_bets.exceptions.BadRequestException;
 import net.friendly_bets.models.Bet;
 import net.friendly_bets.models.CalendarNode;
 import net.friendly_bets.models.LeagueMatchdayNode;
+import net.friendly_bets.repositories.BetsRepository;
 import net.friendly_bets.repositories.CalendarsRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,6 +21,7 @@ import java.util.Comparator;
 import java.util.List;
 
 import static net.friendly_bets.utils.BetUtils.*;
+import static net.friendly_bets.utils.Constants.betsVisibleInGameweek;
 
 @RequiredArgsConstructor
 @Service
@@ -27,6 +29,7 @@ import static net.friendly_bets.utils.BetUtils.*;
 public class CalendarsService {
 
     CalendarsRepository calendarsRepository;
+    BetsRepository betsRepository;
     GetEntityService getEntityService;
 
 
@@ -48,6 +51,28 @@ public class CalendarsService {
 
         return CalendarNodesPage.builder()
                 .calendarNodes(CalendarNodeDto.from(calendarNodes, false))
+                .build();
+    }
+
+    /**
+     * Lightweight list for «По турам»; optionally includes bets for one calendar node in the same response.
+     */
+    public GameweeksOverviewPage getGameweeksOverview(String seasonId, String calendarNodeId) {
+        List<CalendarNode> calendarNodes = getEntityService.getListOfCalendarNodesWithBetsBySeasonOrThrow(seasonId);
+        calendarNodes.sort(Comparator.comparing(CalendarNode::getStartDate).reversed());
+
+        BetsPage bets = null;
+        if (calendarNodeId != null && !calendarNodeId.isBlank()) {
+            bets = calendarNodes.stream()
+                    .filter(node -> calendarNodeId.equals(node.getId()))
+                    .findFirst()
+                    .map(node -> toBetsPage(collectBetsForCalendarNode(calendarNodeId, node)))
+                    .orElse(null);
+        }
+
+        return GameweeksOverviewPage.builder()
+                .calendarNodes(CalendarNodeSummaryDto.from(calendarNodes))
+                .bets(bets)
                 .build();
     }
 
@@ -107,13 +132,27 @@ public class CalendarsService {
 
 
     public BetsPage getBetsByCalendarNode(String calendarNodeId) {
-        CalendarNode calendarNode = getEntityService.getCalendarNodeOrThrow(calendarNodeId);
+        return toBetsPage(collectBetsForCalendarNode(calendarNodeId, null));
+    }
 
-        List<Bet> bets = new ArrayList<>();
-        for (LeagueMatchdayNode leagueMatchdayNode : calendarNode.getLeagueMatchdayNodes()) {
-            bets.addAll(leagueMatchdayNode.getBets());
+    private List<Bet> collectBetsForCalendarNode(String calendarNodeId, CalendarNode cachedNode) {
+        List<Bet> bets = betsVisibleInGameweek(betsRepository.findAllByCalendarNodeId(calendarNodeId));
+        if (!bets.isEmpty()) {
+            return bets;
         }
+        CalendarNode calendarNode = cachedNode != null
+                ? cachedNode
+                : getEntityService.getCalendarNodeOrThrow(calendarNodeId);
+        List<Bet> legacyBets = new ArrayList<>();
+        for (LeagueMatchdayNode leagueMatchdayNode : calendarNode.getLeagueMatchdayNodes()) {
+            if (leagueMatchdayNode.getBets() != null) {
+                legacyBets.addAll(leagueMatchdayNode.getBets());
+            }
+        }
+        return betsVisibleInGameweek(legacyBets);
+    }
 
+    private BetsPage toBetsPage(List<Bet> bets) {
         return BetsPage.builder()
                 .bets(BetDto.from(bets))
                 .totalPages(1)

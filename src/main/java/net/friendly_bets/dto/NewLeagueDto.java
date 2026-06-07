@@ -15,4 +15,8 @@ public class NewLeagueDto {
     @NotNull(message = "{field.isNull}")
     @NotBlank(message = "{field.isBlank}")
     private String leagueCode;
+
+    @NotNull(message = "{field.isNull}")
+    @NotBlank(message = "{field.isBlank}")
+    private String tournamentFormatId;
 }

@@ -112,8 +112,39 @@ public class SeasonsController implements SeasonsApi {
 
     @Override
     @PreAuthorize("hasAuthority('ADMIN')")
+    @DeleteMapping("/{season-id}/leagues/{league-id}/teams/{team-id}")
+    public ResponseEntity<TeamDto> removeTeamFromLeagueInSeason(@PathVariable("season-id") String seasonId,
+                                                                @PathVariable("league-id") String leagueId,
+                                                                @PathVariable("team-id") String teamId) {
+        return ResponseEntity.ok(seasonsService.removeTeamFromLeagueInSeason(seasonId, leagueId, teamId));
+    }
+
+    @Override
+    @PreAuthorize("hasAuthority('ADMIN')")
+    @DeleteMapping("/{season-id}/leagues/{league-id}")
+    public ResponseEntity<SeasonDto> removeLeagueFromSeason(@PathVariable("season-id") String seasonId,
+                                                            @PathVariable("league-id") String leagueId) {
+        return ResponseEntity.ok(seasonsService.removeLeagueFromSeason(seasonId, leagueId));
+    }
+
+    @Override
+    @PreAuthorize("hasAuthority('ADMIN')")
     @GetMapping("/db-update")
     public ResponseEntity<Map<String, Object>> dbUpdate() {
         return ResponseEntity.ok(seasonsService.dbUpdate());
+    }
+
+    @GetMapping("/without-dates")
+    @PreAuthorize("hasAuthority('ADMIN')")
+    public ResponseEntity<SeasonsWithoutDatesPage> getSeasonsWithoutDates() {
+        return ResponseEntity.ok(seasonsService.getSeasonsWithoutDates());
+    }
+
+    @PatchMapping("/{id}/dates")
+    @PreAuthorize("hasAuthority('ADMIN')")
+    public ResponseEntity<SeasonDto> assignSeasonDates(
+            @PathVariable("id") String id,
+            @RequestBody @Valid UpdateSeasonDatesDto dto) {
+        return ResponseEntity.ok(seasonsService.assignSeasonDates(id, dto));
     }
 }

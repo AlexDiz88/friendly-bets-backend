@@ -27,13 +27,12 @@ public class BetsController implements BetsApi {
     private final BetsService betsService;
 
     @Override
-    @PreAuthorize("hasAuthority('ADMIN') || hasAuthority('MODERATOR')")
+    @PreAuthorize("hasAuthority('USER') || hasAuthority('MODERATOR') || hasAuthority('ADMIN')")
     @PostMapping("/add")
     public ResponseEntity<BetDto> addBet(@AuthenticationPrincipal AuthenticatedUser currentUser,
                                          @RequestBody @Valid NewBetDto newOpenedBet) {
-        String moderatorId = currentUser.getUser().getId();
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(betsService.addOpenedBet(moderatorId, newOpenedBet));
+                .body(betsService.addOpenedBet(currentUser, newOpenedBet));
     }
 
     @Override

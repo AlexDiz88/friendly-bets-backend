@@ -6,13 +6,16 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import net.friendly_bets.dto.StandardResponseDto;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -29,13 +32,19 @@ import java.util.Arrays;
 
 @RequiredArgsConstructor
 @EnableWebSecurity
-@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
+@FieldDefaults(level = AccessLevel.PRIVATE)
 @EnableGlobalMethodSecurity(securedEnabled = true, prePostEnabled = true, proxyTargetClass = true)
 public class SecurityConfig {
 
-    UserDetailsService userDetailsServiceImpl;
-    PasswordEncoder passwordEncoder;
-    ObjectMapper objectMapper;
+    final UserDetailsService userDetailsServiceImpl;
+    final PasswordEncoder passwordEncoder;
+    final ObjectMapper objectMapper;
+
+    @Value("${app.security.remember-me.key}")
+    String rememberMeKey;
+
+    @Value("${app.security.remember-me.token-validity-seconds}")
+    int rememberMeTokenValiditySeconds;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) throws Exception {
@@ -44,19 +53,30 @@ public class SecurityConfig {
                 .cors().configurationSource(corsConfigurationSource())
                 .and()
                 .rememberMe()
-                .tokenValiditySeconds(86400)
+                .key(rememberMeKey)
+                .userDetailsService(userDetailsServiceImpl)
+                .tokenValiditySeconds(rememberMeTokenValiditySeconds)
                 .and()
                 .headers().frameOptions().disable().and()
                 .authorizeRequests()
                 .antMatchers("/swagger-ui.html/**").permitAll()
+                .antMatchers(HttpMethod.POST, "/api/register").permitAll()
+                .antMatchers(HttpMethod.POST, "/api/login").permitAll()
+                .antMatchers("/api/auth/**").permitAll()
+                .antMatchers(HttpMethod.GET, "/api/odds/demo/**").permitAll()
                 .and()
                 .formLogin()
                 .loginProcessingUrl("/api/login")
                 .successHandler((request, response, authentication) -> {
                     fillResponse(response, HttpStatus.OK.value(), "authorizationSuccess");
                 })
-                .failureHandler((request, response, exception) ->
-                        fillResponse(response, HttpStatus.UNAUTHORIZED.value(), "invalidLoginOrPassword"))
+                .failureHandler((request, response, exception) -> {
+                    if (exception instanceof DisabledException) {
+                        fillResponse(response, HttpStatus.UNAUTHORIZED.value(), "emailNotConfirmed");
+                        return;
+                    }
+                    fillResponse(response, HttpStatus.UNAUTHORIZED.value(), "invalidLoginOrPassword");
+                })
                 .and()
                 .exceptionHandling()
                 .defaultAuthenticationEntryPointFor((request, response, authException) ->
@@ -83,7 +103,7 @@ public class SecurityConfig {
                 "https://friendly-bets.net",
                 "https://www.friendly-bets.net",
                 "https://friendly-bets-9fph3.ondigitalocean.app"));
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("*"));
         configuration.setAllowCredentials(true);
 

@@ -30,6 +30,7 @@ public class GoalsChecker implements BetChecker {
             case BOTH_TEAMS_SCORE -> evaluate(home, away);
             case HOME_TEAM_SCORES -> evaluate(home);
             case AWAY_TEAM_SCORES -> evaluate(away);
+            case ANY_TEAM_WILL_SCORE -> evaluateAnyTeamWillScore(home, away);
 
             case HOME_SCORES_1ST_HALF -> evaluate(home1st);
             case HOME_SCORES_2ND_HALF -> evaluate(home2nd);
@@ -95,6 +96,11 @@ public class GoalsChecker implements BetChecker {
 
             default -> throw new IllegalArgumentException("Unsupported code: " + code);
         };
+    }
+
+    /** В матче забьёт хотя бы одна команда (эквивалент ТБ 0.5). */
+    private BetStatus evaluateAnyTeamWillScore(int home, int away) {
+        return home > 0 || away > 0 ? BetStatus.WON : BetStatus.LOST;
     }
 
     private BetStatus evaluate(int goals) {

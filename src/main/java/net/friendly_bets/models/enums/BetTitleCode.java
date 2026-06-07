@@ -390,6 +390,7 @@ public enum BetTitleCode {
     BOTH_TEAMS_SCORE((short) 1301, new GoalsChecker(), "Обе забьют"),
     HOME_TEAM_SCORES((short) 1302, new GoalsChecker(), "Хозяева забьют"),
     AWAY_TEAM_SCORES((short) 1303, new GoalsChecker(), "Гости забьют"),
+    ANY_TEAM_WILL_SCORE((short) 1304, new GoalsChecker(), "Любая забьёт"),
 
     //========== 1351-1400. Голы по таймам (Goals by halftimes) ==========
     HOME_SCORES_1ST_HALF((short) 1351, new GoalsChecker(), "Хозяева забьют в 1 тайме"),

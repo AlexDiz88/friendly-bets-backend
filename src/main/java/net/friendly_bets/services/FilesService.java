@@ -20,7 +20,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
 
-import static net.friendly_bets.utils.Constants.AWS_AVATARS_FOLDER;
 import static net.friendly_bets.utils.Constants.MAX_AVATAR_DIMENSION;
 
 @RequiredArgsConstructor
@@ -31,14 +30,6 @@ public class FilesService {
 
     UsersRepository usersRepository;
     GetEntityService getEntityService;
-    S3Service s3Service;
-
-    public void s3uploadUserAvatar(String userId, MultipartFile file) throws IOException {
-        String filenameWithExtension = userId + extractExtension(file.getOriginalFilename());
-        String key = AWS_AVATARS_FOLDER + "/" + filenameWithExtension;
-
-        s3Service.uploadFileToS3Bucket(key, file, filenameWithExtension);
-    }
 
     @Transactional
     public StandardResponseDto saveAvatarImage(String currentUserId, MultipartFile file) {
@@ -61,13 +52,6 @@ public class FilesService {
                 .status(HttpStatus.OK.value())
                 .message("avatarWasSuccessfullySaved")
                 .build();
-    }
-
-    private String extractExtension(String originalFilename) {
-        if (originalFilename != null && originalFilename.contains(".")) {
-            return originalFilename.substring(originalFilename.lastIndexOf('.'));
-        }
-        return "";
     }
 
     private void checkFileParameters(MultipartFile file, long maxAvatarSize, List<String> allowedMimeTypes) {
