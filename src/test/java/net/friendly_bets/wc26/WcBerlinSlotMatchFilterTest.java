@@ -116,7 +116,6 @@ class WcBerlinSlotMatchFilterTest {
                 .sources(Map.of(
                         MatchDataProviders.sourcesStorageKey(MatchDataProviders.FOOTBALL_DATA),
                         GameResultSourceSnapshot.builder()
-                                .provider(MatchDataProviders.FOOTBALL_DATA)
                                 .home(GameResultSideSnapshot.builder().externalName(homeExternalName).build())
                                 .away(GameResultSideSnapshot.builder().externalName(awayExternalName).build())
                                 .build()))
