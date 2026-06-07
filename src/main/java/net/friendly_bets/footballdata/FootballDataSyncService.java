@@ -171,13 +171,15 @@ public class FootballDataSyncService {
                 hadUnmappedTeams = true;
                 apiSyncIssueService.recordMissingTeamMapping(leagueCode, storageSeason, slotOrder, matchDto);
                 log.warn(
-                        "Game result skipped (missing team mapping): provider=football-data league={} season={} matchday={} matchId={} home='{}' away='{}'",
+                        "Game result skipped (missing team mapping): provider=football-data league={} season={} matchday={} matchId={} home='{}' homeMapped={} away='{}' awayMapped={}",
                         leagueCode,
                         storageSeason,
                         slotOrder,
                         matchDto.getId(),
                         matchDto.getHomeTeam() != null ? matchDto.getHomeTeam().getName() : null,
-                        matchDto.getAwayTeam() != null ? matchDto.getAwayTeam().getName() : null
+                        homeTeam != null,
+                        matchDto.getAwayTeam() != null ? matchDto.getAwayTeam().getName() : null,
+                        awayTeam != null
                 );
                 continue;
             }
