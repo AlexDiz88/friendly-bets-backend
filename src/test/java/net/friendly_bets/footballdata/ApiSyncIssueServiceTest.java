@@ -244,11 +244,13 @@ class ApiSyncIssueServiceTest {
         );
 
         assertEquals(1, affected);
-        ArgumentCaptor<ApiSyncIssue> captor = ArgumentCaptor.forClass(ApiSyncIssue.class);
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<ApiSyncIssue>> captor = ArgumentCaptor.forClass(List.class);
         verify(apiSyncIssueRepository).saveAll(captor.capture());
-        assertNull(captor.getValue().getHomeTeamName());
-        assertNull(captor.getValue().getHomeTeamExternalId());
-        assertEquals("Away FC", captor.getValue().getAwayTeamName());
+        ApiSyncIssue saved = captor.getValue().get(0);
+        assertNull(saved.getHomeTeamName());
+        assertNull(saved.getHomeTeamExternalId());
+        assertEquals("Away FC", saved.getAwayTeamName());
         verify(apiSyncIssueRepository, never()).deleteAllById(any());
     }
 }
