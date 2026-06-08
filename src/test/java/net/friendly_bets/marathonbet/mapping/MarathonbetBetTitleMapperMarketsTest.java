@@ -157,6 +157,40 @@ class MarathonbetBetTitleMapperMarketsTest {
     }
 
     @Test
+    void mapsResultTotalDoubleChanceLegs() {
+        MarathonbetMarketDto market1x = MarathonbetMarketDto.builder()
+                .model("MTCH_T1WDOV")
+                .name("Результат матча + тотал голов 2.5")
+                .selections(List.of(sel("Да", "1.90"), sel("Нет", "1.80")))
+                .build();
+        MarathonbetMarketDto marketX2 = MarathonbetMarketDto.builder()
+                .model("MTCH_T2WDUND")
+                .name("Результат матча + тотал голов 3.5")
+                .selections(List.of(sel("Да", "3.20"), sel("Нет", "1.30")))
+                .build();
+        MarathonbetExtractedMarkets markets = MarathonbetExtractedMarkets.builder()
+                .resultTotalMarkets(List.of(market1x, marketX2))
+                .build();
+        List<MappedOddsQuote> quotes = mapper.map(markets, "Мексика", "ЮАР");
+        assertEquals(2, quotes.size());
+        assertEquals(BetTitleCode.HOME_OR_DRAW_AND_OVER_2_5, BetTitleCode.fromCode(quotes.get(0).getBetTitle().getCode()));
+        assertEquals(BetTitleCode.AWAY_OR_DRAW_AND_UNDER_3_5, BetTitleCode.fromCode(quotes.get(1).getBetTitle().getCode()));
+
+        OddsMergeResult merged = OddsMerger.merge(quotes);
+        List<OddsMarketGroup> groups = new ArrayList<>(merged.getMarketGroups());
+        OddsResultTotalSubgroupSplitter.splitIntoSubgroups(groups);
+        OddsMarketGroup parent = groups.stream()
+                .filter(g -> "resultTotal".equals(g.getGroupKey()))
+                .findFirst()
+                .orElseThrow();
+        List<String> subgroupKeys = parent.getSubgroups().stream().map(OddsMarketGroup::getGroupKey).toList();
+        assertEquals(List.of(
+                "resultTotal1xOver",
+                "resultTotalX2Under"
+        ), subgroupKeys);
+    }
+
+    @Test
     void mapsFirstHalfResultTo2001Codes() {
         MarathonbetMarketDto market = MarathonbetMarketDto.builder()
                 .model("MTCH_R1")

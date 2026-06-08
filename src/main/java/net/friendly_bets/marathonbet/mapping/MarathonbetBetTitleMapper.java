@@ -301,8 +301,8 @@ public class MarathonbetBetTitleMapper {
             case HOME_WIN -> "HOME_WIN";
             case AWAY_WIN -> "AWAY_WIN";
             case DRAW -> "DRAW";
-            case HOME_OR_DRAW -> "HOME_WIN_OR_DRAW";
-            case AWAY_OR_DRAW -> "AWAY_WIN_OR_DRAW";
+            case HOME_OR_DRAW -> "HOME_OR_DRAW";
+            case AWAY_OR_DRAW -> "AWAY_OR_DRAW";
             case HOME_OR_AWAY -> "HOME_OR_AWAY";
         };
         String totalPart = under ? "UNDER" : "OVER";
