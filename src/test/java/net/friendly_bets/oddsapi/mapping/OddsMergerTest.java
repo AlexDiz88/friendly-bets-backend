@@ -15,6 +15,58 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class OddsMergerTest {
 
     @Test
+    void sortsDoubleChanceByPeriodThenOutcome() {
+        List<MappedOddsQuote> quotes = List.of(
+                dcQuote(BetTitleCode.SECOND_HALF_AWAY_WIN_OR_DRAW, "DC_X2", "1.95"),
+                dcQuote(BetTitleCode.FIRST_HALF_HOME_OR_AWAY_WIN, "DC_12", "1.58"),
+                dcQuote(BetTitleCode.HOME_WIN_OR_DRAW, "DC_1X", "1.082"),
+                dcQuote(BetTitleCode.SECOND_HALF_HOME_WIN_OR_DRAW, "DC_1X", "1.051"),
+                dcQuote(BetTitleCode.FIRST_HALF_AWAY_WIN_OR_DRAW, "DC_X2", "1.727"),
+                dcQuote(BetTitleCode.HOME_OR_AWAY_WIN, "DC_12", "1.24"),
+                dcQuote(BetTitleCode.FIRST_HALF_HOME_WIN_OR_DRAW, "DC_1X", "1.042"),
+                dcQuote(BetTitleCode.AWAY_WIN_OR_DRAW, "DC_X2", "2.93"),
+                dcQuote(BetTitleCode.SECOND_HALF_HOME_OR_AWAY_WIN, "DC_12", "1.42")
+        );
+
+        OddsMergeResult result = OddsMerger.merge(quotes);
+        OddsMarketGroup dc = result.getMarketGroups().stream()
+                .filter(g -> "DOUBLE_CHANCE".equals(g.getCategory()))
+                .findFirst()
+                .orElseThrow();
+
+        assertEquals(List.of(
+                BetTitleCode.HOME_WIN_OR_DRAW,
+                BetTitleCode.HOME_OR_AWAY_WIN,
+                BetTitleCode.AWAY_WIN_OR_DRAW,
+                BetTitleCode.FIRST_HALF_HOME_WIN_OR_DRAW,
+                BetTitleCode.FIRST_HALF_HOME_OR_AWAY_WIN,
+                BetTitleCode.FIRST_HALF_AWAY_WIN_OR_DRAW,
+                BetTitleCode.SECOND_HALF_HOME_WIN_OR_DRAW,
+                BetTitleCode.SECOND_HALF_HOME_OR_AWAY_WIN,
+                BetTitleCode.SECOND_HALF_AWAY_WIN_OR_DRAW
+        ), dc.getRows().stream()
+                .map(r -> BetTitleCode.fromCode(r.getBetTitle().getCode()))
+                .toList());
+    }
+
+    private static MappedOddsQuote dcQuote(BetTitleCode code, String selectionCode, String odds) {
+        BetTitle title = BetTitle.builder()
+                .code(code.getCode())
+                .label(code.getLabel())
+                .isNot(false)
+                .build();
+        return MappedOddsQuote.builder()
+                .bookmaker("Marathonbet")
+                .marketName("Double Chance")
+                .category(OddsMarketCategory.DOUBLE_CHANCE)
+                .betTitle(title)
+                .odds(odds)
+                .mappingStatus(OddsMappingStatus.OK)
+                .selectionCode(selectionCode)
+                .build();
+    }
+
+    @Test
     void picksHigherOddsAcrossBookmakers() {
         BetTitle title = BetTitle.builder()
                 .code(BetTitleCode.HOME_WIN.getCode())

@@ -82,6 +82,24 @@ class OddsDisplayLabelFormatterTest {
     }
 
     @Test
+    @DisplayName("formats period handicap from bet title with half prefix")
+    void formatsPeriodHandicap() {
+        OddsLineRow row = OddsLineRow.builder()
+                .line("-2")
+                .selectionCode("HOME")
+                .betTitle(BetTitle.builder()
+                        .code(BetTitleCode.SECOND_HALF_HANDICAP_HOME_MINUS_2_0.getCode())
+                        .label("2й тайм: Ф1(-2)")
+                        .build())
+                .build();
+
+        assertEquals(
+                "2й тайм: Ф1 (-2)",
+                OddsDisplayLabelFormatter.format(OddsMarketCategory.PERIOD_HANDICAP, row)
+        );
+    }
+
+    @Test
     @DisplayName("formats totals as ТБ/ТМ with line")
     void formatsTotals() {
         OddsLineRow row = OddsLineRow.builder()

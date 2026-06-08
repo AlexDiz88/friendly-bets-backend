@@ -49,7 +49,7 @@ class OddsProductionMergeFilterTest {
     }
 
     @Test
-    void includesXbetHandicapInProductionMerge() {
+    void excludesXbetHandicapFromProductionMerge() {
         MappedOddsQuote quote = MappedOddsQuote.builder()
                 .bookmaker(XbetOddsAdapter.BOOKMAKER)
                 .marketName("Spread")
@@ -59,6 +59,24 @@ class OddsProductionMergeFilterTest {
                 .betTitle(BetTitle.builder()
                         .code(BetTitleCode.HANDICAP_AWAY_MINUS_1_0.getCode())
                         .label(BetTitleCode.HANDICAP_AWAY_MINUS_1_0.getLabel())
+                        .isNot(false)
+                        .build())
+                .build();
+
+        assertFalse(OddsProductionMergeFilter.includeInProductionMerge(quote));
+    }
+
+    @Test
+    void includesMarathonbetPeriodHandicapInProductionMerge() {
+        MappedOddsQuote quote = MappedOddsQuote.builder()
+                .bookmaker(MarathonbetBookmaker.KEY)
+                .marketName("Победа с учетом форы, 2-й тайм")
+                .category(OddsMarketCategory.PERIOD_HANDICAP)
+                .mappingStatus(OddsMappingStatus.OK)
+                .odds("8.80")
+                .betTitle(BetTitle.builder()
+                        .code(BetTitleCode.SECOND_HALF_HANDICAP_HOME_MINUS_2_0.getCode())
+                        .label(BetTitleCode.SECOND_HALF_HANDICAP_HOME_MINUS_2_0.getLabel())
                         .isNot(false)
                         .build())
                 .build();

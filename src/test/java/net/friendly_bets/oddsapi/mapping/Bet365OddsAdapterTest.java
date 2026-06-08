@@ -1,7 +1,6 @@
 package net.friendly_bets.oddsapi.mapping;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import net.friendly_bets.models.enums.BetTitleCode;
 import net.friendly_bets.oddsapi.OddsMatchContext;
 import net.friendly_bets.oddsapi.client.dto.OddsApiMarketDto;
 import org.junit.jupiter.api.Test;
@@ -16,7 +15,7 @@ class Bet365OddsAdapterTest {
     private final Bet365OddsAdapter adapter = new Bet365OddsAdapter();
 
     @Test
-    void mapsSpreadMinusOneToHomeAndAwayHandicaps() throws Exception {
+    void skipsSpreadHandicapMarket() throws Exception {
         var resource = getClass().getResourceAsStream("/oddsapi/bet365/spread-minus-one.json");
         OddsApiMarketDto[] markets = objectMapper.readValue(resource, OddsApiMarketDto[].class);
 
@@ -25,16 +24,11 @@ class Bet365OddsAdapterTest {
                 OddsMatchContext.of("Home FC", "Away FC")
         );
 
-        assertTrue(quotes.stream().anyMatch(q -> q.isOk()
-                && q.getBetTitle().getCode() == BetTitleCode.HANDICAP_HOME_MINUS_1_0.getCode()));
-        assertTrue(quotes.stream().anyMatch(q -> q.isOk()
-                && q.getBetTitle().getCode() == BetTitleCode.HANDICAP_AWAY_PLUS_1_0.getCode()));
-        assertTrue(quotes.stream().noneMatch(q -> q.isOk()
-                && q.getBetTitle().getCode() == BetTitleCode.HANDICAP_AWAY_MINUS_1_0.getCode()));
+        assertTrue(quotes.isEmpty());
     }
 
     @Test
-    void mapsAlternativeAsianHandicapWithAwaySignInversion() throws Exception {
+    void skipsAlternativeAsianHandicapMarket() throws Exception {
         OddsApiMarketDto asian = market("Alternative Asian Handicap", """
                 [
                   {"hdp":-1.5,"home":"5.500","away":"6.000"},
@@ -47,22 +41,7 @@ class Bet365OddsAdapterTest {
                 OddsMatchContext.of("South Korea", "Czechia")
         );
 
-        assertTrue(quotes.stream().anyMatch(q -> q.isOk()
-                && q.getSelectionCode().equals("HOME")
-                && "-1.5".equals(q.getLine())
-                && "5.500".equals(q.getOdds())));
-        assertTrue(quotes.stream().anyMatch(q -> q.isOk()
-                && q.getSelectionCode().equals("AWAY")
-                && "1.5".equals(q.getLine())
-                && "6.000".equals(q.getOdds())));
-        assertTrue(quotes.stream().anyMatch(q -> q.isOk()
-                && q.getBetTitle().getCode() == BetTitleCode.HANDICAP_HOME_PLUS_1_0.getCode()
-                && "1.170".equals(q.getOdds())));
-        assertTrue(quotes.stream().anyMatch(q -> q.isOk()
-                && q.getBetTitle().getCode() == BetTitleCode.HANDICAP_AWAY_MINUS_1_0.getCode()
-                && "1.200".equals(q.getOdds())));
-        assertTrue(quotes.stream().noneMatch(q -> q.isOk()
-                && q.getBetTitle().getCode() == BetTitleCode.HANDICAP_AWAY_PLUS_1_0.getCode()));
+        assertTrue(quotes.isEmpty());
     }
 
     @Test

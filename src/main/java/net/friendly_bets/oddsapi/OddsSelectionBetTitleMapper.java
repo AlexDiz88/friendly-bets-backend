@@ -47,6 +47,12 @@ public final class OddsSelectionBetTitleMapper {
                 return mapBtts(selection);
             }
             case HANDICAP -> code = mapHandicap(line, selection);
+            case PERIOD_HANDICAP -> {
+                if (row.getBetTitle() != null) {
+                    return row.getBetTitle();
+                }
+                throw new BadRequestException("betMarketNotAllowedForSelfService");
+            }
             case CORRECT_SCORE -> code = mapCorrectScore(row.getSelectionCode());
             case FIRST_HALF_CORRECT_SCORE, SECOND_HALF_CORRECT_SCORE -> code = mapHalfCorrectScore(
                     category, row.getSelectionCode());

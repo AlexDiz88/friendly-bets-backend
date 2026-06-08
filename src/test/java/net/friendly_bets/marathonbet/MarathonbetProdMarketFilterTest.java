@@ -25,6 +25,14 @@ class MarathonbetProdMarketFilterTest {
     }
 
     @Test
+    void ignoresAsianHandicapByMarketName() {
+        assertTrue(MarathonbetProdMarketFilter.isIgnoredForProd("Победа с учетом азиатской форы"));
+        assertTrue(MarathonbetProdMarketFilter.isIgnoredForProd(
+                MarathonbetMarketDto.builder().model("MTCH_HB").name("Победа с учетом азиатской форы").build()
+        ));
+    }
+
+    @Test
     void ignoresVoluntaryWinAndConsecutiveGoalsModels() {
         assertTrue(MarathonbetProdMarketFilter.isIgnoredForProd(
                 MarathonbetMarketDto.builder().model("MTCH_TEWFB").name("Волевая").build()

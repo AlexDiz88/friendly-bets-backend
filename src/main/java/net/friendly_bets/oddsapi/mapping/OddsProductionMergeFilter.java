@@ -5,7 +5,7 @@ import net.friendly_bets.oddsapi.OddsMarketCategory;
 
 /**
  * Какие OK-котировки попадают в prod-merge ({@link OddsMerger}).
- * Форы в prod — 1xbet ({@link XbetOddsAdapter}) и Marathonbet; Bet365 handicap-рынки маппятся, но не мержатся.
+ * Форы — только Marathonbet (европейская «Победа с учётом форы»); odds-api Spread/Asian не используются.
  */
 public final class OddsProductionMergeFilter {
 
@@ -16,11 +16,10 @@ public final class OddsProductionMergeFilter {
         if (quote == null || !quote.isOk()) {
             return true;
         }
-        if (quote.getCategory() != OddsMarketCategory.HANDICAP) {
+        if (quote.getCategory() != OddsMarketCategory.HANDICAP
+                && quote.getCategory() != OddsMarketCategory.PERIOD_HANDICAP) {
             return true;
         }
-        String bookmaker = quote.getBookmaker();
-        return XbetOddsAdapter.BOOKMAKER.equalsIgnoreCase(bookmaker)
-                || MarathonbetBookmaker.KEY.equalsIgnoreCase(bookmaker);
+        return MarathonbetBookmaker.KEY.equalsIgnoreCase(quote.getBookmaker());
     }
 }

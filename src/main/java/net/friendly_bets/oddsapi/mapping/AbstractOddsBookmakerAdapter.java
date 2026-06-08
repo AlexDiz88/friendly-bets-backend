@@ -30,8 +30,7 @@ import java.util.Optional;
  * Базовый адаптер этапа 1: JSON одной БК → {@link MappedOddsQuote} с каноническим {@link BetTitle}.
  * Данные других букмекеров здесь недоступны и не используются.
  * <p>
- * Форы: одна строка API {@code {hdp, home, away}} → до двух ставок; правило знака {@code hdp}
- * для гостей — {@link #invertAwayHandicapSign(String)} ({@link XbetOddsAdapter}, {@link Bet365OddsAdapter} Spread).
+ * Форы odds-api (Spread, Asian Handicap) не маппятся — prod-источник фор только Marathonbet SSE.
  */
 public abstract class AbstractOddsBookmakerAdapter implements OddsBookmakerAdapter {
 
@@ -46,7 +45,10 @@ public abstract class AbstractOddsBookmakerAdapter implements OddsBookmakerAdapt
                 continue;
             }
             OddsMarketCategory category = resolveCategory(dto.getName());
-            if (category == OddsMarketCategory.EXCLUDED || category == OddsMarketCategory.OTHER) {
+            if (category == OddsMarketCategory.EXCLUDED
+                    || category == OddsMarketCategory.OTHER
+                    || category == OddsMarketCategory.HANDICAP
+                    || category == OddsMarketCategory.PERIOD_HANDICAP) {
                 continue;
             }
             List<ParsedOddsMarket> parsed = OddsMarketParser.parseAndFilter(List.of(dto));

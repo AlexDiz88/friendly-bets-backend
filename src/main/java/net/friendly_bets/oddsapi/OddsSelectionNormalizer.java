@@ -25,7 +25,7 @@ public final class OddsSelectionNormalizer {
         return switch (category) {
             case MATCH_RESULT -> normalizeMatchResult(key);
             case DOUBLE_CHANCE -> normalizeDoubleChance(key, match);
-            case HANDICAP -> normalizeSide(key);
+            case HANDICAP, PERIOD_HANDICAP -> normalizeSide(key);
             case TOTALS, HALF_TOTALS, TEAM_TOTAL_HOME, TEAM_TOTAL_AWAY -> normalizeOverUnder(key);
             case BTTS -> normalizeYesNo(key);
             default -> Optional.empty();

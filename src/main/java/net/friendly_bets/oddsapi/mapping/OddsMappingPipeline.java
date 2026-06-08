@@ -65,19 +65,6 @@ public class OddsMappingPipeline {
             }
         }
 
-        OddsMergeResult mergeResult = OddsMerger.merge(prodMergeInput, false);
-        List<OddsCrossBookmakerMismatch> monitorMismatches = OddsHandicapMonitor.detect(allQuotes);
-        if (monitorMismatches.isEmpty()) {
-            return mergeResult;
-        }
-
-        List<OddsCrossBookmakerMismatch> mismatches = new ArrayList<>(mergeResult.getMismatches());
-        mismatches.addAll(monitorMismatches);
-        return OddsMergeResult.builder()
-                .marketGroups(mergeResult.getMarketGroups())
-                .allQuotes(allQuotes)
-                .rejectedQuotes(mergeResult.getRejectedQuotes())
-                .mismatches(mismatches)
-                .build();
+        return OddsMerger.merge(prodMergeInput, false);
     }
 }
