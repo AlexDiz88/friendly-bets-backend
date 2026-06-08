@@ -380,6 +380,9 @@ public class MarathonbetBetTitleMapper {
         }
         List<MappedOddsQuote> quotes = new ArrayList<>();
         for (MarathonbetMarketSelectionDto sel : market.getSelections()) {
+            if (isDrawHandicapSelection(sel.getName())) {
+                continue;
+            }
             Double line = MarathonbetSelectionParsing.parseHandicapLine(sel.getName());
             if (line == null || sel.getOdds() == null) {
                 continue;
@@ -391,7 +394,10 @@ public class MarathonbetBetTitleMapper {
             if (code == null) {
                 continue;
             }
-            quotes.add(okQuote(market, sel, OddsMarketCategory.HANDICAP, code, lineKey, selectionCode));
+            OddsMarketCategory category = (firstHalf || secondHalf)
+                    ? OddsMarketCategory.PERIOD_HANDICAP
+                    : OddsMarketCategory.HANDICAP;
+            quotes.add(okQuote(market, sel, category, code, lineKey, selectionCode));
         }
         return quotes;
     }
@@ -419,6 +425,15 @@ public class MarathonbetBetTitleMapper {
         String sign = effectiveLine > 0 ? "PLUS" : "MINUS";
         String value = formatLineSuffix(Math.abs(effectiveLine));
         return "_" + sign + "_" + value;
+    }
+
+    private static boolean isDrawHandicapSelection(String selectionName) {
+        if (selectionName == null || selectionName.isBlank()) {
+            return false;
+        }
+        int paren = selectionName.indexOf('(');
+        String prefix = paren > 0 ? selectionName.substring(0, paren).trim() : selectionName.trim();
+        return "ничья".equalsIgnoreCase(prefix);
     }
 
     private boolean isHomeSelection(String selectionName, String homeTeam, String awayTeam) {

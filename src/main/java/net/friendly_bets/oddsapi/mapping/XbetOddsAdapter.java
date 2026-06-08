@@ -2,7 +2,7 @@ package net.friendly_bets.oddsapi.mapping;
 
 import org.springframework.stereotype.Component;
 
-/** 1xbet: маппинг только колонки {@code bookmakers["1xbet"]}; Spread — инверсия знака hdp у гостей. */
+/** 1xbet: маппинг только колонки {@code bookmakers["1xbet"]}; Spread/форы odds-api не маппятся. */
 @Component
 public class XbetOddsAdapter extends AbstractOddsBookmakerAdapter {
 

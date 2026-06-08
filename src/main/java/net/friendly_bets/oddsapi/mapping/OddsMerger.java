@@ -149,6 +149,13 @@ public final class OddsMerger {
                     .thenComparingDouble(r -> parseLine(r.getLine()))
                     .thenComparingInt(r -> selectionOrder(category, r.getSelectionCode()));
         }
+        if (category == OddsMarketCategory.PERIOD_HANDICAP) {
+            return Comparator
+                    .comparingInt(OddsMerger::matchResultSortKey)
+                    .thenComparingDouble((OddsLineRow r) -> Math.abs(parseLine(r.getLine())))
+                    .thenComparingDouble(r -> parseLine(r.getLine()))
+                    .thenComparingInt(r -> selectionOrder(category, r.getSelectionCode()));
+        }
         if (category == OddsMarketCategory.TOTALS
                 || category == OddsMarketCategory.TEAM_TOTAL_HOME
                 || category == OddsMarketCategory.TEAM_TOTAL_AWAY) {
@@ -162,7 +169,8 @@ public final class OddsMerger {
                     .thenComparingDouble((OddsLineRow r) -> parseLine(r.getLine()))
                     .thenComparingInt(r -> selectionOrder(category, r.getSelectionCode()));
         }
-        if (category == OddsMarketCategory.MATCH_RESULT) {
+        if (category == OddsMarketCategory.MATCH_RESULT
+                || category == OddsMarketCategory.DOUBLE_CHANCE) {
             return Comparator
                     .comparingInt(OddsMerger::matchResultSortKey)
                     .thenComparingInt(r -> selectionOrder(category, r.getSelectionCode()));

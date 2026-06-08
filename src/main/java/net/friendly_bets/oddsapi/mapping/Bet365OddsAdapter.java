@@ -8,10 +8,7 @@ import java.util.Locale;
 
 /**
  * Bet365: маппинг только колонки {@code bookmakers["Bet365"]}.
- * У гостей на всех handicap-рынках (Spread, Alternative Asian Handicap, …) знак {@code hdp} инвертируется.
- * <p>
- * Handicap-рынки маппятся для мониторинга и odds-demo; в prod-merge фор — только {@link XbetOddsAdapter}
- * ({@link OddsProductionMergeFilter}).
+ * Рынки форы (Spread, Asian Handicap) не маппятся — prod-форы только Marathonbet SSE.
  */
 @Component
 public class Bet365OddsAdapter extends AbstractOddsBookmakerAdapter {

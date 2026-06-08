@@ -53,6 +53,10 @@ public final class MarathonbetProdMarketFilter {
         if (trimmed.endsWith(IGNORED_NAME_SUFFIX)) {
             return true;
         }
-        return trimmed.toLowerCase(Locale.ROOT).contains("подряд");
+        String lower = trimmed.toLowerCase(Locale.ROOT);
+        if (lower.contains("азиатск")) {
+            return true;
+        }
+        return lower.contains("подряд");
     }
 }

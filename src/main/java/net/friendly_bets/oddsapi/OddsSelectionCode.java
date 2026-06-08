@@ -59,7 +59,7 @@ public enum OddsSelectionCode {
                 default -> 99;
             };
         }
-        if (category == OddsMarketCategory.HANDICAP) {
+        if (category == OddsMarketCategory.HANDICAP || category == OddsMarketCategory.PERIOD_HANDICAP) {
             return switch (this) {
                 case HOME -> 1;
                 case AWAY -> 2;

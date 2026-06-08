@@ -88,6 +88,7 @@ public final class OddsMarketCatalog {
             case MATCH_RESULT -> "matchResult";
             case DOUBLE_CHANCE -> "doubleChance";
             case HANDICAP -> "handicap";
+            case PERIOD_HANDICAP -> "periodHandicap";
             case TOTALS -> "totals";
             case HALF_TOTALS -> "halfTotals";
             case HALF_FULL -> "halfFull";

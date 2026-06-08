@@ -18,6 +18,9 @@ public final class OddsDisplayLabelFormatter {
         if (category == OddsMarketCategory.HANDICAP) {
             return formatHandicapRow(row);
         }
+        if (category == OddsMarketCategory.PERIOD_HANDICAP) {
+            return formatPeriodHandicapRow(row);
+        }
         BetTitle betTitle = row.getBetTitle();
         if (betTitle != null && betTitle.getLabel() != null && !betTitle.getLabel().isBlank()) {
             return formatFromBetTitle(category, betTitle);
@@ -28,7 +31,7 @@ public final class OddsDisplayLabelFormatter {
     private static String formatFromBetTitle(OddsMarketCategory category, BetTitle betTitle) {
         String label = betTitle.getLabel();
         return switch (category) {
-            case HANDICAP -> formatHandicapLabel(label);
+            case HANDICAP, PERIOD_HANDICAP -> formatHandicapLabel(label);
             case TEAM_TOTAL_HOME, TEAM_TOTAL_AWAY -> shortenTeamTotalLabel(label);
             case BTTS, GOALS, RESULT_BTTS, CLEAN_WIN, WIN_GOAL_DIFFERENCE -> formatGoalsBetTitleLabel(betTitle);
             case HALF_FULL, FIRST_SECOND_HALF -> label;
@@ -102,6 +105,14 @@ public final class OddsDisplayLabelFormatter {
             return label.substring("Гости ".length());
         }
         return label;
+    }
+
+    private static String formatPeriodHandicapRow(OddsLineRow row) {
+        BetTitle betTitle = row.getBetTitle();
+        if (betTitle != null && betTitle.getLabel() != null && !betTitle.getLabel().isBlank()) {
+            return formatHandicapLabel(betTitle.getLabel());
+        }
+        return formatHandicapRow(row);
     }
 
     private static String formatHandicapRow(OddsLineRow row) {
