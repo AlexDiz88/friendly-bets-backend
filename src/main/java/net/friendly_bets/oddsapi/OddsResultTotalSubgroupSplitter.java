@@ -21,17 +21,17 @@ public final class OddsResultTotalSubgroupSplitter {
     }
 
     /**
-     * Порядок как в «Внести ставку»: П1 ТМ/ТБ, 1X, X, П2, X2, 12.
+     * Порядок как в «Внести ставку»: П1, X, П2, 1X, X2, 12 — каждый ТМ/ТБ.
      */
     private static final List<SubgroupDef> ORDERED_SUBGROUPS = List.of(
             new SubgroupDef("resultTotalP1Under", 201, 250, OddsMarketCategory.RESULT_TOTAL_UNDER),
             new SubgroupDef("resultTotalP1Over", 251, 300, OddsMarketCategory.RESULT_TOTAL_OVER),
-            new SubgroupDef("resultTotal1xUnder", 301, 350, OddsMarketCategory.RESULT_TOTAL_UNDER),
-            new SubgroupDef("resultTotal1xOver", 351, 400, OddsMarketCategory.RESULT_TOTAL_OVER),
             new SubgroupDef("resultTotalDrawUnder", 401, 450, OddsMarketCategory.RESULT_TOTAL_UNDER),
             new SubgroupDef("resultTotalDrawOver", 451, 500, OddsMarketCategory.RESULT_TOTAL_OVER),
             new SubgroupDef("resultTotalP2Under", 501, 550, OddsMarketCategory.RESULT_TOTAL_UNDER),
             new SubgroupDef("resultTotalP2Over", 551, 600, OddsMarketCategory.RESULT_TOTAL_OVER),
+            new SubgroupDef("resultTotal1xUnder", 301, 350, OddsMarketCategory.RESULT_TOTAL_UNDER),
+            new SubgroupDef("resultTotal1xOver", 351, 400, OddsMarketCategory.RESULT_TOTAL_OVER),
             new SubgroupDef("resultTotalX2Under", 601, 650, OddsMarketCategory.RESULT_TOTAL_UNDER),
             new SubgroupDef("resultTotalX2Over", 651, 700, OddsMarketCategory.RESULT_TOTAL_OVER),
             new SubgroupDef("resultTotal12Under", 701, 750, OddsMarketCategory.RESULT_TOTAL_UNDER),
