@@ -9,9 +9,7 @@ import net.friendly_bets.footballdata.FootballDataMatchdaySupport;
 import net.friendly_bets.footballdata.FootballDataSyncService;
 import net.friendly_bets.models.League;
 import net.friendly_bets.models.Season;
-import net.friendly_bets.marathonbet.MarathonbetBookmaker;
 import net.friendly_bets.models.gameresults.GameResultRecord;
-import net.friendly_bets.models.odds.GameResultMergedOdds;
 import net.friendly_bets.models.odds.GameResultOdds;
 import net.friendly_bets.oddsapi.client.OddsApiClient;
 import net.friendly_bets.oddsapi.client.dto.OddsApiEventDto;
@@ -410,7 +408,7 @@ public class OddsApiSyncService {
                 saved++;
             }
 
-            if (!shouldSkipOddsApiMergeForFreshMarathon(match, fetchedAt)) {
+            if (!shouldSkipOddsApiMergeWhenMarathonPresent(match)) {
                 OddsMatchContext matchContext = buildMatchContext(match, eventOdds);
                 var mergeResult = oddsMergedOddsService.buildAndPersist(
                         match,
@@ -428,30 +426,15 @@ public class OddsApiSyncService {
     }
 
     /**
-     * Не перезаписывать свежий prod-merge Marathonbet для ЧМ, если odds-api — только fallback.
+     * Не перезаписывать prod-merge Marathonbet: odds-api — только fallback при полном отсутствии кэфов Marathon.
      */
-    private boolean shouldSkipOddsApiMergeForFreshMarathon(GameResultRecord match, LocalDateTime now) {
-        if (!properties.isFallbackOnlyForWc()
-                || !League.LeagueCode.WC.name().equals(match.getLeagueCode())) {
+    private boolean shouldSkipOddsApiMergeWhenMarathonPresent(GameResultRecord match) {
+        if (match == null || match.getId() == null) {
             return false;
         }
-        Optional<GameResultMergedOdds> merged = oddsMergedOddsService.findByGameResultId(match.getId());
-        if (merged.isEmpty()) {
-            return false;
-        }
-        GameResultMergedOdds doc = merged.get();
-        boolean hasMarathon = doc.getBookmakers() != null
-                && doc.getBookmakers().stream()
-                .anyMatch(b -> MarathonbetBookmaker.KEY.equalsIgnoreCase(b));
-        if (!hasMarathon || doc.getMarketGroups() == null || doc.getMarketGroups().isEmpty()) {
-            return false;
-        }
-        if (doc.getFetchedAt() == null) {
-            return false;
-        }
-        int minutes = properties.getPresentationStaleMinutes();
-        LocalDateTime threshold = now.minusMinutes(Math.max(1, minutes));
-        return !doc.getFetchedAt().isBefore(threshold);
+        return MarathonbetMergedOddsGuard.hasProductionMarathonOdds(
+                oddsMergedOddsService.findByGameResultId(match.getId())
+        );
     }
 
     private OddsMatchContext buildMatchContext(GameResultRecord match, OddsApiEventOddsDto eventOdds) {

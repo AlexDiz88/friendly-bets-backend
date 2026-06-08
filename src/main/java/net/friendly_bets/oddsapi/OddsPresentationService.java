@@ -4,7 +4,6 @@ import lombok.RequiredArgsConstructor;
 import net.friendly_bets.dto.OddsEventMarketsDto;
 import net.friendly_bets.exceptions.BadRequestException;
 import net.friendly_bets.exceptions.NotFoundException;
-import net.friendly_bets.marathonbet.MarathonbetBookmaker;
 import net.friendly_bets.models.gameresults.GameResultRecord;
 import net.friendly_bets.models.odds.GameResultMergedOdds;
 import net.friendly_bets.models.odds.GameResultOdds;
@@ -185,15 +184,7 @@ public class OddsPresentationService {
     }
 
     private static boolean mergedSnapshotHasMarathonbet(Optional<GameResultMergedOdds> mergedSnapshot) {
-        if (mergedSnapshot.isEmpty()) {
-            return false;
-        }
-        GameResultMergedOdds merged = mergedSnapshot.get();
-        if (merged.getMarketGroups() == null || merged.getMarketGroups().isEmpty()) {
-            return false;
-        }
-        return merged.getBookmakers() != null
-                && merged.getBookmakers().stream().anyMatch(MarathonbetBookmaker.KEY::equalsIgnoreCase);
+        return MarathonbetMergedOddsGuard.hasProductionMarathonOdds(mergedSnapshot);
     }
 
     public Map<String, List<OddsApiMarketDto>> refreshFromApi(
