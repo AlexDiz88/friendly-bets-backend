@@ -147,6 +147,7 @@ public class OddsPresentationService {
         OddsSelectionKey.enrichGroups(groups);
         OddsResultTotalEnricher.appendCalculatedGroups(groups, bookmakers);
         OddsHalfCorrectScoreSubgroupSplitter.splitIntoSubgroups(groups);
+        OddsPeriodHandicapSubgroupSplitter.splitIntoSubgroups(groups);
         OddsResultTotalEnricher.applyCategoryMetadata(groups);
         OddsLineRowDeduper.dedupeMarketGroups(groups);
     }
