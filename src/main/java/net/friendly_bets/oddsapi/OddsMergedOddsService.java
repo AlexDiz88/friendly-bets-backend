@@ -43,6 +43,7 @@ public class OddsMergedOddsService {
         enrichBetTitles(groups);
         OddsResultTotalEnricher.appendCalculatedGroups(groups, bookmakers);
         OddsHalfCorrectScoreSubgroupSplitter.splitIntoSubgroups(groups);
+        OddsPeriodHandicapSubgroupSplitter.splitIntoSubgroups(groups);
         OddsResultTotalEnricher.applyCategoryMetadata(groups);
         OddsLineRowDeduper.dedupeMarketGroups(groups);
 
@@ -87,6 +88,7 @@ public class OddsMergedOddsService {
         enrichBetTitles(groups);
         OddsResultTotalEnricher.appendCalculatedGroups(groups, bookmakers);
         OddsHalfCorrectScoreSubgroupSplitter.splitIntoSubgroups(groups);
+        OddsPeriodHandicapSubgroupSplitter.splitIntoSubgroups(groups);
         OddsResultTotalEnricher.applyCategoryMetadata(groups);
         OddsLineRowDeduper.dedupeMarketGroups(groups);
 
