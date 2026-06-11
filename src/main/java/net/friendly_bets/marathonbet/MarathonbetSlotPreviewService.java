@@ -42,7 +42,7 @@ public class MarathonbetSlotPreviewService {
             throw new BadRequestException("marathonbetInvalidTournamentId");
         }
         String resolvedSeason = resolveSeason(season, league);
-        JsonNode tournamentRoot = tournamentClient.fetchTournament(tournamentId);
+        JsonNode tournamentRoot = tournamentClient.fetchTournament(tournamentId).requireBody();
         List<MarathonbetPrematchEvent> prematch = MarathonbetTournamentParser.parsePrematchEvents(tournamentRoot);
 
         List<GameResultRecord> matches = footballDataSyncService.getMatches(

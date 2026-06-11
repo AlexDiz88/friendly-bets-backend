@@ -9,6 +9,7 @@ import net.friendly_bets.models.enums.BetTitleCode;
 import net.friendly_bets.models.gameresults.GameResultRecord;
 import net.friendly_bets.models.gameresults.GameResultSideSnapshot;
 import net.friendly_bets.models.gameresults.GameResultSourceSnapshot;
+import net.friendly_bets.oddsapi.GameResultNotStarted;
 import net.friendly_bets.repositories.GameResultRecordRepository;
 import net.friendly_bets.repositories.SeasonsRepository;
 import net.friendly_bets.support.AbstractMongoIntegrationTest;
@@ -46,7 +47,7 @@ class UserAddOpenedBetIntegrationTest extends AbstractMongoIntegrationTest {
     void userAddOpenedBet_beforeKickoff_succeeds() {
         TwoPlayersTestFixture fx = testData.createTwoPlayersFirstMatchdaySetup(2);
         setSeasonDates(fx.getSeason());
-        saveScheduledMatch(fx, LocalDateTime.now().plusHours(3));
+        saveScheduledMatch(fx, GameResultNotStarted.nowUtc().plusHours(3));
 
         NewBetDto bet = newBetForPlayer(fx);
         var result = betsService.addOpenedBet(authUser(fx.getPlayerOne()), bet);
@@ -58,7 +59,7 @@ class UserAddOpenedBetIntegrationTest extends AbstractMongoIntegrationTest {
     void userAddOpenedBet_afterKickoff_rejects() {
         TwoPlayersTestFixture fx = testData.createTwoPlayersFirstMatchdaySetup(2);
         setSeasonDates(fx.getSeason());
-        saveScheduledMatch(fx, LocalDateTime.now().minusMinutes(5));
+        saveScheduledMatch(fx, GameResultNotStarted.nowUtc().minusMinutes(5));
 
         NewBetDto bet = newBetForPlayer(fx);
         BadRequestException ex = assertThrows(
@@ -73,7 +74,7 @@ class UserAddOpenedBetIntegrationTest extends AbstractMongoIntegrationTest {
     void moderatorAddOpenedBet_afterKickoff_succeeds() {
         TwoPlayersTestFixture fx = testData.createTwoPlayersFirstMatchdaySetup(2);
         setSeasonDates(fx.getSeason());
-        saveScheduledMatch(fx, LocalDateTime.now().minusMinutes(5));
+        saveScheduledMatch(fx, GameResultNotStarted.nowUtc().minusMinutes(5));
 
         NewBetDto bet = newBetForPlayer(fx);
         var result = betsService.addOpenedBet(authUser(fx.getModerator()), bet);

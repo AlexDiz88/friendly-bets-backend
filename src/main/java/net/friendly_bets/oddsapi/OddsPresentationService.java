@@ -46,7 +46,7 @@ public class OddsPresentationService {
         }
         GameResultRecord match = gameResultRecordRepository.findById(gameResultId)
                 .orElseThrow(() -> new NotFoundException("GameResult", gameResultId));
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = GameResultNotStarted.nowUtc();
         if (!GameResultNotStarted.isNotStarted(match, now)) {
             throw new BadRequestException("matchAlreadyStarted");
         }

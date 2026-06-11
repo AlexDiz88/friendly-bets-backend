@@ -65,6 +65,22 @@ public class MarathonbetSyncRun {
     @Field(name = "manual")
     private boolean manual;
 
+    @Field(name = "slot_scope")
+    private String slotScope;
+
+    @Field(name = "duration_ms")
+    private Long durationMs;
+
+    @Field(name = "http_requests_total")
+    private int httpRequestsTotal;
+
+    @Field(name = "http_requests_failed")
+    private int httpRequestsFailed;
+
+    @Field(name = "http_logs")
+    @Builder.Default
+    private List<MarathonbetHttpLogEntry> httpLogs = new ArrayList<>();
+
     @Field(name = "error_summary")
     private String errorSummary;
 

@@ -7,7 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Слоты для синхронизации Marathonbet: текущий + 1 следующий.
+ * Слоты для синхронизации Marathonbet: текущий и/или следующий тур.
  */
 public final class MarathonbetSyncSlotWindow {
 
@@ -17,6 +17,19 @@ public final class MarathonbetSyncSlotWindow {
     }
 
     public static List<Integer> resolveSlotOrders(ExternalCompetitionInfoDto info) {
+        return resolveSlotOrders(info, MarathonbetSlotScope.BOTH);
+    }
+
+    public static List<Integer> resolveSlotOrders(ExternalCompetitionInfoDto info, MarathonbetSlotScope scope) {
+        List<Integer> window = resolveCurrentAndNext(info);
+        return switch (scope) {
+            case CURRENT -> window.isEmpty() ? List.of() : List.of(window.get(0));
+            case NEXT -> window.size() > 1 ? List.of(window.get(1)) : List.of();
+            case BOTH -> window;
+        };
+    }
+
+    private static List<Integer> resolveCurrentAndNext(ExternalCompetitionInfoDto info) {
         int current = info.getCurrentMatchday();
         List<ExternalMatchdaySlotDto> slots = info.getMatchdaySlots();
 

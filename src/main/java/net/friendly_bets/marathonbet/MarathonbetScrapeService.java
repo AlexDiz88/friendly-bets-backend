@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import net.friendly_bets.dto.MarathonbetScrapeResultDto;
 import net.friendly_bets.exceptions.BadRequestException;
 import net.friendly_bets.marathonbet.client.MarathonbetEventLineClient;
+import net.friendly_bets.marathonbet.client.MarathonbetHttpFetchResult;
 import net.friendly_bets.marathonbet.client.MarathonbetPanHeaders;
 import org.springframework.stereotype.Service;
 
@@ -24,7 +25,7 @@ public class MarathonbetScrapeService {
         if (treeId <= 0) {
             throw new BadRequestException("marathonbetInvalidTreeId");
         }
-        JsonNode root = eventLineClient.fetchEventSnapshot(treeId);
+        JsonNode root = eventLineClient.fetchEventSnapshot(treeId).requireBody();
         MarathonbetExtractedMarkets extracted = MarathonbetMarketExtractor.extractAll(root);
 
         List<String> warnings = new ArrayList<>();
@@ -70,7 +71,7 @@ public class MarathonbetScrapeService {
                 .build();
     }
 
-    public JsonNode fetchEventSnapshot(long treeId) {
+    public MarathonbetHttpFetchResult fetchEventSnapshotResult(long treeId) {
         return eventLineClient.fetchEventSnapshot(treeId);
     }
 }
