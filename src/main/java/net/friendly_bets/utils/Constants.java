@@ -9,7 +9,7 @@ import java.util.List;
 public class Constants {
     public static final String TOTAL_ID = "total";
     public static final String NO_PREVIOUS_CALENDAR_NODE = "noPreviousCalendarNode";
-    public static final int MAX_AVATAR_DIMENSION = 150;
+    public static final int MAX_AVATAR_DIMENSION = 256;
     public static final String LANGUAGE_EN = "en";
     public static final String LANGUAGE_DE = "de";
     public static final String LANGUAGE_RU = "ru";
