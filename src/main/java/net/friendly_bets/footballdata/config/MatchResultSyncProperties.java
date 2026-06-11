@@ -7,9 +7,9 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties(prefix = "match-result-sync")
 public class MatchResultSyncProperties {
 
-    private String primaryProvider = "football-data";
-    private String secondaryProvider = "api-football";
-    private boolean dualVerificationEnabled = false;
+    private String primaryProvider = "4score.ru";
+    private String secondaryProvider = "football-data";
+    private boolean dualVerificationEnabled = true;
     private boolean allowFinalizeWithoutSecondary = false;
     private int requireStablePolls = 2;
     /** Минут после utcDate kickoff для обычного матча. */

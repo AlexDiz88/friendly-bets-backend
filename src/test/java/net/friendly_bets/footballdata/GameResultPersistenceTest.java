@@ -3,6 +3,7 @@ package net.friendly_bets.footballdata;
 import net.friendly_bets.gameresults.GameResultFinalizer;
 import net.friendly_bets.gameresults.MatchDataProviders;
 import net.friendly_bets.gameresults.MatchResultStabilizationService;
+import net.friendly_bets.gameresults.MatchResultSyncSettingsService;
 import net.friendly_bets.models.GameScore;
 import net.friendly_bets.models.gameresults.GameResultFinalizedSource;
 import net.friendly_bets.models.gameresults.GameResultRecord;
@@ -20,8 +21,10 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class GameResultPersistenceTest {
@@ -35,8 +38,22 @@ class GameResultPersistenceTest {
     @Mock
     MatchResultStabilizationService stabilizationService;
 
+    @Mock
+    MatchResultSyncSettingsService matchResultSyncSettingsService;
+
     @InjectMocks
     GameResultPersistence persistence;
+
+    @org.junit.jupiter.api.BeforeEach
+    void setUpSettings() {
+        lenient().when(matchResultSyncSettingsService.getEffective()).thenReturn(
+                MatchResultSyncSettingsService.EffectiveMatchResultSyncSettings.builder()
+                        .primaryProvider(MatchDataProviders.FOOTBALL_DATA)
+                        .secondaryProvider(MatchDataProviders.API_FOOTBALL)
+                        .dualVerificationEnabled(false)
+                        .build()
+        );
+    }
 
     @Test
     void applyProvisionalSync_updatesScoreWithoutForcingFinalizeOnInPlay() {

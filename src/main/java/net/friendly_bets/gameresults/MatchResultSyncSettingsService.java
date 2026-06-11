@@ -18,7 +18,8 @@ public class MatchResultSyncSettingsService {
 
     private static final Set<String> KNOWN_PROVIDERS = Set.of(
             MatchDataProviders.FOOTBALL_DATA,
-            MatchDataProviders.API_FOOTBALL
+            MatchDataProviders.API_FOOTBALL,
+            MatchDataProviders.FOURSCORE
     );
 
     private final MatchResultSyncProperties properties;

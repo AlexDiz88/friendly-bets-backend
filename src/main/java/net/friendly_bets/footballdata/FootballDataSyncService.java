@@ -9,7 +9,9 @@ import net.friendly_bets.footballdata.client.dto.FootballDataMatchDto;
 import net.friendly_bets.footballdata.client.dto.FootballDataMatchdayResponse;
 import net.friendly_bets.footballdata.config.FootballDataProperties;
 import net.friendly_bets.gameresults.GameResultFinalizer;
+import net.friendly_bets.gameresults.MatchDataProviders;
 import net.friendly_bets.gameresults.MatchResultStabilizationService;
+import net.friendly_bets.gameresults.MatchResultSyncSettingsService;
 import net.friendly_bets.models.*;
 import net.friendly_bets.models.gameresults.GameResultRecord;
 import net.friendly_bets.models.gameresults.GameResultsSync;
@@ -55,6 +57,7 @@ public class FootballDataSyncService {
     private final ApiSyncIssueService apiSyncIssueService;
     private final ApiFootballSecondarySyncService apiFootballSecondarySyncService;
     private final MatchResultStabilizationService stabilizationService;
+    private final MatchResultSyncSettingsService matchResultSyncSettingsService;
 
     public void registerPollingForSeason(String seasonId) {
         getEntityService.getSeasonOrThrow(seasonId);
@@ -221,6 +224,7 @@ public class FootballDataSyncService {
                     finishedCount++;
                 }
             } else {
+                stripCanonicalIfSecondaryProvider(incoming);
                 stabilizationService.updateStabilityCounters(incoming, now);
                 gameResultFinalizer.tryFinalize(incoming, now);
                 gameResultRecordRepository.save(incoming);
@@ -556,5 +560,17 @@ public class FootballDataSyncService {
                     leagues.get(0).getId());
         }
         return leagues.get(0).getId();
+    }
+
+    private void stripCanonicalIfSecondaryProvider(GameResultRecord incoming) {
+        String primary = matchResultSyncSettingsService.getEffective().getPrimaryProvider();
+        if (MatchDataProviders.FOOTBALL_DATA.equals(primary)) {
+            return;
+        }
+        incoming.setGameScore(null);
+        incoming.setScoreDuration(null);
+        incoming.setFinalizedAt(null);
+        incoming.setFinalizedSource(null);
+        incoming.setProvider(primary);
     }
 }

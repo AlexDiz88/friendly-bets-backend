@@ -61,11 +61,12 @@ public class MatchResultTrustPolicy {
         return FinalizeDecision.READY;
     }
 
-    private static GameScore resolveCanonicalForProvider(GameResultRecord record, String providerId) {
-        if (providerId == null) {
+    private GameScore resolveCanonicalForProvider(GameResultRecord record, String providerId) {
+        if (providerId == null || record == null) {
             return null;
         }
-        if (MatchDataProviders.FOOTBALL_DATA.equals(providerId)) {
+        String primary = settingsService.getEffective().getPrimaryProvider();
+        if (providerId.equals(primary)) {
             return record.getGameScore();
         }
         GameResultSourceSnapshot source = record.sourceFor(MatchDataProviders.sourcesStorageKey(providerId));

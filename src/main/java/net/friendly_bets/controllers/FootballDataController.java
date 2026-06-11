@@ -5,11 +5,12 @@ import net.friendly_bets.dto.ExternalCompetitionInfoDto;
 import net.friendly_bets.dto.ExternalMatchdayPageDto;
 import net.friendly_bets.dto.ExternalMatchdaySyncDto;
 import net.friendly_bets.footballdata.AutoBetSettlementService;
+import net.friendly_bets.footballdata.LeagueCodePathSupport;
+import net.friendly_bets.fourscore.FourScoreSyncService;
 import net.friendly_bets.footballdata.AutoSettleResult;
 import net.friendly_bets.footballdata.FootballDataCompetitionService;
 import net.friendly_bets.footballdata.FootballDataSyncService;
 import net.friendly_bets.footballdata.GameResultDisplayService;
-import net.friendly_bets.footballdata.LeagueCodePathSupport;
 import net.friendly_bets.footballdata.config.FootballDataProperties;
 import net.friendly_bets.models.GameResult;
 import net.friendly_bets.models.Season;
@@ -36,6 +37,7 @@ public class FootballDataController {
     private final FootballDataProperties footballDataProperties;
     private final AutoBetSettlementService autoBetSettlementService;
     private final SeasonsRepository seasonsRepository;
+    private final FourScoreSyncService fourScoreSyncService;
 
     @GetMapping("/competitions/{pathLeagueOrCompetitionCode}")
     @PreAuthorize("permitAll()")
@@ -82,6 +84,10 @@ public class FootballDataController {
         String resolvedSeason = season != null ? season : footballDataProperties.getDefaultSeason();
         GameResultsSync sync = footballDataSyncService.syncMatchday(
                 pathLeagueOrCompetitionCode, matchday, resolvedSeason, leagueId);
+        String leagueCode = LeagueCodePathSupport.resolveStorageLeagueCode(pathLeagueOrCompetitionCode);
+        if (fourScoreSyncService.isEnabledForLeague(leagueCode)) {
+            fourScoreSyncService.syncMatchday(leagueCode, matchday, resolvedSeason, leagueId);
+        }
         autoBetSettlementService.settleActiveSeasonIfEnabled();
         return ResponseEntity.ok(ExternalMatchdaySyncDto.from(sync));
     }

@@ -89,6 +89,14 @@ public class TeamAliasResolver {
                 TeamTitleUtils.MARATHONBET_PROVIDER, marathonTeamName.trim());
     }
 
+    public Optional<Team> resolveFourScoreByName(String fourScoreTeamName) {
+        if (fourScoreTeamName == null || fourScoreTeamName.isBlank()) {
+            return Optional.empty();
+        }
+        return teamsRepository.findByExternalAliasName(
+                TeamTitleUtils.FOURSCORE_PROVIDER, fourScoreTeamName.trim());
+    }
+
     public Optional<Team> resolveOddsApi(Integer oddsApiTeamId, String oddsApiTeamName) {
         Optional<Team> byId = resolveOddsApiById(oddsApiTeamId);
         if (byId.isPresent()) {

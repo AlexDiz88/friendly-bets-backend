@@ -105,6 +105,10 @@ public class GameResultRecord {
     @Field(name = "marathonbet_tree_id")
     private Long marathonbetTreeId;
 
+    /** Slug страницы матча на 4score.ru (напр. angliya-costa-rica-10-06-2026). */
+    @Field(name = "fourscore_event_slug")
+    private String fourscoreEventSlug;
+
     public boolean isFinalized() {
         return finalizedAt != null;
     }
@@ -122,5 +126,9 @@ public class GameResultRecord {
 
     public GameResultSourceSnapshot apiFootballSource() {
         return sourceFor(MatchDataProviders.sourcesStorageKey(MatchDataProviders.API_FOOTBALL));
+    }
+
+    public GameResultSourceSnapshot fourScoreSource() {
+        return sourceFor(MatchDataProviders.sourcesStorageKey(MatchDataProviders.FOURSCORE));
     }
 }
