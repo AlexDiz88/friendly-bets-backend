@@ -90,9 +90,9 @@ public class MarathonbetTournamentClient {
     }
 
     private static Integer parseRetryAfter(HttpResponse<?> response) {
-        return Optional.ofNullable(response.headers().firstValue("retry-after"))
+        return response.headers().firstValue("retry-after")
                 .flatMap(MarathonbetTournamentClient::parsePositiveInt)
-                .or(() -> Optional.ofNullable(response.headers().firstValue("Retry-After"))
+                .or(() -> response.headers().firstValue("Retry-After")
                         .flatMap(MarathonbetTournamentClient::parsePositiveInt))
                 .orElse(null);
     }
