@@ -22,7 +22,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -407,7 +406,7 @@ public class BetsService {
                 .filter(m -> slotOrder.isEmpty() || Objects.equals(m.getMatchday(), slotOrder.get()))
                 .findFirst()
                 .orElseThrow(() -> new BadRequestException("gameResultNotFound"));
-        if (!GameResultNotStarted.isNotStarted(match, LocalDateTime.now())) {
+        if (!GameResultNotStarted.isNotStarted(match)) {
             throw new BadRequestException("matchAlreadyStarted");
         }
     }

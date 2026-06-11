@@ -14,6 +14,7 @@ import net.friendly_bets.models.*;
 import net.friendly_bets.models.gameresults.GameResultRecord;
 import net.friendly_bets.models.gameresults.GameResultsSync;
 import net.friendly_bets.models.gameresults.GameResultsSyncStatus;
+import net.friendly_bets.oddsapi.GameResultNotStarted;
 import net.friendly_bets.repositories.*;
 import net.friendly_bets.services.GetEntityService;
 import net.friendly_bets.services.RunningSeasonLookup;
@@ -151,7 +152,7 @@ public class FootballDataSyncService {
         }
 
         String storageSeason = resolvedSeason;
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = GameResultNotStarted.nowUtc();
         String storageLeagueId = friendlyLeagueId;
         if (storageLeagueId == null || storageLeagueId.isBlank()) {
             storageLeagueId = resolveSingleLeagueId(League.LeagueCode.valueOf(leagueCode));
@@ -526,7 +527,7 @@ public class FootballDataSyncService {
                         .syncStatus(GameResultsSyncStatus.POLLING)
                         .expectedMatchCount(0)
                         .finishedMatchCount(0)
-                        .firstFetchedAt(LocalDateTime.now())
+                        .firstFetchedAt(GameResultNotStarted.nowUtc())
                         .lastFetchedAt(null)
                         .build()));
     }

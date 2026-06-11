@@ -256,7 +256,7 @@ public class MarathonbetSyncService {
                     .toList();
         }
 
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = GameResultNotStarted.nowUtc();
         List<GameResultRecord> pending = new ArrayList<>();
         for (GameResultRecord match : matches) {
             if (GameResultNotStarted.isNotStarted(match, now)) {

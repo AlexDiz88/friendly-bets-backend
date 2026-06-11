@@ -96,7 +96,7 @@ public class OddsApiSyncService {
         }
 
         String resolvedSeason = resolveStorageSeason(season, league);
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = GameResultNotStarted.nowUtc();
         LeagueMatchdaySyncCounters counters = syncLeagueMatchday(
                 league,
                 matchday,
@@ -129,7 +129,7 @@ public class OddsApiSyncService {
         }
 
         Season season = active.get();
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = GameResultNotStarted.nowUtc();
 
         int leaguesProcessed = 0;
         int matchesEligible = 0;
