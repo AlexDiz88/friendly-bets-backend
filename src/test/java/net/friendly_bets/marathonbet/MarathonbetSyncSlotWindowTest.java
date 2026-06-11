@@ -12,15 +12,29 @@ class MarathonbetSyncSlotWindowTest {
 
     @Test
     void resolvesCurrentAndNextSlot() {
-        ExternalCompetitionInfoDto info = ExternalCompetitionInfoDto.builder()
-                .currentMatchday(3)
+        ExternalCompetitionInfoDto info = infoAtMatchday(3);
+
+        assertEquals(List.of(3, 4), MarathonbetSyncSlotWindow.resolveSlotOrders(info));
+        assertEquals(List.of(3), MarathonbetSyncSlotWindow.resolveSlotOrders(info, MarathonbetSlotScope.CURRENT));
+        assertEquals(List.of(4), MarathonbetSyncSlotWindow.resolveSlotOrders(info, MarathonbetSlotScope.NEXT));
+    }
+
+    @Test
+    void nextSlotEmptyOnFinalMatchday() {
+        ExternalCompetitionInfoDto info = infoAtMatchday(4);
+
+        assertEquals(List.of(4), MarathonbetSyncSlotWindow.resolveSlotOrders(info, MarathonbetSlotScope.CURRENT));
+        assertEquals(List.of(), MarathonbetSyncSlotWindow.resolveSlotOrders(info, MarathonbetSlotScope.NEXT));
+    }
+
+    private static ExternalCompetitionInfoDto infoAtMatchday(int current) {
+        return ExternalCompetitionInfoDto.builder()
+                .currentMatchday(current)
                 .matchdayCount(16)
                 .matchdaySlots(List.of(
                         slot(1), slot(2), slot(3), slot(4)
                 ))
                 .build();
-
-        assertEquals(List.of(3, 4), MarathonbetSyncSlotWindow.resolveSlotOrders(info));
     }
 
     private static ExternalMatchdaySlotDto slot(int value) {

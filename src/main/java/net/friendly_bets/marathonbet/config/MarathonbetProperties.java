@@ -13,7 +13,11 @@ import java.util.Map;
 public class MarathonbetProperties {
 
     private boolean syncEnabled = true;
-    /** 12 hours by default. */
+    /** Interval between ticks for each slot (current / next). Default 6 hours. */
+    private long slotSyncIntervalMs = 21_600_000L;
+    /** Offset before the first next-slot tick (default 3 hours after current). */
+    private long slotSyncStaggerMs = 10_800_000L;
+    /** Legacy standalone scheduler: both slots in one tick. */
     private long syncIntervalMs = 43_200_000L;
     /** Jitter up to ±15 minutes on scheduled tick. */
     private int syncJitterMinutes = 15;
@@ -21,6 +25,8 @@ public class MarathonbetProperties {
     private List<String> primaryForLeagues = new ArrayList<>(List.of("WC"));
     private boolean fallbackToOddsApi = true;
     private int eventWindowHours = 6;
-    /** Pause between per-event SSE fetches. */
-    private long sseDelayMs = 2_000L;
+    /** Random pause lower bound between per-event SSE fetches (ms). */
+    private long sseDelayMinMs = 1_500L;
+    /** Random pause upper bound between per-event SSE fetches (ms). */
+    private long sseDelayMaxMs = 4_500L;
 }

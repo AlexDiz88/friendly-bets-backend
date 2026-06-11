@@ -12,8 +12,10 @@ public class MarathonbetSyncRunDto {
     String id;
     LocalDateTime startedAt;
     LocalDateTime finishedAt;
+    Long durationMs;
     String leagueCode;
     String season;
+    String slotScope;
     List<Integer> slotOrders;
     boolean tournamentFetched;
     int matchesEligible;
@@ -21,7 +23,10 @@ public class MarathonbetSyncRunDto {
     int mergedSaved;
     int sseCalls;
     int mappingFailures;
+    int httpRequestsTotal;
+    int httpRequestsFailed;
     boolean fallbackUsed;
     boolean manual;
     String errorSummary;
+    List<MarathonbetHttpLogEntryDto> httpLogs;
 }

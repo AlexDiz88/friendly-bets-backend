@@ -5,6 +5,8 @@ import net.friendly_bets.footballdata.ApiSyncIssueService;
 import net.friendly_bets.footballdata.FootballDataCompetitionService;
 import net.friendly_bets.footballdata.FootballDataMatchdaySupport;
 import net.friendly_bets.footballdata.FootballDataSyncService;
+import net.friendly_bets.marathonbet.client.MarathonbetHttpFetchResult;
+import net.friendly_bets.marathonbet.client.MarathonbetHttpOutcome;
 import net.friendly_bets.marathonbet.client.MarathonbetTournamentClient;
 import net.friendly_bets.marathonbet.config.MarathonbetProperties;
 import net.friendly_bets.marathonbet.mapping.MarathonbetBetTitleMapper;
@@ -71,7 +73,8 @@ class MarathonbetSyncServiceTest {
     @BeforeEach
     void setUp() {
         when(properties.isSyncEnabled()).thenReturn(true);
-        when(properties.getSseDelayMs()).thenReturn(0L);
+        when(properties.getSseDelayMinMs()).thenReturn(0L);
+        when(properties.getSseDelayMaxMs()).thenReturn(0L);
         when(properties.getTournamentTreeIds()).thenReturn(java.util.Map.of("WC", 2_253_726L));
     }
 
@@ -83,7 +86,12 @@ class MarathonbetSyncServiceTest {
                 .build();
         when(getEntityService.getLeagueOrThrow("wc-league")).thenReturn(league);
         when(tournamentClient.fetchTournament(2_253_726L))
-                .thenReturn(objectMapper.readTree("{\"prematchEvents\":[]}"));
+                .thenReturn(MarathonbetHttpFetchResult.builder()
+                        .success(true)
+                        .httpStatus(200)
+                        .outcome(MarathonbetHttpOutcome.SUCCESS)
+                        .body(objectMapper.readTree("{\"prematchEvents\":[]}"))
+                        .build());
 
         GameResultRecord match = GameResultRecord.builder()
                 .id("gr-1")
@@ -101,8 +109,13 @@ class MarathonbetSyncServiceTest {
         when(eventMatcher.resolveAndPersistTreeId(eq(match), any(), eq("WC"), any(), eq(3)))
                 .thenReturn(Optional.of(event));
 
-        when(scrapeService.fetchEventSnapshot(25_819_358L))
-                .thenReturn(objectMapper.readTree("{\"markets\":{}}"));
+        when(scrapeService.fetchEventSnapshotResult(25_819_358L))
+                .thenReturn(MarathonbetHttpFetchResult.builder()
+                        .success(true)
+                        .httpStatus(200)
+                        .outcome(MarathonbetHttpOutcome.SUCCESS)
+                        .body(objectMapper.readTree("{\"markets\":{}}"))
+                        .build());
         when(betTitleMapper.map(any(), eq("Мексика"), eq("ЮАР")))
                 .thenReturn(List.of(MappedOddsQuote.builder().bookmaker("marathonbet").build()));
         when(oddsMergedOddsService.buildAndPersistFromQuotes(any(), any(), any(), any(), eq(false)))
@@ -110,7 +123,7 @@ class MarathonbetSyncServiceTest {
 
         MarathonbetSyncResult result = syncService.syncSlot("wc-league", 3, "2026", null);
 
-        verify(scrapeService).fetchEventSnapshot(25_819_358L);
+        verify(scrapeService).fetchEventSnapshotResult(25_819_358L);
         assertEquals(1, result.getSseCalls());
         assertEquals(1, result.getMatchesMatched());
     }
