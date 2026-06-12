@@ -1,0 +1,978 @@
+[
+  {
+    "id": 1,
+    "date": "2026-06-11",
+    "timeLocal": "13:00",
+    "stage": "group",
+    "group": "A",
+    "home": "MEX",
+    "away": "RSA",
+    "venueKey": "mexicoCity"
+  },
+  {
+    "id": 2,
+    "date": "2026-06-11",
+    "timeLocal": "20:00",
+    "stage": "group",
+    "group": "A",
+    "home": "KOR",
+    "away": "CZE",
+    "venueKey": "guadalajara"
+  },
+  {
+    "id": 3,
+    "date": "2026-06-12",
+    "timeLocal": "15:00",
+    "stage": "group",
+    "group": "B",
+    "home": "CAN",
+    "away": "BIH",
+    "venueKey": "toronto"
+  },
+  {
+    "id": 4,
+    "date": "2026-06-12",
+    "timeLocal": "18:00",
+    "stage": "group",
+    "group": "D",
+    "home": "USA",
+    "away": "PAR",
+    "venueKey": "losAngeles"
+  },
+  {
+    "id": 5,
+    "date": "2026-06-13",
+    "timeLocal": "21:00",
+    "stage": "group",
+    "group": "C",
+    "home": "HAI",
+    "away": "SCO",
+    "venueKey": "boston"
+  },
+  {
+    "id": 6,
+    "date": "2026-06-13",
+    "timeLocal": "21:00",
+    "stage": "group",
+    "group": "D",
+    "home": "AUS",
+    "away": "TUR",
+    "venueKey": "vancouver"
+  },
+  {
+    "id": 7,
+    "date": "2026-06-13",
+    "timeLocal": "18:00",
+    "stage": "group",
+    "group": "C",
+    "home": "BRA",
+    "away": "MAR",
+    "venueKey": "newYork"
+  },
+  {
+    "id": 8,
+    "date": "2026-06-13",
+    "timeLocal": "12:00",
+    "stage": "group",
+    "group": "B",
+    "home": "QAT",
+    "away": "SUI",
+    "venueKey": "sanFrancisco"
+  },
+  {
+    "id": 9,
+    "date": "2026-06-14",
+    "timeLocal": "19:00",
+    "stage": "group",
+    "group": "E",
+    "home": "CIV",
+    "away": "ECU",
+    "venueKey": "philadelphia"
+  },
+  {
+    "id": 10,
+    "date": "2026-06-14",
+    "timeLocal": "12:00",
+    "stage": "group",
+    "group": "E",
+    "home": "GER",
+    "away": "CUW",
+    "venueKey": "houston"
+  },
+  {
+    "id": 11,
+    "date": "2026-06-14",
+    "timeLocal": "15:00",
+    "stage": "group",
+    "group": "F",
+    "home": "NED",
+    "away": "JPN",
+    "venueKey": "dallas"
+  },
+  {
+    "id": 12,
+    "date": "2026-06-14",
+    "timeLocal": "20:00",
+    "stage": "group",
+    "group": "F",
+    "home": "SWE",
+    "away": "TUN",
+    "venueKey": "monterrey"
+  },
+  {
+    "id": 13,
+    "date": "2026-06-15",
+    "timeLocal": "18:00",
+    "stage": "group",
+    "group": "H",
+    "home": "KSA",
+    "away": "URU",
+    "venueKey": "miami"
+  },
+  {
+    "id": 14,
+    "date": "2026-06-15",
+    "timeLocal": "12:00",
+    "stage": "group",
+    "group": "H",
+    "home": "ESP",
+    "away": "CPV",
+    "venueKey": "atlanta"
+  },
+  {
+    "id": 15,
+    "date": "2026-06-15",
+    "timeLocal": "18:00",
+    "stage": "group",
+    "group": "G",
+    "home": "IRN",
+    "away": "NZL",
+    "venueKey": "losAngeles"
+  },
+  {
+    "id": 16,
+    "date": "2026-06-15",
+    "timeLocal": "12:00",
+    "stage": "group",
+    "group": "G",
+    "home": "BEL",
+    "away": "EGY",
+    "venueKey": "seattle"
+  },
+  {
+    "id": 17,
+    "date": "2026-06-16",
+    "timeLocal": "15:00",
+    "stage": "group",
+    "group": "I",
+    "home": "FRA",
+    "away": "SEN",
+    "venueKey": "newYork"
+  },
+  {
+    "id": 18,
+    "date": "2026-06-16",
+    "timeLocal": "18:00",
+    "stage": "group",
+    "group": "I",
+    "home": "IRQ",
+    "away": "NOR",
+    "venueKey": "boston"
+  },
+  {
+    "id": 19,
+    "date": "2026-06-16",
+    "timeLocal": "20:00",
+    "stage": "group",
+    "group": "J",
+    "home": "ARG",
+    "away": "ALG",
+    "venueKey": "kansasCity"
+  },
+  {
+    "id": 20,
+    "date": "2026-06-16",
+    "timeLocal": "21:00",
+    "stage": "group",
+    "group": "J",
+    "home": "AUT",
+    "away": "JOR",
+    "venueKey": "sanFrancisco"
+  },
+  {
+    "id": 21,
+    "date": "2026-06-17",
+    "timeLocal": "19:00",
+    "stage": "group",
+    "group": "L",
+    "home": "GHA",
+    "away": "PAN",
+    "venueKey": "toronto"
+  },
+  {
+    "id": 22,
+    "date": "2026-06-17",
+    "timeLocal": "15:00",
+    "stage": "group",
+    "group": "L",
+    "home": "ENG",
+    "away": "CRO",
+    "venueKey": "dallas"
+  },
+  {
+    "id": 23,
+    "date": "2026-06-17",
+    "timeLocal": "12:00",
+    "stage": "group",
+    "group": "K",
+    "home": "POR",
+    "away": "COD",
+    "venueKey": "houston"
+  },
+  {
+    "id": 24,
+    "date": "2026-06-17",
+    "timeLocal": "20:00",
+    "stage": "group",
+    "group": "K",
+    "home": "UZB",
+    "away": "COL",
+    "venueKey": "mexicoCity"
+  },
+  {
+    "id": 25,
+    "date": "2026-06-18",
+    "timeLocal": "12:00",
+    "stage": "group",
+    "group": "A",
+    "home": "CZE",
+    "away": "RSA",
+    "venueKey": "atlanta"
+  },
+  {
+    "id": 26,
+    "date": "2026-06-18",
+    "timeLocal": "12:00",
+    "stage": "group",
+    "group": "B",
+    "home": "SUI",
+    "away": "BIH",
+    "venueKey": "losAngeles"
+  },
+  {
+    "id": 27,
+    "date": "2026-06-18",
+    "timeLocal": "15:00",
+    "stage": "group",
+    "group": "B",
+    "home": "CAN",
+    "away": "QAT",
+    "venueKey": "vancouver"
+  },
+  {
+    "id": 28,
+    "date": "2026-06-18",
+    "timeLocal": "19:00",
+    "stage": "group",
+    "group": "A",
+    "home": "MEX",
+    "away": "KOR",
+    "venueKey": "guadalajara"
+  },
+  {
+    "id": 29,
+    "date": "2026-06-19",
+    "timeLocal": "21:00",
+    "stage": "group",
+    "group": "C",
+    "home": "BRA",
+    "away": "HAI",
+    "venueKey": "philadelphia"
+  },
+  {
+    "id": 30,
+    "date": "2026-06-19",
+    "timeLocal": "18:00",
+    "stage": "group",
+    "group": "C",
+    "home": "SCO",
+    "away": "MAR",
+    "venueKey": "boston"
+  },
+  {
+    "id": 31,
+    "date": "2026-06-19",
+    "timeLocal": "20:00",
+    "stage": "group",
+    "group": "D",
+    "home": "TUR",
+    "away": "PAR",
+    "venueKey": "sanFrancisco"
+  },
+  {
+    "id": 32,
+    "date": "2026-06-19",
+    "timeLocal": "12:00",
+    "stage": "group",
+    "group": "D",
+    "home": "USA",
+    "away": "AUS",
+    "venueKey": "seattle"
+  },
+  {
+    "id": 33,
+    "date": "2026-06-20",
+    "timeLocal": "16:00",
+    "stage": "group",
+    "group": "E",
+    "home": "GER",
+    "away": "CIV",
+    "venueKey": "toronto"
+  },
+  {
+    "id": 34,
+    "date": "2026-06-20",
+    "timeLocal": "19:00",
+    "stage": "group",
+    "group": "E",
+    "home": "ECU",
+    "away": "CUW",
+    "venueKey": "kansasCity"
+  },
+  {
+    "id": 35,
+    "date": "2026-06-20",
+    "timeLocal": "12:00",
+    "stage": "group",
+    "group": "F",
+    "home": "NED",
+    "away": "SWE",
+    "venueKey": "houston"
+  },
+  {
+    "id": 36,
+    "date": "2026-06-20",
+    "timeLocal": "22:00",
+    "stage": "group",
+    "group": "F",
+    "home": "TUN",
+    "away": "JPN",
+    "venueKey": "monterrey"
+  },
+  {
+    "id": 37,
+    "date": "2026-06-21",
+    "timeLocal": "18:00",
+    "stage": "group",
+    "group": "H",
+    "home": "URU",
+    "away": "CPV",
+    "venueKey": "miami"
+  },
+  {
+    "id": 38,
+    "date": "2026-06-21",
+    "timeLocal": "12:00",
+    "stage": "group",
+    "group": "H",
+    "home": "ESP",
+    "away": "KSA",
+    "venueKey": "atlanta"
+  },
+  {
+    "id": 39,
+    "date": "2026-06-21",
+    "timeLocal": "12:00",
+    "stage": "group",
+    "group": "G",
+    "home": "BEL",
+    "away": "IRN",
+    "venueKey": "losAngeles"
+  },
+  {
+    "id": 40,
+    "date": "2026-06-21",
+    "timeLocal": "18:00",
+    "stage": "group",
+    "group": "G",
+    "home": "NZL",
+    "away": "EGY",
+    "venueKey": "vancouver"
+  },
+  {
+    "id": 41,
+    "date": "2026-06-22",
+    "timeLocal": "20:00",
+    "stage": "group",
+    "group": "I",
+    "home": "NOR",
+    "away": "SEN",
+    "venueKey": "newYork"
+  },
+  {
+    "id": 42,
+    "date": "2026-06-22",
+    "timeLocal": "17:00",
+    "stage": "group",
+    "group": "I",
+    "home": "FRA",
+    "away": "IRQ",
+    "venueKey": "philadelphia"
+  },
+  {
+    "id": 43,
+    "date": "2026-06-22",
+    "timeLocal": "12:00",
+    "stage": "group",
+    "group": "J",
+    "home": "ARG",
+    "away": "AUT",
+    "venueKey": "dallas"
+  },
+  {
+    "id": 44,
+    "date": "2026-06-22",
+    "timeLocal": "20:00",
+    "stage": "group",
+    "group": "J",
+    "home": "JOR",
+    "away": "ALG",
+    "venueKey": "sanFrancisco"
+  },
+  {
+    "id": 45,
+    "date": "2026-06-23",
+    "timeLocal": "16:00",
+    "stage": "group",
+    "group": "L",
+    "home": "ENG",
+    "away": "GHA",
+    "venueKey": "boston"
+  },
+  {
+    "id": 46,
+    "date": "2026-06-23",
+    "timeLocal": "19:00",
+    "stage": "group",
+    "group": "L",
+    "home": "PAN",
+    "away": "CRO",
+    "venueKey": "toronto"
+  },
+  {
+    "id": 47,
+    "date": "2026-06-23",
+    "timeLocal": "12:00",
+    "stage": "group",
+    "group": "K",
+    "home": "POR",
+    "away": "UZB",
+    "venueKey": "houston"
+  },
+  {
+    "id": 48,
+    "date": "2026-06-23",
+    "timeLocal": "20:00",
+    "stage": "group",
+    "group": "K",
+    "home": "COL",
+    "away": "COD",
+    "venueKey": "guadalajara"
+  },
+  {
+    "id": 49,
+    "date": "2026-06-24",
+    "timeLocal": "18:00",
+    "stage": "group",
+    "group": "C",
+    "home": "SCO",
+    "away": "BRA",
+    "venueKey": "miami"
+  },
+  {
+    "id": 50,
+    "date": "2026-06-24",
+    "timeLocal": "18:00",
+    "stage": "group",
+    "group": "C",
+    "home": "MAR",
+    "away": "HAI",
+    "venueKey": "atlanta"
+  },
+  {
+    "id": 51,
+    "date": "2026-06-24",
+    "timeLocal": "12:00",
+    "stage": "group",
+    "group": "B",
+    "home": "SUI",
+    "away": "CAN",
+    "venueKey": "vancouver"
+  },
+  {
+    "id": 52,
+    "date": "2026-06-24",
+    "timeLocal": "12:00",
+    "stage": "group",
+    "group": "B",
+    "home": "BIH",
+    "away": "QAT",
+    "venueKey": "seattle"
+  },
+  {
+    "id": 53,
+    "date": "2026-06-24",
+    "timeLocal": "19:00",
+    "stage": "group",
+    "group": "A",
+    "home": "CZE",
+    "away": "MEX",
+    "venueKey": "mexicoCity"
+  },
+  {
+    "id": 54,
+    "date": "2026-06-24",
+    "timeLocal": "19:00",
+    "stage": "group",
+    "group": "A",
+    "home": "RSA",
+    "away": "KOR",
+    "venueKey": "monterrey"
+  },
+  {
+    "id": 55,
+    "date": "2026-06-25",
+    "timeLocal": "16:00",
+    "stage": "group",
+    "group": "E",
+    "home": "CUW",
+    "away": "CIV",
+    "venueKey": "philadelphia"
+  },
+  {
+    "id": 56,
+    "date": "2026-06-25",
+    "timeLocal": "16:00",
+    "stage": "group",
+    "group": "E",
+    "home": "ECU",
+    "away": "GER",
+    "venueKey": "newYork"
+  },
+  {
+    "id": 57,
+    "date": "2026-06-25",
+    "timeLocal": "18:00",
+    "stage": "group",
+    "group": "F",
+    "home": "JPN",
+    "away": "SWE",
+    "venueKey": "dallas"
+  },
+  {
+    "id": 58,
+    "date": "2026-06-25",
+    "timeLocal": "18:00",
+    "stage": "group",
+    "group": "F",
+    "home": "TUN",
+    "away": "NED",
+    "venueKey": "kansasCity"
+  },
+  {
+    "id": 59,
+    "date": "2026-06-25",
+    "timeLocal": "19:00",
+    "stage": "group",
+    "group": "D",
+    "home": "TUR",
+    "away": "USA",
+    "venueKey": "losAngeles"
+  },
+  {
+    "id": 60,
+    "date": "2026-06-25",
+    "timeLocal": "19:00",
+    "stage": "group",
+    "group": "D",
+    "home": "PAR",
+    "away": "AUS",
+    "venueKey": "sanFrancisco"
+  },
+  {
+    "id": 61,
+    "date": "2026-06-26",
+    "timeLocal": "15:00",
+    "stage": "group",
+    "group": "I",
+    "home": "NOR",
+    "away": "FRA",
+    "venueKey": "boston"
+  },
+  {
+    "id": 62,
+    "date": "2026-06-26",
+    "timeLocal": "15:00",
+    "stage": "group",
+    "group": "I",
+    "home": "SEN",
+    "away": "IRQ",
+    "venueKey": "toronto"
+  },
+  {
+    "id": 63,
+    "date": "2026-06-26",
+    "timeLocal": "20:00",
+    "stage": "group",
+    "group": "G",
+    "home": "EGY",
+    "away": "IRN",
+    "venueKey": "seattle"
+  },
+  {
+    "id": 64,
+    "date": "2026-06-26",
+    "timeLocal": "20:00",
+    "stage": "group",
+    "group": "G",
+    "home": "NZL",
+    "away": "BEL",
+    "venueKey": "vancouver"
+  },
+  {
+    "id": 65,
+    "date": "2026-06-26",
+    "timeLocal": "19:00",
+    "stage": "group",
+    "group": "H",
+    "home": "CPV",
+    "away": "KSA",
+    "venueKey": "houston"
+  },
+  {
+    "id": 66,
+    "date": "2026-06-26",
+    "timeLocal": "18:00",
+    "stage": "group",
+    "group": "H",
+    "home": "URU",
+    "away": "ESP",
+    "venueKey": "guadalajara"
+  },
+  {
+    "id": 67,
+    "date": "2026-06-27",
+    "timeLocal": "17:00",
+    "stage": "group",
+    "group": "L",
+    "home": "PAN",
+    "away": "ENG",
+    "venueKey": "newYork"
+  },
+  {
+    "id": 68,
+    "date": "2026-06-27",
+    "timeLocal": "17:00",
+    "stage": "group",
+    "group": "L",
+    "home": "CRO",
+    "away": "GHA",
+    "venueKey": "philadelphia"
+  },
+  {
+    "id": 69,
+    "date": "2026-06-27",
+    "timeLocal": "21:00",
+    "stage": "group",
+    "group": "J",
+    "home": "ALG",
+    "away": "AUT",
+    "venueKey": "kansasCity"
+  },
+  {
+    "id": 70,
+    "date": "2026-06-27",
+    "timeLocal": "21:00",
+    "stage": "group",
+    "group": "J",
+    "home": "JOR",
+    "away": "ARG",
+    "venueKey": "dallas"
+  },
+  {
+    "id": 71,
+    "date": "2026-06-27",
+    "timeLocal": "19:30",
+    "stage": "group",
+    "group": "K",
+    "home": "COL",
+    "away": "POR",
+    "venueKey": "miami"
+  },
+  {
+    "id": 72,
+    "date": "2026-06-27",
+    "timeLocal": "19:30",
+    "stage": "group",
+    "group": "K",
+    "home": "COD",
+    "away": "UZB",
+    "venueKey": "atlanta"
+  },
+  {
+    "id": 73,
+    "date": "2026-06-28",
+    "timeLocal": "12:00",
+    "stage": "round_of_32",
+    "labelKey": "wc26.matches.m73",
+    "venueKey": "losAngeles"
+  },
+  {
+    "id": 74,
+    "date": "2026-06-29",
+    "timeLocal": "16:30",
+    "stage": "round_of_32",
+    "labelKey": "wc26.matches.m74",
+    "venueKey": "boston"
+  },
+  {
+    "id": 75,
+    "date": "2026-06-29",
+    "timeLocal": "19:00",
+    "stage": "round_of_32",
+    "labelKey": "wc26.matches.m75",
+    "venueKey": "monterrey"
+  },
+  {
+    "id": 76,
+    "date": "2026-06-29",
+    "timeLocal": "12:00",
+    "stage": "round_of_32",
+    "labelKey": "wc26.matches.m76",
+    "venueKey": "houston"
+  },
+  {
+    "id": 77,
+    "date": "2026-06-30",
+    "timeLocal": "17:00",
+    "stage": "round_of_32",
+    "labelKey": "wc26.matches.m77",
+    "venueKey": "newYork"
+  },
+  {
+    "id": 78,
+    "date": "2026-06-30",
+    "timeLocal": "12:00",
+    "stage": "round_of_32",
+    "labelKey": "wc26.matches.m78",
+    "venueKey": "dallas"
+  },
+  {
+    "id": 79,
+    "date": "2026-06-30",
+    "timeLocal": "19:00",
+    "stage": "round_of_32",
+    "labelKey": "wc26.matches.m79",
+    "venueKey": "mexicoCity"
+  },
+  {
+    "id": 80,
+    "date": "2026-07-01",
+    "timeLocal": "12:00",
+    "stage": "round_of_32",
+    "labelKey": "wc26.matches.m80",
+    "venueKey": "atlanta"
+  },
+  {
+    "id": 81,
+    "date": "2026-07-01",
+    "timeLocal": "17:00",
+    "stage": "round_of_32",
+    "labelKey": "wc26.matches.m81",
+    "venueKey": "sanFrancisco"
+  },
+  {
+    "id": 82,
+    "date": "2026-07-01",
+    "timeLocal": "13:00",
+    "stage": "round_of_32",
+    "labelKey": "wc26.matches.m82",
+    "venueKey": "seattle"
+  },
+  {
+    "id": 83,
+    "date": "2026-07-02",
+    "timeLocal": "19:00",
+    "stage": "round_of_32",
+    "labelKey": "wc26.matches.m83",
+    "venueKey": "toronto"
+  },
+  {
+    "id": 84,
+    "date": "2026-07-02",
+    "timeLocal": "12:00",
+    "stage": "round_of_32",
+    "labelKey": "wc26.matches.m84",
+    "venueKey": "losAngeles"
+  },
+  {
+    "id": 85,
+    "date": "2026-07-02",
+    "timeLocal": "20:00",
+    "stage": "round_of_32",
+    "labelKey": "wc26.matches.m85",
+    "venueKey": "vancouver"
+  },
+  {
+    "id": 86,
+    "date": "2026-07-03",
+    "timeLocal": "18:00",
+    "stage": "round_of_32",
+    "labelKey": "wc26.matches.m86",
+    "venueKey": "miami"
+  },
+  {
+    "id": 87,
+    "date": "2026-07-03",
+    "timeLocal": "20:30",
+    "stage": "round_of_32",
+    "labelKey": "wc26.matches.m87",
+    "venueKey": "kansasCity"
+  },
+  {
+    "id": 88,
+    "date": "2026-07-03",
+    "timeLocal": "13:00",
+    "stage": "round_of_32",
+    "labelKey": "wc26.matches.m88",
+    "venueKey": "dallas"
+  },
+  {
+    "id": 89,
+    "date": "2026-07-04",
+    "timeLocal": "17:00",
+    "stage": "round_of_16",
+    "labelKey": "wc26.matches.m89",
+    "venueKey": "philadelphia"
+  },
+  {
+    "id": 90,
+    "date": "2026-07-04",
+    "timeLocal": "12:00",
+    "stage": "round_of_16",
+    "labelKey": "wc26.matches.m90",
+    "venueKey": "houston"
+  },
+  {
+    "id": 91,
+    "date": "2026-07-05",
+    "timeLocal": "16:00",
+    "stage": "round_of_16",
+    "labelKey": "wc26.matches.m91",
+    "venueKey": "newYork"
+  },
+  {
+    "id": 92,
+    "date": "2026-07-05",
+    "timeLocal": "18:00",
+    "stage": "round_of_16",
+    "labelKey": "wc26.matches.m92",
+    "venueKey": "mexicoCity"
+  },
+  {
+    "id": 93,
+    "date": "2026-07-06",
+    "timeLocal": "14:00",
+    "stage": "round_of_16",
+    "labelKey": "wc26.matches.m93",
+    "venueKey": "dallas"
+  },
+  {
+    "id": 94,
+    "date": "2026-07-06",
+    "timeLocal": "17:00",
+    "stage": "round_of_16",
+    "labelKey": "wc26.matches.m94",
+    "venueKey": "seattle"
+  },
+  {
+    "id": 95,
+    "date": "2026-07-07",
+    "timeLocal": "12:00",
+    "stage": "round_of_16",
+    "labelKey": "wc26.matches.m95",
+    "venueKey": "atlanta"
+  },
+  {
+    "id": 96,
+    "date": "2026-07-07",
+    "timeLocal": "13:00",
+    "stage": "round_of_16",
+    "labelKey": "wc26.matches.m96",
+    "venueKey": "vancouver"
+  },
+  {
+    "id": 97,
+    "date": "2026-07-09",
+    "timeLocal": "16:00",
+    "stage": "quarter_final",
+    "labelKey": "wc26.matches.m97",
+    "venueKey": "boston"
+  },
+  {
+    "id": 98,
+    "date": "2026-07-10",
+    "timeLocal": "12:00",
+    "stage": "quarter_final",
+    "labelKey": "wc26.matches.m98",
+    "venueKey": "losAngeles"
+  },
+  {
+    "id": 99,
+    "date": "2026-07-11",
+    "timeLocal": "17:00",
+    "stage": "quarter_final",
+    "labelKey": "wc26.matches.m99",
+    "venueKey": "miami"
+  },
+  {
+    "id": 100,
+    "date": "2026-07-11",
+    "timeLocal": "20:00",
+    "stage": "quarter_final",
+    "labelKey": "wc26.matches.m100",
+    "venueKey": "kansasCity"
+  },
+  {
+    "id": 101,
+    "date": "2026-07-14",
+    "timeLocal": "14:00",
+    "stage": "semi_final",
+    "labelKey": "wc26.matches.m101",
+    "venueKey": "dallas"
+  },
+  {
+    "id": 102,
+    "date": "2026-07-15",
+    "timeLocal": "15:00",
+    "stage": "semi_final",
+    "labelKey": "wc26.matches.m102",
+    "venueKey": "atlanta"
+  },
+  {
+    "id": 103,
+    "date": "2026-07-18",
+    "timeLocal": "17:00",
+    "stage": "third_place",
+    "labelKey": "wc26.matches.m103",
+    "venueKey": "miami"
+  },
+  {
+    "id": 104,
+    "date": "2026-07-19",
+    "timeLocal": "15:00",
+    "stage": "final",
+    "labelKey": "wc26.matches.m104",
+    "venueKey": "newYork"
+  }
+]

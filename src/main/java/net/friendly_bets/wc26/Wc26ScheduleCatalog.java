@@ -13,7 +13,8 @@ public final class Wc26ScheduleCatalog {
     public record GroupMatch(int scheduleId, String homeFifa, String awayFifa) {
     }
 
-    private static final Map<Integer, GroupMatch> BY_ID = new LinkedHashMap<>();
+    private static final Map<Integer, GroupMatch> STATIC_BY_ID = new LinkedHashMap<>();
+    private static volatile Map<Integer, GroupMatch> dbById = Map.of();
 
     static {
         gm(1, "MEX", "RSA");
@@ -94,14 +95,25 @@ public final class Wc26ScheduleCatalog {
     }
 
     private static void gm(int id, String home, String away) {
-        BY_ID.put(id, new GroupMatch(id, home, away));
+        STATIC_BY_ID.put(id, new GroupMatch(id, home, away));
+    }
+
+    public static void installDbLookup(Map<Integer, GroupMatch> loaded) {
+        dbById = Map.copyOf(loaded);
     }
 
     public static Optional<GroupMatch> findById(int scheduleId) {
-        return Optional.ofNullable(BY_ID.get(scheduleId));
+        GroupMatch fromDb = dbById.get(scheduleId);
+        if (fromDb != null) {
+            return Optional.of(fromDb);
+        }
+        return Optional.ofNullable(STATIC_BY_ID.get(scheduleId));
     }
 
     public static Map<Integer, GroupMatch> allGroupMatches() {
-        return Collections.unmodifiableMap(BY_ID);
+        if (!dbById.isEmpty()) {
+            return Collections.unmodifiableMap(dbById);
+        }
+        return Collections.unmodifiableMap(STATIC_BY_ID);
     }
 }

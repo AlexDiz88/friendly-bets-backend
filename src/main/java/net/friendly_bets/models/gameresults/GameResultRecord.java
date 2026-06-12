@@ -109,6 +109,10 @@ public class GameResultRecord {
     @Field(name = "fourscore_event_slug")
     private String fourscoreEventSlug;
 
+    /** Id матча в {@code wc26_schedule} (1–104). */
+    @Field(name = "wc26_schedule_id")
+    private Integer wc26ScheduleId;
+
     public boolean isFinalized() {
         return finalizedAt != null;
     }

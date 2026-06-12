@@ -16,4 +16,6 @@ public interface GameResultRecordRepository extends MongoRepository<GameResultRe
 
     List<GameResultRecord> findByLeagueCodeAndSeasonAndHomeTeamIdAndAwayTeamId(
             String leagueCode, String season, String homeTeamId, String awayTeamId);
+
+    List<GameResultRecord> findByLeagueCodeAndSeason(String leagueCode, String season);
 }
