@@ -2,6 +2,7 @@ package net.friendly_bets.fourscore;
 
 import lombok.Builder;
 import lombok.Value;
+import net.friendly_bets.models.gameresults.GameResultRecord;
 
 import java.time.LocalTime;
 
@@ -25,5 +26,17 @@ public class FourScoreListMatch {
         }
         String s = statusText.trim().toLowerCase();
         return s.contains("завершено");
+    }
+
+    public boolean needsEventDetails() {
+        return FourScoreStatusTextParser.needsEventDetails(statusText, homeScore, awayScore);
+    }
+
+    /** Опрос 4score: пропускаем неначавшиеся и уже финализированные в БД. */
+    public boolean shouldPollForRecord(GameResultRecord record) {
+        if (record != null && record.isFinalized()) {
+            return false;
+        }
+        return needsEventDetails();
     }
 }

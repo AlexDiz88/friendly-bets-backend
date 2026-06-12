@@ -60,6 +60,7 @@ public class GameResultPersistence {
             }
             existing.setGameScore(incoming.getGameScore());
             existing.setScoreDuration(incoming.getScoreDuration());
+            existing.setLiveMinuteLabel(incoming.getLiveMinuteLabel());
             existing.setProvider(providerId);
             existing.setFetchedAt(fetchedAt);
             stabilizationService.updateStabilityCounters(existing, fetchedAt);
@@ -81,6 +82,7 @@ public class GameResultPersistence {
         if (isPrimaryProvider(providerId)) {
             apiSyncIssueService.recordApiScoreChangedIfNeeded(existing, incoming);
             existing.setStatus(incoming.getStatus());
+            existing.setLiveMinuteLabel(incoming.getLiveMinuteLabel());
             existing.setFetchedAt(fetchedAt);
         }
         mergeProviderSource(existing, incoming, providerId, fetchedAt, true);
@@ -156,6 +158,7 @@ public class GameResultPersistence {
         stored.setStatus(incomingSource.getStatus());
         stored.setFetchedAt(fetchedAt);
         stored.setApiLastUpdated(incomingSource.getApiLastUpdated());
+        stored.setLiveMinuteLabel(incomingSource.getLiveMinuteLabel());
         if (!finalized || stored.getGameScore() == null) {
             stored.setGameScore(incomingSource.getGameScore());
             stored.setScoreDuration(incomingSource.getScoreDuration());

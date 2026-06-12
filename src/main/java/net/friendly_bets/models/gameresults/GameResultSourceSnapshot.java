@@ -57,4 +57,8 @@ public class GameResultSourceSnapshot {
     /** football-data score/duration: REGULAR | EXTRA_TIME | PENALTY_SHOOTOUT */
     @Field(name = "score_duration")
     private String scoreDuration;
+
+    /** Текущая минута live с 4score (напр. 72'). */
+    @Field(name = "live_minute_label")
+    private String liveMinuteLabel;
 }

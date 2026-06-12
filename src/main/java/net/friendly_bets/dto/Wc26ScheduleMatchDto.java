@@ -27,4 +27,7 @@ public class Wc26ScheduleMatchDto {
     private String status;
     private boolean finalized;
     private LocalDateTime utcDate;
+    /** Текущая минута live с 4score (напр. 72'). */
+    private String liveMinuteLabel;
+    private LocalDateTime fetchedAt;
 }
