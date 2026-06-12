@@ -72,6 +72,17 @@ public class BetsController implements BetsApi {
     }
 
     @Override
+    @PreAuthorize("hasAuthority('USER') || hasAuthority('MODERATOR') || hasAuthority('ADMIN')")
+    @GetMapping("/slot/seasons/{season-id}")
+    public ResponseEntity<BetsPage> getUserSlotBets(@AuthenticationPrincipal AuthenticatedUser currentUser,
+                                                    @PathVariable("season-id") String seasonId,
+                                                    @RequestParam String leagueId,
+                                                    @RequestParam String matchDay) {
+        String userId = currentUser.getUser().getId();
+        return ResponseEntity.ok(betsService.getUserSlotBets(seasonId, userId, leagueId, matchDay));
+    }
+
+    @Override
     @GetMapping("/completed/seasons/{season-id}")
     public ResponseEntity<BetsPage> getCompletedBets(@PathVariable("season-id") String seasonId,
                                                      @RequestParam(required = false) String playerId,

@@ -231,6 +231,25 @@ public class BetsService {
     // ------------------------------------------------------------------------------------------------------ //
 
 
+    public BetsPage getUserSlotBets(String seasonId, String userId, String leagueId, String matchDay) {
+        if (leagueId == null || leagueId.isBlank() || matchDay == null || matchDay.isBlank()) {
+            throw new BadRequestException("invalidRequest");
+        }
+        List<Bet> bets = betsRepository.findAllBySeason_IdAndUser_IdAndLeague_IdAndMatchDayAndBetStatusIn(
+                seasonId,
+                userId,
+                leagueId,
+                matchDay.trim(),
+                VALID_BET_STATUSES
+        );
+        return BetsPage.builder()
+                .bets(BetDto.from(bets))
+                .build();
+    }
+
+    // ------------------------------------------------------------------------------------------------------ //
+
+
     public BetsPage getCompletedBets(String seasonId, String playerId, String leagueId, Pageable pageable) {
         Page<Bet> completedBetsPage = null;
 
