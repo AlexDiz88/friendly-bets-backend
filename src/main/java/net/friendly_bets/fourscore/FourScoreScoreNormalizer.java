@@ -10,23 +10,30 @@ import java.util.Locale;
 @Component
 public class FourScoreScoreNormalizer {
 
-    public record NormalizedScore(GameScore gameScore, String scoreDuration, String status) {
+    public record NormalizedScore(
+            GameScore gameScore,
+            String scoreDuration,
+            String status,
+            String liveMinuteLabel
+    ) {
     }
 
     public NormalizedScore normalize(FourScoreEventDetails details) {
         if (details == null) {
             return null;
         }
-        String status = mapStatus(details.getStatusText());
+        FourScoreStatusTextParser.ParsedStatus parsed = FourScoreStatusTextParser.parse(details.getStatusText());
+        String status = parsed.mappedStatus();
+        String liveMinuteLabel = parsed.liveMinuteLabel();
         if (!FootballDataMatchStatuses.hasScore(status) && !FootballDataMatchStatuses.isTerminal(status)) {
-            return new NormalizedScore(null, null, status);
+            return new NormalizedScore(null, null, status, liveMinuteLabel);
         }
 
         String firstHalf = details.getFirstHalfScore();
         String secondHalf = details.getSecondHalfScore();
-        String fullTime = resolveFullTime(firstHalf, secondHalf, details);
+        String fullTime = resolveFullTime(firstHalf, secondHalf, details, status);
         if (fullTime == null) {
-            return new NormalizedScore(null, null, status);
+            return new NormalizedScore(null, null, status, liveMinuteLabel);
         }
 
         GameScore.GameScoreBuilder builder = GameScore.builder()
@@ -41,7 +48,10 @@ public class FourScoreScoreNormalizer {
         }
 
         String duration = resolveDuration(details);
-        return new NormalizedScore(builder.build(), duration, status);
+        if (FootballDataMatchStatuses.isTerminal(status)) {
+            liveMinuteLabel = null;
+        }
+        return new NormalizedScore(builder.build(), duration, status, liveMinuteLabel);
     }
 
     private static String resolveDuration(FourScoreEventDetails details) {
@@ -54,7 +64,12 @@ public class FourScoreScoreNormalizer {
         return FootballDataScoreNormalizer.DURATION_REGULAR;
     }
 
-    private static String resolveFullTime(String firstHalf, String secondHalf, FourScoreEventDetails details) {
+    private static String resolveFullTime(
+            String firstHalf,
+            String secondHalf,
+            FourScoreEventDetails details,
+            String status
+    ) {
         if (firstHalf != null && secondHalf != null) {
             int[] fh = parseParts(firstHalf);
             int[] sh = parseParts(secondHalf);
@@ -64,6 +79,12 @@ public class FourScoreScoreNormalizer {
         }
         if (details.getHeaderHomeScore() != null && details.getHeaderAwayScore() != null
                 && details.getExtraTimeScore() == null && details.getPenaltyScore() == null) {
+            return details.getHeaderHomeScore() + ":" + details.getHeaderAwayScore();
+        }
+        if (FootballDataMatchStatuses.hasScore(status)
+                && firstHalf != null
+                && details.getHeaderHomeScore() != null
+                && details.getHeaderAwayScore() != null) {
             return details.getHeaderHomeScore() + ":" + details.getHeaderAwayScore();
         }
         return null;

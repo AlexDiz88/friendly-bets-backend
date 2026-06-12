@@ -84,6 +84,10 @@ public class GameResultRecord {
     @Field(name = "score_duration")
     private String scoreDuration;
 
+    /** Текущая минута live с 4score (напр. 72'), null после финиша. */
+    @Field(name = "live_minute_label")
+    private String liveMinuteLabel;
+
     /** Первый poll с terminal status. */
     @Field(name = "first_terminal_at")
     private LocalDateTime firstTerminalAt;

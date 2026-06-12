@@ -16,6 +16,8 @@ public class FourScoreProperties {
     private long requestDelayMs = 1500L;
     /** Throttle between HTTP calls in admin preview (many event pages per request). */
     private long previewRequestDelayMs = 300L;
+    /** Интервал опроса live-матчей (мс). */
+    private long pollingIntervalMs = 300_000L;
     private int connectTimeoutMs = 15000;
     private int readTimeoutMs = 30000;
     private List<String> primaryForLeagues = new ArrayList<>(List.of("WC"));

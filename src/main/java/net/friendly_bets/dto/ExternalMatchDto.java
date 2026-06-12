@@ -42,6 +42,8 @@ public class ExternalMatchDto {
     private String finalizedSource;
     private boolean adminCorrected;
     private boolean finalized;
+    /** Текущая минута live с 4score (напр. 72'). */
+    private String liveMinuteLabel;
 
     public static ExternalMatchDto from(GameResultRecord match) {
         GameResultSourceSnapshot source = match.footballDataSource();
@@ -63,6 +65,7 @@ public class ExternalMatchDto {
                 .finalizedSource(match.getFinalizedSource())
                 .adminCorrected(match.isAdminCorrected())
                 .finalized(match.isFinalized())
+                .liveMinuteLabel(match.getLiveMinuteLabel())
                 .build();
     }
 }

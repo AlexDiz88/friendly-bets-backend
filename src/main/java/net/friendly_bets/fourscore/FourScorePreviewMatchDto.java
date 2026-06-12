@@ -14,6 +14,8 @@ public class FourScorePreviewMatchDto {
     String homeTeamName;
     String awayTeamName;
     String statusText;
+    String mappedStatus;
+    String liveMinuteLabel;
     Integer listHomeScore;
     Integer listAwayScore;
     String homeTeamTitle;

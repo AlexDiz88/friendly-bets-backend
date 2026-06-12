@@ -1,7 +1,6 @@
 package net.friendly_bets.footballdata;
 
 import lombok.RequiredArgsConstructor;
-import net.friendly_bets.fourscore.FourScoreSyncService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -14,7 +13,6 @@ public class FootballDataSyncScheduler {
     private static final Logger log = LoggerFactory.getLogger(FootballDataSyncScheduler.class);
 
     private final FootballDataSyncService footballDataSyncService;
-    private final FourScoreSyncService fourScoreSyncService;
     private final AutoBetSettlementService autoBetSettlementService;
 
     /** Каждые 15 мин: опрос API → auto-settle открытых ставок. */
@@ -24,15 +22,6 @@ public class FootballDataSyncScheduler {
             footballDataSyncService.runPollingTick();
         } catch (Exception e) {
             log.warn("Football-data polling tick failed: {}", e.getMessage());
-        }
-
-        try {
-            int fourScoreSynced = fourScoreSyncService.runPollingTick();
-            if (fourScoreSynced > 0) {
-                log.debug("4score polled {} matchday(s)", fourScoreSynced);
-            }
-        } catch (Exception e) {
-            log.warn("4score polling tick failed: {}", e.getMessage());
         }
 
         try {

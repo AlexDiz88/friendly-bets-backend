@@ -68,4 +68,25 @@ class FourScoreEventPageParserTest {
         assertEquals("1:1", normalized.gameScore().getFullTime());
         assertEquals("2:4", normalized.gameScore().getPenalty());
     }
+
+    @Test
+    void parsesLiveMatchWithMinuteAndHalves() throws Exception {
+        String html = Files.readString(Path.of("src/test/resources/fourscore/event-kanada-bosnia-live.html"));
+        FourScoreEventDetails details = parser.parse(
+                html,
+                "/events/kanada-bosniya-i-gertsegovina-12-06-2026/",
+                FourScoreLeagueSection.WORLD_CUP
+        );
+        assertNotNull(details);
+        assertEquals("Идёт 72'", details.getStatusText());
+        assertEquals("0:1", details.getFirstHalfScore());
+        assertEquals("0:0", details.getSecondHalfScore());
+
+        FourScoreScoreNormalizer.NormalizedScore normalized = normalizer.normalize(details);
+        assertNotNull(normalized);
+        assertEquals("IN_PLAY", normalized.status());
+        assertEquals("72'", normalized.liveMinuteLabel());
+        assertEquals("0:1", normalized.gameScore().getFullTime());
+        assertEquals("0:1", normalized.gameScore().getFirstTime());
+    }
 }

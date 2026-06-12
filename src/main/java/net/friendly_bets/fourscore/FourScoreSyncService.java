@@ -85,6 +85,10 @@ public class FourScoreSyncService {
         if (records.isEmpty()) {
             return 0;
         }
+        boolean hasPending = records.stream().anyMatch(r -> !r.isFinalized());
+        if (!hasPending) {
+            return 0;
+        }
         Set<LocalDate> dates = records.stream()
                 .map(GameResultRecord::getUtcDate)
                 .filter(d -> d != null)
@@ -112,11 +116,11 @@ public class FourScoreSyncService {
         int updated = 0;
         LocalDateTime fetchedAt = LocalDateTime.now();
         for (FourScoreListMatch listMatch : listMatches) {
-            if (!listMatch.isTerminal()) {
+            if (!listMatch.needsEventDetails()) {
                 continue;
             }
             try {
-                if (applyListMatch(listMatch, leagueCode, season, matchday, records, fetchedAt)) {
+                if (applyListMatchIfEligible(listMatch, leagueCode, season, matchday, records, fetchedAt)) {
                     updated++;
                 }
             } catch (Exception e) {
@@ -126,7 +130,7 @@ public class FourScoreSyncService {
         return updated;
     }
 
-    private boolean applyListMatch(
+    private boolean applyListMatchIfEligible(
             FourScoreListMatch listMatch,
             String leagueCode,
             String season,
@@ -168,7 +172,20 @@ public class FourScoreSyncService {
             return false;
         }
 
-        GameResultRecord record = existing.get();
+        if (!listMatch.shouldPollForRecord(existing.get())) {
+            return false;
+        }
+
+        return applyListMatch(listMatch, existing.get(), home.get(), away.get(), fetchedAt);
+    }
+
+    private boolean applyListMatch(
+            FourScoreListMatch listMatch,
+            GameResultRecord record,
+            Team home,
+            Team away,
+            LocalDateTime fetchedAt
+    ) {
         if (gameResultPersistence.isLockedAgainstApiSync(record)) {
             return false;
         }
@@ -186,8 +203,8 @@ public class FourScoreSyncService {
         GameResultRecord incoming = gameResultMapper.toIncomingPatch(
                 record,
                 details,
-                home.get(),
-                away.get(),
+                home,
+                away,
                 listMatch.getExternalEventId(),
                 fetchedAt
         );
@@ -222,7 +239,7 @@ public class FourScoreSyncService {
         FourScoreEventDetails details = null;
         FourScoreScoreNormalizer.NormalizedScore normalized = null;
         String detailsError = null;
-        if (listMatch.isTerminal()) {
+        if (listMatch.needsEventDetails()) {
             try {
                 String eventHtml = httpClient.fetchEventPageForPreview(listMatch.getEventPath());
                 if (eventHtml == null || eventHtml.isBlank()) {
@@ -241,13 +258,22 @@ public class FourScoreSyncService {
             }
         }
         String fullTimeScore = resolvePreviewFullTimeScore(normalized, details, listMatch);
+        String effectiveStatusText = details != null && details.getStatusText() != null
+                ? details.getStatusText()
+                : listMatch.getStatusText();
+        String mappedStatus = normalized != null
+                ? normalized.status()
+                : FourScoreStatusTextParser.parse(effectiveStatusText).mappedStatus();
+        String liveMinuteLabel = normalized != null ? normalized.liveMinuteLabel() : null;
         return FourScorePreviewMatchDto.builder()
                 .section(listMatch.getSection().name())
                 .eventSlug(listMatch.getEventSlug())
                 .eventPath(listMatch.getEventPath())
                 .homeTeamName(listMatch.getHomeTeamName())
                 .awayTeamName(listMatch.getAwayTeamName())
-                .statusText(listMatch.getStatusText())
+                .statusText(effectiveStatusText)
+                .mappedStatus(mappedStatus)
+                .liveMinuteLabel(liveMinuteLabel)
                 .listHomeScore(listMatch.getHomeScore())
                 .listAwayScore(listMatch.getAwayScore())
                 .homeTeamTitle(home.map(Team::getTitle).orElse(null))

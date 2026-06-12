@@ -53,7 +53,8 @@ public class FourScoreGameResultMapper {
         if (normalized != null) {
             builder.status(normalized.status())
                     .gameScore(normalized.gameScore())
-                    .scoreDuration(normalized.scoreDuration());
+                    .scoreDuration(normalized.scoreDuration())
+                    .liveMinuteLabel(normalized.liveMinuteLabel());
         }
         if (details.getKickoffAt() != null) {
             builder.utcDate(details.getKickoffAt());
@@ -86,6 +87,7 @@ public class FourScoreGameResultMapper {
                 .utcDate(details.getKickoffAt())
                 .gameScore(normalized != null ? normalized.gameScore() : null)
                 .scoreDuration(normalized != null ? normalized.scoreDuration() : null)
+                .liveMinuteLabel(normalized != null ? normalized.liveMinuteLabel() : null)
                 .home(sideSnapshot(details.getHomeTeamName()))
                 .away(sideSnapshot(details.getAwayTeamName()))
                 .fetchedAt(fetchedAt)
