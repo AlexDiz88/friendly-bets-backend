@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import net.friendly_bets.dto.UnmappedExternalTeamNameDto;
 import net.friendly_bets.exceptions.NotFoundException;
 import net.friendly_bets.footballdata.client.dto.FootballDataMatchDto;
+import net.friendly_bets.fourscore.FourScoreListMatch;
 import net.friendly_bets.gameresults.GameScoreValidator;
 import net.friendly_bets.gameresults.MatchDataProviders;
 import net.friendly_bets.models.GameScore;
@@ -28,6 +29,90 @@ public class ApiSyncIssueService {
 
     private final ApiSyncIssueRepository apiSyncIssueRepository;
     private final TeamAliasResolver teamAliasResolver;
+
+    public void recordMissingFourScoreTeamMapping(
+            String leagueCode,
+            String season,
+            int matchday,
+            Long externalEventId,
+            boolean home,
+            String teamName
+    ) {
+        if (teamName == null || teamName.isBlank()) {
+            return;
+        }
+        if (teamAliasResolver.resolveFourScoreByName(teamName).isPresent()) {
+            return;
+        }
+        if (hasUnresolvedFourScoreTeamMappingIssue(teamName)) {
+            return;
+        }
+        apiSyncIssueRepository.save(ApiSyncIssue.builder()
+                .createdAt(LocalDateTime.now())
+                .provider(MatchDataProviders.FOURSCORE)
+                .issueType(ApiSyncIssue.IssueType.TEAM_MAPPING_MISSING.name())
+                .leagueCode(leagueCode)
+                .season(season)
+                .matchday(matchday)
+                .externalMatchId(externalEventId)
+                .homeTeamName(home ? teamName : null)
+                .awayTeamName(home ? null : teamName)
+                .build());
+    }
+
+    public void recordFourScoreEventMappingMissing(
+            FourScoreListMatch listMatch,
+            String leagueCode,
+            String season,
+            int matchday
+    ) {
+        if (listMatch == null) {
+            return;
+        }
+        Long externalEventId = listMatch.getExternalEventId();
+        if (externalEventId != null
+                && apiSyncIssueRepository.existsByProviderAndIssueTypeAndExternalMatchId(
+                MatchDataProviders.FOURSCORE,
+                ApiSyncIssue.IssueType.EVENT_MAPPING_MISSING.name(),
+                externalEventId)) {
+            return;
+        }
+        apiSyncIssueRepository.save(ApiSyncIssue.builder()
+                .createdAt(LocalDateTime.now())
+                .provider(MatchDataProviders.FOURSCORE)
+                .issueType(ApiSyncIssue.IssueType.EVENT_MAPPING_MISSING.name())
+                .leagueCode(leagueCode)
+                .season(season)
+                .matchday(matchday)
+                .externalMatchId(listMatch.getExternalEventId())
+                .homeTeamName(listMatch.getHomeTeamName())
+                .awayTeamName(listMatch.getAwayTeamName())
+                .message("fourScoreGameResultNotFound")
+                .build());
+    }
+
+    private boolean hasUnresolvedFourScoreTeamMappingIssue(String teamName) {
+        for (ApiSyncIssue issue : apiSyncIssueRepository.findTop200ByOrderByCreatedAtDesc()) {
+            if (!ApiSyncIssue.IssueType.TEAM_MAPPING_MISSING.name().equals(issue.getIssueType())) {
+                continue;
+            }
+            if (!providerEquals(issue.getProvider(), MatchDataProviders.FOURSCORE)) {
+                continue;
+            }
+            if (!issueMatchesExternalName(issue, teamName)) {
+                continue;
+            }
+            return !isResolvedTeamMappingIssue(issue);
+        }
+        return false;
+    }
+
+    private static boolean issueMatchesExternalName(ApiSyncIssue issue, String teamName) {
+        if (teamName == null || teamName.isBlank()) {
+            return false;
+        }
+        return teamName.equals(issue.getHomeTeamName()) || teamName.equals(issue.getAwayTeamName());
+    }
 
     public void recordMissingTeamMapping(
             String leagueCode,
@@ -630,6 +715,10 @@ public class ApiSyncIssueService {
             if (teamAliasResolver.resolveApiFootball(parsedId > 0 ? parsedId : null, name).isPresent()) {
                 return;
             }
+        } else if (MatchDataProviders.FOURSCORE.equals(provider)) {
+            if (teamAliasResolver.resolveFourScoreByName(name).isPresent()) {
+                return;
+            }
         } else if (teamAliasResolver.resolveFootballData(parsedId, name).isPresent()) {
             return;
         }
@@ -837,6 +926,9 @@ public class ApiSyncIssueService {
     private boolean isExternalTeamMapped(String provider, Integer externalId, String externalName) {
         if (MatchDataProviders.MARATHONBET.equals(provider)) {
             return teamAliasResolver.resolveMarathonbetByName(externalName).isPresent();
+        }
+        if (MatchDataProviders.FOURSCORE.equals(provider)) {
+            return teamAliasResolver.resolveFourScoreByName(externalName).isPresent();
         }
         if (MatchDataProviders.ODDS_API.equals(provider)) {
             return teamAliasResolver.oddsApiAliasesMapped(externalId, externalName);

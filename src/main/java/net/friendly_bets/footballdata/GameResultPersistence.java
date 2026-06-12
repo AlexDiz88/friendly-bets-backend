@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import net.friendly_bets.gameresults.GameResultFinalizer;
 import net.friendly_bets.gameresults.MatchDataProviders;
 import net.friendly_bets.gameresults.MatchResultStabilizationService;
+import net.friendly_bets.gameresults.MatchResultSyncSettingsService;
 import net.friendly_bets.models.gameresults.GameResultRecord;
 import net.friendly_bets.models.gameresults.GameResultSourceSnapshot;
 import org.springframework.stereotype.Component;
@@ -19,47 +20,95 @@ public class GameResultPersistence {
     private final GameResultFinalizer gameResultFinalizer;
     private final ApiSyncIssueService apiSyncIssueService;
     private final MatchResultStabilizationService stabilizationService;
+    private final MatchResultSyncSettingsService matchResultSyncSettingsService;
 
     public boolean isLockedAgainstApiSync(GameResultRecord record) {
         return record != null && record.isAdminCorrected();
     }
 
-    /**
-     * Первая запись или provisional: полное обновление канона и снимка API, затем попытка финализации.
-     */
-    public void applyProvisionalSync(GameResultRecord existing, GameResultRecord incoming, LocalDateTime fetchedAt) {
-        apiSyncIssueService.recordApiScoreChangedIfNeeded(existing, incoming);
-        existing.setStatus(incoming.getStatus());
-        existing.setUtcDate(incoming.getUtcDate());
-        existing.setGameScore(incoming.getGameScore());
-        existing.setScoreDuration(incoming.getScoreDuration());
-        existing.setFetchedAt(fetchedAt);
-        replaceFootballDataSource(existing, incoming.footballDataSource());
-        mergeSecondarySources(existing, incoming);
-        stabilizationService.updateStabilityCounters(existing, fetchedAt);
-        gameResultFinalizer.tryFinalize(existing, fetchedAt);
+    public void applySync(GameResultRecord existing, GameResultRecord incoming, LocalDateTime fetchedAt) {
+        applyProviderSync(existing, incoming, MatchDataProviders.FOOTBALL_DATA, fetchedAt);
     }
 
-    /**
-     * Уже финализировано API: канонический счёт не меняется; обновляются status/fetchedAt и снимок API.
-     */
-    public void applyFinalizedApiSync(GameResultRecord existing, GameResultRecord incoming, LocalDateTime fetchedAt) {
-        apiSyncIssueService.recordApiScoreChangedIfNeeded(existing, incoming);
-        existing.setStatus(incoming.getStatus());
-        existing.setFetchedAt(fetchedAt);
-        mergeFinalizedFootballDataSource(existing, incoming.footballDataSource(), fetchedAt);
-        mergeSecondarySources(existing, incoming);
-    }
-
-    public void applySync(GameResultRecord record, GameResultRecord incoming, LocalDateTime fetchedAt) {
-        if (record.getFinalizedAt() != null) {
-            applyFinalizedApiSync(record, incoming, fetchedAt);
+    public void applyProviderSync(
+            GameResultRecord existing,
+            GameResultRecord incoming,
+            String providerId,
+            LocalDateTime fetchedAt
+    ) {
+        if (existing.getFinalizedAt() != null) {
+            applyFinalizedProviderSync(existing, incoming, providerId, fetchedAt);
         } else {
-            applyProvisionalSync(record, incoming, fetchedAt);
+            applyProvisionalProviderSync(existing, incoming, providerId, fetchedAt);
         }
     }
 
-    private static void mergeSecondarySources(GameResultRecord existing, GameResultRecord incoming) {
+    /**
+     * Первая запись или provisional: primary обновляет канон, secondary — только sources.
+     */
+    public void applyProvisionalProviderSync(
+            GameResultRecord existing,
+            GameResultRecord incoming,
+            String providerId,
+            LocalDateTime fetchedAt
+    ) {
+        if (isPrimaryProvider(providerId)) {
+            apiSyncIssueService.recordApiScoreChangedIfNeeded(existing, incoming);
+            existing.setStatus(incoming.getStatus());
+            if (incoming.getUtcDate() != null) {
+                existing.setUtcDate(incoming.getUtcDate());
+            }
+            existing.setGameScore(incoming.getGameScore());
+            existing.setScoreDuration(incoming.getScoreDuration());
+            existing.setProvider(providerId);
+            existing.setFetchedAt(fetchedAt);
+            stabilizationService.updateStabilityCounters(existing, fetchedAt);
+            gameResultFinalizer.tryFinalize(existing, fetchedAt);
+        }
+        mergeProviderSource(existing, incoming, providerId, fetchedAt, false);
+        mergeSecondarySources(existing, incoming, providerId);
+    }
+
+    /**
+     * Уже финализировано: канонический счёт не меняется; обновляются status/fetchedAt и снимок провайдера.
+     */
+    public void applyFinalizedProviderSync(
+            GameResultRecord existing,
+            GameResultRecord incoming,
+            String providerId,
+            LocalDateTime fetchedAt
+    ) {
+        if (isPrimaryProvider(providerId)) {
+            apiSyncIssueService.recordApiScoreChangedIfNeeded(existing, incoming);
+            existing.setStatus(incoming.getStatus());
+            existing.setFetchedAt(fetchedAt);
+        }
+        mergeProviderSource(existing, incoming, providerId, fetchedAt, true);
+        mergeSecondarySources(existing, incoming, providerId);
+    }
+
+    /** @deprecated use {@link #applyProvisionalProviderSync} */
+    @Deprecated
+    public void applyProvisionalSync(GameResultRecord existing, GameResultRecord incoming, LocalDateTime fetchedAt) {
+        applyProvisionalProviderSync(existing, incoming, MatchDataProviders.FOOTBALL_DATA, fetchedAt);
+    }
+
+    /** @deprecated use {@link #applyFinalizedProviderSync} */
+    @Deprecated
+    public void applyFinalizedApiSync(GameResultRecord existing, GameResultRecord incoming, LocalDateTime fetchedAt) {
+        applyFinalizedProviderSync(existing, incoming, MatchDataProviders.FOOTBALL_DATA, fetchedAt);
+    }
+
+    private boolean isPrimaryProvider(String providerId) {
+        String primary = matchResultSyncSettingsService.getEffective().getPrimaryProvider();
+        return providerId != null && providerId.equals(primary);
+    }
+
+    private static void mergeSecondarySources(
+            GameResultRecord existing,
+            GameResultRecord incoming,
+            String appliedProviderId
+    ) {
         if (incoming == null || incoming.getSources() == null) {
             return;
         }
@@ -68,31 +117,29 @@ public class GameResultPersistence {
             sources = new HashMap<>();
             existing.setSources(sources);
         }
-        String apiFootballKey = MatchDataProviders.sourcesStorageKey(MatchDataProviders.API_FOOTBALL);
-        GameResultSourceSnapshot secondary = incoming.getSources().get(apiFootballKey);
-        if (secondary != null) {
-            sources.put(apiFootballKey, secondary);
+        for (Map.Entry<String, GameResultSourceSnapshot> entry : incoming.getSources().entrySet()) {
+            String key = entry.getKey();
+            String providerFromKey = key.replace('_', '-');
+            if (providerFromKey.equals(appliedProviderId)) {
+                continue;
+            }
+            if (MatchDataProviders.sourcesStorageKey(MatchDataProviders.API_FOOTBALL).equals(key)
+                    || MatchDataProviders.sourcesStorageKey(MatchDataProviders.FOOTBALL_DATA).equals(key)
+                    || MatchDataProviders.sourcesStorageKey(MatchDataProviders.FOURSCORE).equals(key)) {
+                sources.put(key, entry.getValue());
+            }
         }
     }
 
-    private static void replaceFootballDataSource(GameResultRecord record, GameResultSourceSnapshot incoming) {
-        if (incoming == null) {
-            return;
-        }
-        Map<String, GameResultSourceSnapshot> sources = record.getSources();
-        if (sources == null) {
-            sources = new HashMap<>();
-            record.setSources(sources);
-        }
-        sources.put(MatchDataProviders.sourcesStorageKey(MatchDataProviders.FOOTBALL_DATA), incoming);
-    }
-
-    private static void mergeFinalizedFootballDataSource(
+    private static void mergeProviderSource(
             GameResultRecord record,
-            GameResultSourceSnapshot incoming,
-            LocalDateTime fetchedAt
+            GameResultRecord incoming,
+            String providerId,
+            LocalDateTime fetchedAt,
+            boolean finalized
     ) {
-        if (incoming == null) {
+        GameResultSourceSnapshot incomingSource = incomingSourceFor(incoming, providerId);
+        if (incomingSource == null) {
             return;
         }
         Map<String, GameResultSourceSnapshot> sources = record.getSources();
@@ -100,16 +147,28 @@ public class GameResultPersistence {
             sources = new HashMap<>();
             record.setSources(sources);
         }
-        String storageKey = MatchDataProviders.sourcesStorageKey(MatchDataProviders.FOOTBALL_DATA);
+        String storageKey = MatchDataProviders.sourcesStorageKey(providerId);
         GameResultSourceSnapshot stored = sources.get(storageKey);
         if (stored == null) {
-            sources.put(storageKey, incoming);
+            sources.put(storageKey, incomingSource);
             return;
         }
-        stored.setStatus(incoming.getStatus());
+        stored.setStatus(incomingSource.getStatus());
         stored.setFetchedAt(fetchedAt);
-        stored.setApiLastUpdated(incoming.getApiLastUpdated());
-        stored.setGameScore(incoming.getGameScore());
-        stored.setScoreDuration(incoming.getScoreDuration());
+        stored.setApiLastUpdated(incomingSource.getApiLastUpdated());
+        if (!finalized || stored.getGameScore() == null) {
+            stored.setGameScore(incomingSource.getGameScore());
+            stored.setScoreDuration(incomingSource.getScoreDuration());
+        } else {
+            stored.setGameScore(incomingSource.getGameScore());
+            stored.setScoreDuration(incomingSource.getScoreDuration());
+        }
+    }
+
+    private static GameResultSourceSnapshot incomingSourceFor(GameResultRecord incoming, String providerId) {
+        if (incoming == null || incoming.getSources() == null) {
+            return null;
+        }
+        return incoming.getSources().get(MatchDataProviders.sourcesStorageKey(providerId));
     }
 }

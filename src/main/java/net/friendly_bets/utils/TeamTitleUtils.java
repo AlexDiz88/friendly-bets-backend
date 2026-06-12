@@ -12,6 +12,7 @@ public final class TeamTitleUtils {
     public static final String ODDS_API_PROVIDER = "odds-api.io";
     public static final String API_FOOTBALL_PROVIDER = "api-football";
     public static final String MARATHONBET_PROVIDER = "marathonbet";
+    public static final String FOURSCORE_PROVIDER = "4score.ru";
 
     private TeamTitleUtils() {
     }
