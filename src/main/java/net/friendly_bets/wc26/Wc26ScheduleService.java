@@ -101,10 +101,13 @@ public class Wc26ScheduleService {
             builder.status(result.getStatus())
                     .finalized(result.isFinalized())
                     .utcDate(result.getUtcDate())
+                    .liveMinuteLabel(result.getLiveMinuteLabel())
+                    .fetchedAt(result.getFetchedAt())
                     .scoreView(ExternalMatchScoreView.format(
                             result.getGameScore(),
                             result.getStatus(),
-                            result.isFinalized()));
+                            result.isFinalized(),
+                            result.getLiveMinuteLabel()));
         }
         return builder.build();
     }
