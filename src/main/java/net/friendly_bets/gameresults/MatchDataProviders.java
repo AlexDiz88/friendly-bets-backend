@@ -17,6 +17,12 @@ public final class MatchDataProviders {
         if (providerId == null) {
             return null;
         }
+        if (FOURSCORE.equals(providerId)) {
+            return "4score";
+        }
+        if (ODDS_API.equals(providerId)) {
+            return "odds_api";
+        }
         return providerId.replace('-', '_');
     }
 }
