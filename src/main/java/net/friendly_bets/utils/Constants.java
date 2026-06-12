@@ -42,6 +42,14 @@ public class Constants {
             Bet.BetStatus.EMPTY
     );
 
+    /** Ставки на конкретный матч (без пустых слотов). */
+    public static final List<Bet.BetStatus> MATCH_BET_STATUSES = List.of(
+            Bet.BetStatus.OPENED,
+            Bet.BetStatus.WON,
+            Bet.BetStatus.RETURNED,
+            Bet.BetStatus.LOST
+    );
+
     /** Ставки тура для UI и статистики (без аннулированных). */
     public static List<Bet> betsVisibleInGameweek(List<Bet> bets) {
         if (bets == null || bets.isEmpty()) {

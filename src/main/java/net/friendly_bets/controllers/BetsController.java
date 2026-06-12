@@ -83,6 +83,20 @@ public class BetsController implements BetsApi {
     }
 
     @Override
+    @PreAuthorize("hasAuthority('USER') || hasAuthority('MODERATOR') || hasAuthority('ADMIN')")
+    @GetMapping("/match/seasons/{season-id}")
+    public ResponseEntity<BetsPage> getMatchBets(@AuthenticationPrincipal AuthenticatedUser currentUser,
+                                                 @PathVariable("season-id") String seasonId,
+                                                 @RequestParam String leagueId,
+                                                 @RequestParam String matchDay,
+                                                 @RequestParam String homeTeamId,
+                                                 @RequestParam String awayTeamId) {
+        return ResponseEntity.ok(
+                betsService.getMatchBets(currentUser, seasonId, leagueId, matchDay, homeTeamId, awayTeamId)
+        );
+    }
+
+    @Override
     @GetMapping("/completed/seasons/{season-id}")
     public ResponseEntity<BetsPage> getCompletedBets(@PathVariable("season-id") String seasonId,
                                                      @RequestParam(required = false) String playerId,
