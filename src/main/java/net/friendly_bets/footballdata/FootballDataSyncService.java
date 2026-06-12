@@ -22,6 +22,7 @@ import net.friendly_bets.services.GetEntityService;
 import net.friendly_bets.services.RunningSeasonLookup;
 import net.friendly_bets.services.TournamentFormatExpander;
 import net.friendly_bets.wc26.WcBerlinSlotMatchFilter;
+import net.friendly_bets.wc26.Wc26ScheduleLinker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -58,6 +59,7 @@ public class FootballDataSyncService {
     private final ApiFootballSecondarySyncService apiFootballSecondarySyncService;
     private final MatchResultStabilizationService stabilizationService;
     private final MatchResultSyncSettingsService matchResultSyncSettingsService;
+    private final Wc26ScheduleLinker wc26ScheduleLinker;
 
     public void registerPollingForSeason(String seasonId) {
         getEntityService.getSeasonOrThrow(seasonId);
@@ -219,6 +221,7 @@ public class FootballDataSyncService {
                     continue;
                 }
                 gameResultPersistence.applySync(record, incoming, now);
+                wc26ScheduleLinker.linkIfNeeded(record, homeTeam, awayTeam);
                 gameResultRecordRepository.save(record);
                 if (record.isFinalized()) {
                     finishedCount++;
@@ -227,6 +230,7 @@ public class FootballDataSyncService {
                 stripCanonicalIfSecondaryProvider(incoming);
                 stabilizationService.updateStabilityCounters(incoming, now);
                 gameResultFinalizer.tryFinalize(incoming, now);
+                wc26ScheduleLinker.linkIfNeeded(incoming, homeTeam, awayTeam);
                 gameResultRecordRepository.save(incoming);
                 if (incoming.isFinalized()) {
                     finishedCount++;
