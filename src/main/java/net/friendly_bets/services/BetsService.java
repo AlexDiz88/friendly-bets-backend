@@ -250,6 +250,57 @@ public class BetsService {
     // ------------------------------------------------------------------------------------------------------ //
 
 
+    public BetsPage getMatchBets(
+            AuthenticatedUser currentUser,
+            String seasonId,
+            String leagueId,
+            String matchDay,
+            String homeTeamId,
+            String awayTeamId
+    ) {
+        if (leagueId == null || leagueId.isBlank()
+                || matchDay == null || matchDay.isBlank()
+                || homeTeamId == null || homeTeamId.isBlank()
+                || awayTeamId == null || awayTeamId.isBlank()) {
+            throw new BadRequestException("invalidRequest");
+        }
+        Season season = getEntityService.getSeasonOrThrow(seasonId);
+        String userId = currentUser.getUser().getId();
+        if (!isSeasonParticipant(season, userId)) {
+            throw new ForbiddenException("notSeasonParticipant");
+        }
+        List<Bet> bets = betsRepository.findAllBySeason_IdAndLeague_IdAndMatchDayAndHomeTeam_IdAndAwayTeam_IdAndBetStatusIn(
+                seasonId,
+                leagueId,
+                matchDay.trim(),
+                homeTeamId.trim(),
+                awayTeamId.trim(),
+                MATCH_BET_STATUSES
+        );
+        List<Bet> placedBets = bets.stream()
+                .filter(bet -> bet.getBetTitle() != null)
+                .sorted((a, b) -> {
+                    String nameA = a.getUser() != null && a.getUser().getUsername() != null
+                            ? a.getUser().getUsername()
+                            : "";
+                    String nameB = b.getUser() != null && b.getUser().getUsername() != null
+                            ? b.getUser().getUsername()
+                            : "";
+                    int byName = nameA.compareToIgnoreCase(nameB);
+                    if (byName != 0) {
+                        return byName;
+                    }
+                    return a.getCreatedAt().compareTo(b.getCreatedAt());
+                })
+                .collect(Collectors.toList());
+        return BetsPage.builder()
+                .bets(BetDto.from(placedBets))
+                .build();
+    }
+
+    // ------------------------------------------------------------------------------------------------------ //
+
+
     public BetsPage getCompletedBets(String seasonId, String playerId, String leagueId, Pageable pageable) {
         Page<Bet> completedBetsPage = null;
 
