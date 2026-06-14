@@ -250,6 +250,24 @@ public class FootballDataSyncService {
                         .firstFetchedAt(now)
                         .build());
 
+        Optional<String> berlinSlotId = resolveSlotId(friendlyLeagueId, slotOrder)
+                .filter(WcBerlinSlotMatchFilter::isBerlinGroupSlot);
+        if (berlinSlotId.isPresent()) {
+            String slotId = berlinSlotId.get();
+            expected = WcBerlinSlotMatchFilter.expectedMatchCount(slotId);
+            List<GameResultRecord> slotRecords = WcBerlinSlotMatchFilter.filterGameResultRecords(
+                    slotId,
+                    gameResultRecordRepository.findByLeagueCodeAndMatchdayAndSeason(
+                            leagueCode, slotOrder, storageSeason),
+                    teamId -> {
+                        if (teamId == null || teamId.isBlank()) {
+                            return Optional.empty();
+                        }
+                        return teamsRepository.findById(teamId);
+                    });
+            finishedCount = (int) slotRecords.stream().filter(GameResultRecord::isFinalized).count();
+        }
+
         sync.setExpectedMatchCount(expected);
         sync.setFinishedMatchCount(finishedCount);
         sync.setLastFetchedAt(now);
@@ -259,8 +277,11 @@ public class FootballDataSyncService {
 
         boolean allTerminal = !hadUnmappedTeams && response.getMatches().stream()
                 .allMatch(m -> FootballDataMatchStatuses.isTerminal(m.getStatus()));
+        boolean matchdayComplete = berlinSlotId.isPresent()
+                ? expected > 0 && finishedCount >= expected
+                : expected > 0 && allTerminal;
 
-        if (expected > 0 && allTerminal) {
+        if (matchdayComplete) {
             sync.setSyncStatus(GameResultsSyncStatus.COMPLETED);
             sync.setCompletedAt(now);
             sync.setFinishedMatchCount(finishedCount);
