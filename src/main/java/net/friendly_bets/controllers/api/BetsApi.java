@@ -117,6 +117,21 @@ public interface BetsApi {
             @Parameter(description = "Home team ID") @NotBlank String homeTeamId,
             @Parameter(description = "Away team ID") @NotBlank String awayTeamId);
 
+    @Operation(summary = "Get placed bet counts per match for a league matchday slot", description = "Accessible to authenticated season participants")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Map of homeTeamId_awayTeamId to placed bet count.",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = SlotMatchBetCountsDto.class))),
+            @ApiResponse(responseCode = "400", description = "Invalid request data.",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto"))),
+            @ApiResponse(responseCode = "403", description = "User not authenticated or not a season participant.",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto")))
+    })
+    ResponseEntity<SlotMatchBetCountsDto> getSlotMatchBetCounts(
+            @Parameter(hidden = true) AuthenticatedUser currentUser,
+            @Parameter(description = "Season ID") @NotBlank String seasonId,
+            @Parameter(description = "League ID") @NotBlank String leagueId,
+            @Parameter(description = "Matchday slot ID (Bet.match_day)") @NotBlank String matchDay);
+
     @Operation(summary = "Get list of all completed bets", description = "Accessible to everyone")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "List of all completed bets. The response contains a paginated list of bets that have been completed.",

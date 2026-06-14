@@ -23,7 +23,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -295,6 +297,47 @@ public class BetsService {
                 .collect(Collectors.toList());
         return BetsPage.builder()
                 .bets(BetDto.from(placedBets))
+                .build();
+    }
+
+    // ------------------------------------------------------------------------------------------------------ //
+
+
+    public SlotMatchBetCountsDto getSlotMatchBetCounts(
+            AuthenticatedUser currentUser,
+            String seasonId,
+            String leagueId,
+            String matchDay
+    ) {
+        if (leagueId == null || leagueId.isBlank() || matchDay == null || matchDay.isBlank()) {
+            throw new BadRequestException("invalidRequest");
+        }
+        Season season = getEntityService.getSeasonOrThrow(seasonId);
+        String userId = currentUser.getUser().getId();
+        if (!isSeasonParticipant(season, userId)) {
+            throw new ForbiddenException("notSeasonParticipant");
+        }
+        List<Bet> bets = betsRepository.findAllBySeason_IdAndLeague_IdAndMatchDayAndBetStatusIn(
+                seasonId,
+                leagueId,
+                matchDay.trim(),
+                MATCH_BET_STATUSES
+        );
+        Map<String, Integer> counts = new HashMap<>();
+        for (Bet bet : bets) {
+            if (bet.getBetTitle() == null || bet.getHomeTeam() == null || bet.getAwayTeam() == null) {
+                continue;
+            }
+            String homeTeamId = bet.getHomeTeam().getId();
+            String awayTeamId = bet.getAwayTeam().getId();
+            if (homeTeamId == null || homeTeamId.isBlank() || awayTeamId == null || awayTeamId.isBlank()) {
+                continue;
+            }
+            String key = homeTeamId + "_" + awayTeamId;
+            counts.merge(key, 1, Integer::sum);
+        }
+        return SlotMatchBetCountsDto.builder()
+                .counts(counts)
                 .build();
     }
 
