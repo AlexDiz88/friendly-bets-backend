@@ -35,6 +35,20 @@ public final class WcBerlinSlotMatchFilter {
         return WcTournamentSlots.scheduleIdsForSlot(slotId).size();
     }
 
+    /** Whether internal home/away teams are one of the pairs in a Berlin betting slot. */
+    public static boolean teamPairBelongsToSlot(String slotId, Team home, Team away) {
+        if (!isBerlinGroupSlot(slotId) || home == null || away == null) {
+            return false;
+        }
+        Set<ExpectedPair> expected = expectedPairsForSlot(slotId);
+        for (ExpectedPair pair : expected) {
+            if (teamMatchesFifa(home, pair.homeFifa()) && teamMatchesFifa(away, pair.awayFifa())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public static List<FootballDataMatchDto> filterFootballDataMatches(
             String slotId,
             List<FootballDataMatchDto> matches

@@ -16,6 +16,7 @@ import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import net.friendly_bets.wc26.Wc26TeamCatalog;
 
@@ -37,6 +38,18 @@ class WcBerlinSlotMatchFilterTest {
         assertEquals(4, filtered.size());
         assertTrue(filtered.stream().anyMatch(m -> "Mexico".equals(m.getHomeTeam().getName())));
         assertTrue(filtered.stream().noneMatch(m -> "Qatar".equals(m.getHomeTeam().getName())));
+    }
+
+    @Test
+    void teamPairBelongsToSlot_r1s2_includesBrazilMoroccoNotMexicoSouthAfrica() {
+        Team brazil = Team.builder().id("bra").title("Brazil").country("BRA").build();
+        Team morocco = Team.builder().id("mar").title("Morocco").country("MAR").build();
+        Team mexico = Team.builder().id("mex").title("Mexico").country("MEX").build();
+        Team rsa = Team.builder().id("rsa").title("SouthAfrica").country("RSA").build();
+
+        assertTrue(WcBerlinSlotMatchFilter.teamPairBelongsToSlot("1 [2]", brazil, morocco));
+        assertFalse(WcBerlinSlotMatchFilter.teamPairBelongsToSlot("1 [2]", mexico, rsa));
+        assertFalse(WcBerlinSlotMatchFilter.teamPairBelongsToSlot("1 [1]", brazil, morocco));
     }
 
     @Test

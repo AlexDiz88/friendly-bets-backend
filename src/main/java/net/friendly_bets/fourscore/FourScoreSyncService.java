@@ -15,8 +15,11 @@ import net.friendly_bets.models.Team;
 import net.friendly_bets.models.gameresults.GameResultRecord;
 import net.friendly_bets.repositories.BetsRepository;
 import net.friendly_bets.repositories.GameResultRecordRepository;
+import net.friendly_bets.models.TournamentFormat;
 import net.friendly_bets.services.GetEntityService;
 import net.friendly_bets.services.RunningSeasonLookup;
+import net.friendly_bets.services.TournamentFormatExpander;
+import net.friendly_bets.wc26.WcBerlinSlotMatchFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -50,6 +53,7 @@ public class FourScoreSyncService {
     private final FootballDataMatchdaySupport matchdaySupport;
     private final ApiSyncIssueService apiSyncIssueService;
     private final FourScoreScoreNormalizer scoreNormalizer;
+    private final TournamentFormatExpander tournamentFormatExpander;
 
     public boolean isEnabledForLeague(String leagueCode) {
         return properties.isEnabled()
@@ -99,7 +103,7 @@ public class FourScoreSyncService {
         }
         int updated = 0;
         for (LocalDate date : dates) {
-            updated += syncDateForRecords(date, leagueCode, season, matchday, records);
+            updated += syncDateForRecords(date, leagueCode, season, matchday, leagueId, records);
         }
         return updated;
     }
@@ -109,6 +113,7 @@ public class FourScoreSyncService {
             String leagueCode,
             String season,
             int matchday,
+            String leagueId,
             List<GameResultRecord> records
     ) {
         String html = httpClient.fetchEventsPage(date);
@@ -120,7 +125,8 @@ public class FourScoreSyncService {
                 continue;
             }
             try {
-                if (applyListMatchIfEligible(listMatch, leagueCode, season, matchday, records, fetchedAt)) {
+                if (applyListMatchIfEligible(
+                        listMatch, leagueCode, season, matchday, leagueId, records, fetchedAt)) {
                     updated++;
                 }
             } catch (Exception e) {
@@ -135,6 +141,7 @@ public class FourScoreSyncService {
             String leagueCode,
             String season,
             int matchday,
+            String leagueId,
             List<GameResultRecord> records,
             LocalDateTime fetchedAt
     ) {
@@ -163,6 +170,12 @@ public class FourScoreSyncService {
                         && away.get().getId().equals(r.getAwayTeamId()))
                 .findFirst();
         if (existing.isEmpty()) {
+            Optional<String> berlinSlotId = resolveBerlinSlotId(leagueId, matchday);
+            if (berlinSlotId.isPresent()
+                    && !WcBerlinSlotMatchFilter.teamPairBelongsToSlot(
+                            berlinSlotId.get(), home.get(), away.get())) {
+                return false;
+            }
             apiSyncIssueService.recordFourScoreEventMappingMissing(
                     listMatch,
                     leagueCode,
@@ -340,6 +353,20 @@ public class FourScoreSyncService {
 
     private static FourScoreMatchdayTarget toTarget(FootballDataMatchdayKey key) {
         return new FourScoreMatchdayTarget(key.leagueCode(), key.matchday(), key.season(), key.leagueId());
+    }
+
+    private Optional<String> resolveBerlinSlotId(String leagueId, int slotOrder) {
+        if (leagueId == null || leagueId.isBlank()) {
+            return Optional.empty();
+        }
+        League league = getEntityService.getLeagueOrThrow(leagueId);
+        if (league.getTournamentFormatId() == null || league.getTournamentFormatId().isBlank()) {
+            return Optional.empty();
+        }
+        TournamentFormat format = getEntityService.getTournamentFormatOrThrow(league.getTournamentFormatId());
+        return tournamentFormatExpander.findByOrder(format, slotOrder)
+                .map(slot -> slot.getId())
+                .filter(WcBerlinSlotMatchFilter::isBerlinGroupSlot);
     }
 
     private record FourScoreMatchdayTarget(String leagueCode, int matchday, String season, String leagueId) {
