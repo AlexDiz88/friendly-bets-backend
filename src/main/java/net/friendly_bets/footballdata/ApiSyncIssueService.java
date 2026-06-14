@@ -515,11 +515,11 @@ public class ApiSyncIssueService {
         if (record == null || record.getId() == null) {
             return;
         }
-        String provider = MatchDataProviders.FOOTBALL_DATA;
+        String provider = record.getProvider() != null ? record.getProvider() : MatchDataProviders.FOOTBALL_DATA;
         String type = issueType.name();
         Optional<ApiSyncIssue> existingIssue = apiSyncIssueRepository.findFirstByProviderAndIssueTypeAndGameResultId(
                 provider, type, record.getId());
-        GameResultSourceSnapshot source = record.footballDataSource();
+        GameResultSourceSnapshot source = sourceForProvider(record, provider);
         if (existingIssue.isPresent()) {
             ApiSyncIssue issue = existingIssue.get();
             issue.setCreatedAt(LocalDateTime.now());
@@ -544,6 +544,14 @@ public class ApiSyncIssueService {
 
     private static GameScore scoreFromSource(GameResultSourceSnapshot source) {
         return source != null ? source.getGameScore() : null;
+    }
+
+    private static GameResultSourceSnapshot sourceForProvider(GameResultRecord record, String provider) {
+        if (record == null || provider == null) {
+            return null;
+        }
+        GameResultSourceSnapshot source = record.sourceFor(MatchDataProviders.sourcesStorageKey(provider));
+        return source != null ? source : record.footballDataSource();
     }
 
     public List<ApiSyncIssue> getLatest() {

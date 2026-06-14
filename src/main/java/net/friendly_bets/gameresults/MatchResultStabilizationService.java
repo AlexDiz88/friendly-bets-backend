@@ -9,7 +9,6 @@ import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
-import java.util.Objects;
 
 @Component
 @RequiredArgsConstructor
@@ -67,7 +66,7 @@ public class MatchResultStabilizationService {
                 || FootballDataScoreNormalizer.DURATION_PENALTY_SHOOTOUT.equals(duration);
     }
 
-    private static boolean isApiLastUpdatedStaleEnough(
+    private boolean isApiLastUpdatedStaleEnough(
             GameResultRecord record,
             LocalDateTime fetchedAt,
             int minMinutesSinceApiLastUpdated
@@ -75,12 +74,23 @@ public class MatchResultStabilizationService {
         if (minMinutesSinceApiLastUpdated <= 0) {
             return true;
         }
-        GameResultSourceSnapshot source = record.footballDataSource();
+        var settings = settingsService.getEffective();
+        if (!settings.isDualVerificationEnabled()) {
+            return true;
+        }
+        GameResultSourceSnapshot source = primarySource(record, settings.getPrimaryProvider());
         if (source == null || source.getApiLastUpdated() == null) {
             return true;
         }
         long minutes = ChronoUnit.MINUTES.between(source.getApiLastUpdated(), fetchedAt);
         return minutes >= minMinutesSinceApiLastUpdated;
+    }
+
+    private static GameResultSourceSnapshot primarySource(GameResultRecord record, String primaryProvider) {
+        if (record == null || primaryProvider == null) {
+            return null;
+        }
+        return record.sourceFor(MatchDataProviders.sourcesStorageKey(primaryProvider));
     }
 
     static String canonicalScoreHash(GameScore score) {
