@@ -8,6 +8,7 @@ import java.util.Set;
 public final class ExternalMatchScoreView {
 
     private static final String SCORE_UNAVAILABLE = "—";
+    private static final String DEFAULT_LIVE_SCORE = "0:0";
 
     private static final Set<String> LIVE_STATUSES = Set.of(
             "IN_PLAY",
@@ -30,17 +31,21 @@ public final class ExternalMatchScoreView {
             String liveMinuteLabel
     ) {
         String status = normalizeStatus(matchStatus);
-        boolean trustLive = LIVE_STATUSES.contains(status)
+        boolean effectivelyLive = LIVE_STATUSES.contains(status) || hasText(liveMinuteLabel);
+        boolean trustLive = effectivelyLive
                 && !finalized
                 && (hasFullTime(gameScore) || hasText(liveMinuteLabel));
         if (LIVE_STATUSES.contains(status) && !finalized && !trustLive) {
             return SCORE_UNAVAILABLE;
         }
+        if (trustLive && !finalized) {
+            if (hasFullTime(gameScore)) {
+                return gameScore.getFullTime();
+            }
+            return DEFAULT_LIVE_SCORE;
+        }
         if (!hasFullTime(gameScore)) {
             return SCORE_UNAVAILABLE;
-        }
-        if (trustLive) {
-            return gameScore.getFullTime();
         }
         if (gameScore.getFirstTime() != null && !gameScore.getFirstTime().isBlank()) {
             return gameScore.getFullTime() + " (" + gameScore.getFirstTime() + ")";

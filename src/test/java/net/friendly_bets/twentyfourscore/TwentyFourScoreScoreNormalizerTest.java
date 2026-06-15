@@ -20,6 +20,8 @@ class TwentyFourScoreScoreNormalizerTest {
         assertNotNull(normalized);
         assertEquals("FINISHED", normalized.status());
         assertEquals("5:1", normalized.gameScore().getFullTime());
+    }
+
     @Test
     void normalizesLiveMatchFromDailyList() {
         TwentyFourScoreListMatch listMatch = TwentyFourScoreListMatch.builder()
@@ -32,5 +34,17 @@ class TwentyFourScoreScoreNormalizerTest {
         assertNotNull(normalized);
         assertEquals("IN_PLAY", normalized.status());
         assertEquals("50'", normalized.liveMinuteLabel());
+    }
+
+    @Test
+    void normalizesLiveScorelessMatchFromDailyList() {
+        TwentyFourScoreListMatch listMatch = TwentyFourScoreListMatch.builder()
+                .statusText("Идёт 15'")
+                .liveMinuteLabel("15'")
+                .build();
+        TwentyFourScoreScoreNormalizer.NormalizedScore normalized = normalizer.normalize(listMatch);
+        assertNotNull(normalized);
+        assertEquals("IN_PLAY", normalized.status());
+        assertEquals("0:0", normalized.gameScore().getFullTime());
     }
 }

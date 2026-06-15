@@ -32,6 +32,9 @@ public class FourScoreScoreNormalizer {
         String firstHalf = details.getFirstHalfScore();
         String secondHalf = details.getSecondHalfScore();
         String fullTime = resolveFullTime(firstHalf, secondHalf, details, status);
+        if (fullTime == null && MatchStatuses.LIVE.contains(status) && liveMinuteLabel != null) {
+            fullTime = "0:0";
+        }
         if (fullTime == null) {
             return new NormalizedScore(null, null, status, liveMinuteLabel);
         }

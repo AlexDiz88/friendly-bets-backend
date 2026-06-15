@@ -1,6 +1,7 @@
 package net.friendly_bets.twentyfourscore;
 
 import net.friendly_bets.gameresults.CanonicalScoreNormalizer;
+import net.friendly_bets.gameresults.MatchStatuses;
 import net.friendly_bets.models.GameScore;
 import org.springframework.stereotype.Component;
 
@@ -58,6 +59,8 @@ public class TwentyFourScoreScoreNormalizer {
         GameScore.GameScoreBuilder scoreBuilder = GameScore.builder();
         if (fullTime != null && !fullTime.isBlank()) {
             scoreBuilder.fullTime(fullTime.trim());
+        } else if (MatchStatuses.LIVE.contains(status) && minute != null && !minute.isBlank()) {
+            scoreBuilder.fullTime("0:0");
         }
         if (firstHalf != null && !firstHalf.isBlank()) {
             scoreBuilder.firstTime(firstHalf.trim());
