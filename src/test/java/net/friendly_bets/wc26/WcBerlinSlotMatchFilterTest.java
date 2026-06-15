@@ -22,6 +22,76 @@ import net.friendly_bets.wc26.Wc26TeamCatalog;
 class WcBerlinSlotMatchFilterTest {
 
     @Test
+    void teamPairBelongsToSlot_r3s1_includesCzechMexico() {
+        Team czech = Team.builder().id("cze").title("CzechRepublic").country("CZE").build();
+        Team mexico = Team.builder().id("mex").title("Mexico").country("MEX").build();
+
+        assertTrue(WcBerlinSlotMatchFilter.teamPairBelongsToSlot("3 [1]", czech, mexico));
+        assertFalse(WcBerlinSlotMatchFilter.teamPairBelongsToSlot("3 [2]", czech, mexico));
+    }
+
+    @Test
+    void filterGameResultRecords_r3s1_includesRecordWithOnlyInternalTeamIds() {
+        GameResultRecord record = GameResultRecord.builder()
+                .homeTeamId("cze-id")
+                .awayTeamId("mex-id")
+                .sources(Map.of())
+                .build();
+        Team czech = Team.builder().id("cze-id").title("CzechRepublic").country("CZE").build();
+        Team mexico = Team.builder().id("mex-id").title("Mexico").country("MEX").build();
+
+        List<GameResultRecord> filtered = WcBerlinSlotMatchFilter.filterGameResultRecords(
+                "3 [1]",
+                List.of(record),
+                teamId -> {
+                    if ("cze-id".equals(teamId)) {
+                        return Optional.of(czech);
+                    }
+                    if ("mex-id".equals(teamId)) {
+                        return Optional.of(mexico);
+                    }
+                    return Optional.empty();
+                }
+        );
+
+        assertEquals(1, filtered.size());
+    }
+
+    @Test
+    void filterGameResultRecords_r3s1_includesCzechMexicoWithRussianExternalNames() {
+        GameResultRecord record = gameResultRecord(
+                "Чехия",
+                "cze-id",
+                "Мексика",
+                "mex-id"
+        );
+        Team czech = Team.builder().id("cze-id").title("CzechRepublic").country("CZE").build();
+        Team mexico = Team.builder().id("mex-id").title("Mexico").country("MEX").build();
+
+        List<GameResultRecord> filtered = WcBerlinSlotMatchFilter.filterGameResultRecords(
+                "3 [1]",
+                List.of(record),
+                teamId -> {
+                    if ("cze-id".equals(teamId)) {
+                        return Optional.of(czech);
+                    }
+                    if ("mex-id".equals(teamId)) {
+                        return Optional.of(mexico);
+                    }
+                    return Optional.empty();
+                }
+        );
+
+        assertEquals(1, filtered.size());
+
+        List<GameResultRecord> filteredByNamesOnly = WcBerlinSlotMatchFilter.filterGameResultRecords(
+                "3 [1]",
+                List.of(record)
+        );
+        assertEquals(1, filteredByNamesOnly.size());
+    }
+
+    @Test
     void teamPairBelongsToSlot_r1s2_includesBrazilMoroccoNotMexicoSouthAfrica() {
         Team brazil = Team.builder().id("bra").title("Brazil").country("BRA").build();
         Team morocco = Team.builder().id("mar").title("Morocco").country("MAR").build();

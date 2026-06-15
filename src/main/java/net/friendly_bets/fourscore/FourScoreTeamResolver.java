@@ -30,6 +30,9 @@ public class FourScoreTeamResolver {
             Long externalEventId,
             boolean home
     ) {
+        if (FourScorePlayoffPlaceholderNames.isPlaceholder(fourScoreName)) {
+            return Optional.empty();
+        }
         Optional<Team> team = resolve(fourScoreName);
         if (team.isEmpty()) {
             apiSyncIssueService.recordMissingFourScoreTeamMapping(
