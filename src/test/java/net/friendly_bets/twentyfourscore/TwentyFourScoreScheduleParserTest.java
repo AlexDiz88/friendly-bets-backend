@@ -45,4 +45,25 @@ class TwentyFourScoreScheduleParserTest {
         assertEquals("0:0", parts.extraTime());
         assertEquals("2:3", parts.penalty());
     }
+
+    @Test
+    void parseScoreTextDetectsLiveMinuteOnDailyPage() {
+        TwentyFourScoreScheduleParser.ScoreParts parts = TwentyFourScoreScheduleParser.parseScoreText(
+                "0:1 (0:1) 50'"
+        );
+        assertEquals("0:1", parts.fullTime());
+        assertEquals("0:1", parts.firstHalf());
+        assertEquals("50'", parts.liveMinuteLabel());
+        assertEquals("Идёт 50'", parts.statusText());
+    }
+
+    @Test
+    void parseScoreTextMarksFinishedWhenNoLiveMinute() {
+        TwentyFourScoreScheduleParser.ScoreParts parts = TwentyFourScoreScheduleParser.parseScoreText(
+                "5:1 (2:1)"
+        );
+        assertEquals("5:1", parts.fullTime());
+        assertEquals("2:1", parts.firstHalf());
+        assertEquals("Завершен", parts.statusText());
+    }
 }

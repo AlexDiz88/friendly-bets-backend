@@ -35,6 +35,7 @@ public class TwentyFourScoreSyncService {
     private final TwentyFourScoreScheduleParser scheduleParser;
     private final TwentyFourScoreMatchPageParser matchPageParser;
     private final TwentyFourScoreTeamResolver teamResolver;
+    private final TwentyFourScoreScoreNormalizer scoreNormalizer;
     private final TwentyFourScoreGameResultMapper gameResultMapper;
     private final GameResultPersistence gameResultPersistence;
     private final GameResultRecordRepository gameResultRecordRepository;
@@ -91,6 +92,104 @@ public class TwentyFourScoreSyncService {
             updated += syncDateForRecords(date, leagueCode, season, matchday, records);
         }
         return updated;
+    }
+
+    public List<TwentyFourScorePreviewMatchDto> previewDate(LocalDate date) {
+        String html = httpClient.fetchDailyPage(date);
+        List<TwentyFourScoreListMatch> listMatches = scheduleParser.parseDailyPagePreview(html, date);
+        LocalDateTime fetchedAt = LocalDateTime.now();
+        return listMatches.stream()
+                .map(listMatch -> toPreview(listMatch, fetchedAt))
+                .toList();
+    }
+
+    private TwentyFourScorePreviewMatchDto toPreview(TwentyFourScoreListMatch listMatch, LocalDateTime fetchedAt) {
+        Optional<Team> home = teamResolver.resolve(listMatch.getHomeTeamName());
+        Optional<Team> away = teamResolver.resolve(listMatch.getAwayTeamName());
+        TwentyFourScoreMatchDetails details = null;
+        TwentyFourScoreScoreNormalizer.NormalizedScore normalized = scoreNormalizer.normalize(listMatch);
+        String detailsError = null;
+        if (needsMatchPage(listMatch)) {
+            try {
+                String matchHtml = httpClient.fetchMatchPage(listMatch.getMatchPath());
+                if (matchHtml == null || matchHtml.isBlank()) {
+                    detailsError = "emptyMatchHtml";
+                } else {
+                    details = matchPageParser.parse(matchHtml, listMatch.getMatchPath());
+                    if (details == null) {
+                        detailsError = "matchParseFailed";
+                    } else {
+                        normalized = scoreNormalizer.normalize(details);
+                    }
+                }
+            } catch (Exception e) {
+                detailsError = e.getMessage() != null ? e.getMessage() : "matchFetchFailed";
+                log.warn("24score preview match fetch failed {}: {}", listMatch.getMatchPath(), detailsError);
+            }
+        }
+        String effectiveStatusText = details != null && details.getStatusText() != null
+                ? details.getStatusText()
+                : listMatch.getStatusText();
+        String mappedStatus = normalized != null
+                ? normalized.status()
+                : TwentyFourScoreStatusMapper.mapStatus(effectiveStatusText);
+        String liveMinuteLabel = normalized != null ? normalized.liveMinuteLabel() : null;
+        String fullTimeScore = resolvePreviewFullTimeScore(normalized, details, listMatch);
+        return TwentyFourScorePreviewMatchDto.builder()
+                .section(listMatch.getSection() != null ? listMatch.getSection() : TwentyFourScoreLeagueSection.WORLD_CUP.name())
+                .eventSlug(String.valueOf(listMatch.getExternalMatchId()))
+                .eventPath(listMatch.getMatchPath())
+                .homeTeamName(listMatch.getHomeTeamName())
+                .awayTeamName(listMatch.getAwayTeamName())
+                .statusText(effectiveStatusText)
+                .mappedStatus(mappedStatus)
+                .liveMinuteLabel(liveMinuteLabel)
+                .listHomeScore(parseListScore(fullTimeScore, true))
+                .listAwayScore(parseListScore(fullTimeScore, false))
+                .homeTeamTitle(home.map(Team::getTitle).orElse(null))
+                .awayTeamTitle(away.map(Team::getTitle).orElse(null))
+                .homeMapped(home.isPresent())
+                .awayMapped(away.isPresent())
+                .firstHalfScore(details != null ? details.getFirstHalfScore() : listMatch.getFirstHalfScore())
+                .secondHalfScore(null)
+                .extraTimeScore(details != null ? details.getExtraTimeScore() : listMatch.getExtraTimeScore())
+                .penaltyScore(details != null ? details.getPenaltyScore() : listMatch.getPenaltyScore())
+                .fullTimeScore(fullTimeScore)
+                .detailsLoaded(details != null)
+                .detailsError(detailsError)
+                .fetchedAt(fetchedAt)
+                .build();
+    }
+
+    private static String resolvePreviewFullTimeScore(
+            TwentyFourScoreScoreNormalizer.NormalizedScore normalized,
+            TwentyFourScoreMatchDetails details,
+            TwentyFourScoreListMatch listMatch
+    ) {
+        if (normalized != null
+                && normalized.gameScore() != null
+                && normalized.gameScore().getFullTime() != null) {
+            return normalized.gameScore().getFullTime();
+        }
+        if (details != null && details.getFullTimeScore() != null) {
+            return details.getFullTimeScore();
+        }
+        return listMatch.getFullTimeScore();
+    }
+
+    private static Integer parseListScore(String fullTimeScore, boolean home) {
+        if (fullTimeScore == null || fullTimeScore.isBlank() || !fullTimeScore.contains(":")) {
+            return null;
+        }
+        String[] parts = fullTimeScore.trim().split(":");
+        if (parts.length < 2) {
+            return null;
+        }
+        try {
+            return Integer.parseInt(parts[home ? 0 : 1].trim());
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 
     private int syncDateForRecords(

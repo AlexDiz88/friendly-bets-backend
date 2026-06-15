@@ -7,9 +7,10 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 
 @Value
-@Builder
+@Builder(toBuilder = true)
 public class TwentyFourScoreListMatch {
 
+    String section;
     long externalMatchId;
     String matchPath;
     String homeTeamName;

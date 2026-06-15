@@ -10,6 +10,7 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.regex.Matcher;
@@ -24,9 +25,43 @@ public class TwentyFourScoreScheduleParser {
             "дв\\s*(\\d+:\\d+).*?пен\\s*(\\d+:\\d+)",
             Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE
     );
+    private static final Pattern LIVE_MINUTE_SUFFIX = Pattern.compile(
+            "\\s(\\d+(?:\\+\\d+)?)\\s*['′]\\s*$"
+    );
     private static final DateTimeFormatter KICKOFF_TIME = DateTimeFormatter.ofPattern("HH:mm");
 
     public List<TwentyFourScoreListMatch> parseDailyPage(String html, LocalDate date, String competitionMarker) {
+        return parseDailyPage(html, date, competitionMarker, null);
+    }
+
+    public List<TwentyFourScoreListMatch> parseDailyPagePreview(String html, LocalDate date) {
+        List<TwentyFourScoreListMatch> matches = new ArrayList<>();
+        for (TwentyFourScoreLeagueSection section : EnumSet.of(
+                TwentyFourScoreLeagueSection.WORLD_CUP,
+                TwentyFourScoreLeagueSection.FRIENDLIES
+        )) {
+            String marker = competitionMarker(section);
+            if (marker == null) {
+                continue;
+            }
+            matches.addAll(parseDailyPage(html, date, marker, section));
+        }
+        return matches;
+    }
+
+    private static String competitionMarker(TwentyFourScoreLeagueSection section) {
+        return switch (section) {
+            case WORLD_CUP -> TwentyFourScoreCompetitionMapping.worldCupPathMarker();
+            case FRIENDLIES -> TwentyFourScoreCompetitionMapping.friendliesPathMarker();
+        };
+    }
+
+    private List<TwentyFourScoreListMatch> parseDailyPage(
+            String html,
+            LocalDate date,
+            String competitionMarker,
+            TwentyFourScoreLeagueSection section
+    ) {
         if (html == null || html.isBlank()) {
             return List.of();
         }
@@ -48,7 +83,7 @@ public class TwentyFourScoreScheduleParser {
                 }
                 TwentyFourScoreListMatch parsed = parseRow(row, date);
                 if (parsed != null) {
-                    matches.add(parsed);
+                    matches.add(section != null ? parsed.toBuilder().section(section.name()).build() : parsed);
                 }
             }
         }
@@ -84,26 +119,40 @@ public class TwentyFourScoreScheduleParser {
                 .firstHalfScore(scores.firstHalf())
                 .extraTimeScore(scores.extraTime())
                 .penaltyScore(scores.penalty())
-                .statusText(scores.fullTime() != null ? "Завершен" : null)
+                .statusText(scores.statusText())
+                .liveMinuteLabel(scores.liveMinuteLabel())
                 .build();
     }
 
     static ScoreParts parseScoreText(String raw) {
         if (raw == null || raw.isBlank()) {
-            return new ScoreParts(null, null, null, null);
+            return new ScoreParts(null, null, null, null, null, null);
         }
         String text = raw.replace('\u00a0', ' ').trim();
         if (text.contains("--")) {
-            return new ScoreParts(null, null, null, null);
+            return new ScoreParts(null, null, null, null, null, null);
+        }
+        String liveMinuteLabel = null;
+        Matcher minuteMatcher = LIVE_MINUTE_SUFFIX.matcher(text);
+        if (minuteMatcher.find()) {
+            liveMinuteLabel = minuteMatcher.group(1) + "'";
+            text = text.substring(0, minuteMatcher.start()).trim();
         }
         Matcher extraPen = EXTRA_PEN.matcher(text);
         if (extraPen.find()) {
-            return new ScoreParts(null, null, extraPen.group(1), extraPen.group(2));
+            return new ScoreParts(null, null, extraPen.group(1), extraPen.group(2), liveMinuteLabel, liveStatusText(liveMinuteLabel));
         }
         Matcher ft = SCORE_PAIR.matcher(text);
         String fullTime = ft.find() ? ft.group(1) + ":" + ft.group(2) : null;
         String firstHalf = ft.find() ? ft.group(1) + ":" + ft.group(2) : null;
-        return new ScoreParts(fullTime, firstHalf, null, null);
+        String statusText = liveMinuteLabel != null
+                ? liveStatusText(liveMinuteLabel)
+                : (fullTime != null ? "Завершен" : null);
+        return new ScoreParts(fullTime, firstHalf, null, null, liveMinuteLabel, statusText);
+    }
+
+    private static String liveStatusText(String liveMinuteLabel) {
+        return liveMinuteLabel != null ? "Идёт " + liveMinuteLabel : null;
     }
 
     private static LocalTime parseKickoffTime(String timeText) {
@@ -125,6 +174,13 @@ public class TwentyFourScoreScheduleParser {
         return text.isBlank() ? null : text;
     }
 
-    record ScoreParts(String fullTime, String firstHalf, String extraTime, String penalty) {
+    record ScoreParts(
+            String fullTime,
+            String firstHalf,
+            String extraTime,
+            String penalty,
+            String liveMinuteLabel,
+            String statusText
+    ) {
     }
 }

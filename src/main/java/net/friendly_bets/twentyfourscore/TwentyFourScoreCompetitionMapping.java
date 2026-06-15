@@ -31,4 +31,8 @@ public final class TwentyFourScoreCompetitionMapping {
     public static String worldCupPathMarker() {
         return "fifa_-_world_cup";
     }
+
+    public static String friendliesPathMarker() {
+        return "int_friendlies";
+    }
 }
