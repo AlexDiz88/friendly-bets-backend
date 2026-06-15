@@ -1,7 +1,7 @@
 package net.friendly_bets.oddsapi;
 
 import lombok.RequiredArgsConstructor;
-import net.friendly_bets.footballdata.ApiSyncIssueService;
+import net.friendly_bets.gameresults.ApiSyncIssueService;
 import net.friendly_bets.models.Team;
 import net.friendly_bets.models.TeamDisplayNames;
 import net.friendly_bets.models.gameresults.GameResultRecord;
@@ -251,7 +251,7 @@ public class OddsApiEventMatcher {
     }
 
     private static String externalName(GameResultRecord match, boolean home) {
-        GameResultSourceSnapshot source = match.footballDataSource();
+        GameResultSourceSnapshot source = match.primaryExternalSource();
         if (source == null) {
             return null;
         }

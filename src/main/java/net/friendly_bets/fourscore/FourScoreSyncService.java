@@ -1,20 +1,23 @@
 package net.friendly_bets.fourscore;
 
 import lombok.RequiredArgsConstructor;
-import net.friendly_bets.footballdata.ApiSyncIssueService;
-import net.friendly_bets.footballdata.FootballDataMatchdayKey;
-import net.friendly_bets.footballdata.FootballDataMatchdaySupport;
-import net.friendly_bets.footballdata.GameResultPersistence;
+import net.friendly_bets.gameresults.ApiSyncIssueService;
+import net.friendly_bets.gameresults.GameResultPersistence;
+import net.friendly_bets.gameresults.MatchdayPollingTargetResolver;
+import net.friendly_bets.gameresults.MatchdaySlotKey;
 import net.friendly_bets.fourscore.client.FourScoreHttpClient;
 import net.friendly_bets.fourscore.config.FourScoreProperties;
+import net.friendly_bets.gameresults.GameResultFinalizer;
 import net.friendly_bets.gameresults.MatchDataProviders;
-import net.friendly_bets.models.Bet;
+import net.friendly_bets.gameresults.MatchResultStabilizationService;
 import net.friendly_bets.models.League;
 import net.friendly_bets.models.Season;
 import net.friendly_bets.models.Team;
 import net.friendly_bets.models.gameresults.GameResultRecord;
-import net.friendly_bets.repositories.BetsRepository;
+import net.friendly_bets.models.gameresults.GameResultsSync;
+import net.friendly_bets.models.gameresults.GameResultsSyncStatus;
 import net.friendly_bets.repositories.GameResultRecordRepository;
+import net.friendly_bets.repositories.GameResultsSyncRepository;
 import net.friendly_bets.models.TournamentFormat;
 import net.friendly_bets.services.GetEntityService;
 import net.friendly_bets.services.RunningSeasonLookup;
@@ -26,6 +29,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -47,13 +51,15 @@ public class FourScoreSyncService {
     private final FourScoreGameResultMapper gameResultMapper;
     private final GameResultPersistence gameResultPersistence;
     private final GameResultRecordRepository gameResultRecordRepository;
-    private final BetsRepository betsRepository;
     private final RunningSeasonLookup runningSeasonLookup;
     private final GetEntityService getEntityService;
-    private final FootballDataMatchdaySupport matchdaySupport;
+    private final MatchdayPollingTargetResolver matchdayPollingTargetResolver;
     private final ApiSyncIssueService apiSyncIssueService;
     private final FourScoreScoreNormalizer scoreNormalizer;
     private final TournamentFormatExpander tournamentFormatExpander;
+    private final GameResultsSyncRepository gameResultsSyncRepository;
+    private final MatchResultStabilizationService stabilizationService;
+    private final GameResultFinalizer gameResultFinalizer;
 
     public boolean isEnabledForLeague(String leagueCode) {
         return properties.isEnabled()
@@ -84,28 +90,78 @@ public class FourScoreSyncService {
         if (!isEnabledForLeague(leagueCode)) {
             return 0;
         }
-        List<GameResultRecord> records = gameResultRecordRepository
-                .findByLeagueCodeAndMatchdayAndSeason(leagueCode, matchday, season);
+        List<GameResultRecord> records = new ArrayList<>(gameResultRecordRepository
+                .findByLeagueCodeAndMatchdayAndSeason(leagueCode, matchday, season));
+        if (records.isEmpty()) {
+            bootstrapMatchday(leagueCode, matchday, season, leagueId, records);
+        }
         if (records.isEmpty()) {
             return 0;
         }
         boolean hasPending = records.stream().anyMatch(r -> !r.isFinalized());
-        if (!hasPending) {
-            return 0;
-        }
-        Set<LocalDate> dates = records.stream()
-                .map(GameResultRecord::getUtcDate)
-                .filter(d -> d != null)
-                .map(LocalDateTime::toLocalDate)
-                .collect(Collectors.toCollection(LinkedHashSet::new));
-        if (dates.isEmpty()) {
-            dates.add(LocalDate.now());
-        }
         int updated = 0;
-        for (LocalDate date : dates) {
-            updated += syncDateForRecords(date, leagueCode, season, matchday, leagueId, records);
+        if (hasPending) {
+            Set<LocalDate> dates = records.stream()
+                    .map(GameResultRecord::getUtcDate)
+                    .filter(d -> d != null)
+                    .map(LocalDateTime::toLocalDate)
+                    .collect(Collectors.toCollection(LinkedHashSet::new));
+            if (dates.isEmpty()) {
+                LocalDate today = LocalDate.now();
+                for (int i = -45; i <= 14; i++) {
+                    dates.add(today.plusDays(i));
+                }
+            }
+            for (LocalDate date : dates) {
+                updated += syncDateForRecords(date, leagueCode, season, matchday, leagueId, records);
+            }
         }
+        updateSyncMetadata(leagueCode, matchday, season);
         return updated;
+    }
+
+    public GameResultsSync ensureSyncMetadata(String leagueCode, int matchday, String season) {
+        return updateSyncMetadata(leagueCode, matchday, season);
+    }
+
+    private GameResultsSync updateSyncMetadata(String leagueCode, int matchday, String season) {
+        LocalDateTime now = LocalDateTime.now();
+        List<GameResultRecord> records = gameResultRecordRepository
+                .findByLeagueCodeAndMatchdayAndSeason(leagueCode, matchday, season);
+        int finishedCount = (int) records.stream().filter(GameResultRecord::isFinalized).count();
+        GameResultsSync sync = gameResultsSyncRepository
+                .findByLeagueCodeAndMatchdayAndSeason(leagueCode, matchday, season)
+                .orElse(GameResultsSync.builder()
+                        .leagueCode(leagueCode)
+                        .matchday(matchday)
+                        .season(season)
+                        .syncStatus(GameResultsSyncStatus.POLLING)
+                        .firstFetchedAt(now)
+                        .build());
+        sync.setExpectedMatchCount(Math.max(sync.getExpectedMatchCount(), records.size()));
+        sync.setFinishedMatchCount(finishedCount);
+        sync.setLastFetchedAt(now);
+        if (sync.getFirstFetchedAt() == null) {
+            sync.setFirstFetchedAt(now);
+        }
+        boolean allFinalized = !records.isEmpty() && finishedCount >= records.size();
+        if (allFinalized) {
+            sync.setSyncStatus(GameResultsSyncStatus.COMPLETED);
+        }
+        return gameResultsSyncRepository.save(sync);
+    }
+
+    private void bootstrapMatchday(
+            String leagueCode,
+            int matchday,
+            String season,
+            String leagueId,
+            List<GameResultRecord> records
+    ) {
+        LocalDate today = LocalDate.now();
+        for (int i = -45; i <= 14; i++) {
+            syncDateForRecords(today.plusDays(i), leagueCode, season, matchday, leagueId, records);
+        }
     }
 
     private int syncDateForRecords(
@@ -121,9 +177,6 @@ public class FourScoreSyncService {
         int updated = 0;
         LocalDateTime fetchedAt = LocalDateTime.now();
         for (FourScoreListMatch listMatch : listMatches) {
-            if (!listMatch.needsEventDetails()) {
-                continue;
-            }
             try {
                 if (applyListMatchIfEligible(
                         listMatch, leagueCode, season, matchday, leagueId, records, fetchedAt)) {
@@ -176,13 +229,17 @@ public class FourScoreSyncService {
                             berlinSlotId.get(), home.get(), away.get())) {
                 return false;
             }
-            apiSyncIssueService.recordFourScoreEventMappingMissing(
+            return bootstrapListMatch(
                     listMatch,
                     leagueCode,
                     season,
-                    matchday
+                    matchday,
+                    leagueId,
+                    home.get(),
+                    away.get(),
+                    records,
+                    fetchedAt
             );
-            return false;
         }
 
         if (!listMatch.shouldPollForRecord(existing.get())) {
@@ -231,6 +288,47 @@ public class FourScoreSyncService {
             record.setFourscoreEventSlug(listMatch.getEventSlug());
         }
         gameResultRecordRepository.save(record);
+        return true;
+    }
+
+    private boolean bootstrapListMatch(
+            FourScoreListMatch listMatch,
+            String leagueCode,
+            String season,
+            int matchday,
+            String leagueId,
+            Team home,
+            Team away,
+            List<GameResultRecord> records,
+            LocalDateTime fetchedAt
+    ) {
+        String eventHtml = httpClient.fetchEventPage(listMatch.getEventPath());
+        FourScoreEventDetails details = eventPageParser.parse(
+                eventHtml,
+                listMatch.getEventPath(),
+                FourScoreLeagueSection.WORLD_CUP
+        );
+        if (details == null) {
+            return false;
+        }
+        GameResultRecord created = gameResultMapper.toNewRecord(
+                details,
+                home,
+                away,
+                leagueCode,
+                season,
+                matchday,
+                leagueId,
+                listMatch.getExternalEventId(),
+                fetchedAt
+        );
+        if (listMatch.getEventSlug() != null && !listMatch.getEventSlug().isBlank()) {
+            created.setFourscoreEventSlug(listMatch.getEventSlug());
+        }
+        stabilizationService.updateStabilityCounters(created, fetchedAt);
+        gameResultFinalizer.tryFinalize(created, fetchedAt);
+        GameResultRecord saved = gameResultRecordRepository.save(created);
+        records.add(saved);
         return true;
     }
 
@@ -324,34 +422,12 @@ public class FourScoreSyncService {
     }
 
     private Set<FourScoreMatchdayTarget> collectMatchdayTargetsForSeason(Season season) {
-        Set<FourScoreMatchdayTarget> targets = new LinkedHashSet<>();
-        List<Bet> opened = betsRepository.findAllBySeason_IdAndBetStatus(season.getId(), Bet.BetStatus.OPENED);
-        for (Bet bet : opened) {
-            addTargetFromBet(targets, bet, season);
-        }
-        return targets;
+        return matchdayPollingTargetResolver.collectForSeason(season, properties.getPrimaryForLeagues()).stream()
+                .map(FourScoreSyncService::toFourScoreTarget)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
     }
 
-    private void addTargetFromBet(Set<FourScoreMatchdayTarget> targets, Bet bet, Season season) {
-        if (bet.getMatchDay() == null || bet.getMatchDay().isBlank()) {
-            return;
-        }
-        String leagueId = bet.getLeague() != null ? bet.getLeague().getId() : null;
-        if (leagueId == null) {
-            return;
-        }
-        League league = getEntityService.getLeagueOrThrow(leagueId);
-        if (!isEnabledForLeague(league.getLeagueCode().name())) {
-            return;
-        }
-        matchdaySupport.buildMatchdayKey(
-                league,
-                bet.getMatchDay(),
-                matchdaySupport.resolveFootballDataSeasonYear(season, league.getLeagueCode())
-        ).ifPresent(key -> targets.add(toTarget(key)));
-    }
-
-    private static FourScoreMatchdayTarget toTarget(FootballDataMatchdayKey key) {
+    private static FourScoreMatchdayTarget toFourScoreTarget(MatchdaySlotKey key) {
         return new FourScoreMatchdayTarget(key.leagueCode(), key.matchday(), key.season(), key.leagueId());
     }
 

@@ -28,7 +28,6 @@ public class TeamDto {
     private String logoKey;
     private TeamDisplayNamesDto displayNames;
     private List<TeamExternalAliasDto> externalAliases;
-    private Integer footballDataTeamId;
 
     public static TeamDto from(Team team) {
         List<TeamExternalAliasDto> aliases = team.getExternalAliases() == null
@@ -41,7 +40,6 @@ public class TeamDto {
                 .logoKey(team.getLogo())
                 .displayNames(TeamDisplayNamesDto.from(team.getDisplayNames()))
                 .externalAliases(aliases)
-                .footballDataTeamId(team.getFootballDataTeamId())
                 .build();
     }
 

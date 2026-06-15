@@ -1,10 +1,10 @@
 package net.friendly_bets.gameresults;
 
-import net.friendly_bets.footballdata.ApiSyncIssueService;
+import net.friendly_bets.gameresults.ApiSyncIssueService;
 import net.friendly_bets.models.GameScore;
 import net.friendly_bets.models.gameresults.GameResultRecord;
 import net.friendly_bets.models.gameresults.GameResultSourceSnapshot;
-import net.friendly_bets.footballdata.FootballDataScoreNormalizer;
+import net.friendly_bets.gameresults.CanonicalScoreNormalizer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -61,7 +61,7 @@ class GameResultFinalizerTest {
                 .utcDate(LocalDateTime.now().minusHours(3))
                 .stableScorePollCount(2)
                 .sources(Map.of(
-                        MatchDataProviders.sourcesStorageKey(MatchDataProviders.FOOTBALL_DATA),
+                        MatchDataProviders.sourcesStorageKey(MatchDataProviders.FOURSCORE),
                         GameResultSourceSnapshot.builder()
                                 .apiLastUpdated(LocalDateTime.now().minusHours(2))
                                 .build()))

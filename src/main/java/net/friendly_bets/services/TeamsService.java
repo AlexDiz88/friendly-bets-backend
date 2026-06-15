@@ -10,7 +10,7 @@ import net.friendly_bets.dto.TeamExternalAliasDto;
 import net.friendly_bets.dto.TeamsPage;
 import net.friendly_bets.dto.UpdateTeamDto;
 import net.friendly_bets.exceptions.ConflictException;
-import net.friendly_bets.footballdata.ApiSyncIssueService;
+import net.friendly_bets.gameresults.ApiSyncIssueService;
 import net.friendly_bets.models.Team;
 import net.friendly_bets.models.TeamDisplayNames;
 import net.friendly_bets.models.TeamExternalAlias;
@@ -56,7 +56,7 @@ public class TeamsService {
             throw new ConflictException("teamWithThisTitleAlreadyExist");
         }
 
-        List<TeamExternalAlias> aliases = buildAliases(newTeam.getExternalAliases(), newTeam.getFootballDataTeamId());
+        List<TeamExternalAlias> aliases = buildAliases(newTeam.getExternalAliases());
 
         Team team = Team.builder()
                 .createdAt(LocalDateTime.now())
@@ -65,7 +65,6 @@ public class TeamsService {
                 .displayNames(toDisplayNames(newTeam.getDisplayNames(), title))
                 .logo(TeamTitleUtils.toLocalLogoFileKey(title))
                 .externalAliases(aliases)
-                .footballDataTeamId(newTeam.getFootballDataTeamId())
                 .build();
 
         teamsRepository.save(team);
@@ -83,10 +82,6 @@ public class TeamsService {
 
         if (update.getDisplayNames() != null) {
             team.setDisplayNames(update.getDisplayNames().toEntity());
-        }
-
-        if (update.getFootballDataTeamId() != null) {
-            team.setFootballDataTeamId(update.getFootballDataTeamId());
         }
 
         if (update.getExternalAliases() != null) {
@@ -118,10 +113,7 @@ public class TeamsService {
         }
     }
 
-    private static List<TeamExternalAlias> buildAliases(
-            List<TeamExternalAliasDto> fromDto,
-            Integer footballDataTeamId
-    ) {
+    private static List<TeamExternalAlias> buildAliases(List<TeamExternalAliasDto> fromDto) {
         List<TeamExternalAlias> aliases = new ArrayList<>();
         if (fromDto != null) {
             aliases.addAll(fromDto.stream().map(TeamExternalAliasDto::toEntity).toList());

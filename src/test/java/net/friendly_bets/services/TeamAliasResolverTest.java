@@ -1,5 +1,6 @@
 package net.friendly_bets.services;
 
+import net.friendly_bets.gameresults.MatchDataProviders;
 import net.friendly_bets.models.Team;
 import net.friendly_bets.repositories.TeamsRepository;
 import org.junit.jupiter.api.DisplayName;
@@ -8,6 +9,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -54,28 +56,49 @@ class TeamAliasResolverTest {
     }
 
     @Test
-    @DisplayName("resolveFootballData matches by saved external alias name")
-    void resolveFootballData_matchesByAliasName() {
+    @DisplayName("resolveTwentyFourScoreByName matches by saved external alias name")
+    void resolveTwentyFourScoreByName_matchesByAliasName() {
         resolver = new TeamAliasResolver(teamsRepository);
-        when(teamsRepository.findByFootballDataTeamId(66)).thenReturn(Optional.empty());
-        when(teamsRepository.findByExternalAliasId("football-data", 66)).thenReturn(Optional.empty());
-        when(teamsRepository.findByExternalAliasName("football-data", "Manchester United FC"))
-                .thenReturn(Optional.empty());
-        when(teamsRepository.findByExternalAliasName("football-data", "Manchester United FC"))
-                .thenReturn(Optional.of(Team.builder().id("mu1").title("ManchesterUnited").build()));
+        when(teamsRepository.findByExternalAliasName("24score.pro", "Турция"))
+                .thenReturn(Optional.of(Team.builder().id("tur1").title("Turkey").build()));
 
-        Optional<Team> team = resolver.resolveFootballData(66, "Manchester United FC");
+        Optional<Team> team = resolver.resolveTwentyFourScoreByName("Турция");
 
         assertTrue(team.isPresent());
-        assertEquals("mu1", team.get().getId());
+        assertEquals("tur1", team.get().getId());
     }
 
     @Test
-    @DisplayName("resolveFootballDataTeamId uses saved numeric id")
-    void resolveFootballDataTeamId_usesSavedId() {
+    @DisplayName("resolveFourScoreByName matches by saved external alias name")
+    void resolveFourScoreByName_matchesByAliasName() {
         resolver = new TeamAliasResolver(teamsRepository);
-        Team brighton = Team.builder().id("b1").title("Brighton").footballDataTeamId(397).build();
-        assertEquals(397, resolver.resolveFootballDataTeamId(brighton).orElse(-1));
+        when(teamsRepository.findByExternalAliasName("4score.ru", "Англия"))
+                .thenReturn(Optional.of(Team.builder().id("eng1").title("England").build()));
+
+        Optional<Team> team = resolver.resolveFourScoreByName("Англия");
+
+        assertTrue(team.isPresent());
+        assertEquals("eng1", team.get().getId());
+    }
+
+    @Test
+    @DisplayName("teamMatchesScoreProviderSide matches only same-provider alias")
+    void teamMatchesScoreProviderSide_matchesByAliasName() {
+        resolver = new TeamAliasResolver(teamsRepository);
+        Team england = Team.builder()
+                .id("eng1")
+                .title("England")
+                .externalAliases(List.of(
+                        net.friendly_bets.models.TeamExternalAlias.builder()
+                                .provider(MatchDataProviders.FOURSCORE)
+                                .externalName("Англия")
+                                .build()
+                ))
+                .build();
+
+        assertTrue(resolver.teamMatchesScoreProviderSide(england, MatchDataProviders.FOURSCORE, "Англия"));
+        assertFalse(resolver.teamMatchesScoreProviderSide(england, MatchDataProviders.FOURSCORE, "Франция"));
+        assertFalse(resolver.teamMatchesScoreProviderSide(england, MatchDataProviders.TWENTYFOUR_SCORE, "Англия"));
     }
 
     @Test

@@ -10,7 +10,7 @@ import net.friendly_bets.dto.OddsDemoRefreshResultDto;
 import net.friendly_bets.dto.OddsMappingTraceEntryDto;
 import net.friendly_bets.exceptions.BadRequestException;
 import net.friendly_bets.exceptions.NotFoundException;
-import net.friendly_bets.footballdata.ApiSyncIssueService;
+import net.friendly_bets.gameresults.ApiSyncIssueService;
 import net.friendly_bets.models.odds.OddsDemoSnapshot;
 import net.friendly_bets.models.odds.OddsMarket;
 import net.friendly_bets.models.odds.OddsMarketGroup;

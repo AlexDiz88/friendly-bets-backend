@@ -30,62 +30,35 @@ class MatchResultStabilizationServiceTest {
     }
 
     @Test
-    void dualVerificationOffIgnoresSecondaryApiLastUpdated() {
-        when(settingsService.getEffective()).thenReturn(effectiveSettings(false, 1));
+    void stableWhenPollCountMeetsRequirement() {
+        when(settingsService.getEffective()).thenReturn(effectiveSettings(2));
         LocalDateTime fetchedAt = LocalDateTime.of(2026, 6, 14, 21, 0);
-        GameResultRecord record = stableFinishedRecord(fetchedAt.minusHours(2));
-        record.setProvider(MatchDataProviders.FOURSCORE);
-        record.setSources(Map.of(
-                MatchDataProviders.sourcesStorageKey(MatchDataProviders.FOURSCORE),
-                GameResultSourceSnapshot.builder()
-                        .gameScore(GameScore.builder().fullTime("7:1").firstTime("3:1").build())
-                        .build(),
-                MatchDataProviders.sourcesStorageKey(MatchDataProviders.FOOTBALL_DATA),
-                GameResultSourceSnapshot.builder()
-                        .apiLastUpdated(fetchedAt.minusSeconds(30))
-                        .gameScore(GameScore.builder().fullTime("7:1").firstTime("3:1").build())
-                        .build()
-        ));
+        GameResultRecord record = stableFinishedRecord(fetchedAt.minusMinutes(102));
 
         assertTrue(service.isStableEnough(record, fetchedAt));
     }
 
     @Test
-    void dualVerificationOnUsesPrimaryApiLastUpdatedNotSecondary() {
-        when(settingsService.getEffective()).thenReturn(effectiveSettings(true, 5));
+    void notStableWhenPollCountBelowRequirement() {
+        when(settingsService.getEffective()).thenReturn(effectiveSettings(2));
         LocalDateTime fetchedAt = LocalDateTime.of(2026, 6, 14, 21, 0);
         GameResultRecord record = stableFinishedRecord(fetchedAt.minusHours(2));
-        record.setProvider(MatchDataProviders.FOURSCORE);
-        record.setSources(Map.of(
-                MatchDataProviders.sourcesStorageKey(MatchDataProviders.FOURSCORE),
-                GameResultSourceSnapshot.builder()
-                        .gameScore(GameScore.builder().fullTime("7:1").firstTime("3:1").build())
-                        .build(),
-                MatchDataProviders.sourcesStorageKey(MatchDataProviders.FOOTBALL_DATA),
-                GameResultSourceSnapshot.builder()
-                        .apiLastUpdated(fetchedAt.minusSeconds(30))
-                        .gameScore(GameScore.builder().fullTime("7:1").firstTime("3:1").build())
-                        .build()
-        ));
-
-        assertTrue(service.isStableEnough(record, fetchedAt));
-    }
-
-    @Test
-    void dualVerificationOnBlocksWhenPrimaryApiLastUpdatedTooRecent() {
-        when(settingsService.getEffective()).thenReturn(effectiveSettings(true, 5));
-        LocalDateTime fetchedAt = LocalDateTime.of(2026, 6, 14, 21, 0);
-        GameResultRecord record = stableFinishedRecord(fetchedAt.minusHours(2));
-        record.setProvider(MatchDataProviders.FOOTBALL_DATA);
-        record.setSources(Map.of(
-                MatchDataProviders.sourcesStorageKey(MatchDataProviders.FOOTBALL_DATA),
-                GameResultSourceSnapshot.builder()
-                        .apiLastUpdated(fetchedAt.minusMinutes(2))
-                        .gameScore(GameScore.builder().fullTime("7:1").firstTime("3:1").build())
-                        .build()
-        ));
+        record.setStableScorePollCount(1);
 
         assertFalse(service.isStableEnough(record, fetchedAt));
+    }
+
+    @Test
+    void secondaryStableWhenSourcePollCountMeetsRequirement() {
+        when(settingsService.getEffective()).thenReturn(effectiveSettings(2));
+        GameResultRecord record = GameResultRecord.builder()
+                .sources(Map.of(
+                        MatchDataProviders.sourcesStorageKey(MatchDataProviders.TWENTYFOUR_SCORE),
+                        GameResultSourceSnapshot.builder().stableScorePollCount(2).build()
+                ))
+                .build();
+
+        assertTrue(service.isSecondaryStableEnough(record, MatchDataProviders.TWENTYFOUR_SCORE));
     }
 
     private static GameResultRecord stableFinishedRecord(LocalDateTime kickoff) {
@@ -98,17 +71,16 @@ class MatchResultStabilizationServiceTest {
     }
 
     private static MatchResultSyncSettingsService.EffectiveMatchResultSyncSettings effectiveSettings(
-            boolean dualVerificationEnabled,
-            int minMinutesSinceApiLastUpdated
+            int requireStablePolls
     ) {
         return MatchResultSyncSettingsService.EffectiveMatchResultSyncSettings.builder()
                 .primaryProvider(MatchDataProviders.FOURSCORE)
-                .secondaryProvider(MatchDataProviders.FOOTBALL_DATA)
-                .dualVerificationEnabled(dualVerificationEnabled)
-                .requireStablePolls(2)
-                .minMinutesAfterKickoff(105)
-                .minMinutesAfterKickoffKnockout(150)
-                .minMinutesSinceApiLastUpdated(minMinutesSinceApiLastUpdated)
+                .secondaryProvider(MatchDataProviders.TWENTYFOUR_SCORE)
+                .dualVerificationEnabled(true)
+                .requireStablePolls(requireStablePolls)
+                .minMinutesAfterKickoff(0)
+                .minMinutesAfterKickoffKnockout(0)
+                .minMinutesSinceApiLastUpdated(0)
                 .build();
     }
 }

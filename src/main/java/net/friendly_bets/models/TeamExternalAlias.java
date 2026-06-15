@@ -15,7 +15,7 @@ import org.springframework.data.mongodb.core.mapping.Field;
 @Data
 public class TeamExternalAlias {
 
-    /** Например {@code football-data}. */
+    /** Например {@code 4score.ru}. */
     @Field(name = "provider")
     private String provider;
 

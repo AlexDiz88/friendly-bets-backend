@@ -1,7 +1,7 @@
 package net.friendly_bets.oddsapi;
 
 import lombok.RequiredArgsConstructor;
-import net.friendly_bets.footballdata.ApiSyncIssueService;
+import net.friendly_bets.gameresults.ApiSyncIssueService;
 import net.friendly_bets.models.gameresults.GameResultRecord;
 import net.friendly_bets.oddsapi.mapping.MappedOddsQuote;
 import net.friendly_bets.oddsapi.mapping.OddsCrossBookmakerMismatch;

@@ -5,7 +5,7 @@ import lombok.RequiredArgsConstructor;
 import net.friendly_bets.dto.MarathonbetSlotMatchPreviewDto;
 import net.friendly_bets.dto.MarathonbetSlotPreviewDto;
 import net.friendly_bets.exceptions.BadRequestException;
-import net.friendly_bets.footballdata.FootballDataSyncService;
+import net.friendly_bets.gameresults.GameResultQueryService;
 import net.friendly_bets.marathonbet.client.MarathonbetTournamentClient;
 import net.friendly_bets.marathonbet.config.MarathonbetProperties;
 import net.friendly_bets.models.League;
@@ -13,7 +13,7 @@ import net.friendly_bets.models.Season;
 import net.friendly_bets.models.gameresults.GameResultRecord;
 import net.friendly_bets.services.GetEntityService;
 import net.friendly_bets.services.RunningSeasonLookup;
-import net.friendly_bets.footballdata.FootballDataMatchdaySupport;
+import net.friendly_bets.gameresults.MatchdaySlotSupport;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -27,10 +27,10 @@ public class MarathonbetSlotPreviewService {
     private final MarathonbetProperties properties;
     private final MarathonbetTournamentClient tournamentClient;
     private final MarathonbetEventMatcher eventMatcher;
-    private final FootballDataSyncService footballDataSyncService;
+    private final GameResultQueryService gameResultQueryService;
     private final GetEntityService getEntityService;
     private final RunningSeasonLookup runningSeasonLookup;
-    private final FootballDataMatchdaySupport matchdaySupport;
+    private final MatchdaySlotSupport matchdaySupport;
 
     public MarathonbetSlotPreviewDto buildPreview(String leagueId, int matchday, String season) {
         League league = getEntityService.getLeagueOrThrow(leagueId);
@@ -45,7 +45,7 @@ public class MarathonbetSlotPreviewService {
         JsonNode tournamentRoot = tournamentClient.fetchTournament(tournamentId).requireBody();
         List<MarathonbetPrematchEvent> prematch = MarathonbetTournamentParser.parsePrematchEvents(tournamentRoot);
 
-        List<GameResultRecord> matches = footballDataSyncService.getMatches(
+        List<GameResultRecord> matches = gameResultQueryService.getMatches(
                 league.getLeagueCode().name(),
                 matchday,
                 resolvedSeason,
@@ -94,6 +94,6 @@ public class MarathonbetSlotPreviewService {
             return requestedSeason.trim();
         }
         Season active = runningSeasonLookup.findRunningSeasonOrThrow("seasonDatesRequired");
-        return matchdaySupport.resolveFootballDataSeasonYear(active, league.getLeagueCode());
+        return matchdaySupport.resolveExternalSeasonYear(active, league.getLeagueCode());
     }
 }

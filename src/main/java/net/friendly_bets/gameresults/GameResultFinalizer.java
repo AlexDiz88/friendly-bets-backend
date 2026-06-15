@@ -1,7 +1,7 @@
 package net.friendly_bets.gameresults;
 
-import net.friendly_bets.footballdata.ApiSyncIssueService;
-import net.friendly_bets.footballdata.FootballDataMatchStatuses;
+import net.friendly_bets.gameresults.ApiSyncIssueService;
+import net.friendly_bets.gameresults.MatchStatuses;
 import net.friendly_bets.models.GameScore;
 import net.friendly_bets.models.gameresults.GameResultFinalizedSource;
 import net.friendly_bets.models.gameresults.GameResultRecord;
@@ -33,8 +33,8 @@ public class GameResultFinalizer {
             return;
         }
 
-        String status = FootballDataMatchStatuses.normalize(record.getStatus());
-        if (!FootballDataMatchStatuses.isTerminal(status)) {
+        String status = MatchStatuses.normalize(record.getStatus());
+        if (!MatchStatuses.isTerminal(status)) {
             return;
         }
 

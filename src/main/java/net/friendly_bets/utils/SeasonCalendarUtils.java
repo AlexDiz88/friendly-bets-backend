@@ -21,7 +21,7 @@ public final class SeasonCalendarUtils {
     }
 
     /**
-     * Год для football-data.org: сезон 2024/25 → {@code 2024} (год старта).
+     * Год внешней синхронизации: сезон 2024/25 → {@code 2024} (год старта).
      */
     public static Integer resolveExternalSeasonYear(LocalDate startDate) {
         if (startDate == null) {

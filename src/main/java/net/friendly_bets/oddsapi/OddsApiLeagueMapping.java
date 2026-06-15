@@ -1,6 +1,6 @@
 package net.friendly_bets.oddsapi;
 
-import net.friendly_bets.footballdata.FootballDataCompetitionMapping;
+import net.friendly_bets.gameresults.LeagueCompetitionMapping;
 import net.friendly_bets.models.League;
 import net.friendly_bets.oddsapi.config.OddsApiProperties;
 
@@ -28,7 +28,7 @@ public final class OddsApiLeagueMapping {
     }
 
     public static Optional<String> toLeagueSlug(League.LeagueCode leagueCode, OddsApiProperties properties) {
-        if (leagueCode == null || !FootballDataCompetitionMapping.isSupported(leagueCode)) {
+        if (leagueCode == null || !LeagueCompetitionMapping.isSupported(leagueCode)) {
             return Optional.empty();
         }
         if (properties != null && properties.getLeagueSlugs() != null) {

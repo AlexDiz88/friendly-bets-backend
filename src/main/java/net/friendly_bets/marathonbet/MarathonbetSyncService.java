@@ -4,10 +4,10 @@ import com.fasterxml.jackson.databind.JsonNode;
 import lombok.RequiredArgsConstructor;
 import net.friendly_bets.dto.ExternalCompetitionInfoDto;
 import net.friendly_bets.exceptions.BadRequestException;
-import net.friendly_bets.footballdata.ApiSyncIssueService;
-import net.friendly_bets.footballdata.FootballDataCompetitionService;
-import net.friendly_bets.footballdata.FootballDataMatchdaySupport;
-import net.friendly_bets.footballdata.FootballDataSyncService;
+import net.friendly_bets.gameresults.ApiSyncIssueService;
+import net.friendly_bets.gameresults.ExternalCompetitionService;
+import net.friendly_bets.gameresults.MatchdaySlotSupport;
+import net.friendly_bets.gameresults.GameResultQueryService;
 import net.friendly_bets.marathonbet.client.MarathonbetHttpFetchResult;
 import net.friendly_bets.marathonbet.client.MarathonbetRequestType;
 import net.friendly_bets.marathonbet.client.MarathonbetTournamentClient;
@@ -53,9 +53,9 @@ public class MarathonbetSyncService {
     private final MarathonbetEventMatcher eventMatcher;
     private final MarathonbetBetTitleMapper betTitleMapper;
     private final OddsMergedOddsService oddsMergedOddsService;
-    private final FootballDataSyncService footballDataSyncService;
-    private final FootballDataCompetitionService footballDataCompetitionService;
-    private final FootballDataMatchdaySupport matchdaySupport;
+    private final GameResultQueryService gameResultQueryService;
+    private final ExternalCompetitionService externalCompetitionService;
+    private final MatchdaySlotSupport matchdaySupport;
     private final RunningSeasonLookup runningSeasonLookup;
     private final GetEntityService getEntityService;
     private final ApiSyncIssueService apiSyncIssueService;
@@ -108,8 +108,8 @@ public class MarathonbetSyncService {
             }
 
             leagueCode = league.getLeagueCode().name();
-            season = matchdaySupport.resolveFootballDataSeasonYear(active.get(), league.getLeagueCode());
-            ExternalCompetitionInfoDto info = footballDataCompetitionService.getCompetitionInfoForLeague(
+            season = matchdaySupport.resolveExternalSeasonYear(active.get(), league.getLeagueCode());
+            ExternalCompetitionInfoDto info = externalCompetitionService.getCompetitionInfoForLeague(
                     league.getId(),
                     season
             );
@@ -310,7 +310,7 @@ public class MarathonbetSyncService {
             List<MarathonbetHttpLogEntry> httpLogs
     ) {
         String leagueCode = league.getLeagueCode().name();
-        List<GameResultRecord> matches = footballDataSyncService.getMatches(
+        List<GameResultRecord> matches = gameResultQueryService.getMatches(
                 leagueCode,
                 matchday,
                 season,
@@ -445,7 +445,7 @@ public class MarathonbetSyncService {
             return requestedSeason.trim();
         }
         Season active = runningSeasonLookup.findRunningSeasonOrThrow("seasonDatesRequired");
-        return matchdaySupport.resolveFootballDataSeasonYear(active, league.getLeagueCode());
+        return matchdaySupport.resolveExternalSeasonYear(active, league.getLeagueCode());
     }
 
     private void finalizeRun(

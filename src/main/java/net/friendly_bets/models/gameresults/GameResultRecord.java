@@ -80,7 +80,7 @@ public class GameResultRecord {
     @Field(name = "admin_corrected")
     private boolean adminCorrected;
 
-    /** football-data score/duration на момент последнего sync канона. */
+    /** score/duration провайдера на момент последнего sync канона. */
     @Field(name = "score_duration")
     private String scoreDuration;
 
@@ -128,15 +128,20 @@ public class GameResultRecord {
         return sources.get(providerId);
     }
 
-    public GameResultSourceSnapshot footballDataSource() {
-        return sourceFor(MatchDataProviders.sourcesStorageKey(MatchDataProviders.FOOTBALL_DATA));
-    }
-
-    public GameResultSourceSnapshot apiFootballSource() {
-        return sourceFor(MatchDataProviders.sourcesStorageKey(MatchDataProviders.API_FOOTBALL));
-    }
-
     public GameResultSourceSnapshot fourScoreSource() {
         return sourceFor(MatchDataProviders.sourcesStorageKey(MatchDataProviders.FOURSCORE));
+    }
+
+    public GameResultSourceSnapshot twentyFourScoreSource() {
+        return sourceFor(MatchDataProviders.sourcesStorageKey(MatchDataProviders.TWENTYFOUR_SCORE));
+    }
+
+    /** Снимок primary-провайдера для матчинга odds/marathonbet (4score → 24score). */
+    public GameResultSourceSnapshot primaryExternalSource() {
+        GameResultSourceSnapshot fourScore = fourScoreSource();
+        if (fourScore != null) {
+            return fourScore;
+        }
+        return twentyFourScoreSource();
     }
 }

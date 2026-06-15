@@ -38,4 +38,24 @@ class FourScoreMatchListParserTest {
         assertEquals("angliya-costa-rica-10-06-2026",
                 FourScoreMatchListParser.slugFromPath("/events/angliya-costa-rica-10-06-2026/"));
     }
+
+    @Test
+    void parsesLiveStatusFromLgStatusLive() throws Exception {
+        String html = Files.readString(Path.of("src/test/resources/fourscore/events-live-status.html"));
+        List<FourScoreListMatch> matches = parser.parse(html, FourScoreLeagueSection.WORLD_CUP);
+
+        FourScoreListMatch live = matches.stream()
+                .filter(m -> "Бельгия".equals(m.getHomeTeamName()))
+                .findFirst()
+                .orElseThrow();
+        assertEquals("Идёт 38'", live.getStatusText());
+        assertTrue(live.needsEventDetails());
+
+        FourScoreListMatch finished = matches.stream()
+                .filter(m -> "Испания".equals(m.getHomeTeamName()))
+                .findFirst()
+                .orElseThrow();
+        assertEquals("Завершено", finished.getStatusText());
+        assertTrue(finished.isTerminal());
+    }
 }

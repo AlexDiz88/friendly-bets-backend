@@ -98,9 +98,9 @@ class UserAddOpenedBetIntegrationTest extends AbstractMongoIntegrationTest {
                 .awayTeamId(fx.getAwayTeam().getId())
                 .leagueId(fx.getLeague().getId())
                 .fetchedAt(LocalDateTime.now())
-                .provider(MatchDataProviders.FOOTBALL_DATA)
+                .provider(MatchDataProviders.FOURSCORE)
                 .sources(Map.of(
-                        MatchDataProviders.sourcesStorageKey(MatchDataProviders.FOOTBALL_DATA),
+                        MatchDataProviders.sourcesStorageKey(MatchDataProviders.FOURSCORE),
                         GameResultSourceSnapshot.builder()
                                 .externalMatchId(42_001L)
                                 .externalCompetitionCode("PL")

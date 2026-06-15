@@ -3,8 +3,8 @@ package net.friendly_bets.wc26;
 import lombok.RequiredArgsConstructor;
 import net.friendly_bets.dto.Wc26ScheduleMatchDto;
 import net.friendly_bets.dto.Wc26SchedulePageDto;
-import net.friendly_bets.footballdata.ExternalMatchScoreView;
-import net.friendly_bets.footballdata.config.FootballDataProperties;
+import net.friendly_bets.gameresults.ExternalMatchScoreView;
+import net.friendly_bets.gameresults.config.MatchResultSyncProperties;
 import net.friendly_bets.models.gameresults.GameResultRecord;
 import net.friendly_bets.models.gameresults.GameResultSideSnapshot;
 import net.friendly_bets.models.gameresults.GameResultSourceSnapshot;
@@ -25,12 +25,12 @@ public class Wc26ScheduleService {
 
     private final Wc26ScheduleMatchRepository wc26ScheduleMatchRepository;
     private final GameResultRecordRepository gameResultRecordRepository;
-    private final FootballDataProperties footballDataProperties;
+    private final MatchResultSyncProperties matchResultSyncProperties;
 
     public Wc26SchedulePageDto getSchedulePage(String season) {
         String resolvedSeason = season != null && !season.isBlank()
                 ? season
-                : footballDataProperties.getDefaultSeason();
+                : matchResultSyncProperties.getDefaultSeason();
         List<Wc26ScheduleMatch> schedule = wc26ScheduleMatchRepository.findAllByOrderByKickoffUtcAsc();
         Map<Integer, GameResultRecord> byScheduleId = indexResultsByScheduleId(resolvedSeason);
         Map<String, GameResultRecord> byPair = indexResultsByPair(resolvedSeason);
@@ -54,7 +54,7 @@ public class Wc26ScheduleService {
     private Map<String, GameResultRecord> indexResultsByPair(String season) {
         Map<String, GameResultRecord> map = new HashMap<>();
         for (GameResultRecord record : gameResultRecordRepository.findByLeagueCodeAndSeason(WC_LEAGUE_CODE, season)) {
-            GameResultSourceSnapshot source = record.footballDataSource();
+            GameResultSourceSnapshot source = record.primaryExternalSource();
             if (source == null) {
                 continue;
             }

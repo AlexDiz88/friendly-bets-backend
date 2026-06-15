@@ -3,8 +3,7 @@ package net.friendly_bets.gameresults;
 import lombok.RequiredArgsConstructor;
 import net.friendly_bets.dto.MatchResultSyncSettingsDto;
 import net.friendly_bets.dto.PatchMatchResultSyncSettingsDto;
-import net.friendly_bets.footballdata.config.FootballDataProperties;
-import net.friendly_bets.footballdata.config.MatchResultSyncProperties;
+import net.friendly_bets.gameresults.config.MatchResultSyncProperties;
 import net.friendly_bets.models.gameresults.MatchResultSyncSettings;
 import net.friendly_bets.repositories.MatchResultSyncSettingsRepository;
 import org.springframework.stereotype.Service;
@@ -17,13 +16,11 @@ import java.util.Set;
 public class MatchResultSyncSettingsService {
 
     private static final Set<String> KNOWN_PROVIDERS = Set.of(
-            MatchDataProviders.FOOTBALL_DATA,
-            MatchDataProviders.API_FOOTBALL,
-            MatchDataProviders.FOURSCORE
+            MatchDataProviders.FOURSCORE,
+            MatchDataProviders.TWENTYFOUR_SCORE
     );
 
     private final MatchResultSyncProperties properties;
-    private final FootballDataProperties footballDataProperties;
     private final MatchResultSyncSettingsRepository repository;
 
     public EffectiveMatchResultSyncSettings getEffective() {
@@ -37,7 +34,7 @@ public class MatchResultSyncSettingsService {
                 .minMinutesAfterKickoff(pickInt(stored != null ? stored.getMinMinutesAfterKickoff() : null, properties.getMinMinutesAfterKickoff()))
                 .minMinutesAfterKickoffKnockout(pickInt(stored != null ? stored.getMinMinutesAfterKickoffKnockout() : null, properties.getMinMinutesAfterKickoffKnockout()))
                 .minMinutesSinceApiLastUpdated(pickInt(stored != null ? stored.getMinMinutesSinceApiLastUpdated() : null, properties.getMinMinutesSinceApiLastUpdated()))
-                .autoSettleEnabled(footballDataProperties.isAutoSettleEnabled())
+                .autoSettleEnabled(properties.isAutoSettleEnabled())
                 .autoSettleOnlyWhenMatchdayCompleted(pickBool(
                         stored != null ? stored.getAutoSettleOnlyWhenMatchdayCompleted() : null,
                         properties.isAutoSettleOnlyWhenMatchdayCompleted()))
@@ -108,7 +105,7 @@ public class MatchResultSyncSettingsService {
                 .minMinutesAfterKickoff(properties.getMinMinutesAfterKickoff())
                 .minMinutesAfterKickoffKnockout(properties.getMinMinutesAfterKickoffKnockout())
                 .minMinutesSinceApiLastUpdated(properties.getMinMinutesSinceApiLastUpdated())
-                .autoSettleEnabled(footballDataProperties.isAutoSettleEnabled())
+                .autoSettleEnabled(properties.isAutoSettleEnabled())
                 .autoSettleOnlyWhenMatchdayCompleted(properties.isAutoSettleOnlyWhenMatchdayCompleted())
                 .build();
     }

@@ -46,7 +46,7 @@ public class GameResultSourceSnapshot {
     @Field(name = "away")
     private GameResultSideSnapshot away;
 
-    /** Время последнего изменения матча по данным API (поле lastUpdated у football-data). */
+    /** Время последнего изменения матча по данным провайдера. */
     @Field(name = "api_last_updated")
     private LocalDateTime apiLastUpdated;
 
@@ -54,11 +54,18 @@ public class GameResultSourceSnapshot {
     @Field(name = "fetched_at")
     private LocalDateTime fetchedAt;
 
-    /** football-data score/duration: REGULAR | EXTRA_TIME | PENALTY_SHOOTOUT */
+    /** score/duration: REGULAR | EXTRA_TIME | PENALTY_SHOOTOUT */
     @Field(name = "score_duration")
     private String scoreDuration;
 
     /** Текущая минута live с 4score (напр. 72'). */
     @Field(name = "live_minute_label")
     private String liveMinuteLabel;
+
+    /** Подряд идущие poll с тем же каноническим счётом (secondary dual-verification). */
+    @Field(name = "stable_score_poll_count")
+    private int stableScorePollCount;
+
+    @Field(name = "last_seen_canonical_score_hash")
+    private String lastSeenCanonicalScoreHash;
 }

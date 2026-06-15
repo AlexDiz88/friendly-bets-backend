@@ -1,7 +1,7 @@
 package net.friendly_bets.marathonbet;
 
 import lombok.RequiredArgsConstructor;
-import net.friendly_bets.footballdata.ApiSyncIssueService;
+import net.friendly_bets.gameresults.ApiSyncIssueService;
 import net.friendly_bets.marathonbet.config.MarathonbetProperties;
 import net.friendly_bets.models.Team;
 import net.friendly_bets.models.TeamDisplayNames;
@@ -192,7 +192,7 @@ public class MarathonbetEventMatcher {
     }
 
     private static String externalName(GameResultRecord match, boolean home) {
-        GameResultSourceSnapshot source = match.footballDataSource();
+        GameResultSourceSnapshot source = match.primaryExternalSource();
         if (source == null) {
             return null;
         }

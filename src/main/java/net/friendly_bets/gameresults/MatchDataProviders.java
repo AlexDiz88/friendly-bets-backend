@@ -3,11 +3,10 @@ package net.friendly_bets.gameresults;
 public final class MatchDataProviders {
 
     /** Логический id провайдера (совпадает с {@link net.friendly_bets.models.TeamExternalAlias}). */
-    public static final String FOOTBALL_DATA = "football-data";
     public static final String ODDS_API = "odds-api.io";
-    public static final String API_FOOTBALL = "api-football";
     public static final String MARATHONBET = "marathonbet";
     public static final String FOURSCORE = "4score.ru";
+    public static final String TWENTYFOUR_SCORE = "24score.pro";
 
     private MatchDataProviders() {
     }
@@ -19,6 +18,9 @@ public final class MatchDataProviders {
         }
         if (FOURSCORE.equals(providerId)) {
             return "4score";
+        }
+        if (TWENTYFOUR_SCORE.equals(providerId)) {
+            return "24score";
         }
         if (ODDS_API.equals(providerId)) {
             return "odds_api";

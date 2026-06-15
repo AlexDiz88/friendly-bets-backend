@@ -1,7 +1,6 @@
 package net.friendly_bets.wc26;
 
 import net.friendly_bets.config.WcTournamentSlots;
-import net.friendly_bets.footballdata.client.dto.FootballDataMatchDto;
 import net.friendly_bets.models.Team;
 import net.friendly_bets.models.TeamDisplayNames;
 import net.friendly_bets.models.TeamExternalAlias;
@@ -49,34 +48,6 @@ public final class WcBerlinSlotMatchFilter {
         return false;
     }
 
-    public static List<FootballDataMatchDto> filterFootballDataMatches(
-            String slotId,
-            List<FootballDataMatchDto> matches
-    ) {
-        if (!isBerlinGroupSlot(slotId) || matches == null || matches.isEmpty()) {
-            return matches == null ? List.of() : matches;
-        }
-        Set<ExpectedPair> expected = expectedPairsForSlot(slotId);
-        List<FootballDataMatchDto> filtered = new ArrayList<>();
-        for (FootballDataMatchDto match : matches) {
-            if (match == null || match.getHomeTeam() == null || match.getAwayTeam() == null) {
-                continue;
-            }
-            FootballDataMatchDto.Team home = match.getHomeTeam();
-            FootballDataMatchDto.Team away = match.getAwayTeam();
-            if (matchesExpectedPair(
-                    expected,
-                    home.getTla(),
-                    home.getName(),
-                    away.getTla(),
-                    away.getName()
-            )) {
-                filtered.add(match);
-            }
-        }
-        return filtered;
-    }
-
     public static List<GameResultRecord> filterGameResultRecords(
             String slotId,
             List<GameResultRecord> records
@@ -95,7 +66,7 @@ public final class WcBerlinSlotMatchFilter {
         Set<ExpectedPair> expected = expectedPairsForSlot(slotId);
         List<GameResultRecord> filtered = new ArrayList<>();
         for (GameResultRecord record : records) {
-            GameResultSourceSnapshot source = record.footballDataSource();
+            GameResultSourceSnapshot source = record.primaryExternalSource();
             if (source == null) {
                 continue;
             }

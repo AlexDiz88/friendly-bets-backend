@@ -9,8 +9,8 @@ import net.friendly_bets.exceptions.ConflictException;
 import net.friendly_bets.models.*;
 import net.friendly_bets.models.enums.BetTitleCode;
 import net.friendly_bets.exceptions.ForbiddenException;
-import net.friendly_bets.footballdata.FootballDataMatchdaySupport;
-import net.friendly_bets.footballdata.FootballDataSyncService;
+import net.friendly_bets.gameresults.MatchdaySlotSupport;
+import net.friendly_bets.gameresults.MatchResultsPollingService;
 import net.friendly_bets.models.gameresults.GameResultRecord;
 import net.friendly_bets.oddsapi.GameResultNotStarted;
 import net.friendly_bets.repositories.BetsRepository;
@@ -48,9 +48,9 @@ public class BetsService {
     GameweekStatsService gameweekStatsService;
     BetTitleStatsService betTitleStatsService;
     LeagueMatchdayService leagueMatchdayService;
-    FootballDataSyncService footballDataSyncService;
+    MatchResultsPollingService matchResultsPollingService;
     GameResultRecordRepository gameResultRecordRepository;
-    FootballDataMatchdaySupport matchdaySupport;
+    MatchdaySlotSupport matchdaySupport;
 
     @Transactional
     public BetDto addOpenedBet(AuthenticatedUser currentUser, NewBetDto newOpenedBet) {
@@ -90,7 +90,7 @@ public class BetsService {
         leagueMatchdayService.updateCurrentMatchDayAfterBet(season, league);
         calendarsService.addBetToCalendarNode(openedBet, newOpenedBet.getCalendarNodeId(), newOpenedBet.getLeagueId(), newOpenedBet.getMatchDay());
         playerStatsService.calculateStatsBasedOnNewOpenedBet(season.getId(), league.getId(), user, true);
-        footballDataSyncService.registerPollingForOpenedBet(openedBet);
+        matchResultsPollingService.registerPollingForOpenedBet(openedBet);
 
         return BetDto.from(openedBet);
     }
@@ -504,7 +504,7 @@ public class BetsService {
         if (league.getLeagueCode() == null) {
             throw new BadRequestException("gameResultNotFound");
         }
-        String storageSeason = matchdaySupport.resolveFootballDataSeasonYear(season, league.getLeagueCode());
+        String storageSeason = matchdaySupport.resolveExternalSeasonYear(season, league.getLeagueCode());
         List<GameResultRecord> matches = gameResultRecordRepository.findByLeagueCodeAndSeasonAndHomeTeamIdAndAwayTeamId(
                 league.getLeagueCode().name(),
                 storageSeason,

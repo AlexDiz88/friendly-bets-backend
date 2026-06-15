@@ -46,7 +46,4 @@ public class Team {
     @Builder.Default
     private List<TeamExternalAlias> externalAliases = new ArrayList<>();
 
-    @Field(name = "football_data_team_id")
-    private Integer footballDataTeamId;
-
 }

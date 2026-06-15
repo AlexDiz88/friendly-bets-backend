@@ -3,10 +3,10 @@ package net.friendly_bets.oddsapi;
 import lombok.RequiredArgsConstructor;
 import net.friendly_bets.dto.ExternalCompetitionInfoDto;
 import net.friendly_bets.exceptions.BadRequestException;
-import net.friendly_bets.footballdata.FootballDataCompetitionMapping;
-import net.friendly_bets.footballdata.FootballDataCompetitionService;
-import net.friendly_bets.footballdata.FootballDataMatchdaySupport;
-import net.friendly_bets.footballdata.FootballDataSyncService;
+import net.friendly_bets.gameresults.LeagueCompetitionMapping;
+import net.friendly_bets.gameresults.ExternalCompetitionService;
+import net.friendly_bets.gameresults.MatchdaySlotSupport;
+import net.friendly_bets.gameresults.GameResultQueryService;
 import net.friendly_bets.models.League;
 import net.friendly_bets.models.Season;
 import net.friendly_bets.models.gameresults.GameResultRecord;
@@ -41,10 +41,10 @@ public class OddsApiSyncService {
     private final OddsApiProperties properties;
     private final OddsApiClient oddsApiClient;
     private final RunningSeasonLookup runningSeasonLookup;
-    private final FootballDataCompetitionService footballDataCompetitionService;
-    private final FootballDataMatchdaySupport matchdaySupport;
+    private final ExternalCompetitionService externalCompetitionService;
+    private final MatchdaySlotSupport matchdaySupport;
     private final GameResultOddsRepository gameResultOddsRepository;
-    private final FootballDataSyncService footballDataSyncService;
+    private final GameResultQueryService gameResultQueryService;
     private final OddsApiEventMatcher eventMatcher;
     private final GetEntityService getEntityService;
     private final OddsMergedOddsService oddsMergedOddsService;
@@ -153,7 +153,7 @@ public class OddsApiSyncService {
             if (excluded.contains(league.getLeagueCode().name())) {
                 continue;
             }
-            if (!FootballDataCompetitionMapping.isSupported(league.getLeagueCode())) {
+            if (!LeagueCompetitionMapping.isSupported(league.getLeagueCode())) {
                 continue;
             }
             if (league.getTournamentFormatId() == null || league.getTournamentFormatId().isBlank()) {
@@ -165,8 +165,8 @@ public class OddsApiSyncService {
                 continue;
             }
 
-            String leagueSeason = matchdaySupport.resolveFootballDataSeasonYear(season, league.getLeagueCode());
-            ExternalCompetitionInfoDto info = footballDataCompetitionService.getCompetitionInfoForLeague(
+            String leagueSeason = matchdaySupport.resolveExternalSeasonYear(season, league.getLeagueCode());
+            ExternalCompetitionInfoDto info = externalCompetitionService.getCompetitionInfoForLeague(
                     league.getId(),
                     leagueSeason
             );
@@ -225,7 +225,7 @@ public class OddsApiSyncService {
             List<String> gameResultIds
     ) {
         String leagueCode = league.getLeagueCode().name();
-        List<GameResultRecord> matches = footballDataSyncService.getMatches(
+        List<GameResultRecord> matches = gameResultQueryService.getMatches(
                 leagueCode,
                 matchday,
                 season,
@@ -338,7 +338,7 @@ public class OddsApiSyncService {
             return requestedSeason.trim();
         }
         Season active = runningSeasonLookup.findRunningSeasonOrThrow("seasonDatesRequired");
-        return matchdaySupport.resolveFootballDataSeasonYear(active, league.getLeagueCode());
+        return matchdaySupport.resolveExternalSeasonYear(active, league.getLeagueCode());
     }
 
     private record LeagueMatchdaySyncCounters(
