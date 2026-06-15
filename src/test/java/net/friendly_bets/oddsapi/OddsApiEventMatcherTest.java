@@ -1,6 +1,6 @@
 package net.friendly_bets.oddsapi;
 
-import net.friendly_bets.footballdata.ApiSyncIssueService;
+import net.friendly_bets.gameresults.ApiSyncIssueService;
 import net.friendly_bets.models.Team;
 import net.friendly_bets.models.gameresults.GameResultRecord;
 import net.friendly_bets.models.gameresults.GameResultSideSnapshot;
@@ -157,7 +157,7 @@ class OddsApiEventMatcherTest {
                 .awayTeamId(awayTeamId)
                 .utcDate(kickoff)
                 .status("SCHEDULED")
-                .sources(java.util.Map.of("football_data", source))
+                .sources(java.util.Map.of("4score", source))
                 .build();
     }
 }

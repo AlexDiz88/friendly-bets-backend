@@ -71,6 +71,53 @@ public class FourScoreGameResultMapper {
         return builder.build();
     }
 
+    public GameResultRecord toNewRecord(
+            FourScoreEventDetails details,
+            Team homeTeam,
+            Team awayTeam,
+            String leagueCode,
+            String season,
+            int matchday,
+            String leagueId,
+            Long externalEventId,
+            LocalDateTime fetchedAt
+    ) {
+        FourScoreScoreNormalizer.NormalizedScore normalized = scoreNormalizer.normalize(details);
+        GameResultSourceSnapshot source = toSourceSnapshot(
+                details,
+                homeTeam,
+                awayTeam,
+                externalEventId,
+                season,
+                normalized,
+                fetchedAt
+        );
+        GameResultRecord.GameResultRecordBuilder builder = GameResultRecord.builder()
+                .leagueCode(leagueCode)
+                .matchday(matchday)
+                .season(season)
+                .leagueId(leagueId)
+                .homeTeamId(homeTeam.getId())
+                .awayTeamId(awayTeam.getId())
+                .fetchedAt(fetchedAt)
+                .provider(MatchDataProviders.FOURSCORE)
+                .fourscoreEventSlug(details.getEventSlug())
+                .sources(Map.of(
+                        MatchDataProviders.sourcesStorageKey(MatchDataProviders.FOURSCORE),
+                        source
+                ));
+        if (normalized != null) {
+            builder.status(normalized.status())
+                    .gameScore(normalized.gameScore())
+                    .scoreDuration(normalized.scoreDuration())
+                    .liveMinuteLabel(normalized.liveMinuteLabel());
+        }
+        if (details.getKickoffAt() != null) {
+            builder.utcDate(details.getKickoffAt());
+        }
+        return builder.build();
+    }
+
     public GameResultSourceSnapshot toSourceSnapshot(
             FourScoreEventDetails details,
             Team homeTeam,

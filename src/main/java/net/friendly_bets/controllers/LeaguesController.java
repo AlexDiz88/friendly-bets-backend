@@ -6,7 +6,7 @@ import net.friendly_bets.dto.SetLeagueCurrentMatchdayDto;
 import net.friendly_bets.dto.ExternalCompetitionInfoDto;
 import net.friendly_bets.dto.LeagueDto;
 import net.friendly_bets.dto.LeaguesWithoutFormatPage;
-import net.friendly_bets.footballdata.FootballDataCompetitionService;
+import net.friendly_bets.gameresults.ExternalCompetitionService;
 import net.friendly_bets.services.LeaguesService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -19,7 +19,7 @@ import javax.validation.Valid;
 @RequestMapping("/api/leagues")
 public class LeaguesController {
 
-    private final FootballDataCompetitionService footballDataCompetitionService;
+    private final ExternalCompetitionService externalCompetitionService;
     private final LeaguesService leaguesService;
 
     @GetMapping("/without-tournament-format")
@@ -54,6 +54,6 @@ public class LeaguesController {
             @PathVariable String leagueId,
             @RequestParam(defaultValue = "2025") String season
     ) {
-        return ResponseEntity.ok(footballDataCompetitionService.getCompetitionInfoForLeague(leagueId, season));
+        return ResponseEntity.ok(externalCompetitionService.getCompetitionInfoForLeague(leagueId, season));
     }
 }

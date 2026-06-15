@@ -4,6 +4,7 @@ import lombok.Builder;
 import lombok.Value;
 import net.friendly_bets.models.gameresults.GameResultRecord;
 
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 
 @Value
@@ -37,6 +38,14 @@ public class FourScoreListMatch {
         if (record != null && record.isFinalized()) {
             return false;
         }
-        return needsEventDetails();
+        if (needsEventDetails()) {
+            return true;
+        }
+        return record != null && kickoffStarted(record);
+    }
+
+    private boolean kickoffStarted(GameResultRecord record) {
+        LocalDateTime kickoff = record.getUtcDate();
+        return kickoff != null && !LocalDateTime.now().isBefore(kickoff);
     }
 }

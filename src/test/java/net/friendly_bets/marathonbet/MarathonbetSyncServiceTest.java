@@ -1,10 +1,10 @@
 package net.friendly_bets.marathonbet;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import net.friendly_bets.footballdata.ApiSyncIssueService;
-import net.friendly_bets.footballdata.FootballDataCompetitionService;
-import net.friendly_bets.footballdata.FootballDataMatchdaySupport;
-import net.friendly_bets.footballdata.FootballDataSyncService;
+import net.friendly_bets.gameresults.ApiSyncIssueService;
+import net.friendly_bets.gameresults.ExternalCompetitionService;
+import net.friendly_bets.gameresults.MatchdaySlotSupport;
+import net.friendly_bets.gameresults.GameResultQueryService;
 import net.friendly_bets.marathonbet.client.MarathonbetHttpFetchResult;
 import net.friendly_bets.marathonbet.client.MarathonbetHttpOutcome;
 import net.friendly_bets.marathonbet.client.MarathonbetTournamentClient;
@@ -51,11 +51,11 @@ class MarathonbetSyncServiceTest {
     @Mock
     OddsMergedOddsService oddsMergedOddsService;
     @Mock
-    FootballDataSyncService footballDataSyncService;
+    GameResultQueryService gameResultQueryService;
     @Mock
-    FootballDataCompetitionService footballDataCompetitionService;
+    ExternalCompetitionService externalCompetitionService;
     @Mock
-    FootballDataMatchdaySupport matchdaySupport;
+    MatchdaySlotSupport matchdaySupport;
     @Mock
     SeasonsRepository seasonsRepository;
     @Mock
@@ -98,7 +98,7 @@ class MarathonbetSyncServiceTest {
                 .status("SCHEDULED")
                 .utcDate(LocalDateTime.now().plusDays(1))
                 .build();
-        when(footballDataSyncService.getMatches(eq("WC"), eq(3), any(), eq("wc-league")))
+        when(gameResultQueryService.getMatches(eq("WC"), eq(3), any(), eq("wc-league")))
                 .thenReturn(List.of(match));
 
         MarathonbetPrematchEvent event = MarathonbetPrematchEvent.builder()

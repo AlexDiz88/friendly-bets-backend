@@ -19,7 +19,7 @@ import java.time.LocalDateTime;
 public class ApiSyncIssue {
 
     public enum Provider {
-        FOOTBALL_DATA,
+        FOURSCORE,
         ODDS_API,
         MARATHONBET
     }

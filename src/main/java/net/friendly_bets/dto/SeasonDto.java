@@ -31,7 +31,7 @@ public class SeasonDto {
     @Schema(description = "дата окончания турнира", example = "2025-05-25")
     private LocalDate endDate;
 
-    @Schema(description = "год для football-data.org (год старта сезона)", example = "2024")
+    @Schema(description = "год начала сезона для внешней синхронизации", example = "2024")
     private Integer externalSeasonYear;
 
     @Schema(description = "допустимые годы для запросов к API (от года начала до года конца)")

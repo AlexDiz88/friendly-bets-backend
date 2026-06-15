@@ -1,7 +1,7 @@
 package net.friendly_bets.fourscore;
 
-import net.friendly_bets.footballdata.FootballDataScoreNormalizer;
-import net.friendly_bets.footballdata.FootballDataMatchStatuses;
+import net.friendly_bets.gameresults.CanonicalScoreNormalizer;
+import net.friendly_bets.gameresults.MatchStatuses;
 import net.friendly_bets.models.GameScore;
 import org.springframework.stereotype.Component;
 
@@ -25,7 +25,7 @@ public class FourScoreScoreNormalizer {
         FourScoreStatusTextParser.ParsedStatus parsed = FourScoreStatusTextParser.parse(details.getStatusText());
         String status = parsed.mappedStatus();
         String liveMinuteLabel = parsed.liveMinuteLabel();
-        if (!FootballDataMatchStatuses.hasScore(status) && !FootballDataMatchStatuses.isTerminal(status)) {
+        if (!MatchStatuses.hasScore(status) && !MatchStatuses.isTerminal(status)) {
             return new NormalizedScore(null, null, status, liveMinuteLabel);
         }
 
@@ -48,7 +48,7 @@ public class FourScoreScoreNormalizer {
         }
 
         String duration = resolveDuration(details);
-        if (FootballDataMatchStatuses.isTerminal(status)) {
+        if (MatchStatuses.isTerminal(status)) {
             liveMinuteLabel = null;
         }
         return new NormalizedScore(builder.build(), duration, status, liveMinuteLabel);
@@ -56,12 +56,12 @@ public class FourScoreScoreNormalizer {
 
     private static String resolveDuration(FourScoreEventDetails details) {
         if (details.getPenaltyScore() != null && !details.getPenaltyScore().isBlank()) {
-            return FootballDataScoreNormalizer.DURATION_PENALTY_SHOOTOUT;
+            return CanonicalScoreNormalizer.DURATION_PENALTY_SHOOTOUT;
         }
         if (details.getExtraTimeScore() != null && !details.getExtraTimeScore().isBlank()) {
-            return FootballDataScoreNormalizer.DURATION_EXTRA_TIME;
+            return CanonicalScoreNormalizer.DURATION_EXTRA_TIME;
         }
-        return FootballDataScoreNormalizer.DURATION_REGULAR;
+        return CanonicalScoreNormalizer.DURATION_REGULAR;
     }
 
     private static String resolveFullTime(
@@ -81,7 +81,7 @@ public class FourScoreScoreNormalizer {
                 && details.getExtraTimeScore() == null && details.getPenaltyScore() == null) {
             return details.getHeaderHomeScore() + ":" + details.getHeaderAwayScore();
         }
-        if (FootballDataMatchStatuses.hasScore(status)
+        if (MatchStatuses.hasScore(status)
                 && firstHalf != null
                 && details.getHeaderHomeScore() != null
                 && details.getHeaderAwayScore() != null) {

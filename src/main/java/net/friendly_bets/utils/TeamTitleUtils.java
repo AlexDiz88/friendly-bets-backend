@@ -7,12 +7,12 @@ import java.util.Locale;
 
 public final class TeamTitleUtils {
 
-    public static final String FOOTBALL_DATA_PROVIDER = "football-data";
     /** {@link net.friendly_bets.gameresults.MatchDataProviders#ODDS_API} */
     public static final String ODDS_API_PROVIDER = "odds-api.io";
-    public static final String API_FOOTBALL_PROVIDER = "api-football";
     public static final String MARATHONBET_PROVIDER = "marathonbet";
     public static final String FOURSCORE_PROVIDER = "4score.ru";
+    /** {@link net.friendly_bets.gameresults.MatchDataProviders#TWENTYFOUR_SCORE} */
+    public static final String TWENTYFOUR_SCORE_PROVIDER = "24score.pro";
 
     private TeamTitleUtils() {
     }

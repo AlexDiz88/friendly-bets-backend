@@ -43,8 +43,9 @@ public class MatchResultTrustPolicy {
             return FinalizeDecision.READY;
         }
 
+        String secondaryProvider = settings.getSecondaryProvider();
         GameScore primaryScore = resolveCanonicalForProvider(record, settings.getPrimaryProvider());
-        GameScore secondaryScore = resolveCanonicalForProvider(record, settings.getSecondaryProvider());
+        GameScore secondaryScore = resolveCanonicalForProvider(record, secondaryProvider);
 
         if (primaryScore == null) {
             return FinalizeDecision.PRIMARY_UNAVAILABLE;
@@ -53,6 +54,10 @@ public class MatchResultTrustPolicy {
             return settings.isAllowFinalizeWithoutSecondary()
                     ? FinalizeDecision.READY
                     : FinalizeDecision.SECONDARY_UNAVAILABLE;
+        }
+
+        if (!stabilizationService.isSecondaryStableEnough(record, secondaryProvider)) {
+            return FinalizeDecision.NOT_STABLE;
         }
 
         if (!GameScoreValidator.sameCanonicalScore(primaryScore, secondaryScore)) {
@@ -71,12 +76,5 @@ public class MatchResultTrustPolicy {
         }
         GameResultSourceSnapshot source = record.sourceFor(MatchDataProviders.sourcesStorageKey(providerId));
         return source != null ? source.getGameScore() : null;
-    }
-
-    private static GameResultSourceSnapshot sourceForProvider(GameResultRecord record, String providerId) {
-        if (providerId == null) {
-            return null;
-        }
-        return record.sourceFor(MatchDataProviders.sourcesStorageKey(providerId));
     }
 }

@@ -24,7 +24,7 @@ public class Wc26ScheduleLinker {
         if (record == null || !WC_LEAGUE_CODE.equals(record.getLeagueCode()) || record.getWc26ScheduleId() != null) {
             return;
         }
-        resolveScheduleId(homeTeam, awayTeam, record.footballDataSource())
+        resolveScheduleId(homeTeam, awayTeam, record.primaryExternalSource())
                 .ifPresent(record::setWc26ScheduleId);
     }
 
@@ -36,7 +36,7 @@ public class Wc26ScheduleLinker {
             if (record.getWc26ScheduleId() != null) {
                 continue;
             }
-            GameResultSourceSnapshot source = record.footballDataSource();
+            GameResultSourceSnapshot source = record.primaryExternalSource();
             if (source == null) {
                 continue;
             }

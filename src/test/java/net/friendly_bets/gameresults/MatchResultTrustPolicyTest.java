@@ -31,8 +31,8 @@ class MatchResultTrustPolicyTest {
         policy = new MatchResultTrustPolicy(settingsService, stabilizationService);
         when(settingsService.getEffective()).thenReturn(
                 MatchResultSyncSettingsService.EffectiveMatchResultSyncSettings.builder()
-                        .primaryProvider(MatchDataProviders.FOOTBALL_DATA)
-                        .secondaryProvider(MatchDataProviders.API_FOOTBALL)
+                        .primaryProvider(MatchDataProviders.FOURSCORE)
+                        .secondaryProvider(MatchDataProviders.TWENTYFOUR_SCORE)
                         .dualVerificationEnabled(false)
                         .requireStablePolls(2)
                         .minMinutesAfterKickoff(105)
@@ -52,28 +52,31 @@ class MatchResultTrustPolicyTest {
     }
 
     @Test
-    void dualModeRequiresMatchingScores() {
+    void dualModeRequiresMatchingScoresAndSecondaryStable() {
         when(settingsService.getEffective()).thenReturn(
                 MatchResultSyncSettingsService.EffectiveMatchResultSyncSettings.builder()
-                        .primaryProvider(MatchDataProviders.FOOTBALL_DATA)
-                        .secondaryProvider(MatchDataProviders.API_FOOTBALL)
+                        .primaryProvider(MatchDataProviders.FOURSCORE)
+                        .secondaryProvider(MatchDataProviders.TWENTYFOUR_SCORE)
                         .dualVerificationEnabled(true)
                         .allowFinalizeWithoutSecondary(false)
                         .requireStablePolls(2)
-                        .minMinutesAfterKickoff(105)
-                        .minMinutesAfterKickoffKnockout(150)
-                        .minMinutesSinceApiLastUpdated(30)
                         .build()
         );
         LocalDateTime now = LocalDateTime.now();
         GameScore score = GameScore.builder().fullTime("2:1").firstTime("1:0").build();
         GameResultRecord record = validRecord();
         record.setGameScore(score);
+        record.setStableScorePollCount(2);
         record.setSources(Map.of(
-                MatchDataProviders.sourcesStorageKey(MatchDataProviders.API_FOOTBALL),
-                GameResultSourceSnapshot.builder().gameScore(GameScore.builder().fullTime("1:0").firstTime("1:0").build()).build()
+                MatchDataProviders.sourcesStorageKey(MatchDataProviders.TWENTYFOUR_SCORE),
+                GameResultSourceSnapshot.builder()
+                        .gameScore(GameScore.builder().fullTime("1:0").firstTime("1:0").build())
+                        .stableScorePollCount(2)
+                        .build()
         ));
         when(stabilizationService.isStableEnough(record, now)).thenReturn(true);
+        when(stabilizationService.isSecondaryStableEnough(record, MatchDataProviders.TWENTYFOUR_SCORE))
+                .thenReturn(true);
 
         assertEquals(MatchResultTrustPolicy.FinalizeDecision.PROVIDER_MISMATCH, policy.evaluate(record, now));
     }

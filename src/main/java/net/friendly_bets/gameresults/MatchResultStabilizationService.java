@@ -1,14 +1,12 @@
 package net.friendly_bets.gameresults;
 
 import lombok.RequiredArgsConstructor;
-import net.friendly_bets.footballdata.FootballDataScoreNormalizer;
 import net.friendly_bets.models.GameScore;
 import net.friendly_bets.models.gameresults.GameResultRecord;
 import net.friendly_bets.models.gameresults.GameResultSourceSnapshot;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
-import java.time.temporal.ChronoUnit;
 
 @Component
 @RequiredArgsConstructor
@@ -21,7 +19,7 @@ public class MatchResultStabilizationService {
             return;
         }
         String status = record.getStatus();
-        if (status != null && net.friendly_bets.footballdata.FootballDataMatchStatuses.isTerminal(status)) {
+        if (status != null && net.friendly_bets.gameresults.MatchStatuses.isTerminal(status)) {
             if (record.getFirstTerminalAt() == null) {
                 record.setFirstTerminalAt(fetchedAt);
             }
@@ -36,61 +34,45 @@ public class MatchResultStabilizationService {
         }
     }
 
+    public void updateSecondaryStabilityCounters(GameResultSourceSnapshot source) {
+        if (source == null) {
+            return;
+        }
+        String hash = canonicalScoreHash(source.getGameScore());
+        if (hash != null && hash.equals(source.getLastSeenCanonicalScoreHash())) {
+            source.setStableScorePollCount(source.getStableScorePollCount() + 1);
+        } else {
+            source.setLastSeenCanonicalScoreHash(hash);
+            source.setStableScorePollCount(hash != null ? 1 : 0);
+        }
+    }
+
     public boolean isStableEnough(GameResultRecord record, LocalDateTime fetchedAt) {
         if (record == null) {
             return false;
         }
         var settings = settingsService.getEffective();
-        if (record.getStableScorePollCount() < settings.getRequireStablePolls()) {
-            return false;
-        }
-        if (record.getUtcDate() == null) {
-            return false;
-        }
-        int minMinutes = isKnockout(record)
-                ? settings.getMinMinutesAfterKickoffKnockout()
-                : settings.getMinMinutesAfterKickoff();
-        long minutesSinceKickoff = ChronoUnit.MINUTES.between(record.getUtcDate(), fetchedAt);
-        if (minutesSinceKickoff < minMinutes) {
-            return false;
-        }
-        return isApiLastUpdatedStaleEnough(record, fetchedAt, settings.getMinMinutesSinceApiLastUpdated());
+        return record.getStableScorePollCount() >= settings.getRequireStablePolls();
     }
 
-    private static boolean isKnockout(GameResultRecord record) {
-        String duration = record.getScoreDuration();
-        if (duration == null || duration.isBlank()) {
+    public boolean isSecondaryStableEnough(GameResultRecord record, String secondaryProvider) {
+        if (record == null || secondaryProvider == null) {
             return false;
         }
-        return FootballDataScoreNormalizer.DURATION_EXTRA_TIME.equals(duration)
-                || FootballDataScoreNormalizer.DURATION_PENALTY_SHOOTOUT.equals(duration);
+        GameResultSourceSnapshot source = record.sourceFor(MatchDataProviders.sourcesStorageKey(secondaryProvider));
+        if (source == null) {
+            return false;
+        }
+        int required = settingsService.getEffective().getRequireStablePolls();
+        return source.getStableScorePollCount() >= required;
     }
 
-    private boolean isApiLastUpdatedStaleEnough(
-            GameResultRecord record,
-            LocalDateTime fetchedAt,
-            int minMinutesSinceApiLastUpdated
-    ) {
-        if (minMinutesSinceApiLastUpdated <= 0) {
-            return true;
+    public String describeStabilityBlock(GameResultRecord record) {
+        if (record == null) {
+            return "record=null";
         }
-        var settings = settingsService.getEffective();
-        if (!settings.isDualVerificationEnabled()) {
-            return true;
-        }
-        GameResultSourceSnapshot source = primarySource(record, settings.getPrimaryProvider());
-        if (source == null || source.getApiLastUpdated() == null) {
-            return true;
-        }
-        long minutes = ChronoUnit.MINUTES.between(source.getApiLastUpdated(), fetchedAt);
-        return minutes >= minMinutesSinceApiLastUpdated;
-    }
-
-    private static GameResultSourceSnapshot primarySource(GameResultRecord record, String primaryProvider) {
-        if (record == null || primaryProvider == null) {
-            return null;
-        }
-        return record.sourceFor(MatchDataProviders.sourcesStorageKey(primaryProvider));
+        int required = settingsService.getEffective().getRequireStablePolls();
+        return "stablePolls=" + record.getStableScorePollCount() + "/" + required;
     }
 
     static String canonicalScoreHash(GameScore score) {

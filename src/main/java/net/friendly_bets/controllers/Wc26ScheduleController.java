@@ -4,7 +4,7 @@ import lombok.RequiredArgsConstructor;
 import net.friendly_bets.dto.Wc26FifaBracketPageDto;
 import net.friendly_bets.dto.Wc26FifaStandingsPageDto;
 import net.friendly_bets.dto.Wc26SchedulePageDto;
-import net.friendly_bets.footballdata.config.FootballDataProperties;
+import net.friendly_bets.gameresults.config.MatchResultSyncProperties;
 import net.friendly_bets.wc26.Wc26FifaLiveService;
 import net.friendly_bets.wc26.Wc26ScheduleService;
 import org.springframework.http.CacheControl;
@@ -24,7 +24,7 @@ public class Wc26ScheduleController {
 
     private final Wc26ScheduleService wc26ScheduleService;
     private final Wc26FifaLiveService wc26FifaLiveService;
-    private final FootballDataProperties footballDataProperties;
+    private final MatchResultSyncProperties matchResultSyncProperties;
 
     @GetMapping("/schedule")
     @PreAuthorize("permitAll()")
@@ -33,7 +33,7 @@ public class Wc26ScheduleController {
     ) {
         String resolvedSeason = season != null && !season.isBlank()
                 ? season
-                : footballDataProperties.getDefaultSeason();
+                : matchResultSyncProperties.getDefaultSeason();
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.maxAge(30, TimeUnit.SECONDS).cachePublic())
                 .body(wc26ScheduleService.getSchedulePage(resolvedSeason));

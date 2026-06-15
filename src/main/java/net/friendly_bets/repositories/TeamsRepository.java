@@ -11,8 +11,6 @@ public interface TeamsRepository extends MongoRepository<Team, String> {
 
     boolean existsByTitle(String title);
 
-    Optional<Team> findByFootballDataTeamId(int footballDataTeamId);
-
     Optional<Team> findByTitleIgnoreCase(String title);
 
     Optional<Team> findByTitle(String title);

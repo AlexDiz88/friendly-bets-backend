@@ -46,7 +46,7 @@ public class ExternalMatchDto {
     private String liveMinuteLabel;
 
     public static ExternalMatchDto from(GameResultRecord match) {
-        GameResultSourceSnapshot source = match.footballDataSource();
+        GameResultSourceSnapshot source = match.primaryExternalSource();
         long externalMatchId = source != null ? source.getExternalMatchId() : 0L;
         return ExternalMatchDto.builder()
                 .id(match.getId())

@@ -68,7 +68,7 @@ public class FourScoreMatchListParser {
         }
         String path = link.attr("href");
         String slug = slugFromPath(path);
-        Element statusEl = block.selectFirst("div.lg__status");
+        String statusText = resolveStatusText(block);
         Element timeEl = block.selectFirst("span.lg__time");
         Integer homeScore = parseScore(block.selectFirst("span.lg__score-localteam"));
         Integer awayScore = parseScore(block.selectFirst("span.lg__score-visitorteam"));
@@ -93,12 +93,45 @@ public class FourScoreMatchListParser {
                 .eventSlug(slug)
                 .homeTeamName(teams.get(0).text().trim())
                 .awayTeamName(teams.get(1).text().trim())
-                .statusText(statusEl != null ? statusEl.text().trim() : null)
+                .statusText(statusText)
                 .homeScore(homeScore)
                 .awayScore(awayScore)
                 .kickoffTime(kickoff)
                 .externalEventId(externalId)
                 .build();
+    }
+
+    /**
+     * На list-странице live-матчи используют {@code div.lg__status-live} (минута или «Перерыв»),
+     * а не {@code div.lg__status}.
+     */
+    static String resolveStatusText(Element block) {
+        Element statusEl = block.selectFirst("div.lg__status");
+        if (statusEl != null) {
+            String text = statusEl.text().trim();
+            if (!text.isBlank()) {
+                return text;
+            }
+        }
+        Element liveEl = block.selectFirst("div.lg__status-live");
+        if (liveEl == null) {
+            return null;
+        }
+        String liveText = liveEl.text().trim();
+        if (liveText.isBlank()) {
+            return null;
+        }
+        if ("перерыв".equalsIgnoreCase(liveText)) {
+            return "Перерыв";
+        }
+        if (liveText.chars().anyMatch(Character::isDigit)) {
+            String minute = liveText.replace(" ", "");
+            if (!minute.endsWith("'") && !minute.endsWith("′")) {
+                minute = minute + "'";
+            }
+            return "Идёт " + minute;
+        }
+        return liveText;
     }
 
     private static Integer parseScore(Element scoreEl) {

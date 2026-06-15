@@ -26,6 +26,4 @@ public class NewTeamDto {
     private TeamDisplayNamesDto displayNames;
 
     private List<TeamExternalAliasDto> externalAliases;
-
-    private Integer footballDataTeamId;
 }

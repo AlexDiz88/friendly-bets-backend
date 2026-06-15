@@ -9,12 +9,12 @@ import net.friendly_bets.dto.MatchdaySettleResultDto;
 import net.friendly_bets.dto.SettleMatchdayFromGameResultsDto;
 import net.friendly_bets.exceptions.BadRequestException;
 import net.friendly_bets.exceptions.NotFoundException;
-import net.friendly_bets.footballdata.FootballDataMatchdaySupport;
-import net.friendly_bets.footballdata.GameResultDisplayService;
+import net.friendly_bets.gameresults.MatchdaySlotSupport;
+import net.friendly_bets.gameresults.GameResultDisplayService;
 import net.friendly_bets.models.GameResult;
 import net.friendly_bets.models.GameScore;
 import net.friendly_bets.models.Season;
-import net.friendly_bets.footballdata.FootballDataScoreNormalizer;
+import net.friendly_bets.gameresults.CanonicalScoreNormalizer;
 import net.friendly_bets.gameresults.GameScoreConsistencyValidator;
 import net.friendly_bets.models.gameresults.GameResultFinalizedSource;
 import net.friendly_bets.models.gameresults.GameResultRecord;
@@ -41,20 +41,20 @@ public class GameResultsAdminService {
     private final GetEntityService getEntityService;
     private final BetsService betsService;
     private final StatsService statsService;
-    private final FootballDataMatchdaySupport matchdaySupport;
-    private final FootballDataScoreNormalizer footballDataScoreNormalizer;
+    private final MatchdaySlotSupport matchdaySupport;
+    private final CanonicalScoreNormalizer canonicalScoreNormalizer;
 
     @Transactional
     public ExternalMatchDto applyPrimaryApiScore(String gameResultId) {
         GameResultRecord record = gameResultRecordRepository.findById(gameResultId)
                 .orElseThrow(() -> new NotFoundException("GameResult", gameResultId));
 
-        GameResultSourceSnapshot source = record.footballDataSource();
+        GameResultSourceSnapshot source = record.primaryExternalSource();
         if (source == null || source.getGameScore() == null) {
             throw new BadRequestException("noPrimaryApiScoreSnapshot");
         }
 
-        GameScore normalized = footballDataScoreNormalizer.normalizeFromRawSnapshot(
+        GameScore normalized = canonicalScoreNormalizer.normalizeFromRawSnapshot(
                 source.getGameScore(),
                 source.getScoreDuration() != null ? source.getScoreDuration() : record.getScoreDuration()
         );
@@ -114,7 +114,7 @@ public class GameResultsAdminService {
         Season season = getEntityService.getSeasonOrThrow(request.getSeasonId());
         String externalSeason = request.getExternalSeason();
         if (externalSeason == null || externalSeason.isBlank()) {
-            externalSeason = matchdaySupport.resolveFootballDataSeasonYear(season);
+            externalSeason = matchdaySupport.resolveExternalSeasonYear(season);
         }
 
         List<GameResultRecord> records = gameResultRecordRepository.findByLeagueCodeAndMatchdayAndSeason(
