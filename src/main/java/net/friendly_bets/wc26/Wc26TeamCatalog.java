@@ -16,10 +16,10 @@ public final class Wc26TeamCatalog {
     private static final Map<String, List<String>> ODDS_API_NAMES_BY_FIFA_CODE = new LinkedHashMap<>();
 
     static {
-        names("MEX", "Mexico");
-        names("RSA", "South Africa", "SouthAfrica");
-        names("KOR", "Korea Republic", "South Korea", "KoreaRepublic", "SouthKorea");
-        names("CZE", "Czechia", "Czech Republic", "CzechRepublic");
+        names("MEX", "Mexico", "Мексика");
+        names("RSA", "South Africa", "SouthAfrica", "ЮАР", "Южная Африка");
+        names("KOR", "Korea Republic", "South Korea", "KoreaRepublic", "SouthKorea", "Корея", "Южная Корея");
+        names("CZE", "Czechia", "Czech Republic", "CzechRepublic", "Чехия");
         names("CAN", "Canada");
         names("SUI", "Switzerland");
         names("QAT", "Qatar");

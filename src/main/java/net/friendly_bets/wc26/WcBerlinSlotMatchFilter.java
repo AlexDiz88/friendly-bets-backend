@@ -66,11 +66,7 @@ public final class WcBerlinSlotMatchFilter {
         Set<ExpectedPair> expected = expectedPairsForSlot(slotId);
         List<GameResultRecord> filtered = new ArrayList<>();
         for (GameResultRecord record : records) {
-            GameResultSourceSnapshot source = record.primaryExternalSource();
-            if (source == null) {
-                continue;
-            }
-            if (matchesExpectedPair(expected, record, source, teamById)) {
+            if (matchesExpectedPair(expected, record, record.primaryExternalSource(), teamById)) {
                 filtered.add(record);
             }
         }
@@ -109,11 +105,38 @@ public final class WcBerlinSlotMatchFilter {
             GameResultSourceSnapshot source,
             Function<String, Optional<Team>> teamById
     ) {
-        String homeName = sideExternalName(source.getHome());
-        String awayName = sideExternalName(source.getAway());
+        if (source != null) {
+            String homeName = sideExternalName(source.getHome());
+            String awayName = sideExternalName(source.getAway());
+            for (ExpectedPair pair : expected) {
+                if (sideMatchesFifa(null, homeName, record.getHomeTeamId(), teamById, pair.homeFifa())
+                        && sideMatchesFifa(null, awayName, record.getAwayTeamId(), teamById, pair.awayFifa())) {
+                    return true;
+                }
+            }
+        }
+        return matchesExpectedPairByTeamIds(expected, record, teamById);
+    }
+
+    private static boolean matchesExpectedPairByTeamIds(
+            Set<ExpectedPair> expected,
+            GameResultRecord record,
+            Function<String, Optional<Team>> teamById
+    ) {
+        if (teamById == null
+                || record.getHomeTeamId() == null
+                || record.getHomeTeamId().isBlank()
+                || record.getAwayTeamId() == null
+                || record.getAwayTeamId().isBlank()) {
+            return false;
+        }
+        Optional<Team> home = teamById.apply(record.getHomeTeamId());
+        Optional<Team> away = teamById.apply(record.getAwayTeamId());
+        if (home.isEmpty() || away.isEmpty()) {
+            return false;
+        }
         for (ExpectedPair pair : expected) {
-            if (sideMatchesFifa(null, homeName, record.getHomeTeamId(), teamById, pair.homeFifa())
-                    && sideMatchesFifa(null, awayName, record.getAwayTeamId(), teamById, pair.awayFifa())) {
+            if (teamMatchesFifa(home.get(), pair.homeFifa()) && teamMatchesFifa(away.get(), pair.awayFifa())) {
                 return true;
             }
         }

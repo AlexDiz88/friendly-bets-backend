@@ -29,6 +29,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.LinkedHashSet;
@@ -92,9 +93,7 @@ public class FourScoreSyncService {
         }
         List<GameResultRecord> records = new ArrayList<>(gameResultRecordRepository
                 .findByLeagueCodeAndMatchdayAndSeason(leagueCode, matchday, season));
-        if (records.isEmpty()) {
-            bootstrapMatchday(leagueCode, matchday, season, leagueId, records);
-        }
+        fillMissingMatchdayRecords(leagueCode, matchday, season, leagueId, records);
         if (records.isEmpty()) {
             return 0;
         }
@@ -151,7 +150,7 @@ public class FourScoreSyncService {
         return gameResultsSyncRepository.save(sync);
     }
 
-    private void bootstrapMatchday(
+    private void fillMissingMatchdayRecords(
             String leagueCode,
             int matchday,
             String season,
@@ -179,7 +178,7 @@ public class FourScoreSyncService {
         for (FourScoreListMatch listMatch : listMatches) {
             try {
                 if (applyListMatchIfEligible(
-                        listMatch, leagueCode, season, matchday, leagueId, records, fetchedAt)) {
+                        listMatch, date, leagueCode, season, matchday, leagueId, records, fetchedAt)) {
                     updated++;
                 }
             } catch (Exception e) {
@@ -191,6 +190,7 @@ public class FourScoreSyncService {
 
     private boolean applyListMatchIfEligible(
             FourScoreListMatch listMatch,
+            LocalDate listPageDate,
             String leagueCode,
             String season,
             int matchday,
@@ -198,6 +198,10 @@ public class FourScoreSyncService {
             List<GameResultRecord> records,
             LocalDateTime fetchedAt
     ) {
+        if (FourScorePlayoffPlaceholderNames.isPlaceholder(listMatch.getHomeTeamName())
+                || FourScorePlayoffPlaceholderNames.isPlaceholder(listMatch.getAwayTeamName())) {
+            return false;
+        }
         Optional<Team> home = teamResolver.resolveOrRecordMissing(
                 listMatch.getHomeTeamName(),
                 leagueCode,
@@ -231,6 +235,7 @@ public class FourScoreSyncService {
             }
             return bootstrapListMatch(
                     listMatch,
+                    listPageDate,
                     leagueCode,
                     season,
                     matchday,
@@ -242,15 +247,20 @@ public class FourScoreSyncService {
             );
         }
 
-        if (!listMatch.shouldPollForRecord(existing.get())) {
+        if (!needsFourScoreSourceBackfill(existing.get()) && !listMatch.shouldPollForRecord(existing.get())) {
             return false;
         }
 
-        return applyListMatch(listMatch, existing.get(), home.get(), away.get(), fetchedAt);
+        return applyListMatch(listMatch, listPageDate, existing.get(), home.get(), away.get(), fetchedAt);
+    }
+
+    private static boolean needsFourScoreSourceBackfill(GameResultRecord record) {
+        return record != null && record.fourScoreSource() == null;
     }
 
     private boolean applyListMatch(
             FourScoreListMatch listMatch,
+            LocalDate listPageDate,
             GameResultRecord record,
             Team home,
             Team away,
@@ -266,18 +276,30 @@ public class FourScoreSyncService {
                 listMatch.getEventPath(),
                 FourScoreLeagueSection.WORLD_CUP
         );
+        GameResultRecord incoming;
         if (details == null) {
-            return false;
+            if (!needsFourScoreSourceBackfill(record) || !canBootstrapFromListOnly(listMatch)) {
+                return false;
+            }
+            incoming = gameResultMapper.toIncomingPatchFromList(
+                    record,
+                    listMatch,
+                    home,
+                    away,
+                    listMatch.getExternalEventId(),
+                    listPageDate,
+                    fetchedAt
+            );
+        } else {
+            incoming = gameResultMapper.toIncomingPatch(
+                    record,
+                    details,
+                    home,
+                    away,
+                    listMatch.getExternalEventId(),
+                    fetchedAt
+            );
         }
-
-        GameResultRecord incoming = gameResultMapper.toIncomingPatch(
-                record,
-                details,
-                home,
-                away,
-                listMatch.getExternalEventId(),
-                fetchedAt
-        );
         gameResultPersistence.applyProviderSync(
                 record,
                 incoming,
@@ -293,6 +315,7 @@ public class FourScoreSyncService {
 
     private boolean bootstrapListMatch(
             FourScoreListMatch listMatch,
+            LocalDate listPageDate,
             String leagueCode,
             String season,
             int matchday,
@@ -308,20 +331,44 @@ public class FourScoreSyncService {
                 listMatch.getEventPath(),
                 FourScoreLeagueSection.WORLD_CUP
         );
+        GameResultRecord created;
         if (details == null) {
-            return false;
+            if (!canBootstrapFromListOnly(listMatch)) {
+                log.warn(
+                        "4score bootstrap skipped {}: event page parse failed",
+                        listMatch.getEventSlug()
+                );
+                return false;
+            }
+            log.warn(
+                    "4score bootstrap uses list page only for {} (event page unavailable)",
+                    listMatch.getEventSlug()
+            );
+            created = gameResultMapper.toNewRecordFromList(
+                    listMatch,
+                    home,
+                    away,
+                    leagueCode,
+                    season,
+                    matchday,
+                    leagueId,
+                    listMatch.getExternalEventId(),
+                    listPageDate,
+                    fetchedAt
+            );
+        } else {
+            created = gameResultMapper.toNewRecord(
+                    details,
+                    home,
+                    away,
+                    leagueCode,
+                    season,
+                    matchday,
+                    leagueId,
+                    listMatch.getExternalEventId(),
+                    fetchedAt
+            );
         }
-        GameResultRecord created = gameResultMapper.toNewRecord(
-                details,
-                home,
-                away,
-                leagueCode,
-                season,
-                matchday,
-                leagueId,
-                listMatch.getExternalEventId(),
-                fetchedAt
-        );
         if (listMatch.getEventSlug() != null && !listMatch.getEventSlug().isBlank()) {
             created.setFourscoreEventSlug(listMatch.getEventSlug());
         }
@@ -330,6 +377,10 @@ public class FourScoreSyncService {
         GameResultRecord saved = gameResultRecordRepository.save(created);
         records.add(saved);
         return true;
+    }
+
+    private static boolean canBootstrapFromListOnly(FourScoreListMatch listMatch) {
+        return !listMatch.isTerminal() && !listMatch.needsEventDetails();
     }
 
     public List<FourScorePreviewMatchDto> previewDate(LocalDate date) {

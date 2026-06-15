@@ -49,6 +49,9 @@ public class ApiSyncIssueService {
         if (teamName == null || teamName.isBlank()) {
             return;
         }
+        if (net.friendly_bets.fourscore.FourScorePlayoffPlaceholderNames.isPlaceholder(teamName)) {
+            return;
+        }
         if (teamAliasResolver.resolveFourScoreByName(teamName).isPresent()) {
             return;
         }
