@@ -79,10 +79,12 @@ public class GameResultsCurrentSlotResolver {
             return false;
         }
         int expected = WcBerlinSlotMatchFilter.expectedMatchCount(slotId);
+        if (expected <= 0) {
+            return false;
+        }
         long finalizedCount = records.stream().filter(GameResultRecord::isFinalized).count();
-        return expected > 0
-                && finalizedCount >= expected
-                && records.stream().allMatch(GameResultRecord::isFinalized);
+        // Как на UI «Результаты матчей»: слот завершён, когда зафиксировано expected матчей.
+        return finalizedCount >= expected;
     }
 
     private List<GameResultRecord> loadSlotRecords(
