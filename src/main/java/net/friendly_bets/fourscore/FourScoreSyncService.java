@@ -3,6 +3,7 @@ package net.friendly_bets.fourscore;
 import lombok.RequiredArgsConstructor;
 import net.friendly_bets.gameresults.ApiSyncIssueService;
 import net.friendly_bets.gameresults.GameResultPersistence;
+import net.friendly_bets.gameresults.GameResultQueryService;
 import net.friendly_bets.gameresults.MatchdayPollingTargetResolver;
 import net.friendly_bets.gameresults.MatchdaySlotKey;
 import net.friendly_bets.fourscore.client.FourScoreHttpClient;
@@ -29,7 +30,6 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.LinkedHashSet;
@@ -51,6 +51,7 @@ public class FourScoreSyncService {
     private final FourScoreTeamResolver teamResolver;
     private final FourScoreGameResultMapper gameResultMapper;
     private final GameResultPersistence gameResultPersistence;
+    private final GameResultQueryService gameResultQueryService;
     private final GameResultRecordRepository gameResultRecordRepository;
     private final RunningSeasonLookup runningSeasonLookup;
     private final GetEntityService getEntityService;
@@ -91,25 +92,23 @@ public class FourScoreSyncService {
         if (!isEnabledForLeague(leagueCode)) {
             return 0;
         }
-        List<GameResultRecord> records = new ArrayList<>(gameResultRecordRepository
-                .findByLeagueCodeAndMatchdayAndSeason(leagueCode, matchday, season));
-        fillMissingMatchdayRecords(leagueCode, matchday, season, leagueId, records);
+        List<GameResultRecord> records = new ArrayList<>(
+                gameResultQueryService.getMatchesByLeagueCode(leagueCode, matchday, season, leagueId));
         if (records.isEmpty()) {
             return 0;
         }
-        boolean hasPending = records.stream().anyMatch(r -> !r.isFinalized());
+        List<GameResultRecord> pending = records.stream()
+                .filter(r -> !r.isFinalized())
+                .toList();
         int updated = 0;
-        if (hasPending) {
-            Set<LocalDate> dates = records.stream()
+        if (!pending.isEmpty()) {
+            Set<LocalDate> dates = pending.stream()
                     .map(GameResultRecord::getUtcDate)
                     .filter(d -> d != null)
                     .map(LocalDateTime::toLocalDate)
                     .collect(Collectors.toCollection(LinkedHashSet::new));
             if (dates.isEmpty()) {
-                LocalDate today = LocalDate.now();
-                for (int i = -45; i <= 14; i++) {
-                    dates.add(today.plusDays(i));
-                }
+                dates.add(LocalDate.now());
             }
             for (LocalDate date : dates) {
                 updated += syncDateForRecords(date, leagueCode, season, matchday, leagueId, records);
@@ -148,19 +147,6 @@ public class FourScoreSyncService {
             sync.setSyncStatus(GameResultsSyncStatus.COMPLETED);
         }
         return gameResultsSyncRepository.save(sync);
-    }
-
-    private void fillMissingMatchdayRecords(
-            String leagueCode,
-            int matchday,
-            String season,
-            String leagueId,
-            List<GameResultRecord> records
-    ) {
-        LocalDate today = LocalDate.now();
-        for (int i = -45; i <= 14; i++) {
-            syncDateForRecords(today.plusDays(i), leagueCode, season, matchday, leagueId, records);
-        }
     }
 
     private int syncDateForRecords(

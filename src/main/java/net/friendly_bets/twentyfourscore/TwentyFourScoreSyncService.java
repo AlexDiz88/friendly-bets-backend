@@ -2,6 +2,7 @@ package net.friendly_bets.twentyfourscore;
 
 import lombok.RequiredArgsConstructor;
 import net.friendly_bets.gameresults.GameResultPersistence;
+import net.friendly_bets.gameresults.GameResultQueryService;
 import net.friendly_bets.gameresults.MatchDataProviders;
 import net.friendly_bets.gameresults.MatchdayPollingTargetResolver;
 import net.friendly_bets.gameresults.MatchdaySlotKey;
@@ -38,6 +39,7 @@ public class TwentyFourScoreSyncService {
     private final TwentyFourScoreScoreNormalizer scoreNormalizer;
     private final TwentyFourScoreGameResultMapper gameResultMapper;
     private final GameResultPersistence gameResultPersistence;
+    private final GameResultQueryService gameResultQueryService;
     private final GameResultRecordRepository gameResultRecordRepository;
     private final RunningSeasonLookup runningSeasonLookup;
     private final MatchdayPollingTargetResolver matchdayPollingTargetResolver;
@@ -70,16 +72,18 @@ public class TwentyFourScoreSyncService {
         if (!isEnabledForLeague(leagueCode)) {
             return 0;
         }
-        List<GameResultRecord> records = gameResultRecordRepository
-                .findByLeagueCodeAndMatchdayAndSeason(leagueCode, matchday, season);
+        List<GameResultRecord> records = gameResultQueryService.getMatchesByLeagueCode(
+                leagueCode, matchday, season, leagueId);
         if (records.isEmpty()) {
             return 0;
         }
-        boolean hasPending = records.stream().anyMatch(r -> !r.isFinalized());
-        if (!hasPending) {
+        List<GameResultRecord> pending = records.stream()
+                .filter(r -> !r.isFinalized())
+                .toList();
+        if (pending.isEmpty()) {
             return 0;
         }
-        Set<LocalDate> dates = records.stream()
+        Set<LocalDate> dates = pending.stream()
                 .map(GameResultRecord::getUtcDate)
                 .filter(d -> d != null)
                 .map(LocalDateTime::toLocalDate)
