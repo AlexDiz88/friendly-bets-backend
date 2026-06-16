@@ -31,6 +31,15 @@ public class GameResultQueryService {
             String leagueId
     ) {
         String leagueCode = LeagueCodePathSupport.resolveStorageLeagueCode(pathLeagueOrCompetitionCode);
+        return getMatchesByLeagueCode(leagueCode, matchday, season, leagueId);
+    }
+
+    public List<GameResultRecord> getMatchesByLeagueCode(
+            String leagueCode,
+            int matchday,
+            String season,
+            String leagueId
+    ) {
         List<GameResultRecord> matches = gameResultRecordRepository.findByLeagueCodeAndMatchdayAndSeason(
                 leagueCode, matchday, season);
         return applyBerlinFilterIfNeeded(matches, leagueId, matchday);
