@@ -5,10 +5,8 @@ import net.friendly_bets.models.*;
 import net.friendly_bets.models.gameresults.GameResultRecord;
 import net.friendly_bets.models.gameresults.GameResultSideSnapshot;
 import net.friendly_bets.models.gameresults.GameResultSourceSnapshot;
-import net.friendly_bets.models.gameresults.GameResultsSyncStatus;
 import net.friendly_bets.repositories.BetsRepository;
 import net.friendly_bets.repositories.GameResultRecordRepository;
-import net.friendly_bets.repositories.GameResultsSyncRepository;
 import net.friendly_bets.services.GetEntityService;
 import net.friendly_bets.services.TeamAliasResolver;
 import org.slf4j.Logger;
@@ -28,8 +26,6 @@ public class GameResultCollector {
     private final MatchdaySlotSupport matchdaySupport;
     private final GetEntityService getEntityService;
     private final TeamAliasResolver teamAliasResolver;
-    private final MatchResultSyncSettingsService syncSettingsService;
-    private final GameResultsSyncRepository gameResultsSyncRepository;
 
     public List<GameResult> collectForSeason(Season season) {
         List<Bet> openedBets = betsRepository.findAllBySeason_IdAndBetStatus(season.getId(), Bet.BetStatus.OPENED);
@@ -111,11 +107,6 @@ public class GameResultCollector {
                 continue;
             }
 
-            if (!isMatchdaySettleAllowed(cacheKey)) {
-                skippedNoMatch++;
-                continue;
-            }
-
             String key = league.getId()
                     + "_" + homeTeamId
                     + "_" + awayTeamId;
@@ -149,16 +140,6 @@ public class GameResultCollector {
         }
 
         return new ArrayList<>(unique.values());
-    }
-
-    private boolean isMatchdaySettleAllowed(MatchdayCacheKey cacheKey) {
-        if (!syncSettingsService.getEffective().isAutoSettleOnlyWhenMatchdayCompleted()) {
-            return true;
-        }
-        return gameResultsSyncRepository
-                .findByLeagueCodeAndMatchdayAndSeason(cacheKey.leagueCode(), cacheKey.slotOrder(), cacheKey.season())
-                .map(sync -> sync.getSyncStatus() == GameResultsSyncStatus.COMPLETED)
-                .orElse(false);
     }
 
     private static String extractTeamId(Team team) {

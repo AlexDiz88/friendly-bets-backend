@@ -56,7 +56,6 @@ class MatchResultTrustPolicyTest {
                         .primaryProvider(MatchDataProviders.FOURSCORE)
                         .secondaryProvider(MatchDataProviders.TWENTYFOUR_SCORE)
                         .dualVerificationEnabled(true)
-                        .allowFinalizeWithoutSecondary(false)
                         .requireStablePolls(2)
                         .minMinutesAfterKickoff(0)
                         .build()

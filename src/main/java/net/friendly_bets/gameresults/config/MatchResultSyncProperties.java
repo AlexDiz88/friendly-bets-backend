@@ -10,10 +10,8 @@ public class MatchResultSyncProperties {
     private String primaryProvider = "4score.ru";
     private String secondaryProvider = "24score.pro";
     private boolean dualVerificationEnabled = true;
-    private boolean allowFinalizeWithoutSecondary = false;
     private int requireStablePolls = 2;
     private int minMinutesAfterKickoff = 0;
-    private boolean autoSettleOnlyWhenMatchdayCompleted = false;
     /** Автоматически вызывать {@code setBetResults} после опроса провайдеров. */
     private boolean autoSettleEnabled = true;
     /** 5 minutes */

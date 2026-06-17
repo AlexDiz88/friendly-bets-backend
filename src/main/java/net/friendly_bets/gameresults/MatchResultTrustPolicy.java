@@ -58,9 +58,7 @@ public class MatchResultTrustPolicy {
             return FinalizeDecision.PRIMARY_UNAVAILABLE;
         }
         if (secondaryScore == null) {
-            return settings.isAllowFinalizeWithoutSecondary()
-                    ? FinalizeDecision.READY
-                    : FinalizeDecision.SECONDARY_UNAVAILABLE;
+            return FinalizeDecision.SECONDARY_UNAVAILABLE;
         }
         if (!MatchStatuses.isTerminal(MatchStatuses.normalize(secondarySource.getStatus()))) {
             return FinalizeDecision.NOT_STABLE;

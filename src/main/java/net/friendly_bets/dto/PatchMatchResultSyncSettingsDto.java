@@ -11,7 +11,6 @@ public class PatchMatchResultSyncSettingsDto {
     private String primaryProvider;
     private String secondaryProvider;
     private Boolean dualVerificationEnabled;
-    private Boolean allowFinalizeWithoutSecondary;
 
     @Min(1)
     @Max(10)
@@ -21,5 +20,5 @@ public class PatchMatchResultSyncSettingsDto {
     @Max(300)
     private Integer minMinutesAfterKickoff;
 
-    private Boolean autoSettleOnlyWhenMatchdayCompleted;
+    private Boolean autoSettleEnabled;
 }

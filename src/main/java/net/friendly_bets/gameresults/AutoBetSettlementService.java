@@ -23,6 +23,7 @@ public class AutoBetSettlementService {
 
     private static final Logger log = LoggerFactory.getLogger(AutoBetSettlementService.class);
 
+    private final MatchResultSyncSettingsService syncSettingsService;
     private final MatchResultSyncProperties properties;
     private final RunningSeasonLookup runningSeasonLookup;
     private final UsersRepository usersRepository;
@@ -30,7 +31,7 @@ public class AutoBetSettlementService {
     private final BetsService betsService;
 
     public Optional<AutoSettleResult> settleActiveSeasonIfEnabled() {
-        if (!properties.isAutoSettleEnabled()) {
+        if (!syncSettingsService.getEffective().isAutoSettleEnabled()) {
             return Optional.empty();
         }
         return runningSeasonLookup.findRunningSeason()
