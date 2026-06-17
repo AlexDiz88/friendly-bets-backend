@@ -3,6 +3,8 @@ package net.friendly_bets.gameresults;
 import net.friendly_bets.models.GameScore;
 import net.friendly_bets.models.gameresults.GameResultRecord;
 import net.friendly_bets.models.gameresults.GameResultSourceSnapshot;
+import net.friendly_bets.oddsapi.GameResultNotStarted;
+import net.friendly_bets.wc26.Wc26ScheduleKickoffLookup;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -13,6 +15,7 @@ import java.time.LocalDateTime;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -24,11 +27,13 @@ class MatchResultTrustPolicyTest {
     @Mock
     MatchResultStabilizationService stabilizationService;
 
+    GameResultEffectiveKickoff effectiveKickoff;
     MatchResultTrustPolicy policy;
 
     @BeforeEach
     void setUp() {
-        policy = new MatchResultTrustPolicy(settingsService, stabilizationService);
+        effectiveKickoff = new GameResultEffectiveKickoff(mock(net.friendly_bets.repositories.Wc26ScheduleMatchRepository.class));
+        policy = new MatchResultTrustPolicy(settingsService, stabilizationService, effectiveKickoff);
         when(settingsService.getEffective()).thenReturn(
                 MatchResultSyncSettingsService.EffectiveMatchResultSyncSettings.builder()
                         .primaryProvider(MatchDataProviders.FOURSCORE)
@@ -91,12 +96,36 @@ class MatchResultTrustPolicyTest {
                         .minMinutesAfterKickoff(105)
                         .build()
         );
-        LocalDateTime kickoff = LocalDateTime.of(2026, 6, 14, 18, 0);
-        LocalDateTime now = kickoff.plusMinutes(90);
+        LocalDateTime kickoff = GameResultNotStarted.nowUtc().minusMinutes(90);
         GameResultRecord record = validRecord();
         record.setUtcDate(kickoff);
 
-        assertEquals(MatchResultTrustPolicy.FinalizeDecision.TOO_EARLY, policy.evaluate(record, now));
+        assertEquals(
+                MatchResultTrustPolicy.FinalizeDecision.TOO_EARLY,
+                policy.evaluate(record, GameResultNotStarted.nowUtc())
+        );
+    }
+
+    @Test
+    void wc26UsesScheduleKickoffNotMislabeledFourScoreUtcDate() {
+        when(settingsService.getEffective()).thenReturn(
+                MatchResultSyncSettingsService.EffectiveMatchResultSyncSettings.builder()
+                        .primaryProvider(MatchDataProviders.FOURSCORE)
+                        .secondaryProvider(MatchDataProviders.TWENTYFOUR_SCORE)
+                        .dualVerificationEnabled(false)
+                        .requireStablePolls(1)
+                        .minMinutesAfterKickoff(100)
+                        .build()
+        );
+        LocalDateTime scheduleKickoffUtc = GameResultNotStarted.nowUtc().minusHours(3);
+        Wc26ScheduleKickoffLookup.install(Map.of(23, scheduleKickoffUtc));
+        GameResultRecord record = validRecord();
+        record.setWc26ScheduleId(23);
+        // 4score хранит локальное время страницы как utcDate — на 2ч «впереди» реального UTC.
+        record.setUtcDate(scheduleKickoffUtc.plusHours(2));
+        when(stabilizationService.isStableEnough(record, GameResultNotStarted.nowUtc())).thenReturn(true);
+
+        assertEquals(MatchResultTrustPolicy.FinalizeDecision.READY, policy.evaluate(record, GameResultNotStarted.nowUtc()));
     }
 
     private static GameResultRecord validRecord() {

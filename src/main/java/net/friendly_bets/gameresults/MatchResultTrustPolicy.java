@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import net.friendly_bets.models.GameScore;
 import net.friendly_bets.models.gameresults.GameResultRecord;
 import net.friendly_bets.models.gameresults.GameResultSourceSnapshot;
+import net.friendly_bets.oddsapi.GameResultNotStarted;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
@@ -15,6 +16,7 @@ public class MatchResultTrustPolicy {
 
     private final MatchResultSyncSettingsService settingsService;
     private final MatchResultStabilizationService stabilizationService;
+    private final GameResultEffectiveKickoff effectiveKickoff;
 
     public enum FinalizeDecision {
         READY,
@@ -80,15 +82,15 @@ public class MatchResultTrustPolicy {
     }
 
     private boolean kickoffElapsed(GameResultRecord record, LocalDateTime fetchedAt) {
-        LocalDateTime kickoff = record.getUtcDate();
-        if (kickoff == null || fetchedAt == null) {
+        LocalDateTime kickoff = effectiveKickoff.resolve(record);
+        if (kickoff == null) {
             return true;
         }
         int minMinutes = settingsService.getEffective().getMinMinutesAfterKickoff();
         if (minMinutes <= 0) {
             return true;
         }
-        return Duration.between(kickoff, fetchedAt).toMinutes() >= minMinutes;
+        return Duration.between(kickoff, GameResultNotStarted.nowUtc()).toMinutes() >= minMinutes;
     }
 
     private GameScore resolveCanonicalForProvider(GameResultRecord record, String providerId) {
