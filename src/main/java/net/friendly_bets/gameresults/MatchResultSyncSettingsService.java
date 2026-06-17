@@ -32,8 +32,6 @@ public class MatchResultSyncSettingsService {
                 .allowFinalizeWithoutSecondary(pickBool(stored != null ? stored.getAllowFinalizeWithoutSecondary() : null, properties.isAllowFinalizeWithoutSecondary()))
                 .requireStablePolls(pickInt(stored != null ? stored.getRequireStablePolls() : null, properties.getRequireStablePolls()))
                 .minMinutesAfterKickoff(pickInt(stored != null ? stored.getMinMinutesAfterKickoff() : null, properties.getMinMinutesAfterKickoff()))
-                .minMinutesAfterKickoffKnockout(pickInt(stored != null ? stored.getMinMinutesAfterKickoffKnockout() : null, properties.getMinMinutesAfterKickoffKnockout()))
-                .minMinutesSinceApiLastUpdated(pickInt(stored != null ? stored.getMinMinutesSinceApiLastUpdated() : null, properties.getMinMinutesSinceApiLastUpdated()))
                 .autoSettleEnabled(properties.isAutoSettleEnabled())
                 .autoSettleOnlyWhenMatchdayCompleted(pickBool(
                         stored != null ? stored.getAutoSettleOnlyWhenMatchdayCompleted() : null,
@@ -50,8 +48,6 @@ public class MatchResultSyncSettingsService {
                 .allowFinalizeWithoutSecondary(effective.isAllowFinalizeWithoutSecondary())
                 .requireStablePolls(effective.getRequireStablePolls())
                 .minMinutesAfterKickoff(effective.getMinMinutesAfterKickoff())
-                .minMinutesAfterKickoffKnockout(effective.getMinMinutesAfterKickoffKnockout())
-                .minMinutesSinceApiLastUpdated(effective.getMinMinutesSinceApiLastUpdated())
                 .autoSettleEnabled(effective.isAutoSettleEnabled())
                 .autoSettleOnlyWhenMatchdayCompleted(effective.isAutoSettleOnlyWhenMatchdayCompleted())
                 .envDefaults(envDefaultsDto())
@@ -81,12 +77,6 @@ public class MatchResultSyncSettingsService {
         if (patch.getMinMinutesAfterKickoff() != null) {
             stored.setMinMinutesAfterKickoff(patch.getMinMinutesAfterKickoff());
         }
-        if (patch.getMinMinutesAfterKickoffKnockout() != null) {
-            stored.setMinMinutesAfterKickoffKnockout(patch.getMinMinutesAfterKickoffKnockout());
-        }
-        if (patch.getMinMinutesSinceApiLastUpdated() != null) {
-            stored.setMinMinutesSinceApiLastUpdated(patch.getMinMinutesSinceApiLastUpdated());
-        }
         if (patch.getAutoSettleOnlyWhenMatchdayCompleted() != null) {
             stored.setAutoSettleOnlyWhenMatchdayCompleted(patch.getAutoSettleOnlyWhenMatchdayCompleted());
         }
@@ -103,8 +93,6 @@ public class MatchResultSyncSettingsService {
                 .allowFinalizeWithoutSecondary(properties.isAllowFinalizeWithoutSecondary())
                 .requireStablePolls(properties.getRequireStablePolls())
                 .minMinutesAfterKickoff(properties.getMinMinutesAfterKickoff())
-                .minMinutesAfterKickoffKnockout(properties.getMinMinutesAfterKickoffKnockout())
-                .minMinutesSinceApiLastUpdated(properties.getMinMinutesSinceApiLastUpdated())
                 .autoSettleEnabled(properties.isAutoSettleEnabled())
                 .autoSettleOnlyWhenMatchdayCompleted(properties.isAutoSettleOnlyWhenMatchdayCompleted())
                 .build();
@@ -140,8 +128,6 @@ public class MatchResultSyncSettingsService {
         boolean allowFinalizeWithoutSecondary;
         int requireStablePolls;
         int minMinutesAfterKickoff;
-        int minMinutesAfterKickoffKnockout;
-        int minMinutesSinceApiLastUpdated;
         boolean autoSettleEnabled;
         boolean autoSettleOnlyWhenMatchdayCompleted;
     }

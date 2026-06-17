@@ -17,8 +17,6 @@ public class MatchResultSyncSettingsDto {
     private boolean allowFinalizeWithoutSecondary;
     private int requireStablePolls;
     private int minMinutesAfterKickoff;
-    private int minMinutesAfterKickoffKnockout;
-    private int minMinutesSinceApiLastUpdated;
     private boolean autoSettleEnabled;
     private boolean autoSettleOnlyWhenMatchdayCompleted;
 

@@ -43,12 +43,6 @@ public class MatchResultSyncSettings {
     @Field(name = "min_minutes_after_kickoff")
     private Integer minMinutesAfterKickoff;
 
-    @Field(name = "min_minutes_after_kickoff_knockout")
-    private Integer minMinutesAfterKickoffKnockout;
-
-    @Field(name = "min_minutes_since_api_last_updated")
-    private Integer minMinutesSinceApiLastUpdated;
-
     @Field(name = "auto_settle_only_when_matchday_completed")
     private Boolean autoSettleOnlyWhenMatchdayCompleted;
 

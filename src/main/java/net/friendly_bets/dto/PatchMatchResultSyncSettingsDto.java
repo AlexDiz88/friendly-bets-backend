@@ -21,13 +21,5 @@ public class PatchMatchResultSyncSettingsDto {
     @Max(300)
     private Integer minMinutesAfterKickoff;
 
-    @Min(90)
-    @Max(360)
-    private Integer minMinutesAfterKickoffKnockout;
-
-    @Min(0)
-    @Max(180)
-    private Integer minMinutesSinceApiLastUpdated;
-
     private Boolean autoSettleOnlyWhenMatchdayCompleted;
 }
