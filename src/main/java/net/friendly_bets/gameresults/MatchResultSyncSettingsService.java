@@ -29,15 +29,9 @@ public class MatchResultSyncSettingsService {
                 .primaryProvider(pick(stored != null ? stored.getPrimaryProvider() : null, properties.getPrimaryProvider()))
                 .secondaryProvider(pick(stored != null ? stored.getSecondaryProvider() : null, properties.getSecondaryProvider()))
                 .dualVerificationEnabled(pickBool(stored != null ? stored.getDualVerificationEnabled() : null, properties.isDualVerificationEnabled()))
-                .allowFinalizeWithoutSecondary(pickBool(stored != null ? stored.getAllowFinalizeWithoutSecondary() : null, properties.isAllowFinalizeWithoutSecondary()))
                 .requireStablePolls(pickInt(stored != null ? stored.getRequireStablePolls() : null, properties.getRequireStablePolls()))
                 .minMinutesAfterKickoff(pickInt(stored != null ? stored.getMinMinutesAfterKickoff() : null, properties.getMinMinutesAfterKickoff()))
-                .minMinutesAfterKickoffKnockout(pickInt(stored != null ? stored.getMinMinutesAfterKickoffKnockout() : null, properties.getMinMinutesAfterKickoffKnockout()))
-                .minMinutesSinceApiLastUpdated(pickInt(stored != null ? stored.getMinMinutesSinceApiLastUpdated() : null, properties.getMinMinutesSinceApiLastUpdated()))
-                .autoSettleEnabled(properties.isAutoSettleEnabled())
-                .autoSettleOnlyWhenMatchdayCompleted(pickBool(
-                        stored != null ? stored.getAutoSettleOnlyWhenMatchdayCompleted() : null,
-                        properties.isAutoSettleOnlyWhenMatchdayCompleted()))
+                .autoSettleEnabled(pickBool(stored != null ? stored.getAutoSettleEnabled() : null, properties.isAutoSettleEnabled()))
                 .build();
     }
 
@@ -47,14 +41,9 @@ public class MatchResultSyncSettingsService {
                 .primaryProvider(effective.getPrimaryProvider())
                 .secondaryProvider(effective.getSecondaryProvider())
                 .dualVerificationEnabled(effective.isDualVerificationEnabled())
-                .allowFinalizeWithoutSecondary(effective.isAllowFinalizeWithoutSecondary())
                 .requireStablePolls(effective.getRequireStablePolls())
                 .minMinutesAfterKickoff(effective.getMinMinutesAfterKickoff())
-                .minMinutesAfterKickoffKnockout(effective.getMinMinutesAfterKickoffKnockout())
-                .minMinutesSinceApiLastUpdated(effective.getMinMinutesSinceApiLastUpdated())
                 .autoSettleEnabled(effective.isAutoSettleEnabled())
-                .autoSettleOnlyWhenMatchdayCompleted(effective.isAutoSettleOnlyWhenMatchdayCompleted())
-                .envDefaults(envDefaultsDto())
                 .build();
     }
 
@@ -72,42 +61,18 @@ public class MatchResultSyncSettingsService {
         if (patch.getDualVerificationEnabled() != null) {
             stored.setDualVerificationEnabled(patch.getDualVerificationEnabled());
         }
-        if (patch.getAllowFinalizeWithoutSecondary() != null) {
-            stored.setAllowFinalizeWithoutSecondary(patch.getAllowFinalizeWithoutSecondary());
-        }
         if (patch.getRequireStablePolls() != null) {
             stored.setRequireStablePolls(patch.getRequireStablePolls());
         }
         if (patch.getMinMinutesAfterKickoff() != null) {
             stored.setMinMinutesAfterKickoff(patch.getMinMinutesAfterKickoff());
         }
-        if (patch.getMinMinutesAfterKickoffKnockout() != null) {
-            stored.setMinMinutesAfterKickoffKnockout(patch.getMinMinutesAfterKickoffKnockout());
-        }
-        if (patch.getMinMinutesSinceApiLastUpdated() != null) {
-            stored.setMinMinutesSinceApiLastUpdated(patch.getMinMinutesSinceApiLastUpdated());
-        }
-        if (patch.getAutoSettleOnlyWhenMatchdayCompleted() != null) {
-            stored.setAutoSettleOnlyWhenMatchdayCompleted(patch.getAutoSettleOnlyWhenMatchdayCompleted());
+        if (patch.getAutoSettleEnabled() != null) {
+            stored.setAutoSettleEnabled(patch.getAutoSettleEnabled());
         }
         stored.setUpdatedAt(LocalDateTime.now());
         repository.save(stored);
         return toDto();
-    }
-
-    private MatchResultSyncSettingsDto envDefaultsDto() {
-        return MatchResultSyncSettingsDto.builder()
-                .primaryProvider(properties.getPrimaryProvider())
-                .secondaryProvider(properties.getSecondaryProvider())
-                .dualVerificationEnabled(properties.isDualVerificationEnabled())
-                .allowFinalizeWithoutSecondary(properties.isAllowFinalizeWithoutSecondary())
-                .requireStablePolls(properties.getRequireStablePolls())
-                .minMinutesAfterKickoff(properties.getMinMinutesAfterKickoff())
-                .minMinutesAfterKickoffKnockout(properties.getMinMinutesAfterKickoffKnockout())
-                .minMinutesSinceApiLastUpdated(properties.getMinMinutesSinceApiLastUpdated())
-                .autoSettleEnabled(properties.isAutoSettleEnabled())
-                .autoSettleOnlyWhenMatchdayCompleted(properties.isAutoSettleOnlyWhenMatchdayCompleted())
-                .build();
     }
 
     private static void validatePatch(PatchMatchResultSyncSettingsDto patch) {
@@ -137,12 +102,8 @@ public class MatchResultSyncSettingsService {
         String primaryProvider;
         String secondaryProvider;
         boolean dualVerificationEnabled;
-        boolean allowFinalizeWithoutSecondary;
         int requireStablePolls;
         int minMinutesAfterKickoff;
-        int minMinutesAfterKickoffKnockout;
-        int minMinutesSinceApiLastUpdated;
         boolean autoSettleEnabled;
-        boolean autoSettleOnlyWhenMatchdayCompleted;
     }
 }

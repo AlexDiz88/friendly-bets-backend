@@ -12,6 +12,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.time.LocalDateTime;
 import java.util.Map;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.when;
@@ -31,7 +32,7 @@ class MatchResultStabilizationServiceTest {
 
     @Test
     void stableWhenPollCountMeetsRequirement() {
-        when(settingsService.getEffective()).thenReturn(effectiveSettings(2));
+        when(settingsService.getEffective()).thenReturn(effectiveSettings(2, true));
         LocalDateTime fetchedAt = LocalDateTime.of(2026, 6, 14, 21, 0);
         GameResultRecord record = stableFinishedRecord(fetchedAt.minusMinutes(102));
 
@@ -40,7 +41,7 @@ class MatchResultStabilizationServiceTest {
 
     @Test
     void notStableWhenPollCountBelowRequirement() {
-        when(settingsService.getEffective()).thenReturn(effectiveSettings(2));
+        when(settingsService.getEffective()).thenReturn(effectiveSettings(2, true));
         LocalDateTime fetchedAt = LocalDateTime.of(2026, 6, 14, 21, 0);
         GameResultRecord record = stableFinishedRecord(fetchedAt.minusHours(2));
         record.setStableScorePollCount(1);
@@ -50,7 +51,7 @@ class MatchResultStabilizationServiceTest {
 
     @Test
     void secondaryStableWhenSourcePollCountMeetsRequirement() {
-        when(settingsService.getEffective()).thenReturn(effectiveSettings(2));
+        when(settingsService.getEffective()).thenReturn(effectiveSettings(2, true));
         GameResultRecord record = GameResultRecord.builder()
                 .sources(Map.of(
                         MatchDataProviders.sourcesStorageKey(MatchDataProviders.TWENTYFOUR_SCORE),
@@ -59,6 +60,62 @@ class MatchResultStabilizationServiceTest {
                 .build();
 
         assertTrue(service.isSecondaryStableEnough(record, MatchDataProviders.TWENTYFOUR_SCORE));
+    }
+
+    @Test
+    void dualModeIncrementsBothCountersTogether() {
+        when(settingsService.getEffective()).thenReturn(effectiveSettings(2, true));
+        LocalDateTime fetchedAt = LocalDateTime.of(2026, 6, 14, 22, 0);
+        GameScore score = GameScore.builder().fullTime("0:2").firstTime("0:1").build();
+        GameResultSourceSnapshot secondary = GameResultSourceSnapshot.builder()
+                .status("FINISHED")
+                .gameScore(score)
+                .scoreDuration(CanonicalScoreNormalizer.DURATION_REGULAR)
+                .build();
+        GameResultRecord record = GameResultRecord.builder()
+                .status("FINISHED")
+                .gameScore(score)
+                .scoreDuration(CanonicalScoreNormalizer.DURATION_REGULAR)
+                .sources(Map.of(
+                        MatchDataProviders.sourcesStorageKey(MatchDataProviders.TWENTYFOUR_SCORE),
+                        secondary
+                ))
+                .build();
+
+        service.updateAfterPollCycle(record, fetchedAt);
+        assertEquals(1, record.getStableScorePollCount());
+        assertEquals(1, secondary.getStableScorePollCount());
+
+        service.updateAfterPollCycle(record, fetchedAt);
+        assertEquals(2, record.getStableScorePollCount());
+        assertEquals(2, secondary.getStableScorePollCount());
+    }
+
+    @Test
+    void dualModeResetsWhenScoresMismatch() {
+        when(settingsService.getEffective()).thenReturn(effectiveSettings(2, true));
+        LocalDateTime fetchedAt = LocalDateTime.of(2026, 6, 14, 22, 0);
+        GameResultSourceSnapshot secondary = GameResultSourceSnapshot.builder()
+                .status("FINISHED")
+                .gameScore(GameScore.builder().fullTime("0:2").firstTime("0:0").build())
+                .scoreDuration(CanonicalScoreNormalizer.DURATION_REGULAR)
+                .build();
+        GameResultRecord record = GameResultRecord.builder()
+                .status("FINISHED")
+                .gameScore(GameScore.builder().fullTime("0:2").firstTime("0:1").build())
+                .scoreDuration(CanonicalScoreNormalizer.DURATION_REGULAR)
+                .stableScorePollCount(2)
+                .sources(Map.of(
+                        MatchDataProviders.sourcesStorageKey(MatchDataProviders.TWENTYFOUR_SCORE),
+                        secondary
+                ))
+                .build();
+        secondary.setStableScorePollCount(2);
+
+        service.updateAfterPollCycle(record, fetchedAt);
+
+        assertEquals(0, record.getStableScorePollCount());
+        assertEquals(0, secondary.getStableScorePollCount());
     }
 
     private static GameResultRecord stableFinishedRecord(LocalDateTime kickoff) {
@@ -71,16 +128,15 @@ class MatchResultStabilizationServiceTest {
     }
 
     private static MatchResultSyncSettingsService.EffectiveMatchResultSyncSettings effectiveSettings(
-            int requireStablePolls
+            int requireStablePolls,
+            boolean dualVerificationEnabled
     ) {
         return MatchResultSyncSettingsService.EffectiveMatchResultSyncSettings.builder()
                 .primaryProvider(MatchDataProviders.FOURSCORE)
                 .secondaryProvider(MatchDataProviders.TWENTYFOUR_SCORE)
-                .dualVerificationEnabled(true)
+                .dualVerificationEnabled(dualVerificationEnabled)
                 .requireStablePolls(requireStablePolls)
                 .minMinutesAfterKickoff(0)
-                .minMinutesAfterKickoffKnockout(0)
-                .minMinutesSinceApiLastUpdated(0)
                 .build();
     }
 }

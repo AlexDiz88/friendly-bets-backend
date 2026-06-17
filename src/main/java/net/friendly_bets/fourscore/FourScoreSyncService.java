@@ -8,9 +8,7 @@ import net.friendly_bets.gameresults.MatchdayPollingTargetResolver;
 import net.friendly_bets.gameresults.MatchdaySlotKey;
 import net.friendly_bets.fourscore.client.FourScoreHttpClient;
 import net.friendly_bets.fourscore.config.FourScoreProperties;
-import net.friendly_bets.gameresults.GameResultFinalizer;
 import net.friendly_bets.gameresults.MatchDataProviders;
-import net.friendly_bets.gameresults.MatchResultStabilizationService;
 import net.friendly_bets.models.League;
 import net.friendly_bets.models.Season;
 import net.friendly_bets.models.Team;
@@ -60,8 +58,6 @@ public class FourScoreSyncService {
     private final FourScoreScoreNormalizer scoreNormalizer;
     private final TournamentFormatExpander tournamentFormatExpander;
     private final GameResultsSyncRepository gameResultsSyncRepository;
-    private final MatchResultStabilizationService stabilizationService;
-    private final GameResultFinalizer gameResultFinalizer;
 
     public boolean isEnabledForLeague(String leagueCode) {
         return properties.isEnabled()
@@ -358,8 +354,6 @@ public class FourScoreSyncService {
         if (listMatch.getEventSlug() != null && !listMatch.getEventSlug().isBlank()) {
             created.setFourscoreEventSlug(listMatch.getEventSlug());
         }
-        stabilizationService.updateStabilityCounters(created, fetchedAt);
-        gameResultFinalizer.tryFinalize(created, fetchedAt);
         GameResultRecord saved = gameResultRecordRepository.save(created);
         records.add(saved);
         return true;

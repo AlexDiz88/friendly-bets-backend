@@ -40,6 +40,15 @@ public class GameResultPersistence {
         }
     }
 
+    public void completePollCycle(GameResultRecord record, LocalDateTime fetchedAt) {
+        if (record == null || record.isFinalized() || record.isAdminCorrected()) {
+            return;
+        }
+        record.setPollCycleCount(record.getPollCycleCount() + 1);
+        stabilizationService.updateAfterPollCycle(record, fetchedAt);
+        gameResultFinalizer.tryFinalize(record, fetchedAt);
+    }
+
     public void applyProvisionalProviderSync(
             GameResultRecord existing,
             GameResultRecord incoming,
@@ -58,10 +67,6 @@ public class GameResultPersistence {
             existing.setLiveMinuteLabel(incoming.getLiveMinuteLabel());
             existing.setProvider(providerId);
             existing.setFetchedAt(fetchedAt);
-            stabilizationService.updateStabilityCounters(existing, fetchedAt);
-            gameResultFinalizer.tryFinalize(existing, fetchedAt);
-        } else {
-            updateSecondaryStabilityAndFinalize(existing, providerId, fetchedAt);
         }
         mergeSecondarySources(existing, incoming, providerId);
     }
@@ -85,19 +90,6 @@ public class GameResultPersistence {
     private boolean isPrimaryProvider(String providerId) {
         String primary = matchResultSyncSettingsService.getEffective().getPrimaryProvider();
         return providerId != null && providerId.equals(primary);
-    }
-
-    private void updateSecondaryStabilityAndFinalize(
-            GameResultRecord existing,
-            String providerId,
-            LocalDateTime fetchedAt
-    ) {
-        GameResultSourceSnapshot source = existing.sourceFor(MatchDataProviders.sourcesStorageKey(providerId));
-        if (source == null) {
-            return;
-        }
-        stabilizationService.updateSecondaryStabilityCounters(source);
-        gameResultFinalizer.tryFinalize(existing, fetchedAt);
     }
 
     private static void mergeSecondarySources(

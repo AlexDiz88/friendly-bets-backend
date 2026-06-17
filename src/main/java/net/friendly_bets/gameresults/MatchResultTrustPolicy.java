@@ -6,6 +6,7 @@ import net.friendly_bets.models.gameresults.GameResultRecord;
 import net.friendly_bets.models.gameresults.GameResultSourceSnapshot;
 import org.springframework.stereotype.Component;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 
 @Component
@@ -21,12 +22,16 @@ public class MatchResultTrustPolicy {
         INVALID_SCORE,
         PROVIDER_MISMATCH,
         SECONDARY_UNAVAILABLE,
-        PRIMARY_UNAVAILABLE
+        PRIMARY_UNAVAILABLE,
+        TOO_EARLY
     }
 
     public FinalizeDecision evaluate(GameResultRecord record, LocalDateTime fetchedAt) {
         if (record == null || record.isAdminCorrected() || record.getFinalizedAt() != null) {
             return FinalizeDecision.NOT_STABLE;
+        }
+        if (!kickoffElapsed(record, fetchedAt)) {
+            return FinalizeDecision.TOO_EARLY;
         }
         GameScore score = record.getGameScore();
         if (!GameScoreValidator.hasValidFullTime(score)
@@ -45,25 +50,45 @@ public class MatchResultTrustPolicy {
 
         String secondaryProvider = settings.getSecondaryProvider();
         GameScore primaryScore = resolveCanonicalForProvider(record, settings.getPrimaryProvider());
-        GameScore secondaryScore = resolveCanonicalForProvider(record, secondaryProvider);
+        GameResultSourceSnapshot secondarySource = record.sourceFor(
+                MatchDataProviders.sourcesStorageKey(secondaryProvider));
+        GameScore secondaryScore = secondarySource != null ? secondarySource.getGameScore() : null;
 
         if (primaryScore == null) {
             return FinalizeDecision.PRIMARY_UNAVAILABLE;
         }
         if (secondaryScore == null) {
-            return settings.isAllowFinalizeWithoutSecondary()
-                    ? FinalizeDecision.READY
-                    : FinalizeDecision.SECONDARY_UNAVAILABLE;
+            return FinalizeDecision.SECONDARY_UNAVAILABLE;
+        }
+        if (!MatchStatuses.isTerminal(MatchStatuses.normalize(secondarySource.getStatus()))) {
+            return FinalizeDecision.NOT_STABLE;
         }
 
         if (!stabilizationService.isSecondaryStableEnough(record, secondaryProvider)) {
             return FinalizeDecision.NOT_STABLE;
         }
 
-        if (!GameScoreValidator.sameCanonicalScore(primaryScore, secondaryScore)) {
+        if (!ProviderScoreComparator.matches(
+                primaryScore,
+                secondaryScore,
+                record.getScoreDuration(),
+                secondarySource.getScoreDuration()
+        )) {
             return FinalizeDecision.PROVIDER_MISMATCH;
         }
         return FinalizeDecision.READY;
+    }
+
+    private boolean kickoffElapsed(GameResultRecord record, LocalDateTime fetchedAt) {
+        LocalDateTime kickoff = record.getUtcDate();
+        if (kickoff == null || fetchedAt == null) {
+            return true;
+        }
+        int minMinutes = settingsService.getEffective().getMinMinutesAfterKickoff();
+        if (minMinutes <= 0) {
+            return true;
+        }
+        return Duration.between(kickoff, fetchedAt).toMinutes() >= minMinutes;
     }
 
     private GameScore resolveCanonicalForProvider(GameResultRecord record, String providerId) {

@@ -1,10 +1,8 @@
 package net.friendly_bets.gameresults;
 
-import net.friendly_bets.gameresults.ApiSyncIssueService;
 import net.friendly_bets.models.GameScore;
 import net.friendly_bets.models.gameresults.GameResultRecord;
 import net.friendly_bets.models.gameresults.GameResultSourceSnapshot;
-import net.friendly_bets.gameresults.CanonicalScoreNormalizer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -31,11 +29,21 @@ class GameResultFinalizerTest {
     @Mock
     ApiSyncIssueService apiSyncIssueService;
 
+    @Mock
+    MatchResultSyncSettingsService settingsService;
+
     GameResultFinalizer finalizer;
 
     @BeforeEach
     void setUp() {
-        finalizer = new GameResultFinalizer(trustPolicy, apiSyncIssueService);
+        finalizer = new GameResultFinalizer(trustPolicy, apiSyncIssueService, settingsService);
+        when(settingsService.getEffective()).thenReturn(
+                MatchResultSyncSettingsService.EffectiveMatchResultSyncSettings.builder()
+                        .requireStablePolls(2)
+                        .dualVerificationEnabled(true)
+                        .minMinutesAfterKickoff(0)
+                        .build()
+        );
     }
 
     @Test
@@ -48,10 +56,40 @@ class GameResultFinalizerTest {
     }
 
     @Test
-    @DisplayName("Does not finalize invalid penalty 3:3")
-    void doesNotFinalizeInvalidPenalty() {
+    @DisplayName("Does not log invalid score before poll cycle threshold")
+    void doesNotLogInvalidScoreBeforePollCycleThreshold() {
         GameResultRecord record = GameResultRecord.builder()
                 .status("FINISHED")
+                .pollCycleCount(1)
+                .gameScore(GameScore.builder()
+                        .fullTime("2:2")
+                        .firstTime("1:0")
+                        .overTime("0:0")
+                        .penalty("3:3")
+                        .build())
+                .utcDate(LocalDateTime.now().minusHours(3))
+                .stableScorePollCount(2)
+                .sources(Map.of(
+                        MatchDataProviders.sourcesStorageKey(MatchDataProviders.FOURSCORE),
+                        GameResultSourceSnapshot.builder()
+                                .apiLastUpdated(LocalDateTime.now().minusHours(2))
+                                .build()))
+                .build();
+
+        when(trustPolicy.evaluate(any(), any())).thenReturn(MatchResultTrustPolicy.FinalizeDecision.INVALID_SCORE);
+
+        finalizer.tryFinalize(record, LocalDateTime.now());
+
+        assertNull(record.getFinalizedAt());
+        verify(apiSyncIssueService, never()).recordInvalidCanonicalScore(any());
+    }
+
+    @Test
+    @DisplayName("Logs invalid score after poll cycle threshold")
+    void logsInvalidScoreAfterPollCycleThreshold() {
+        GameResultRecord record = GameResultRecord.builder()
+                .status("FINISHED")
+                .pollCycleCount(2)
                 .gameScore(GameScore.builder()
                         .fullTime("2:2")
                         .firstTime("1:0")

@@ -101,6 +101,15 @@ public class GameResultRecord {
     @Builder.Default
     private int stableScorePollCount = 0;
 
+    /** Число завершённых combined poll-циклов (4score + 24score в одном тике). */
+    @Field(name = "poll_cycle_count")
+    @Builder.Default
+    private int pollCycleCount = 0;
+
+    /** Хеш согласованного primary+secondary счёта с предыдущего poll-цикла (dual mode). */
+    @Field(name = "last_seen_combined_stability_hash")
+    private String lastSeenCombinedStabilityHash;
+
     /** Событие odds-api.io после успешного сопоставления. */
     @Field(name = "odds_api_event_id")
     private Long oddsApiEventId;

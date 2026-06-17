@@ -34,23 +34,14 @@ public class MatchResultSyncSettings {
     @Field(name = "dual_verification_enabled")
     private Boolean dualVerificationEnabled;
 
-    @Field(name = "allow_finalize_without_secondary")
-    private Boolean allowFinalizeWithoutSecondary;
-
     @Field(name = "require_stable_polls")
     private Integer requireStablePolls;
 
     @Field(name = "min_minutes_after_kickoff")
     private Integer minMinutesAfterKickoff;
 
-    @Field(name = "min_minutes_after_kickoff_knockout")
-    private Integer minMinutesAfterKickoffKnockout;
-
-    @Field(name = "min_minutes_since_api_last_updated")
-    private Integer minMinutesSinceApiLastUpdated;
-
-    @Field(name = "auto_settle_only_when_matchday_completed")
-    private Boolean autoSettleOnlyWhenMatchdayCompleted;
+    @Field(name = "auto_settle_enabled")
+    private Boolean autoSettleEnabled;
 
     @Field(name = "updated_at")
     private LocalDateTime updatedAt;
