@@ -1,6 +1,7 @@
 package net.friendly_bets.oddsapi;
 
 import net.friendly_bets.models.gameresults.GameResultRecord;
+import net.friendly_bets.wc26.Wc26ScheduleKickoffLookup;
 
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
@@ -34,10 +35,26 @@ public final class GameResultNotStarted {
         if (status != null && !NOT_STARTED_STATUSES.contains(status)) {
             return false;
         }
-        if (match.getUtcDate() != null && !match.getUtcDate().isAfter(now)) {
+        LocalDateTime kickoff = resolveKickoffUtc(match);
+        if (kickoff != null && !kickoff.isAfter(now)) {
             return false;
         }
         return true;
+    }
+
+    /**
+     * Kickoff UTC для сравнения «матч начался?». Для ЧМ26 с wc26_schedule_id — из каталога расписания
+     * (см. {@link GameResultEffectiveKickoff}); статический fallback без Spring-контекста.
+     */
+    public static LocalDateTime resolveKickoffUtc(GameResultRecord match) {
+        if (match == null) {
+            return null;
+        }
+        if (match.getWc26ScheduleId() != null) {
+            return Wc26ScheduleKickoffLookup.kickoffUtc(match.getWc26ScheduleId())
+                    .orElse(match.getUtcDate());
+        }
+        return match.getUtcDate();
     }
 
     private static String normalizeStatus(String status) {

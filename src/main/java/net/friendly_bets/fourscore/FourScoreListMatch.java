@@ -3,6 +3,7 @@ package net.friendly_bets.fourscore;
 import lombok.Builder;
 import lombok.Value;
 import net.friendly_bets.models.gameresults.GameResultRecord;
+import net.friendly_bets.oddsapi.GameResultNotStarted;
 
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -41,11 +42,10 @@ public class FourScoreListMatch {
         if (needsEventDetails()) {
             return true;
         }
-        return record != null && kickoffStarted(record);
+        return record != null && kickoffStarted(GameResultNotStarted.resolveKickoffUtc(record));
     }
 
-    private boolean kickoffStarted(GameResultRecord record) {
-        LocalDateTime kickoff = record.getUtcDate();
-        return kickoff != null && !LocalDateTime.now().isBefore(kickoff);
+    private static boolean kickoffStarted(LocalDateTime kickoff) {
+        return kickoff != null && !GameResultNotStarted.nowUtc().isBefore(kickoff);
     }
 }

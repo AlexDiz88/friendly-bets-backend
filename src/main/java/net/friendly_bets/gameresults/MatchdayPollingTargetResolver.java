@@ -18,6 +18,7 @@ public class MatchdayPollingTargetResolver {
 
     private final GameResultRecordRepository gameResultRecordRepository;
     private final MatchdaySlotSupport matchdaySlotSupport;
+    private final GameResultPollingFilter gameResultPollingFilter;
 
     /**
      * Туры running-сезона с не финализированными матчами, которые уже начались или идут live.
@@ -47,7 +48,7 @@ public class MatchdayPollingTargetResolver {
                     externalSeason
             );
             for (GameResultRecord record : records) {
-                if (!GameResultPollingFilter.needsExternalPoll(record)) {
+                if (!gameResultPollingFilter.needsExternalPoll(record)) {
                     continue;
                 }
                 String leagueId = record.getLeagueId();
