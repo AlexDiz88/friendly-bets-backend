@@ -1,17 +1,18 @@
 package net.friendly_bets.gameresults;
 
+import lombok.RequiredArgsConstructor;
 import net.friendly_bets.models.gameresults.GameResultRecord;
-
-import java.time.LocalDateTime;
+import org.springframework.stereotype.Component;
 
 /** Критерии включения матча / тура во внешний auto-poll. */
-public final class GameResultPollingFilter {
+@Component
+@RequiredArgsConstructor
+public class GameResultPollingFilter {
 
-    private GameResultPollingFilter() {
-    }
+    private final GameResultEffectiveKickoff effectiveKickoff;
 
     /** Матч уже идёт или пуск прошёл — нужен опрос до финализации. */
-    public static boolean needsExternalPoll(GameResultRecord record) {
+    public boolean needsExternalPoll(GameResultRecord record) {
         if (record == null || record.isFinalized()) {
             return false;
         }
@@ -22,11 +23,6 @@ public final class GameResultPollingFilter {
         if (record.getLiveMinuteLabel() != null && !record.getLiveMinuteLabel().isBlank()) {
             return true;
         }
-        return kickoffStarted(record);
-    }
-
-    private static boolean kickoffStarted(GameResultRecord record) {
-        LocalDateTime kickoff = record.getUtcDate();
-        return kickoff != null && !LocalDateTime.now().isBefore(kickoff);
+        return effectiveKickoff.isKickoffStarted(record);
     }
 }

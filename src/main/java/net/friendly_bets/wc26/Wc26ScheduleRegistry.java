@@ -8,6 +8,7 @@ import org.springframework.boot.ApplicationRunner;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -23,7 +24,11 @@ public class Wc26ScheduleRegistry implements ApplicationRunner {
     @Override
     public void run(ApplicationArguments args) {
         Map<Integer, Wc26ScheduleCatalog.GroupMatch> loaded = new HashMap<>();
+        Map<Integer, LocalDateTime> kickoffs = new HashMap<>();
         for (Wc26ScheduleMatch match : wc26ScheduleMatchRepository.findAllByOrderByKickoffUtcAsc()) {
+            if (match.getKickoffUtc() != null) {
+                kickoffs.put(match.getScheduleId(), match.getKickoffUtc());
+            }
             if (match.getHomeFifa() != null && match.getAwayFifa() != null) {
                 loaded.put(
                         match.getScheduleId(),
@@ -37,6 +42,9 @@ public class Wc26ScheduleRegistry implements ApplicationRunner {
         }
         if (!loaded.isEmpty()) {
             Wc26ScheduleCatalog.installDbLookup(loaded);
+        }
+        if (!kickoffs.isEmpty()) {
+            Wc26ScheduleKickoffLookup.install(kickoffs);
         }
     }
 

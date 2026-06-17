@@ -37,6 +37,7 @@ public class ExternalMatchResultPollingService {
     private final GameResultRecordRepository gameResultRecordRepository;
     private final GameResultPersistence gameResultPersistence;
     private final AutoBetSettlementService autoBetSettlementService;
+    private final GameResultPollingFilter gameResultPollingFilter;
 
     public void runPollingTick() {
         var settings = settingsService.getEffective();
@@ -94,7 +95,7 @@ public class ExternalMatchResultPollingService {
                 .findByLeagueCodeAndMatchdayAndSeason(key.leagueCode(), key.matchday(), key.season())
                 .stream()
                 .filter(record -> !record.isFinalized() && !record.isAdminCorrected())
-                .filter(GameResultPollingFilter::needsExternalPoll)
+                .filter(gameResultPollingFilter::needsExternalPoll)
                 .toList();
 
         for (GameResultRecord record : pending) {
