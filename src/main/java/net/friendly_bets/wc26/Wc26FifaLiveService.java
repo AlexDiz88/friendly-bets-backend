@@ -213,8 +213,10 @@ public class Wc26FifaLiveService {
                 if (!row.isLiveNow()) {
                     continue;
                 }
-                Integer goals = goalsByTeam.get(row.getFifaCode());
-                row.setLiveMatchGoals(goals != null ? goals : FifaStandingParser.liveMatchGoalsFor(row));
+                Integer calendarGoals = goalsByTeam.get(row.getFifaCode());
+                if (calendarGoals != null) {
+                    row.setLiveMatchGoals(calendarGoals);
+                }
             }
         }
     }
@@ -254,6 +256,7 @@ public class Wc26FifaLiveService {
                 .form(FifaStandingParser.recentForm(row))
                 .qualificationStatus("pending")
                 .liveNow(FifaStandingParser.liveNow(row))
+                .liveMatchGoals(FifaStandingParser.liveNow(row) ? FifaStandingParser.liveMatchGoalsFor(row) : null)
                 .build();
     }
 
