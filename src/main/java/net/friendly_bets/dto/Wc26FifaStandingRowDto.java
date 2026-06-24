@@ -28,4 +28,6 @@ public class Wc26FifaStandingRowDto {
     /** direct | best_third | eliminated | live */
     private String qualificationStatus;
     private boolean liveNow;
+    /** Goals scored by this team in the current live match, when {@link #liveNow}. */
+    private Integer liveMatchGoals;
 }

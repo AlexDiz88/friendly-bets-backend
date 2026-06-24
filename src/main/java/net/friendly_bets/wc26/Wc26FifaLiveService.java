@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -43,6 +44,7 @@ public class Wc26FifaLiveService {
     public Wc26FifaStandingsPageDto getStandings(String groupFilter) {
         CachedData cached = loadData();
         List<Wc26FifaGroupTableDto> groups = buildGroupTables(cached.standings());
+        enrichLiveMatchGoals(groups, cached.matches());
         List<Wc26FifaBestThirdRowDto> bestThirdPlaces = buildBestThirdPlaces(groups);
         applyQualificationStatus(groups, bestThirdPlaces);
         if (groupFilter != null && !groupFilter.isBlank() && !"all".equalsIgnoreCase(groupFilter)) {
@@ -199,6 +201,42 @@ public class Wc26FifaLiveService {
                 }
             }
         }
+    }
+
+    private static void enrichLiveMatchGoals(List<Wc26FifaGroupTableDto> groups, List<JsonNode> matches) {
+        Map<String, Integer> goalsByTeam = buildLiveGoalsByTeam(matches);
+        for (Wc26FifaGroupTableDto group : groups) {
+            if (group.getRows() == null) {
+                continue;
+            }
+            for (Wc26FifaStandingRowDto row : group.getRows()) {
+                if (!row.isLiveNow()) {
+                    continue;
+                }
+                Integer goals = goalsByTeam.get(row.getFifaCode());
+                row.setLiveMatchGoals(goals != null ? goals : FifaStandingParser.liveMatchGoalsFor(row));
+            }
+        }
+    }
+
+    private static Map<String, Integer> buildLiveGoalsByTeam(List<JsonNode> matches) {
+        Map<String, Integer> result = new HashMap<>();
+        for (JsonNode match : matches) {
+            if (!FifaMatchParser.isGroupStage(match) || !FifaMatchParser.isLive(match)) {
+                continue;
+            }
+            String homeCode = FifaMatchParser.teamCode(match.get("Home"));
+            String awayCode = FifaMatchParser.teamCode(match.get("Away"));
+            Integer homeScore = FifaMatchParser.homeScore(match);
+            Integer awayScore = FifaMatchParser.awayScore(match);
+            if (homeCode != null) {
+                result.put(homeCode, homeScore != null ? homeScore : 0);
+            }
+            if (awayCode != null) {
+                result.put(awayCode, awayScore != null ? awayScore : 0);
+            }
+        }
+        return result;
     }
 
     private Wc26FifaStandingRowDto toStandingRow(JsonNode row) {

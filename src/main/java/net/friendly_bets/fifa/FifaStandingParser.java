@@ -89,6 +89,61 @@ public final class FifaStandingParser {
         return live != null && live.asBoolean(false);
     }
 
+    /** Goals scored by this team in the in-progress match from {@code MatchResults}, or null if unknown. */
+    public static Integer liveMatchGoalsFor(JsonNode row) {
+        if (!liveNow(row)) {
+            return null;
+        }
+        JsonNode team = row.get("Team");
+        String teamId = team != null && !team.isNull()
+                ? textOrNull(team.get("IdTeam"))
+                : textOrNull(row.get("IdTeam"));
+        if (teamId == null) {
+            return null;
+        }
+        JsonNode matchResults = row.get("MatchResults");
+        if (matchResults == null || !matchResults.isArray()) {
+            return null;
+        }
+        for (JsonNode match : matchResults) {
+            int status = match.has("MatchStatus") ? match.get("MatchStatus").asInt(-1) : -1;
+            if (status != 3 && status != 4) {
+                continue;
+            }
+            Integer goals = teamGoalsInMatch(match, teamId);
+            if (goals != null) {
+                return goals;
+            }
+        }
+        for (JsonNode match : matchResults) {
+            int status = match.has("MatchStatus") ? match.get("MatchStatus").asInt(-1) : -1;
+            if (status == 0) {
+                continue;
+            }
+            Integer goals = teamGoalsInMatch(match, teamId);
+            if (goals != null) {
+                return goals;
+            }
+        }
+        return null;
+    }
+
+    private static Integer teamGoalsInMatch(JsonNode match, String teamId) {
+        String homeId = textOrNull(match.get("HomeTeamId"));
+        String awayId = textOrNull(match.get("AwayTeamId"));
+        if (teamId.equals(homeId)) {
+            return intOrNull(match.get("HomeTeamScore"));
+        }
+        if (teamId.equals(awayId)) {
+            return intOrNull(match.get("AwayTeamScore"));
+        }
+        return null;
+    }
+
+    private static Integer intOrNull(JsonNode node) {
+        return node != null && node.isNumber() ? node.asInt() : null;
+    }
+
     public static List<String> recentForm(JsonNode row) {
         JsonNode team = row.get("Team");
         String teamId = team != null && !team.isNull() ? textOrNull(team.get("IdTeam")) : textOrNull(row.get("IdTeam"));

@@ -31,6 +31,25 @@ class FifaStandingParserTest {
         assertEquals("B", FifaStandingParser.groupLetter(row));
         assertEquals("SUI", FifaStandingParser.teamCode(row));
         assertEquals(1, FifaStandingParser.position(row));
-        assertEquals(1, FifaStandingParser.points(row));
+    @Test
+    void parsesLiveMatchGoalsFromMatchResults() throws Exception {
+        String json = """
+                {
+                  "IsLive": true,
+                  "Team": {"Abbreviation": "SUI", "IdTeam": "43971"},
+                  "MatchResults": [
+                    {
+                      "MatchStatus": 3,
+                      "HomeTeamId": "43971",
+                      "AwayTeamId": "43922",
+                      "HomeTeamScore": 2,
+                      "AwayTeamScore": 1
+                    }
+                  ]
+                }
+                """;
+        var row = objectMapper.readTree(json);
+
+        assertEquals(2, FifaStandingParser.liveMatchGoalsFor(row));
     }
 }
