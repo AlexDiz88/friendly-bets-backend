@@ -9,10 +9,12 @@ import net.friendly_bets.dto.Wc26FifaBracketPageDto;
 import net.friendly_bets.dto.Wc26FifaGroupTableDto;
 import net.friendly_bets.dto.Wc26FifaStandingRowDto;
 import net.friendly_bets.dto.Wc26FifaStandingsPageDto;
+import net.friendly_bets.dto.Wc26SchedulePageDto;
 import net.friendly_bets.fifa.FifaMatchParser;
 import net.friendly_bets.fifa.FifaStandingParser;
 import net.friendly_bets.fifa.client.FifaHttpClient;
 import net.friendly_bets.fifa.config.FifaProperties;
+import net.friendly_bets.gameresults.config.MatchResultSyncProperties;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -37,6 +39,8 @@ public class Wc26FifaLiveService {
 
     private final FifaHttpClient fifaHttpClient;
     private final FifaProperties fifaProperties;
+    private final Wc26ScheduleService wc26ScheduleService;
+    private final MatchResultSyncProperties matchResultSyncProperties;
 
     private final Object cacheLock = new Object();
     private volatile CachedData cache;
@@ -44,7 +48,7 @@ public class Wc26FifaLiveService {
     public Wc26FifaStandingsPageDto getStandings(String groupFilter) {
         CachedData cached = loadData();
         List<Wc26FifaGroupTableDto> groups = buildGroupTables(cached.standings());
-        enrichLiveMatchGoals(groups, cached.matches());
+        enrichLiveMatchScores(groups, cached);
         List<Wc26FifaBestThirdRowDto> bestThirdPlaces = buildBestThirdPlaces(groups);
         applyQualificationStatus(groups, bestThirdPlaces);
         if (groupFilter != null && !groupFilter.isBlank() && !"all".equalsIgnoreCase(groupFilter)) {
@@ -203,42 +207,33 @@ public class Wc26FifaLiveService {
         }
     }
 
-    private static void enrichLiveMatchGoals(List<Wc26FifaGroupTableDto> groups, List<JsonNode> matches) {
-        Map<String, Integer> goalsByTeam = buildLiveGoalsByTeam(matches);
+    private void enrichLiveMatchScores(List<Wc26FifaGroupTableDto> groups, CachedData cached) {
+        Wc26SchedulePageDto schedule = wc26ScheduleService.getSchedulePage(
+                matchResultSyncProperties.getDefaultSeason());
+        Map<String, String> scores = Wc26StandingsLiveScores.merge(
+                Wc26StandingsLiveScores.byTeam(schedule),
+                Wc26StandingsLiveScores.byTeamFromFifaCalendar(cached.matches()));
         for (Wc26FifaGroupTableDto group : groups) {
             if (group.getRows() == null) {
                 continue;
             }
             for (Wc26FifaStandingRowDto row : group.getRows()) {
-                if (!row.isLiveNow()) {
+                String code = row.getFifaCode();
+                if (code == null || code.isBlank()) {
                     continue;
                 }
-                Integer calendarGoals = goalsByTeam.get(row.getFifaCode());
-                if (calendarGoals != null) {
-                    row.setLiveMatchGoals(calendarGoals);
+                String normalized = code.trim().toUpperCase(Locale.ROOT);
+                String score = scores.get(normalized);
+                if (score != null) {
+                    row.setLiveNow(true);
+                    row.setLiveMatchScore(score);
+                    row.setLiveMatchGoals(null);
+                } else if (row.isLiveNow()) {
+                    row.setLiveMatchScore("0:0");
+                    row.setLiveMatchGoals(null);
                 }
             }
         }
-    }
-
-    private static Map<String, Integer> buildLiveGoalsByTeam(List<JsonNode> matches) {
-        Map<String, Integer> result = new HashMap<>();
-        for (JsonNode match : matches) {
-            if (!FifaMatchParser.isGroupStage(match) || !FifaMatchParser.isLive(match)) {
-                continue;
-            }
-            String homeCode = FifaMatchParser.teamCode(match.get("Home"));
-            String awayCode = FifaMatchParser.teamCode(match.get("Away"));
-            Integer homeScore = FifaMatchParser.homeScore(match);
-            Integer awayScore = FifaMatchParser.awayScore(match);
-            if (homeCode != null) {
-                result.put(homeCode, homeScore != null ? homeScore : 0);
-            }
-            if (awayCode != null) {
-                result.put(awayCode, awayScore != null ? awayScore : 0);
-            }
-        }
-        return result;
     }
 
     private Wc26FifaStandingRowDto toStandingRow(JsonNode row) {
@@ -256,7 +251,6 @@ public class Wc26FifaLiveService {
                 .form(FifaStandingParser.recentForm(row))
                 .qualificationStatus("pending")
                 .liveNow(FifaStandingParser.liveNow(row))
-                .liveMatchGoals(FifaStandingParser.liveNow(row) ? FifaStandingParser.liveMatchGoalsFor(row) : null)
                 .build();
     }
 
