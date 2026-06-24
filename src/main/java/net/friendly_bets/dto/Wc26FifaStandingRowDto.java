@@ -30,4 +30,6 @@ public class Wc26FifaStandingRowDto {
     private boolean liveNow;
     /** Goals scored by this team in the current live match, when {@link #liveNow}. */
     private Integer liveMatchGoals;
+    /** Full live match score (home:away), when {@link #liveNow}. */
+    private String liveMatchScore;
 }

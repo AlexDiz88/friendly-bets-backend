@@ -91,13 +91,44 @@ public final class FifaStandingParser {
 
     /** Goals scored by this team in the in-progress match from {@code MatchResults}, or null if unknown. */
     public static Integer liveMatchGoalsFor(JsonNode row) {
+        JsonNode match = findLiveMatch(row);
+        if (match == null) {
+            return null;
+        }
+        String teamId = teamId(row);
+        if (teamId == null) {
+            return null;
+        }
+        return teamGoalsInMatch(match, teamId);
+    }
+
+    /** Full score of the in-progress match (home:away), or null if unknown. */
+    public static String liveMatchScore(JsonNode row) {
+        JsonNode match = findLiveMatch(row);
+        if (match == null) {
+            return null;
+        }
+        Integer home = intOrNull(match.get("HomeTeamScore"));
+        Integer away = intOrNull(match.get("AwayTeamScore"));
+        if (home == null || away == null) {
+            return null;
+        }
+        return home + ":" + away;
+    }
+
+    private static String teamId(JsonNode row) {
+        JsonNode team = row.get("Team");
+        if (team != null && !team.isNull()) {
+            return textOrNull(team.get("IdTeam"));
+        }
+        return textOrNull(row.get("IdTeam"));
+    }
+
+    private static JsonNode findLiveMatch(JsonNode row) {
         if (!liveNow(row)) {
             return null;
         }
-        JsonNode team = row.get("Team");
-        String teamId = team != null && !team.isNull()
-                ? textOrNull(team.get("IdTeam"))
-                : textOrNull(row.get("IdTeam"));
+        String teamId = teamId(row);
         if (teamId == null) {
             return null;
         }
@@ -110,9 +141,8 @@ public final class FifaStandingParser {
             if (status != 3 && status != 4) {
                 continue;
             }
-            Integer goals = teamGoalsInMatch(match, teamId);
-            if (goals != null) {
-                return goals;
+            if (teamGoalsInMatch(match, teamId) != null) {
+                return match;
             }
         }
         for (JsonNode match : matchResults) {
@@ -120,9 +150,8 @@ public final class FifaStandingParser {
             if (status == 0) {
                 continue;
             }
-            Integer goals = teamGoalsInMatch(match, teamId);
-            if (goals != null) {
-                return goals;
+            if (teamGoalsInMatch(match, teamId) != null) {
+                return match;
             }
         }
         return null;

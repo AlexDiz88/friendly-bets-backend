@@ -54,5 +54,6 @@ class FifaStandingParserTest {
         var row = objectMapper.readTree(json);
 
         assertEquals(2, FifaStandingParser.liveMatchGoalsFor(row));
+        assertEquals("2:1", FifaStandingParser.liveMatchScore(row));
     }
 }
