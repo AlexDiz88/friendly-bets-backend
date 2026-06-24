@@ -31,6 +31,9 @@ class FifaStandingParserTest {
         assertEquals("B", FifaStandingParser.groupLetter(row));
         assertEquals("SUI", FifaStandingParser.teamCode(row));
         assertEquals(1, FifaStandingParser.position(row));
+        assertEquals(1, FifaStandingParser.points(row));
+    }
+
     @Test
     void parsesLiveMatchGoalsFromMatchResults() throws Exception {
         String json = """
