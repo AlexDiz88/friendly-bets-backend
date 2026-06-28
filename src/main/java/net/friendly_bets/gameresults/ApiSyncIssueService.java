@@ -49,9 +49,6 @@ public class ApiSyncIssueService {
         if (teamName == null || teamName.isBlank()) {
             return;
         }
-        if (net.friendly_bets.fourscore.FourScorePlayoffPlaceholderNames.isPlaceholder(teamName)) {
-            return;
-        }
         if (teamAliasResolver.resolveFourScoreByName(teamName).isPresent()) {
             return;
         }
@@ -115,6 +112,37 @@ public class ApiSyncIssueService {
             return !isResolvedTeamMappingIssue(issue);
         }
         return false;
+    }
+
+    public void recordFourScorePlayoffPlaceholderMatch(
+            FourScoreListMatch listMatch,
+            String leagueCode,
+            String season,
+            int matchday
+    ) {
+        if (listMatch == null) {
+            return;
+        }
+        Long externalEventId = listMatch.getExternalEventId();
+        if (externalEventId != null
+                && apiSyncIssueRepository.existsByProviderAndIssueTypeAndExternalMatchId(
+                MatchDataProviders.FOURSCORE,
+                ApiSyncIssue.IssueType.EVENT_MAPPING_MISSING.name(),
+                externalEventId)) {
+            return;
+        }
+        apiSyncIssueRepository.save(ApiSyncIssue.builder()
+                .createdAt(LocalDateTime.now())
+                .provider(MatchDataProviders.FOURSCORE)
+                .issueType(ApiSyncIssue.IssueType.EVENT_MAPPING_MISSING.name())
+                .leagueCode(leagueCode)
+                .season(season)
+                .matchday(matchday)
+                .externalMatchId(externalEventId)
+                .homeTeamName(listMatch.getHomeTeamName())
+                .awayTeamName(listMatch.getAwayTeamName())
+                .message("fourScorePlayoffPlaceholderSide")
+                .build());
     }
 
     public void recordFourScoreEventMappingMissing(

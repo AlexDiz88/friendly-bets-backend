@@ -22,6 +22,12 @@ import net.friendly_bets.services.GetEntityService;
 import net.friendly_bets.services.RunningSeasonLookup;
 import net.friendly_bets.services.TournamentFormatExpander;
 import net.friendly_bets.wc26.WcBerlinSlotMatchFilter;
+import net.friendly_bets.wc26.Wc26ScheduleCatalog;
+import net.friendly_bets.wc26.Wc26ScheduleKickoffResolver;
+import net.friendly_bets.wc26.Wc26ScheduleLinker;
+import net.friendly_bets.twentyfourscore.TwentyFourScoreSyncService;
+import net.friendly_bets.wc26.Wc26TeamCatalog;
+import net.friendly_bets.config.WcTournamentSlots;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -58,6 +64,9 @@ public class FourScoreSyncService {
     private final FourScoreScoreNormalizer scoreNormalizer;
     private final TournamentFormatExpander tournamentFormatExpander;
     private final GameResultsSyncRepository gameResultsSyncRepository;
+    private final Wc26ScheduleLinker wc26ScheduleLinker;
+    private final Wc26ScheduleKickoffResolver wc26ScheduleKickoffResolver;
+    private final TwentyFourScoreSyncService twentyFourScoreSyncService;
 
     public boolean isEnabledForLeague(String leagueCode) {
         return properties.isEnabled()
@@ -89,26 +98,30 @@ public class FourScoreSyncService {
             return 0;
         }
         List<GameResultRecord> records = new ArrayList<>(
-                gameResultQueryService.getMatchesByLeagueCode(leagueCode, matchday, season, leagueId));
-        if (records.isEmpty()) {
-            return 0;
+                gameResultQueryService.listMatchdayRecordsForSync(leagueCode, matchday, season));
+        if ("WC".equals(leagueCode)) {
+            wc26ScheduleLinker.relinkMatchdayRecords(records);
         }
+        if (records.isEmpty()) {
+            bootstrapInitialWcSlotRecords(leagueCode, season, matchday, leagueId, records);
+        }
+        Optional<String> wcSlotId = resolveWcBettingSlotId(leagueId, matchday);
+        int wcExpected = wcSlotId
+                .map(WcBerlinSlotMatchFilter::expectedMatchCount)
+                .orElse(0);
+        boolean slotIncomplete = wcExpected > 0 && records.size() < wcExpected;
         List<GameResultRecord> pending = records.stream()
                 .filter(r -> !r.isFinalized())
                 .toList();
         int updated = 0;
-        if (!pending.isEmpty()) {
-            Set<LocalDate> dates = pending.stream()
-                    .map(GameResultRecord::getUtcDate)
-                    .filter(d -> d != null)
-                    .map(LocalDateTime::toLocalDate)
-                    .collect(Collectors.toCollection(LinkedHashSet::new));
-            if (dates.isEmpty()) {
-                dates.add(LocalDate.now());
-            }
+        if (!pending.isEmpty() || slotIncomplete) {
+            Set<LocalDate> dates = resolveFourScoreFetchDates(leagueCode, leagueId, matchday, records);
             for (LocalDate date : dates) {
                 updated += syncDateForRecords(date, leagueCode, season, matchday, leagueId, records);
             }
+        }
+        if (records.isEmpty()) {
+            return updated;
         }
         updateSyncMetadata(leagueCode, matchday, season);
         return updated;
@@ -182,6 +195,18 @@ public class FourScoreSyncService {
     ) {
         if (FourScorePlayoffPlaceholderNames.isPlaceholder(listMatch.getHomeTeamName())
                 || FourScorePlayoffPlaceholderNames.isPlaceholder(listMatch.getAwayTeamName())) {
+            apiSyncIssueService.recordFourScorePlayoffPlaceholderMatch(
+                    listMatch, leagueCode, season, matchday);
+            twentyFourScoreSyncService.tryBootstrapAfterFourScorePlaceholder(
+                    listMatch.getHomeTeamName(),
+                    listMatch.getAwayTeamName(),
+                    listPageDate,
+                    leagueCode,
+                    season,
+                    matchday,
+                    leagueId,
+                    records
+            );
             return false;
         }
         Optional<Team> home = teamResolver.resolveOrRecordMissing(
@@ -209,11 +234,21 @@ public class FourScoreSyncService {
                         && away.get().getId().equals(r.getAwayTeamId()))
                 .findFirst();
         if (existing.isEmpty()) {
-            Optional<String> berlinSlotId = resolveBerlinSlotId(leagueId, matchday);
-            if (berlinSlotId.isPresent()
-                    && !WcBerlinSlotMatchFilter.teamPairBelongsToSlot(
-                            berlinSlotId.get(), home.get(), away.get())) {
-                return false;
+            Optional<String> wcSlotId = resolveWcBettingSlotId(leagueId, matchday);
+            if (wcSlotId.isPresent()) {
+                LocalDateTime kickoff = resolveListKickoff(listPageDate, listMatch.getKickoffTime());
+                Optional<Integer> catalogScheduleId = Wc26ScheduleCatalog.findByTeamPair(
+                                teamFifa(home.get()), teamFifa(away.get()))
+                        .map(Wc26ScheduleCatalog.GroupMatch::scheduleId);
+                Optional<Integer> scheduleId = catalogScheduleId;
+                if (scheduleId.isEmpty()) {
+                    scheduleId = WcBerlinSlotMatchFilter.resolveScheduleIdInSlot(
+                            wcSlotId.get(), kickoff);
+                }
+                if (!WcBerlinSlotMatchFilter.matchBelongsToWcSlot(
+                        wcSlotId.get(), home.get(), away.get(), kickoff, scheduleId.orElse(null))) {
+                    return false;
+                }
             }
             return bootstrapListMatch(
                     listMatch,
@@ -291,6 +326,7 @@ public class FourScoreSyncService {
         if (listMatch.getEventSlug() != null && !listMatch.getEventSlug().isBlank()) {
             record.setFourscoreEventSlug(listMatch.getEventSlug());
         }
+        wc26ScheduleLinker.linkIfNeeded(record, home, away);
         gameResultRecordRepository.save(record);
         return true;
     }
@@ -355,6 +391,8 @@ public class FourScoreSyncService {
             created.setFourscoreEventSlug(listMatch.getEventSlug());
         }
         GameResultRecord saved = gameResultRecordRepository.save(created);
+        wc26ScheduleLinker.linkIfNeeded(saved, home, away);
+        saved = gameResultRecordRepository.save(saved);
         records.add(saved);
         return true;
     }
@@ -462,7 +500,65 @@ public class FourScoreSyncService {
         return new FourScoreMatchdayTarget(key.leagueCode(), key.matchday(), key.season(), key.leagueId());
     }
 
-    private Optional<String> resolveBerlinSlotId(String leagueId, int slotOrder) {
+    private void bootstrapInitialWcSlotRecords(
+            String leagueCode,
+            String season,
+            int matchday,
+            String leagueId,
+            List<GameResultRecord> records
+    ) {
+        if (!"WC".equals(leagueCode)) {
+            return;
+        }
+        Optional<String> slotId = resolveWcBettingSlotId(leagueId, matchday);
+        if (slotId.isEmpty() || WcTournamentSlots.scheduleIdsForSlot(slotId.get()).isEmpty()) {
+            return;
+        }
+        Set<LocalDate> dates = new LinkedHashSet<>(
+                wc26ScheduleKickoffResolver.listPageDatesForWcSlot(slotId.get()));
+        dates.add(FourScoreListDates.todayInListZone());
+        LocalDateTime fetchedAt = LocalDateTime.now();
+        for (LocalDate date : dates) {
+            String html = httpClient.fetchEventsPage(date);
+            List<FourScoreListMatch> listMatches = listParser.parse(html, FourScoreLeagueSection.WORLD_CUP);
+            for (FourScoreListMatch listMatch : listMatches) {
+                try {
+                    applyListMatchIfEligible(
+                            listMatch, date, leagueCode, season, matchday, leagueId, records, fetchedAt);
+                } catch (Exception e) {
+                    log.warn("4score WC slot bootstrap failed {}: {}", listMatch.getEventSlug(), e.getMessage());
+                }
+            }
+        }
+    }
+
+    private static LocalDateTime resolveListKickoff(LocalDate listPageDate, java.time.LocalTime kickoffTime) {
+        return FourScoreKickoffUtc.fromMoscowLocal(listPageDate, kickoffTime);
+    }
+
+    private Set<LocalDate> resolveFourScoreFetchDates(
+            String leagueCode,
+            String leagueId,
+            int matchday,
+            List<GameResultRecord> records
+    ) {
+        Set<LocalDate> dates = new LinkedHashSet<>();
+        for (GameResultRecord record : records) {
+            if (record.getUtcDate() != null) {
+                dates.add(FourScoreListDates.listPageDateFromStoredUtc(record.getUtcDate()));
+            }
+        }
+        if ("WC".equals(leagueCode)) {
+            resolveWcBettingSlotId(leagueId, matchday)
+                    .ifPresent(slotId -> dates.addAll(wc26ScheduleKickoffResolver.listPageDatesForWcSlot(slotId)));
+        }
+        if (dates.isEmpty()) {
+            dates.add(FourScoreListDates.todayInListZone());
+        }
+        return dates;
+    }
+
+    private Optional<String> resolveWcBettingSlotId(String leagueId, int slotOrder) {
         if (leagueId == null || leagueId.isBlank()) {
             return Optional.empty();
         }
@@ -473,7 +569,16 @@ public class FourScoreSyncService {
         TournamentFormat format = getEntityService.getTournamentFormatOrThrow(league.getTournamentFormatId());
         return tournamentFormatExpander.findByOrder(format, slotOrder)
                 .map(slot -> slot.getId())
-                .filter(WcBerlinSlotMatchFilter::isBerlinGroupSlot);
+                .filter(WcBerlinSlotMatchFilter::isWcBettingSlot);
+    }
+
+    private static String teamFifa(Team team) {
+        if (team == null) {
+            return null;
+        }
+        return Wc26TeamCatalog.fifaCodeForKnownName(team.getTitle())
+                .or(() -> Optional.ofNullable(team.getCountry()).flatMap(Wc26TeamCatalog::fifaCodeForKnownName))
+                .orElse(null);
     }
 
     private record FourScoreMatchdayTarget(String leagueCode, int matchday, String season, String leagueId) {

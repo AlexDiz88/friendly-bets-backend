@@ -16,7 +16,29 @@ public final class OddsBetTitleSortOrder {
             .thenComparingInt(OddsBetTitleSortOrder::betTitleCodeKey)
             .thenComparingInt(OddsBetTitleSortOrder::yesBeforeNoKey);
 
+    /** Плей-офф: выход (5212–5217) → остальное → «12» (5205, 5208, 5211). */
+    public static final Comparator<OddsLineRow> BY_PLAYOFF = Comparator
+            .comparingInt(OddsBetTitleSortOrder::playoffTierKeyForRow)
+            .thenComparingInt(OddsBetTitleSortOrder::betTitleCodeKey)
+            .thenComparingInt(OddsBetTitleSortOrder::yesBeforeNoKey);
+
     private OddsBetTitleSortOrder() {
+    }
+
+    /** 0 = выход/победитель (QLF), 1 = прочее, 2 = «12». */
+    static int playoffTierKeyForRow(OddsLineRow row) {
+        BetTitleCode code = betTitleCode(row);
+        if (code == null) {
+            return 1;
+        }
+        return switch (code) {
+            case PLAYOFF_HOME_ADVANCE_NEXT_STAGE, PLAYOFF_AWAY_ADVANCE_NEXT_STAGE,
+                 PLAYOFF_HOME_ADVANCE_FINAL, PLAYOFF_AWAY_ADVANCE_FINAL,
+                 PLAYOFF_HOME_WIN_TOURNAMENT, PLAYOFF_AWAY_WIN_TOURNAMENT -> 0;
+            case PLAYOFF_HOME_OR_AWAY_REGULAR, PLAYOFF_HOME_OR_AWAY_OVERTIME,
+                 PLAYOFF_HOME_OR_AWAY_PENALTIES -> 2;
+            default -> 1;
+        };
     }
 
     /** 0 = обе, 1 = хозяева, 2 = гости, 3 = любая, 4 = прочее. */

@@ -9,9 +9,18 @@ import java.util.regex.Pattern;
  * <p>
  * Тайм/Матч: {@code MTCH_DR} (не {@code MTCH_FTS*} — «первая команда забьёт»).
  * Разница в счёте: {@code MTCH_T1WM}, {@code MTCH_T2WM}, {@code MTCH_TEWM} (не {@code MTCH_SD} — «результативная ничья»).
+ * Плей-офф: {@code MTCH_QLF}, {@code MTCH_OT}, {@code MTCH_PNL_SHT}, {@code MTCH_WM_*} (не {@code MTCH_PNL} — пенальти в матче).
  */
 public final class MarathonbetAllowedMarkets {
 
+    private static final Set<String> PLAYOFF_MODELS = Set.of(
+            "MTCH_QLF",
+            "MTCH_OT",
+            "MTCH_PNL_SHT",
+            "MTCH_WM_FT", "MTCH_WM_FT1", "MTCH_WM_FT2",
+            "MTCH_WM_ET", "MTCH_WM_ET1", "MTCH_WM_ET2",
+            "MTCH_WM_PNL", "MTCH_WM_PNL1", "MTCH_WM_PNL2"
+    );
     private static final Set<String> EXACT_GOALS = Set.of(
             "MTCH_T12G", "MTCH_T1G", "MTCH_T2G",
             "MTCH_T12G1", "MTCH_T12G2", "MTCH_T12G1OR2",
@@ -58,6 +67,9 @@ public final class MarathonbetAllowedMarkets {
     }
 
     private static Optional<MarathonbetMarketBucket> classifyByPattern(String model) {
+        if (PLAYOFF_MODELS.contains(model)) {
+            return Optional.of(MarathonbetMarketBucket.PLAYOFF);
+        }
         if (MarathonbetResultTotalModels.isFullTimeResultTotal(model)) {
             return Optional.of(MarathonbetMarketBucket.RESULT_TOTAL);
         }

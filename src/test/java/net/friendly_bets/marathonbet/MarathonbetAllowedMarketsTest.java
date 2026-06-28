@@ -35,6 +35,16 @@ class MarathonbetAllowedMarketsTest {
     }
 
     @Test
+    void allowsPlayoffKnockoutMarkets() {
+        assertEquals(MarathonbetMarketBucket.PLAYOFF, bucket("MTCH_QLF"));
+        assertEquals(MarathonbetMarketBucket.PLAYOFF, bucket("MTCH_OT"));
+        assertEquals(MarathonbetMarketBucket.PLAYOFF, bucket("MTCH_PNL_SHT"));
+        assertEquals(MarathonbetMarketBucket.PLAYOFF, bucket("MTCH_WM_FT1"));
+        assertFalse(MarathonbetAllowedMarkets.isAllowedModel("MTCH_PNL"));
+        assertFalse(MarathonbetAllowedMarkets.isAllowedModel("MTCH_TEWFB"));
+    }
+
+    @Test
     void denyByDefaultForUnknownModels() {
         assertFalse(MarathonbetAllowedMarkets.isAllowedModel("MTCH_TEWFB"));
         assertFalse(MarathonbetAllowedMarkets.isAllowedModel("MTCH_T1NGI"));

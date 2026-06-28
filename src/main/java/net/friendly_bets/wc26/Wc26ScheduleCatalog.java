@@ -89,6 +89,22 @@ public final class Wc26ScheduleCatalog {
         gm(70, "JOR", "ARG");
         gm(71, "COL", "POR");
         gm(72, "COD", "UZB");
+        gm(73, "RSA", "CAN");
+        gm(74, "GER", "PAR");
+        gm(75, "NED", "MAR");
+        gm(76, "BRA", "JPN");
+        gm(77, "FRA", "SWE");
+        gm(78, "CIV", "NOR");
+        gm(79, "MEX", "ECU");
+        gm(80, "ENG", "COD");
+        gm(81, "USA", "BIH");
+        gm(82, "BEL", "SEN");
+        gm(83, "POR", "CRO");
+        gm(84, "ESP", "AUT");
+        gm(85, "SUI", "ALG");
+        gm(86, "ARG", "CPV");
+        gm(87, "COL", "GHA");
+        gm(88, "AUS", "EGY");
     }
 
     private Wc26ScheduleCatalog() {
@@ -108,6 +124,29 @@ public final class Wc26ScheduleCatalog {
             return Optional.of(fromDb);
         }
         return Optional.ofNullable(STATIC_BY_ID.get(scheduleId));
+    }
+
+    public static Optional<GroupMatch> findByTeamPair(String homeFifa, String awayFifa) {
+        if (homeFifa == null || awayFifa == null || homeFifa.isBlank() || awayFifa.isBlank()) {
+            return Optional.empty();
+        }
+        String home = homeFifa.trim().toUpperCase();
+        String away = awayFifa.trim().toUpperCase();
+        for (GroupMatch match : dbById.values()) {
+            if (pairEquals(match, home, away)) {
+                return Optional.of(match);
+            }
+        }
+        for (GroupMatch match : STATIC_BY_ID.values()) {
+            if (pairEquals(match, home, away)) {
+                return Optional.of(match);
+            }
+        }
+        return Optional.empty();
+    }
+
+    private static boolean pairEquals(GroupMatch match, String home, String away) {
+        return match.homeFifa().equalsIgnoreCase(home) && match.awayFifa().equalsIgnoreCase(away);
     }
 
     public static Map<Integer, GroupMatch> allGroupMatches() {

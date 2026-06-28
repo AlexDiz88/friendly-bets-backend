@@ -33,7 +33,8 @@ public final class OddsDisplayLabelFormatter {
         return switch (category) {
             case HANDICAP, PERIOD_HANDICAP -> formatHandicapLabel(label);
             case TEAM_TOTAL_HOME, TEAM_TOTAL_AWAY -> shortenTeamTotalLabel(label);
-            case BTTS, GOALS, RESULT_BTTS, CLEAN_WIN, WIN_GOAL_DIFFERENCE -> formatGoalsBetTitleLabel(betTitle);
+            case BTTS, GOALS, RESULT_BTTS, CLEAN_WIN, WIN_GOAL_DIFFERENCE, PLAYOFF_EXTRA_TIME ->
+                    formatGoalsBetTitleLabel(betTitle);
             case HALF_FULL, FIRST_SECOND_HALF -> label;
             default -> label;
         };

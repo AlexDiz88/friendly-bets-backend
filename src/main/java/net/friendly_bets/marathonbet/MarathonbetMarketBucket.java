@@ -27,5 +27,7 @@ public enum MarathonbetMarketBucket {
     SCORE_DIFF,
     HALF_FULL,
     FIRST_SECOND_HALF,
-    BTTS_RESULT
+    BTTS_RESULT,
+    /** Выход / доп. время / пенальти — только нокаут-матчи. */
+    PLAYOFF
 }

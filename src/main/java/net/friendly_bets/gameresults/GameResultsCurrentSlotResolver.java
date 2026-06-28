@@ -60,8 +60,8 @@ public class GameResultsCurrentSlotResolver {
                 .findByLeagueCodeAndMatchdayAndSeason(leagueCode, slotOrder, season);
         List<GameResultRecord> records = loadSlotRecords(leagueCode, leagueId, slotId, slotOrder, season);
 
-        if (WcBerlinSlotMatchFilter.isBerlinGroupSlot(slotId)) {
-            return isBerlinSlotComplete(slotId, records);
+        if (WcBerlinSlotMatchFilter.isWcBettingSlot(slotId)) {
+            return isWcSlotComplete(slotId, records);
         }
 
         if (sync.isPresent()) {
@@ -74,7 +74,7 @@ public class GameResultsCurrentSlotResolver {
         return records.stream().allMatch(GameResultRecord::isFinalized);
     }
 
-    private boolean isBerlinSlotComplete(String slotId, List<GameResultRecord> records) {
+    private boolean isWcSlotComplete(String slotId, List<GameResultRecord> records) {
         if (records.isEmpty()) {
             return false;
         }
@@ -83,7 +83,6 @@ public class GameResultsCurrentSlotResolver {
             return false;
         }
         long finalizedCount = records.stream().filter(GameResultRecord::isFinalized).count();
-        // Как на UI «Результаты матчей»: слот завершён, когда зафиксировано expected матчей.
         return finalizedCount >= expected;
     }
 
@@ -96,7 +95,7 @@ public class GameResultsCurrentSlotResolver {
     ) {
         List<GameResultRecord> records = gameResultRecordRepository
                 .findByLeagueCodeAndMatchdayAndSeason(leagueCode, slotOrder, season);
-        if (!WcBerlinSlotMatchFilter.isBerlinGroupSlot(slotId)) {
+        if (!WcBerlinSlotMatchFilter.isWcBettingSlot(slotId)) {
             return records;
         }
         return WcBerlinSlotMatchFilter.filterGameResultRecords(

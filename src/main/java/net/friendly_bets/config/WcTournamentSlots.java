@@ -4,7 +4,9 @@ import net.friendly_bets.models.ExpandedMatchdaySlot;
 import net.friendly_bets.models.PlayoffRound;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -20,7 +22,33 @@ public final class WcTournamentSlots {
 
     private static final Pattern BERLIN_GROUP_SLOT = Pattern.compile("^([123]) \\[(\\d+)\\]$");
 
+    /**
+     * Playoff betting slots → {@code wc26_schedule} ids (73–104).
+     * Round of 32 ({@code 1/16}) split into 5 internal betting chunks (4+3+3+3+3).
+     */
+    private static final Map<String, List<Integer>> PLAYOFF_SLOT_SCHEDULE_IDS = buildPlayoffSlotScheduleIds();
+
     private WcTournamentSlots() {
+    }
+
+    private static Map<String, List<Integer>> buildPlayoffSlotScheduleIds() {
+        Map<String, List<Integer>> map = new LinkedHashMap<>();
+        map.put("1/16 [1]", List.of(73, 74, 75, 76));
+        map.put("1/16 [2]", List.of(77, 78, 79));
+        map.put("1/16 [3]", List.of(80, 81, 82));
+        map.put("1/16 [4]", List.of(83, 84, 85));
+        map.put("1/16 [5]", List.of(86, 87, 88));
+        map.put("1/8 [1]", List.of(89, 90, 91, 92));
+        map.put("1/8 [2]", List.of(93, 94, 95, 96));
+        map.put("1/4", List.of(97, 98, 99, 100));
+        map.put("1/2", List.of(101, 102));
+        map.put("third_place", List.of(103));
+        map.put("final", List.of(104));
+        return Map.copyOf(map);
+    }
+
+    public static boolean isWcBettingSlot(String slotId) {
+        return isBerlinGroupSlot(slotId) || PLAYOFF_SLOT_SCHEDULE_IDS.containsKey(slotId);
     }
 
     public static String groupSlotId(int round, int index) {
@@ -33,6 +61,26 @@ public final class WcTournamentSlots {
 
     public static boolean isBerlinGroupSlot(String slotId) {
         return slotId != null && BERLIN_GROUP_SLOT.matcher(slotId).matches();
+    }
+
+    public static boolean isPlayoffSlot(String slotId) {
+        return isWcBettingSlot(slotId) && !isBerlinGroupSlot(slotId);
+    }
+
+    /** Schedule id belongs to a different WC playoff betting slot. */
+    public static boolean belongsToAnotherPlayoffSlot(String slotId, int scheduleId) {
+        if (slotId == null || !isPlayoffSlot(slotId)) {
+            return false;
+        }
+        for (var entry : PLAYOFF_SLOT_SCHEDULE_IDS.entrySet()) {
+            if (entry.getKey().equals(slotId.trim())) {
+                continue;
+            }
+            if (entry.getValue().contains(scheduleId)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public static Optional<int[]> parseBerlinGroupSlot(String slotId) {
@@ -101,8 +149,15 @@ public final class WcTournamentSlots {
         return slots;
     }
 
-    /** Schedule ids (1–72) in Berlin betting slot. */
+    /** Schedule ids in a WC betting slot (group 1–72 or knockout 73–104). */
     public static List<Integer> scheduleIdsForSlot(String slotId) {
+        if (slotId == null || slotId.isBlank()) {
+            return List.of();
+        }
+        List<Integer> playoff = PLAYOFF_SLOT_SCHEDULE_IDS.get(slotId.trim());
+        if (playoff != null) {
+            return playoff;
+        }
         Optional<int[]> parsed = parseBerlinGroupSlot(slotId);
         if (parsed.isEmpty()) {
             return List.of();

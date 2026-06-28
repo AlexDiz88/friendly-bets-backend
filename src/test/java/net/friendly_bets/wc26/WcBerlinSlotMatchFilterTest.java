@@ -118,6 +118,36 @@ class WcBerlinSlotMatchFilterTest {
     }
 
     @Test
+    void scheduleIdsForSlot_playoffRoundOf32Slot2_coversThreeMatches() {
+        List<Integer> ids = WcTournamentSlots.scheduleIdsForSlot("1/16 [2]");
+        assertEquals(3, ids.size());
+        assertEquals(List.of(77, 78, 79), ids);
+    }
+
+    @Test
+    void scheduleIdsForSlot_playoffRoundOf32Slot5_coversThreeMatches() {
+        assertEquals(List.of(86, 87, 88), WcTournamentSlots.scheduleIdsForSlot("1/16 [5]"));
+    }
+
+    @Test
+    void scheduleIdsForSlot_playoffRoundOf32Slot1_coversFourMatches() {
+        List<Integer> ids = WcTournamentSlots.scheduleIdsForSlot("1/16 [1]");
+        assertEquals(4, ids.size());
+        assertEquals(73, ids.get(0));
+        assertEquals(76, ids.get(3));
+    }
+
+    @Test
+    void scheduleIdsForSlot_playoffFinal_isSingleMatch() {
+        assertEquals(List.of(104), WcTournamentSlots.scheduleIdsForSlot("final"));
+    }
+
+    @Test
+    void expectedMatchCount_playoffSlot1_isFour() {
+        assertEquals(4, WcBerlinSlotMatchFilter.expectedMatchCount("1/16 [1]"));
+    }
+
+    @Test
     void fifaCodeForKnownName_recognizesInternalTitles() {
         assertTrue(Wc26TeamCatalog.fifaCodeForKnownName("SouthAfrica").isPresent());
         assertEquals("RSA", Wc26TeamCatalog.fifaCodeForKnownName("SouthAfrica").orElseThrow());
@@ -192,6 +222,51 @@ class WcBerlinSlotMatchFilterTest {
         );
 
         assertEquals(1, filtered.size());
+    }
+
+    @Test
+    void filterGameResultRecords_playoffSlot2_usesScheduleIdWhenPresent() {
+        GameResultRecord record = gameResultRecord(
+                "Mexico",
+                "mex-id",
+                "Ecuador",
+                "ecu-id"
+        );
+        record.setWc26ScheduleId(79);
+
+        List<GameResultRecord> slot2 = WcBerlinSlotMatchFilter.filterGameResultRecords(
+                "1/16 [2]",
+                List.of(record)
+        );
+        List<GameResultRecord> slot1 = WcBerlinSlotMatchFilter.filterGameResultRecords(
+                "1/16 [1]",
+                List.of(record)
+        );
+
+        assertEquals(1, slot2.size());
+        assertTrue(slot1.isEmpty());
+    }
+
+    @Test
+    void filterGameResultRecords_playoffSlot1_excludesIvoryCoastNorwayWithoutScheduleId() {
+        GameResultRecord record = gameResultRecord(
+                "Ivory Coast",
+                "civ-id",
+                "Norway",
+                "nor-id"
+        );
+
+        List<GameResultRecord> slot1 = WcBerlinSlotMatchFilter.filterGameResultRecords(
+                "1/16 [1]",
+                List.of(record)
+        );
+        List<GameResultRecord> slot2 = WcBerlinSlotMatchFilter.filterGameResultRecords(
+                "1/16 [2]",
+                List.of(record)
+        );
+
+        assertTrue(slot1.isEmpty());
+        assertTrue(slot2.isEmpty());
     }
 
     private static GameResultRecord gameResultRecord(

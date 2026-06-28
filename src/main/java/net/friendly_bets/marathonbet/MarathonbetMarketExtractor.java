@@ -58,6 +58,7 @@ public final class MarathonbetMarketExtractor {
         List<MarathonbetMarketDto> halfFull = new ArrayList<>();
         List<MarathonbetMarketDto> firstSecondHalf = new ArrayList<>();
         List<MarathonbetMarketDto> bttsResult = new ArrayList<>();
+        List<MarathonbetMarketDto> playoff = new ArrayList<>();
 
         Iterator<String> fieldNames = marketsNode.fieldNames();
         while (fieldNames.hasNext()) {
@@ -99,6 +100,7 @@ public final class MarathonbetMarketExtractor {
                 case HALF_FULL -> halfFull.add(dto);
                 case FIRST_SECOND_HALF -> firstSecondHalf.add(dto);
                 case BTTS_RESULT -> bttsResult.add(dto);
+                case PLAYOFF -> playoff.add(dto);
             }
         }
 
@@ -139,6 +141,7 @@ public final class MarathonbetMarketExtractor {
                 .halfFullMarkets(halfFull)
                 .firstSecondHalfMarkets(firstSecondHalf)
                 .bttsResultMarkets(bttsResult)
+                .playoffMarkets(playoff)
                 .build();
     }
 
@@ -209,6 +212,7 @@ public final class MarathonbetMarketExtractor {
                 .halfFullMarkets(List.of())
                 .firstSecondHalfMarkets(List.of())
                 .bttsResultMarkets(List.of())
+                .playoffMarkets(List.of())
                 .build();
     }
 
@@ -255,6 +259,7 @@ public final class MarathonbetMarketExtractor {
                 .halfFullMarkets(List.of())
                 .firstSecondHalfMarkets(List.of())
                 .bttsResultMarkets(List.of())
+                .playoffMarkets(List.of())
                 .build();
     }
 

@@ -46,6 +46,7 @@ public class OddsMergedOddsService {
         OddsPeriodHandicapSubgroupSplitter.splitIntoSubgroups(groups);
         OddsResultTotalEnricher.applyCategoryMetadata(groups);
         OddsLineRowDeduper.dedupeMarketGroups(groups);
+        OddsMerger.sortMarketGroupRows(groups);
 
         if (match == null || match.getId() == null) {
             return mergeResult;
@@ -91,6 +92,7 @@ public class OddsMergedOddsService {
         OddsPeriodHandicapSubgroupSplitter.splitIntoSubgroups(groups);
         OddsResultTotalEnricher.applyCategoryMetadata(groups);
         OddsLineRowDeduper.dedupeMarketGroups(groups);
+        OddsMerger.sortMarketGroupRows(groups);
 
         if (match == null || match.getId() == null) {
             return mergeResult;

@@ -26,8 +26,16 @@ public class Wc26ScheduleRegistry implements ApplicationRunner {
         Map<Integer, Wc26ScheduleCatalog.GroupMatch> loaded = new HashMap<>();
         Map<Integer, LocalDateTime> kickoffs = new HashMap<>();
         for (Wc26ScheduleMatch match : wc26ScheduleMatchRepository.findAllByOrderByKickoffUtcAsc()) {
-            if (match.getKickoffUtc() != null) {
-                kickoffs.put(match.getScheduleId(), match.getKickoffUtc());
+            LocalDateTime kickoffUtc = match.getKickoffUtc();
+            if (kickoffUtc == null) {
+                kickoffUtc = Wc26KickoffUtcCalculator.kickoffUtc(
+                        match.getDate(),
+                        match.getTimeLocal(),
+                        match.getVenueKey(),
+                        match.getStage());
+            }
+            if (kickoffUtc != null) {
+                kickoffs.put(match.getScheduleId(), kickoffUtc);
             }
             if (match.getHomeFifa() != null && match.getAwayFifa() != null) {
                 loaded.put(

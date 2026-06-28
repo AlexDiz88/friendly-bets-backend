@@ -24,5 +24,7 @@ public class Wc26ScheduleBackfill implements ApplicationRunner {
         String season = matchResultSyncProperties.getDefaultSeason();
         wc26ScheduleLinker.backfillSeason(season);
         wc26ScheduleLinker.backfillSeason("2026");
+        wc26ScheduleLinker.backfillKickoffSeason(season);
+        wc26ScheduleLinker.backfillKickoffSeason("2026");
     }
 }

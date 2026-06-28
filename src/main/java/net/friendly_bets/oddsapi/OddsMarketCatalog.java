@@ -104,6 +104,7 @@ public final class OddsMarketCatalog {
             case CORRECT_SCORE -> "correctScore";
             case CLEAN_WIN -> "cleanWin";
             case WIN_GOAL_DIFFERENCE -> "winGoalDifference";
+            case PLAYOFF_EXTRA_TIME -> "playoffExtraTime";
             case FIRST_HALF_CORRECT_SCORE -> "firstHalfCorrectScore";
             case SECOND_HALF_CORRECT_SCORE -> "secondHalfCorrectScore";
             case OTHER -> "other";

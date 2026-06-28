@@ -13,6 +13,28 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class OddsBetTitleSortOrderTest {
 
     @Test
+    void playoffRowsOrderAdvanceFirstHomeOrAwayLast() {
+        List<OddsLineRow> rows = new ArrayList<>(List.of(
+                row(BetTitleCode.PLAYOFF_HOME_OR_AWAY_REGULAR, false),
+                row(BetTitleCode.PLAYOFF_AWAY_ADVANCE_NEXT_STAGE, false),
+                row(BetTitleCode.PLAYOFF_EXTRA_TIME, false),
+                row(BetTitleCode.PLAYOFF_HOME_ADVANCE_NEXT_STAGE, false),
+                row(BetTitleCode.PLAYOFF_HOME_OR_AWAY_PENALTIES, true),
+                row(BetTitleCode.PLAYOFF_HOME_WIN_REGULAR, false),
+                row(BetTitleCode.PLAYOFF_HOME_OR_AWAY_OVERTIME, false)
+        ));
+        rows.sort(OddsBetTitleSortOrder.BY_PLAYOFF);
+
+        assertEquals(BetTitleCode.PLAYOFF_HOME_ADVANCE_NEXT_STAGE, code(rows.get(0)));
+        assertEquals(BetTitleCode.PLAYOFF_AWAY_ADVANCE_NEXT_STAGE, code(rows.get(1)));
+        assertEquals(BetTitleCode.PLAYOFF_EXTRA_TIME, code(rows.get(2)));
+        assertEquals(BetTitleCode.PLAYOFF_HOME_WIN_REGULAR, code(rows.get(3)));
+        assertEquals(BetTitleCode.PLAYOFF_HOME_OR_AWAY_REGULAR, code(rows.get(4)));
+        assertEquals(BetTitleCode.PLAYOFF_HOME_OR_AWAY_OVERTIME, code(rows.get(5)));
+        assertEquals(BetTitleCode.PLAYOFF_HOME_OR_AWAY_PENALTIES, code(rows.get(6)));
+    }
+
+    @Test
     void cleanWinRowsOrderHomeThenAwayThenAnyYesBeforeNo() {
         List<OddsLineRow> rows = new ArrayList<>(List.of(
                 row(BetTitleCode.CLEAN_WIN_AWAY, false),

@@ -47,7 +47,7 @@ public final class OddsSelectionBetTitleMapper {
                 return mapBtts(selection);
             }
             case HANDICAP -> code = mapHandicap(line, selection);
-            case PERIOD_HANDICAP -> {
+            case PERIOD_HANDICAP, PLAYOFF_EXTRA_TIME -> {
                 if (row.getBetTitle() != null) {
                     return row.getBetTitle();
                 }

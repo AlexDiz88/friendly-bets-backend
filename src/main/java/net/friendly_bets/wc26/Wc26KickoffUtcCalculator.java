@@ -1,10 +1,6 @@
 package net.friendly_bets.wc26;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
 
 public final class Wc26KickoffUtcCalculator {
 
@@ -12,13 +8,14 @@ public final class Wc26KickoffUtcCalculator {
     }
 
     public static LocalDateTime kickoffUtc(String date, String timeLocal, String venueKey) {
+        return kickoffUtc(date, timeLocal, venueKey, null);
+    }
+
+    public static LocalDateTime kickoffUtc(String date, String timeLocal, String venueKey, String stage) {
         if (date == null || timeLocal == null) {
             return null;
         }
-        LocalDate localDate = LocalDate.parse(date);
-        LocalTime localTime = LocalTime.parse(timeLocal);
-        ZoneId venueZone = ZoneId.of(Wc26VenueTimezones.forVenueKey(venueKey));
-        ZonedDateTime venueKickoff = ZonedDateTime.of(localDate, localTime, venueZone);
-        return venueKickoff.withZoneSameInstant(ZoneId.of("UTC")).toLocalDateTime();
+        // timeLocal в wc26_schedule — FIFA country=DE (Europe/Berlin), не локаль стадиона
+        return Wc26BerlinKickoffCalculator.kickoffUtc(date, timeLocal);
     }
 }

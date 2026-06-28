@@ -69,6 +69,7 @@ public class MarathonbetBetTitleMapper {
         append(quotes, markets.getHalfFullMarkets(), m -> mapHalfFull(m, homeTeam, awayTeam));
         append(quotes, markets.getFirstSecondHalfMarkets(), m -> mapFirstSecondHalf(m, homeTeam, awayTeam));
         append(quotes, markets.getBttsResultMarkets(), this::mapBttsResult);
+        append(quotes, markets.getPlayoffMarkets(), m -> mapPlayoff(m, homeTeam, awayTeam));
         return dedupeQuotesByBetTitle(quotes);
     }
 
@@ -677,6 +678,104 @@ public class MarathonbetBetTitleMapper {
             return List.of();
         }
         return mapYesNo(market, code, OddsMarketCategory.RESULT_BTTS);
+    }
+
+    private List<MappedOddsQuote> mapPlayoff(
+            MarathonbetMarketDto market,
+            String homeTeam,
+            String awayTeam
+    ) {
+        if (MarathonbetProdMarketFilter.isIgnoredForProd(market)) {
+            return List.of();
+        }
+        String model = market.getModel();
+        if ("MTCH_QLF".equals(model)) {
+            return mapPlayoffQualification(market, homeTeam, awayTeam);
+        }
+        BetTitleCode code = playoffYesNoCode(model);
+        if (code != null) {
+            return mapYesNo(market, code, OddsMarketCategory.PLAYOFF_EXTRA_TIME);
+        }
+        return List.of();
+    }
+
+    private static BetTitleCode playoffYesNoCode(String model) {
+        if (model == null) {
+            return null;
+        }
+        return switch (model) {
+            case "MTCH_OT" -> BetTitleCode.PLAYOFF_EXTRA_TIME;
+            case "MTCH_PNL_SHT" -> BetTitleCode.PLAYOFF_PENALTIES;
+            case "MTCH_WM_FT1" -> BetTitleCode.PLAYOFF_HOME_WIN_REGULAR;
+            case "MTCH_WM_FT2" -> BetTitleCode.PLAYOFF_AWAY_WIN_REGULAR;
+            case "MTCH_WM_FT" -> BetTitleCode.PLAYOFF_HOME_OR_AWAY_REGULAR;
+            case "MTCH_WM_ET1" -> BetTitleCode.PLAYOFF_HOME_WIN_OVERTIME;
+            case "MTCH_WM_ET2" -> BetTitleCode.PLAYOFF_AWAY_WIN_OVERTIME;
+            case "MTCH_WM_ET" -> BetTitleCode.PLAYOFF_HOME_OR_AWAY_OVERTIME;
+            case "MTCH_WM_PNL1" -> BetTitleCode.PLAYOFF_HOME_WIN_PENALTIES;
+            case "MTCH_WM_PNL2" -> BetTitleCode.PLAYOFF_AWAY_WIN_PENALTIES;
+            case "MTCH_WM_PNL" -> BetTitleCode.PLAYOFF_HOME_OR_AWAY_PENALTIES;
+            default -> null;
+        };
+    }
+
+    private List<MappedOddsQuote> mapPlayoffQualification(
+            MarathonbetMarketDto market,
+            String homeTeam,
+            String awayTeam
+    ) {
+        BetTitleCode homeCode;
+        BetTitleCode awayCode;
+        String marketName = market.getName() != null ? market.getName() : "";
+        String lower = marketName.toLowerCase(Locale.ROOT);
+        if (lower.contains("победитель турнира") || lower.contains("выиграет турнир")) {
+            homeCode = BetTitleCode.PLAYOFF_HOME_WIN_TOURNAMENT;
+            awayCode = BetTitleCode.PLAYOFF_AWAY_WIN_TOURNAMENT;
+        } else if (lower.contains("выход в финал") && !lower.matches(".*1/\\d+.*")) {
+            homeCode = BetTitleCode.PLAYOFF_HOME_ADVANCE_FINAL;
+            awayCode = BetTitleCode.PLAYOFF_AWAY_ADVANCE_FINAL;
+        } else {
+            homeCode = BetTitleCode.PLAYOFF_HOME_ADVANCE_NEXT_STAGE;
+            awayCode = BetTitleCode.PLAYOFF_AWAY_ADVANCE_NEXT_STAGE;
+        }
+        List<MappedOddsQuote> quotes = new ArrayList<>();
+        for (MarathonbetMarketSelectionDto sel : market.getSelections()) {
+            if (sel.getOdds() == null || sel.getName() == null) {
+                continue;
+            }
+            BetTitleCode code = resolvePlayoffTeamCode(sel.getName(), homeTeam, awayTeam, homeCode, awayCode);
+            if (code == null) {
+                continue;
+            }
+            String selectionCode = code == homeCode ? "HOME" : "AWAY";
+            quotes.add(okQuote(market, sel, OddsMarketCategory.PLAYOFF_EXTRA_TIME, code, null, selectionCode));
+        }
+        return quotes;
+    }
+
+    private static BetTitleCode resolvePlayoffTeamCode(
+            String selectionName,
+            String homeTeam,
+            String awayTeam,
+            BetTitleCode homeCode,
+            BetTitleCode awayCode
+    ) {
+        if (teamInSelection(selectionName, homeTeam)) {
+            return homeCode;
+        }
+        if (teamInSelection(selectionName, awayTeam)) {
+            return awayCode;
+        }
+        return null;
+    }
+
+    private static boolean teamInSelection(String selectionName, String team) {
+        if (team == null || team.isBlank() || selectionName == null) {
+            return false;
+        }
+        String teamNorm = MarathonbetSelectionParsing.normalizeTeam(team);
+        String selNorm = MarathonbetSelectionParsing.normalizeTeam(selectionName.trim());
+        return teamNorm != null && selNorm != null && selNorm.contains(teamNorm);
     }
 
     private static BetTitleCode bttsResultCode(String model) {
