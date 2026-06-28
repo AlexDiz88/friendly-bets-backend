@@ -33,6 +33,8 @@ public enum OddsMarketCategory {
     WIN_GOAL_DIFFERENCE(19, true),
     TEAM_TOTAL_HOME(27, true),
     TEAM_TOTAL_AWAY(28, true),
+    /** Доп. время / послематчевые пенальти (только плей-офф, Marathonbet). */
+    PLAYOFF_EXTRA_TIME(29, true),
     OTHER(30, true),
     EXCLUDED(99, true);
 

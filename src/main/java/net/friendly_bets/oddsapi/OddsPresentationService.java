@@ -14,6 +14,7 @@ import net.friendly_bets.oddsapi.client.dto.OddsApiEventOddsDto;
 import net.friendly_bets.oddsapi.client.dto.OddsApiMarketDto;
 import net.friendly_bets.oddsapi.config.OddsApiProperties;
 import net.friendly_bets.oddsapi.mapping.BetTitleKey;
+import net.friendly_bets.oddsapi.mapping.OddsMerger;
 import net.friendly_bets.repositories.GameResultOddsRepository;
 import net.friendly_bets.repositories.GameResultRecordRepository;
 import net.friendly_bets.services.GetEntityService;
@@ -150,6 +151,7 @@ public class OddsPresentationService {
         OddsPeriodHandicapSubgroupSplitter.splitIntoSubgroups(groups);
         OddsResultTotalEnricher.applyCategoryMetadata(groups);
         OddsLineRowDeduper.dedupeMarketGroups(groups);
+        OddsMerger.sortMarketGroupRows(groups);
     }
 
     private static void filterToPresentationBookmakers(List<OddsMarketGroup> groups, List<String> bookmakers) {

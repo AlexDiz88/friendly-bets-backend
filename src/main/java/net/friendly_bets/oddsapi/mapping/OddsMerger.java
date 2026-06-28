@@ -142,6 +142,35 @@ public final class OddsMerger {
         rows.sort(rowComparator(category));
     }
 
+    /** Актуальный порядок строк при чтении снимка из Mongo (после dedupe). */
+    public static void sortMarketGroupRows(List<OddsMarketGroup> groups) {
+        if (groups == null) {
+            return;
+        }
+        for (OddsMarketGroup group : groups) {
+            sortMarketGroupRows(group);
+        }
+    }
+
+    private static void sortMarketGroupRows(OddsMarketGroup group) {
+        if (group == null) {
+            return;
+        }
+        if (group.getRows() != null && !group.getRows().isEmpty() && group.getCategory() != null) {
+            try {
+                OddsMarketCategory category = OddsMarketCategory.valueOf(group.getCategory());
+                sortRows(category, group.getRows());
+            } catch (IllegalArgumentException ignored) {
+                // напр. устаревший RESULT_TOTAL без enum
+            }
+        }
+        if (group.getSubgroups() != null) {
+            for (OddsMarketGroup sub : group.getSubgroups()) {
+                sortMarketGroupRows(sub);
+            }
+        }
+    }
+
     private static Comparator<OddsLineRow> rowComparator(OddsMarketCategory category) {
         if (category == OddsMarketCategory.HANDICAP) {
             return Comparator
@@ -179,6 +208,9 @@ public final class OddsMerger {
             return Comparator
                     .<OddsLineRow>comparingInt(r -> selectionOrder(category, r.getSelectionCode()))
                     .thenComparingInt(r -> OddsBttsScope.fromSelectionCode(r.getSelectionCode()).getSortOrder());
+        }
+        if (category == OddsMarketCategory.PLAYOFF_EXTRA_TIME) {
+            return OddsBetTitleSortOrder.BY_PLAYOFF;
         }
         if (category == OddsMarketCategory.GOALS
                 || category == OddsMarketCategory.RESULT_BTTS

@@ -263,4 +263,36 @@ class OddsMergerTest {
         assertEquals("4.65", row.getBookmakerOdds().get("Bet365"));
         assertTrue(row.isCrossBookmakerMismatch());
     }
+
+    @Test
+    void sortMarketGroupRowsReordersPlayoffCategoryFromShuffledSnapshot() {
+        OddsMarketGroup group = OddsMarketGroup.builder()
+                .category(OddsMarketCategory.PLAYOFF_EXTRA_TIME.name())
+                .rows(new java.util.ArrayList<>(List.of(
+                        playoffRow(BetTitleCode.PLAYOFF_HOME_OR_AWAY_REGULAR, false),
+                        playoffRow(BetTitleCode.PLAYOFF_EXTRA_TIME, false),
+                        playoffRow(BetTitleCode.PLAYOFF_AWAY_ADVANCE_NEXT_STAGE, false),
+                        playoffRow(BetTitleCode.PLAYOFF_HOME_ADVANCE_NEXT_STAGE, false),
+                        playoffRow(BetTitleCode.PLAYOFF_HOME_OR_AWAY_PENALTIES, true)
+                )))
+                .build();
+
+        OddsMerger.sortMarketGroupRows(List.of(group));
+
+        assertEquals(BetTitleCode.PLAYOFF_HOME_ADVANCE_NEXT_STAGE.getCode(), group.getRows().get(0).getBetTitle().getCode());
+        assertEquals(BetTitleCode.PLAYOFF_AWAY_ADVANCE_NEXT_STAGE.getCode(), group.getRows().get(1).getBetTitle().getCode());
+        assertEquals(BetTitleCode.PLAYOFF_EXTRA_TIME.getCode(), group.getRows().get(2).getBetTitle().getCode());
+        assertEquals(BetTitleCode.PLAYOFF_HOME_OR_AWAY_REGULAR.getCode(), group.getRows().get(3).getBetTitle().getCode());
+        assertEquals(BetTitleCode.PLAYOFF_HOME_OR_AWAY_PENALTIES.getCode(), group.getRows().get(4).getBetTitle().getCode());
+    }
+
+    private static OddsLineRow playoffRow(BetTitleCode code, boolean isNot) {
+        return OddsLineRow.builder()
+                .betTitle(BetTitle.builder()
+                        .code(code.getCode())
+                        .label(code.getLabel())
+                        .isNot(isNot)
+                        .build())
+                .build();
+    }
 }

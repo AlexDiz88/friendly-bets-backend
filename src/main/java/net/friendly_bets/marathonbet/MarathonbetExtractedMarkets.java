@@ -57,4 +57,6 @@ public class MarathonbetExtractedMarkets {
     List<MarathonbetMarketDto> firstSecondHalfMarkets = List.of();
     @Builder.Default
     List<MarathonbetMarketDto> bttsResultMarkets = List.of();
+    @Builder.Default
+    List<MarathonbetMarketDto> playoffMarkets = List.of();
 }
