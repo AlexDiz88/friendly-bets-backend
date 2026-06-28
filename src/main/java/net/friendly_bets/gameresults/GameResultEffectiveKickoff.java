@@ -3,8 +3,7 @@ package net.friendly_bets.gameresults;
 import lombok.RequiredArgsConstructor;
 import net.friendly_bets.models.gameresults.GameResultRecord;
 import net.friendly_bets.oddsapi.GameResultNotStarted;
-import net.friendly_bets.repositories.Wc26ScheduleMatchRepository;
-import net.friendly_bets.wc26.Wc26ScheduleKickoffLookup;
+import net.friendly_bets.wc26.Wc26ScheduleKickoffResolver;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
@@ -17,7 +16,7 @@ import java.time.LocalDateTime;
 @RequiredArgsConstructor
 public class GameResultEffectiveKickoff {
 
-    private final Wc26ScheduleMatchRepository wc26ScheduleMatchRepository;
+    private final Wc26ScheduleKickoffResolver wc26ScheduleKickoffResolver;
 
     public LocalDateTime resolve(GameResultRecord record) {
         if (record == null) {
@@ -25,10 +24,7 @@ public class GameResultEffectiveKickoff {
         }
         Integer scheduleId = record.getWc26ScheduleId();
         if (scheduleId != null) {
-            return Wc26ScheduleKickoffLookup.kickoffUtc(scheduleId)
-                    .or(() -> wc26ScheduleMatchRepository.findByScheduleId(scheduleId)
-                            .map(match -> match.getKickoffUtc()))
-                    .orElse(record.getUtcDate());
+            return wc26ScheduleKickoffResolver.kickoffUtc(scheduleId).orElse(record.getUtcDate());
         }
         return record.getUtcDate();
     }

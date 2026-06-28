@@ -59,7 +59,7 @@ public class FourScoreGameResultMapper {
                     .liveMinuteLabel(normalized.liveMinuteLabel());
         }
         if (details.getKickoffAt() != null) {
-            builder.utcDate(details.getKickoffAt());
+            builder.utcDate(FourScoreKickoffUtc.fromMoscowLocal(details.getKickoffAt()));
         } else if (existing != null) {
             builder.utcDate(existing.getUtcDate());
         }
@@ -115,7 +115,7 @@ public class FourScoreGameResultMapper {
                     .liveMinuteLabel(normalized.liveMinuteLabel());
         }
         if (details.getKickoffAt() != null) {
-            builder.utcDate(details.getKickoffAt());
+            builder.utcDate(FourScoreKickoffUtc.fromMoscowLocal(details.getKickoffAt()));
         }
         return builder.build();
     }
@@ -217,10 +217,7 @@ public class FourScoreGameResultMapper {
     }
 
     private static LocalDateTime resolveListKickoff(LocalDate listPageDate, LocalTime kickoffTime) {
-        if (listPageDate == null || kickoffTime == null) {
-            return null;
-        }
-        return listPageDate.atTime(kickoffTime);
+        return FourScoreKickoffUtc.fromMoscowLocal(listPageDate, kickoffTime);
     }
 
     public GameResultSourceSnapshot toSourceSnapshot(
@@ -236,7 +233,9 @@ public class FourScoreGameResultMapper {
                 .externalMatchId(externalEventId != null ? externalEventId : 0L)
                 .externalSeason(season)
                 .status(normalized != null ? normalized.status() : null)
-                .utcDate(details.getKickoffAt())
+                .utcDate(details.getKickoffAt() != null
+                        ? FourScoreKickoffUtc.fromMoscowLocal(details.getKickoffAt())
+                        : null)
                 .gameScore(normalized != null ? normalized.gameScore() : null)
                 .scoreDuration(normalized != null ? normalized.scoreDuration() : null)
                 .liveMinuteLabel(normalized != null ? normalized.liveMinuteLabel() : null)

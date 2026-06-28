@@ -97,6 +97,10 @@ public class MatchResultsController {
         }
         fourScoreSyncService.syncMatchday(leagueCode, matchday, resolvedSeason, leagueId);
         if (twentyFourScoreSyncService.isEnabledForLeague(leagueCode)) {
+            if ("WC".equals(leagueCode)) {
+                twentyFourScoreSyncService.fillWcSlotGapsFromSecondary(
+                        leagueCode, matchday, resolvedSeason, leagueId);
+            }
             twentyFourScoreSyncService.syncMatchday(leagueCode, matchday, resolvedSeason, leagueId);
         }
         autoBetSettlementService.settleActiveSeasonIfEnabled();

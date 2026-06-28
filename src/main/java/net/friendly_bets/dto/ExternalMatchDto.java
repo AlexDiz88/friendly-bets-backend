@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import net.friendly_bets.models.GameScore;
 import net.friendly_bets.models.gameresults.GameResultRecord;
+import net.friendly_bets.models.gameresults.GameResultSideSnapshot;
 import net.friendly_bets.models.gameresults.GameResultSourceSnapshot;
 
 import java.time.LocalDateTime;
@@ -44,6 +45,8 @@ public class ExternalMatchDto {
     private boolean finalized;
     /** Текущая минута live с 4score (напр. 72'). */
     private String liveMinuteLabel;
+    /** Id матча в wc26_schedule (1–104), если известен. */
+    private Integer wc26ScheduleId;
 
     public static ExternalMatchDto from(GameResultRecord match) {
         GameResultSourceSnapshot source = match.primaryExternalSource();
@@ -56,6 +59,8 @@ public class ExternalMatchDto {
                 .season(match.getSeason())
                 .status(match.getStatus())
                 .utcDate(match.getUtcDate())
+                .homeTeamName(sideExternalName(source != null ? source.getHome() : null))
+                .awayTeamName(sideExternalName(source != null ? source.getAway() : null))
                 .homeTeamId(match.getHomeTeamId())
                 .awayTeamId(match.getAwayTeamId())
                 .leagueId(match.getLeagueId())
@@ -66,6 +71,11 @@ public class ExternalMatchDto {
                 .adminCorrected(match.isAdminCorrected())
                 .finalized(match.isFinalized())
                 .liveMinuteLabel(match.getLiveMinuteLabel())
+                .wc26ScheduleId(match.getWc26ScheduleId())
                 .build();
+    }
+
+    private static String sideExternalName(GameResultSideSnapshot side) {
+        return side != null && side.getExternalName() != null ? side.getExternalName().trim() : null;
     }
 }

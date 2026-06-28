@@ -16,6 +16,21 @@ class FourScorePlayoffPlaceholderNamesTest {
     }
 
     @Test
+    void recognizesThirdGroupMultiLetterPlaceholders() {
+        assertTrue(FourScorePlayoffPlaceholderNames.isPlaceholder("3rd Group A/E/H/I/J"));
+        assertTrue(FourScorePlayoffPlaceholderNames.isPlaceholder("3rd Group E/H/I/J/K"));
+        assertTrue(FourScorePlayoffPlaceholderNames.isPlaceholder("—"));
+    }
+
+    @Test
+    void recognizesBracketWinnerCodes() {
+        assertTrue(FourScorePlayoffPlaceholderNames.isPlaceholder("W73"));
+        assertTrue(FourScorePlayoffPlaceholderNames.isPlaceholder("RU101"));
+        assertTrue(FourScorePlayoffPlaceholderNames.isPlaceholder("2A"));
+        assertTrue(FourScorePlayoffPlaceholderNames.isPlaceholder("3ABCDF"));
+    }
+
+    @Test
     void doesNotTreatRealTeamsAsPlaceholders() {
         assertFalse(FourScorePlayoffPlaceholderNames.isPlaceholder("Чехия"));
         assertFalse(FourScorePlayoffPlaceholderNames.isPlaceholder("Mexico"));

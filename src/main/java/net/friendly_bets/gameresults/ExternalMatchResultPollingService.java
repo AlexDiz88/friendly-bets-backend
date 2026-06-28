@@ -82,15 +82,23 @@ public class ExternalMatchResultPollingService {
         LocalDateTime fetchedAt = GameResultNotStarted.nowUtc();
         fourScoreSyncService.syncMatchday(key.leagueCode(), key.matchday(), key.season(), key.leagueId());
 
-        if (dualVerification
-                && twentyFourScoreProperties.isEnabled()
+        if (twentyFourScoreProperties.isEnabled()
                 && twentyFourScoreSyncService.isEnabledForLeague(key.leagueCode())) {
-            twentyFourScoreSyncService.syncMatchday(
-                    key.leagueCode(),
-                    key.matchday(),
-                    key.season(),
-                    key.leagueId()
-            );
+            if (dualVerification) {
+                twentyFourScoreSyncService.syncMatchday(
+                        key.leagueCode(),
+                        key.matchday(),
+                        key.season(),
+                        key.leagueId()
+                );
+            } else if ("WC".equals(key.leagueCode())) {
+                twentyFourScoreSyncService.fillWcSlotGapsFromSecondary(
+                        key.leagueCode(),
+                        key.matchday(),
+                        key.season(),
+                        key.leagueId()
+                );
+            }
         }
 
         List<GameResultRecord> pending = gameResultRecordRepository

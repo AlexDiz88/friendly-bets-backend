@@ -2,7 +2,7 @@
   {
     "id": 1,
     "date": "2026-06-11",
-    "timeLocal": "13:00",
+    "timeLocal": "21:00",
     "stage": "group",
     "group": "A",
     "home": "MEX",
@@ -11,8 +11,8 @@
   },
   {
     "id": 2,
-    "date": "2026-06-11",
-    "timeLocal": "20:00",
+    "date": "2026-06-12",
+    "timeLocal": "04:00",
     "stage": "group",
     "group": "A",
     "home": "KOR",
@@ -22,7 +22,7 @@
   {
     "id": 3,
     "date": "2026-06-12",
-    "timeLocal": "15:00",
+    "timeLocal": "21:00",
     "stage": "group",
     "group": "B",
     "home": "CAN",
@@ -31,8 +31,8 @@
   },
   {
     "id": 4,
-    "date": "2026-06-12",
-    "timeLocal": "18:00",
+    "date": "2026-06-13",
+    "timeLocal": "03:00",
     "stage": "group",
     "group": "D",
     "home": "USA",
@@ -41,8 +41,8 @@
   },
   {
     "id": 5,
-    "date": "2026-06-13",
-    "timeLocal": "21:00",
+    "date": "2026-06-14",
+    "timeLocal": "03:00",
     "stage": "group",
     "group": "C",
     "home": "HAI",
@@ -51,8 +51,8 @@
   },
   {
     "id": 6,
-    "date": "2026-06-13",
-    "timeLocal": "21:00",
+    "date": "2026-06-14",
+    "timeLocal": "06:00",
     "stage": "group",
     "group": "D",
     "home": "AUS",
@@ -61,8 +61,8 @@
   },
   {
     "id": 7,
-    "date": "2026-06-13",
-    "timeLocal": "18:00",
+    "date": "2026-06-14",
+    "timeLocal": "00:00",
     "stage": "group",
     "group": "C",
     "home": "BRA",
@@ -72,7 +72,7 @@
   {
     "id": 8,
     "date": "2026-06-13",
-    "timeLocal": "12:00",
+    "timeLocal": "21:00",
     "stage": "group",
     "group": "B",
     "home": "QAT",
@@ -81,8 +81,8 @@
   },
   {
     "id": 9,
-    "date": "2026-06-14",
-    "timeLocal": "19:00",
+    "date": "2026-06-15",
+    "timeLocal": "01:00",
     "stage": "group",
     "group": "E",
     "home": "CIV",
@@ -92,7 +92,7 @@
   {
     "id": 10,
     "date": "2026-06-14",
-    "timeLocal": "12:00",
+    "timeLocal": "19:00",
     "stage": "group",
     "group": "E",
     "home": "GER",
@@ -102,7 +102,7 @@
   {
     "id": 11,
     "date": "2026-06-14",
-    "timeLocal": "15:00",
+    "timeLocal": "22:00",
     "stage": "group",
     "group": "F",
     "home": "NED",
@@ -111,8 +111,8 @@
   },
   {
     "id": 12,
-    "date": "2026-06-14",
-    "timeLocal": "20:00",
+    "date": "2026-06-15",
+    "timeLocal": "04:00",
     "stage": "group",
     "group": "F",
     "home": "SWE",
@@ -121,8 +121,8 @@
   },
   {
     "id": 13,
-    "date": "2026-06-15",
-    "timeLocal": "18:00",
+    "date": "2026-06-16",
+    "timeLocal": "00:00",
     "stage": "group",
     "group": "H",
     "home": "KSA",
@@ -132,7 +132,7 @@
   {
     "id": 14,
     "date": "2026-06-15",
-    "timeLocal": "12:00",
+    "timeLocal": "18:00",
     "stage": "group",
     "group": "H",
     "home": "ESP",
@@ -141,8 +141,8 @@
   },
   {
     "id": 15,
-    "date": "2026-06-15",
-    "timeLocal": "18:00",
+    "date": "2026-06-16",
+    "timeLocal": "03:00",
     "stage": "group",
     "group": "G",
     "home": "IRN",
@@ -152,7 +152,7 @@
   {
     "id": 16,
     "date": "2026-06-15",
-    "timeLocal": "12:00",
+    "timeLocal": "21:00",
     "stage": "group",
     "group": "G",
     "home": "BEL",
@@ -162,7 +162,7 @@
   {
     "id": 17,
     "date": "2026-06-16",
-    "timeLocal": "15:00",
+    "timeLocal": "21:00",
     "stage": "group",
     "group": "I",
     "home": "FRA",
@@ -171,8 +171,8 @@
   },
   {
     "id": 18,
-    "date": "2026-06-16",
-    "timeLocal": "18:00",
+    "date": "2026-06-17",
+    "timeLocal": "00:00",
     "stage": "group",
     "group": "I",
     "home": "IRQ",
@@ -181,8 +181,8 @@
   },
   {
     "id": 19,
-    "date": "2026-06-16",
-    "timeLocal": "20:00",
+    "date": "2026-06-17",
+    "timeLocal": "03:00",
     "stage": "group",
     "group": "J",
     "home": "ARG",
@@ -191,8 +191,8 @@
   },
   {
     "id": 20,
-    "date": "2026-06-16",
-    "timeLocal": "21:00",
+    "date": "2026-06-17",
+    "timeLocal": "06:00",
     "stage": "group",
     "group": "J",
     "home": "AUT",
@@ -201,8 +201,8 @@
   },
   {
     "id": 21,
-    "date": "2026-06-17",
-    "timeLocal": "19:00",
+    "date": "2026-06-18",
+    "timeLocal": "01:00",
     "stage": "group",
     "group": "L",
     "home": "GHA",
@@ -212,7 +212,7 @@
   {
     "id": 22,
     "date": "2026-06-17",
-    "timeLocal": "15:00",
+    "timeLocal": "22:00",
     "stage": "group",
     "group": "L",
     "home": "ENG",
@@ -222,7 +222,7 @@
   {
     "id": 23,
     "date": "2026-06-17",
-    "timeLocal": "12:00",
+    "timeLocal": "19:00",
     "stage": "group",
     "group": "K",
     "home": "POR",
@@ -231,8 +231,8 @@
   },
   {
     "id": 24,
-    "date": "2026-06-17",
-    "timeLocal": "20:00",
+    "date": "2026-06-18",
+    "timeLocal": "04:00",
     "stage": "group",
     "group": "K",
     "home": "UZB",
@@ -242,7 +242,7 @@
   {
     "id": 25,
     "date": "2026-06-18",
-    "timeLocal": "12:00",
+    "timeLocal": "18:00",
     "stage": "group",
     "group": "A",
     "home": "CZE",
@@ -252,7 +252,7 @@
   {
     "id": 26,
     "date": "2026-06-18",
-    "timeLocal": "12:00",
+    "timeLocal": "21:00",
     "stage": "group",
     "group": "B",
     "home": "SUI",
@@ -261,8 +261,8 @@
   },
   {
     "id": 27,
-    "date": "2026-06-18",
-    "timeLocal": "15:00",
+    "date": "2026-06-19",
+    "timeLocal": "00:00",
     "stage": "group",
     "group": "B",
     "home": "CAN",
@@ -271,8 +271,8 @@
   },
   {
     "id": 28,
-    "date": "2026-06-18",
-    "timeLocal": "19:00",
+    "date": "2026-06-19",
+    "timeLocal": "03:00",
     "stage": "group",
     "group": "A",
     "home": "MEX",
@@ -281,8 +281,8 @@
   },
   {
     "id": 29,
-    "date": "2026-06-19",
-    "timeLocal": "21:00",
+    "date": "2026-06-20",
+    "timeLocal": "02:30",
     "stage": "group",
     "group": "C",
     "home": "BRA",
@@ -291,8 +291,8 @@
   },
   {
     "id": 30,
-    "date": "2026-06-19",
-    "timeLocal": "18:00",
+    "date": "2026-06-20",
+    "timeLocal": "00:00",
     "stage": "group",
     "group": "C",
     "home": "SCO",
@@ -301,8 +301,8 @@
   },
   {
     "id": 31,
-    "date": "2026-06-19",
-    "timeLocal": "20:00",
+    "date": "2026-06-20",
+    "timeLocal": "05:00",
     "stage": "group",
     "group": "D",
     "home": "TUR",
@@ -312,7 +312,7 @@
   {
     "id": 32,
     "date": "2026-06-19",
-    "timeLocal": "12:00",
+    "timeLocal": "21:00",
     "stage": "group",
     "group": "D",
     "home": "USA",
@@ -322,7 +322,7 @@
   {
     "id": 33,
     "date": "2026-06-20",
-    "timeLocal": "16:00",
+    "timeLocal": "22:00",
     "stage": "group",
     "group": "E",
     "home": "GER",
@@ -331,8 +331,8 @@
   },
   {
     "id": 34,
-    "date": "2026-06-20",
-    "timeLocal": "19:00",
+    "date": "2026-06-21",
+    "timeLocal": "02:00",
     "stage": "group",
     "group": "E",
     "home": "ECU",
@@ -342,7 +342,7 @@
   {
     "id": 35,
     "date": "2026-06-20",
-    "timeLocal": "12:00",
+    "timeLocal": "19:00",
     "stage": "group",
     "group": "F",
     "home": "NED",
@@ -351,8 +351,8 @@
   },
   {
     "id": 36,
-    "date": "2026-06-20",
-    "timeLocal": "22:00",
+    "date": "2026-06-21",
+    "timeLocal": "06:00",
     "stage": "group",
     "group": "F",
     "home": "TUN",
@@ -361,8 +361,8 @@
   },
   {
     "id": 37,
-    "date": "2026-06-21",
-    "timeLocal": "18:00",
+    "date": "2026-06-22",
+    "timeLocal": "00:00",
     "stage": "group",
     "group": "H",
     "home": "URU",
@@ -372,7 +372,7 @@
   {
     "id": 38,
     "date": "2026-06-21",
-    "timeLocal": "12:00",
+    "timeLocal": "18:00",
     "stage": "group",
     "group": "H",
     "home": "ESP",
@@ -382,7 +382,7 @@
   {
     "id": 39,
     "date": "2026-06-21",
-    "timeLocal": "12:00",
+    "timeLocal": "21:00",
     "stage": "group",
     "group": "G",
     "home": "BEL",
@@ -391,8 +391,8 @@
   },
   {
     "id": 40,
-    "date": "2026-06-21",
-    "timeLocal": "18:00",
+    "date": "2026-06-22",
+    "timeLocal": "03:00",
     "stage": "group",
     "group": "G",
     "home": "NZL",
@@ -401,8 +401,8 @@
   },
   {
     "id": 41,
-    "date": "2026-06-22",
-    "timeLocal": "20:00",
+    "date": "2026-06-23",
+    "timeLocal": "02:00",
     "stage": "group",
     "group": "I",
     "home": "NOR",
@@ -412,7 +412,7 @@
   {
     "id": 42,
     "date": "2026-06-22",
-    "timeLocal": "17:00",
+    "timeLocal": "23:00",
     "stage": "group",
     "group": "I",
     "home": "FRA",
@@ -422,7 +422,7 @@
   {
     "id": 43,
     "date": "2026-06-22",
-    "timeLocal": "12:00",
+    "timeLocal": "19:00",
     "stage": "group",
     "group": "J",
     "home": "ARG",
@@ -431,8 +431,8 @@
   },
   {
     "id": 44,
-    "date": "2026-06-22",
-    "timeLocal": "20:00",
+    "date": "2026-06-23",
+    "timeLocal": "05:00",
     "stage": "group",
     "group": "J",
     "home": "JOR",
@@ -442,7 +442,7 @@
   {
     "id": 45,
     "date": "2026-06-23",
-    "timeLocal": "16:00",
+    "timeLocal": "22:00",
     "stage": "group",
     "group": "L",
     "home": "ENG",
@@ -451,8 +451,8 @@
   },
   {
     "id": 46,
-    "date": "2026-06-23",
-    "timeLocal": "19:00",
+    "date": "2026-06-24",
+    "timeLocal": "01:00",
     "stage": "group",
     "group": "L",
     "home": "PAN",
@@ -462,7 +462,7 @@
   {
     "id": 47,
     "date": "2026-06-23",
-    "timeLocal": "12:00",
+    "timeLocal": "19:00",
     "stage": "group",
     "group": "K",
     "home": "POR",
@@ -471,8 +471,8 @@
   },
   {
     "id": 48,
-    "date": "2026-06-23",
-    "timeLocal": "20:00",
+    "date": "2026-06-24",
+    "timeLocal": "04:00",
     "stage": "group",
     "group": "K",
     "home": "COL",
@@ -481,8 +481,8 @@
   },
   {
     "id": 49,
-    "date": "2026-06-24",
-    "timeLocal": "18:00",
+    "date": "2026-06-25",
+    "timeLocal": "00:00",
     "stage": "group",
     "group": "C",
     "home": "SCO",
@@ -491,8 +491,8 @@
   },
   {
     "id": 50,
-    "date": "2026-06-24",
-    "timeLocal": "18:00",
+    "date": "2026-06-25",
+    "timeLocal": "00:00",
     "stage": "group",
     "group": "C",
     "home": "MAR",
@@ -502,7 +502,7 @@
   {
     "id": 51,
     "date": "2026-06-24",
-    "timeLocal": "12:00",
+    "timeLocal": "21:00",
     "stage": "group",
     "group": "B",
     "home": "SUI",
@@ -512,7 +512,7 @@
   {
     "id": 52,
     "date": "2026-06-24",
-    "timeLocal": "12:00",
+    "timeLocal": "21:00",
     "stage": "group",
     "group": "B",
     "home": "BIH",
@@ -521,8 +521,8 @@
   },
   {
     "id": 53,
-    "date": "2026-06-24",
-    "timeLocal": "19:00",
+    "date": "2026-06-25",
+    "timeLocal": "03:00",
     "stage": "group",
     "group": "A",
     "home": "CZE",
@@ -531,8 +531,8 @@
   },
   {
     "id": 54,
-    "date": "2026-06-24",
-    "timeLocal": "19:00",
+    "date": "2026-06-25",
+    "timeLocal": "03:00",
     "stage": "group",
     "group": "A",
     "home": "RSA",
@@ -542,7 +542,7 @@
   {
     "id": 55,
     "date": "2026-06-25",
-    "timeLocal": "16:00",
+    "timeLocal": "22:00",
     "stage": "group",
     "group": "E",
     "home": "CUW",
@@ -552,7 +552,7 @@
   {
     "id": 56,
     "date": "2026-06-25",
-    "timeLocal": "16:00",
+    "timeLocal": "22:00",
     "stage": "group",
     "group": "E",
     "home": "ECU",
@@ -561,8 +561,8 @@
   },
   {
     "id": 57,
-    "date": "2026-06-25",
-    "timeLocal": "18:00",
+    "date": "2026-06-26",
+    "timeLocal": "01:00",
     "stage": "group",
     "group": "F",
     "home": "JPN",
@@ -571,8 +571,8 @@
   },
   {
     "id": 58,
-    "date": "2026-06-25",
-    "timeLocal": "18:00",
+    "date": "2026-06-26",
+    "timeLocal": "01:00",
     "stage": "group",
     "group": "F",
     "home": "TUN",
@@ -581,8 +581,8 @@
   },
   {
     "id": 59,
-    "date": "2026-06-25",
-    "timeLocal": "19:00",
+    "date": "2026-06-26",
+    "timeLocal": "04:00",
     "stage": "group",
     "group": "D",
     "home": "TUR",
@@ -591,8 +591,8 @@
   },
   {
     "id": 60,
-    "date": "2026-06-25",
-    "timeLocal": "19:00",
+    "date": "2026-06-26",
+    "timeLocal": "04:00",
     "stage": "group",
     "group": "D",
     "home": "PAR",
@@ -602,7 +602,7 @@
   {
     "id": 61,
     "date": "2026-06-26",
-    "timeLocal": "15:00",
+    "timeLocal": "21:00",
     "stage": "group",
     "group": "I",
     "home": "NOR",
@@ -612,7 +612,7 @@
   {
     "id": 62,
     "date": "2026-06-26",
-    "timeLocal": "15:00",
+    "timeLocal": "21:00",
     "stage": "group",
     "group": "I",
     "home": "SEN",
@@ -621,8 +621,8 @@
   },
   {
     "id": 63,
-    "date": "2026-06-26",
-    "timeLocal": "20:00",
+    "date": "2026-06-27",
+    "timeLocal": "05:00",
     "stage": "group",
     "group": "G",
     "home": "EGY",
@@ -631,8 +631,8 @@
   },
   {
     "id": 64,
-    "date": "2026-06-26",
-    "timeLocal": "20:00",
+    "date": "2026-06-27",
+    "timeLocal": "05:00",
     "stage": "group",
     "group": "G",
     "home": "NZL",
@@ -641,8 +641,8 @@
   },
   {
     "id": 65,
-    "date": "2026-06-26",
-    "timeLocal": "19:00",
+    "date": "2026-06-27",
+    "timeLocal": "02:00",
     "stage": "group",
     "group": "H",
     "home": "CPV",
@@ -651,8 +651,8 @@
   },
   {
     "id": 66,
-    "date": "2026-06-26",
-    "timeLocal": "18:00",
+    "date": "2026-06-27",
+    "timeLocal": "02:00",
     "stage": "group",
     "group": "H",
     "home": "URU",
@@ -662,7 +662,7 @@
   {
     "id": 67,
     "date": "2026-06-27",
-    "timeLocal": "17:00",
+    "timeLocal": "23:00",
     "stage": "group",
     "group": "L",
     "home": "PAN",
@@ -672,7 +672,7 @@
   {
     "id": 68,
     "date": "2026-06-27",
-    "timeLocal": "17:00",
+    "timeLocal": "23:00",
     "stage": "group",
     "group": "L",
     "home": "CRO",
@@ -681,8 +681,8 @@
   },
   {
     "id": 69,
-    "date": "2026-06-27",
-    "timeLocal": "21:00",
+    "date": "2026-06-28",
+    "timeLocal": "04:00",
     "stage": "group",
     "group": "J",
     "home": "ALG",
@@ -691,8 +691,8 @@
   },
   {
     "id": 70,
-    "date": "2026-06-27",
-    "timeLocal": "21:00",
+    "date": "2026-06-28",
+    "timeLocal": "04:00",
     "stage": "group",
     "group": "J",
     "home": "JOR",
@@ -701,8 +701,8 @@
   },
   {
     "id": 71,
-    "date": "2026-06-27",
-    "timeLocal": "19:30",
+    "date": "2026-06-28",
+    "timeLocal": "01:30",
     "stage": "group",
     "group": "K",
     "home": "COL",
@@ -711,8 +711,8 @@
   },
   {
     "id": 72,
-    "date": "2026-06-27",
-    "timeLocal": "19:30",
+    "date": "2026-06-28",
+    "timeLocal": "01:30",
     "stage": "group",
     "group": "K",
     "home": "COD",
@@ -722,159 +722,191 @@
   {
     "id": 73,
     "date": "2026-06-28",
-    "timeLocal": "12:00",
+    "timeLocal": "21:00",
     "stage": "round_of_32",
+    "home": "RSA",
+    "away": "CAN",
     "labelKey": "wc26.matches.m73",
     "venueKey": "losAngeles"
   },
   {
     "id": 74,
     "date": "2026-06-29",
-    "timeLocal": "16:30",
+    "timeLocal": "22:30",
     "stage": "round_of_32",
+    "home": "GER",
+    "away": "PAR",
     "labelKey": "wc26.matches.m74",
-    "venueKey": "boston"
+    "venueKey": "houston"
   },
   {
     "id": 75,
-    "date": "2026-06-29",
-    "timeLocal": "19:00",
+    "date": "2026-06-30",
+    "timeLocal": "03:00",
     "stage": "round_of_32",
+    "home": "NED",
+    "away": "MAR",
     "labelKey": "wc26.matches.m75",
-    "venueKey": "monterrey"
+    "venueKey": "boston"
   },
   {
     "id": 76,
     "date": "2026-06-29",
-    "timeLocal": "12:00",
+    "timeLocal": "19:00",
     "stage": "round_of_32",
+    "home": "BRA",
+    "away": "JPN",
     "labelKey": "wc26.matches.m76",
-    "venueKey": "houston"
+    "venueKey": "monterrey"
   },
   {
     "id": 77,
     "date": "2026-06-30",
-    "timeLocal": "17:00",
+    "timeLocal": "23:00",
     "stage": "round_of_32",
+    "home": "FRA",
+    "away": "SWE",
     "labelKey": "wc26.matches.m77",
-    "venueKey": "newYork"
+    "venueKey": "dallas"
   },
   {
     "id": 78,
     "date": "2026-06-30",
-    "timeLocal": "12:00",
+    "timeLocal": "19:00",
     "stage": "round_of_32",
+    "home": "CIV",
+    "away": "NOR",
     "labelKey": "wc26.matches.m78",
-    "venueKey": "dallas"
+    "venueKey": "newYork"
   },
   {
     "id": 79,
-    "date": "2026-06-30",
-    "timeLocal": "19:00",
+    "date": "2026-07-01",
+    "timeLocal": "03:00",
     "stage": "round_of_32",
+    "home": "MEX",
+    "away": "ECU",
     "labelKey": "wc26.matches.m79",
     "venueKey": "mexicoCity"
   },
   {
     "id": 80,
     "date": "2026-07-01",
-    "timeLocal": "12:00",
+    "timeLocal": "18:00",
     "stage": "round_of_32",
+    "home": "ENG",
+    "away": "COD",
     "labelKey": "wc26.matches.m80",
     "venueKey": "atlanta"
   },
   {
     "id": 81,
-    "date": "2026-07-01",
-    "timeLocal": "17:00",
+    "date": "2026-07-02",
+    "timeLocal": "02:00",
     "stage": "round_of_32",
+    "home": "USA",
+    "away": "BIH",
     "labelKey": "wc26.matches.m81",
-    "venueKey": "sanFrancisco"
+    "venueKey": "seattle"
   },
   {
     "id": 82,
     "date": "2026-07-01",
-    "timeLocal": "13:00",
+    "timeLocal": "22:00",
     "stage": "round_of_32",
+    "home": "BEL",
+    "away": "SEN",
     "labelKey": "wc26.matches.m82",
-    "venueKey": "seattle"
+    "venueKey": "sanFrancisco"
   },
   {
     "id": 83,
-    "date": "2026-07-02",
-    "timeLocal": "19:00",
+    "date": "2026-07-03",
+    "timeLocal": "01:00",
     "stage": "round_of_32",
+    "home": "POR",
+    "away": "CRO",
     "labelKey": "wc26.matches.m83",
-    "venueKey": "toronto"
+    "venueKey": "losAngeles"
   },
   {
     "id": 84,
     "date": "2026-07-02",
-    "timeLocal": "12:00",
+    "timeLocal": "21:00",
     "stage": "round_of_32",
+    "home": "ESP",
+    "away": "AUT",
     "labelKey": "wc26.matches.m84",
-    "venueKey": "losAngeles"
+    "venueKey": "toronto"
   },
   {
     "id": 85,
-    "date": "2026-07-02",
-    "timeLocal": "20:00",
+    "date": "2026-07-03",
+    "timeLocal": "05:00",
     "stage": "round_of_32",
+    "home": "SUI",
+    "away": "ALG",
     "labelKey": "wc26.matches.m85",
     "venueKey": "vancouver"
   },
   {
     "id": 86,
-    "date": "2026-07-03",
-    "timeLocal": "18:00",
+    "date": "2026-07-04",
+    "timeLocal": "00:00",
     "stage": "round_of_32",
+    "home": "ARG",
+    "away": "CPV",
     "labelKey": "wc26.matches.m86",
-    "venueKey": "miami"
+    "venueKey": "dallas"
   },
   {
     "id": 87,
-    "date": "2026-07-03",
-    "timeLocal": "20:30",
+    "date": "2026-07-04",
+    "timeLocal": "03:30",
     "stage": "round_of_32",
+    "home": "COL",
+    "away": "GHA",
     "labelKey": "wc26.matches.m87",
-    "venueKey": "kansasCity"
+    "venueKey": "miami"
   },
   {
     "id": 88,
     "date": "2026-07-03",
-    "timeLocal": "13:00",
+    "timeLocal": "20:00",
     "stage": "round_of_32",
+    "home": "AUS",
+    "away": "EGY",
     "labelKey": "wc26.matches.m88",
-    "venueKey": "dallas"
+    "venueKey": "kansasCity"
   },
   {
     "id": 89,
     "date": "2026-07-04",
-    "timeLocal": "17:00",
+    "timeLocal": "23:00",
     "stage": "round_of_16",
     "labelKey": "wc26.matches.m89",
-    "venueKey": "philadelphia"
+    "venueKey": "houston"
   },
   {
     "id": 90,
     "date": "2026-07-04",
-    "timeLocal": "12:00",
+    "timeLocal": "19:00",
     "stage": "round_of_16",
     "labelKey": "wc26.matches.m90",
-    "venueKey": "houston"
+    "venueKey": "philadelphia"
   },
   {
     "id": 91,
     "date": "2026-07-05",
-    "timeLocal": "16:00",
+    "timeLocal": "22:00",
     "stage": "round_of_16",
     "labelKey": "wc26.matches.m91",
     "venueKey": "newYork"
   },
   {
     "id": 92,
-    "date": "2026-07-05",
-    "timeLocal": "18:00",
+    "date": "2026-07-06",
+    "timeLocal": "02:00",
     "stage": "round_of_16",
     "labelKey": "wc26.matches.m92",
     "venueKey": "mexicoCity"
@@ -882,15 +914,15 @@
   {
     "id": 93,
     "date": "2026-07-06",
-    "timeLocal": "14:00",
+    "timeLocal": "21:00",
     "stage": "round_of_16",
     "labelKey": "wc26.matches.m93",
     "venueKey": "dallas"
   },
   {
     "id": 94,
-    "date": "2026-07-06",
-    "timeLocal": "17:00",
+    "date": "2026-07-07",
+    "timeLocal": "02:00",
     "stage": "round_of_16",
     "labelKey": "wc26.matches.m94",
     "venueKey": "seattle"
@@ -898,7 +930,7 @@
   {
     "id": 95,
     "date": "2026-07-07",
-    "timeLocal": "12:00",
+    "timeLocal": "18:00",
     "stage": "round_of_16",
     "labelKey": "wc26.matches.m95",
     "venueKey": "atlanta"
@@ -906,7 +938,7 @@
   {
     "id": 96,
     "date": "2026-07-07",
-    "timeLocal": "13:00",
+    "timeLocal": "22:00",
     "stage": "round_of_16",
     "labelKey": "wc26.matches.m96",
     "venueKey": "vancouver"
@@ -914,7 +946,7 @@
   {
     "id": 97,
     "date": "2026-07-09",
-    "timeLocal": "16:00",
+    "timeLocal": "22:00",
     "stage": "quarter_final",
     "labelKey": "wc26.matches.m97",
     "venueKey": "boston"
@@ -922,7 +954,7 @@
   {
     "id": 98,
     "date": "2026-07-10",
-    "timeLocal": "12:00",
+    "timeLocal": "21:00",
     "stage": "quarter_final",
     "labelKey": "wc26.matches.m98",
     "venueKey": "losAngeles"
@@ -930,15 +962,15 @@
   {
     "id": 99,
     "date": "2026-07-11",
-    "timeLocal": "17:00",
+    "timeLocal": "23:00",
     "stage": "quarter_final",
     "labelKey": "wc26.matches.m99",
     "venueKey": "miami"
   },
   {
     "id": 100,
-    "date": "2026-07-11",
-    "timeLocal": "20:00",
+    "date": "2026-07-12",
+    "timeLocal": "03:00",
     "stage": "quarter_final",
     "labelKey": "wc26.matches.m100",
     "venueKey": "kansasCity"
@@ -946,7 +978,7 @@
   {
     "id": 101,
     "date": "2026-07-14",
-    "timeLocal": "14:00",
+    "timeLocal": "21:00",
     "stage": "semi_final",
     "labelKey": "wc26.matches.m101",
     "venueKey": "dallas"
@@ -954,7 +986,7 @@
   {
     "id": 102,
     "date": "2026-07-15",
-    "timeLocal": "15:00",
+    "timeLocal": "21:00",
     "stage": "semi_final",
     "labelKey": "wc26.matches.m102",
     "venueKey": "atlanta"
@@ -962,7 +994,7 @@
   {
     "id": 103,
     "date": "2026-07-18",
-    "timeLocal": "17:00",
+    "timeLocal": "23:00",
     "stage": "third_place",
     "labelKey": "wc26.matches.m103",
     "venueKey": "miami"
@@ -970,7 +1002,7 @@
   {
     "id": 104,
     "date": "2026-07-19",
-    "timeLocal": "15:00",
+    "timeLocal": "21:00",
     "stage": "final",
     "labelKey": "wc26.matches.m104",
     "venueKey": "newYork"

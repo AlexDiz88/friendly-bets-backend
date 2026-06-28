@@ -12,9 +12,11 @@ import net.friendly_bets.oddsapi.TeamNameNormalizer;
 import net.friendly_bets.repositories.GameResultRecordRepository;
 import net.friendly_bets.services.GetEntityService;
 import net.friendly_bets.services.TeamAliasResolver;
+import net.friendly_bets.wc26.Wc26MatchKickoffUtc;
 import net.friendly_bets.wc26.Wc26TeamCatalog;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -48,6 +50,10 @@ public class MarathonbetEventMatcher {
                 }
             }
             if (matched.size() > 1) {
+                Optional<MarathonbetPrematchEvent> disambiguated = pickClosestKickoff(match, matched);
+                if (disambiguated.isPresent()) {
+                    return disambiguated;
+                }
                 apiSyncIssueService.recordMarathonbetEventMappingMissing(
                         match, leagueCode, season, matchday, "ambiguousMarathonbetEventMatch");
             } else {
@@ -92,6 +98,9 @@ public class MarathonbetEventMatcher {
         if (matched.size() == 1) {
             return Optional.of(matched.get(0));
         }
+        if (matched.size() > 1) {
+            return pickClosestKickoff(match, matched);
+        }
         return Optional.empty();
     }
 
@@ -118,19 +127,58 @@ public class MarathonbetEventMatcher {
             GameResultRecord match,
             List<MarathonbetPrematchEvent> events
     ) {
-        if (match.getUtcDate() == null || events == null) {
+        Optional<LocalDateTime> kickoff = Wc26MatchKickoffUtc.resolveForEventMatching(match);
+        if (kickoff.isEmpty() || events == null) {
             return List.of();
         }
-        long center = match.getUtcDate().toInstant(ZoneOffset.UTC).toEpochMilli();
+        long center = kickoff.get().toInstant(ZoneOffset.UTC).toEpochMilli();
         long windowMs = properties.getEventWindowHours() * 3_600_000L;
         List<MarathonbetPrematchEvent> filtered = new ArrayList<>();
         for (MarathonbetPrematchEvent event : events) {
-            Long kickoff = event.getDisplayTimeMillis();
-            if (kickoff != null && Math.abs(kickoff - center) <= windowMs) {
+            Long eventKickoff = event.getDisplayTimeMillis();
+            if (eventKickoff != null && Math.abs(eventKickoff - center) <= windowMs) {
                 filtered.add(event);
             }
         }
         return filtered;
+    }
+
+    private Optional<MarathonbetPrematchEvent> pickClosestKickoff(
+            GameResultRecord match,
+            List<MarathonbetPrematchEvent> matched
+    ) {
+        Optional<LocalDateTime> kickoff = Wc26MatchKickoffUtc.resolveForEventMatching(match);
+        if (kickoff.isEmpty()) {
+            return Optional.empty();
+        }
+        long center = kickoff.get().toInstant(ZoneOffset.UTC).toEpochMilli();
+        MarathonbetPrematchEvent best = null;
+        long bestDelta = Long.MAX_VALUE;
+        long secondBestDelta = Long.MAX_VALUE;
+        for (MarathonbetPrematchEvent event : matched) {
+            Long eventKickoff = event.getDisplayTimeMillis();
+            if (eventKickoff == null) {
+                continue;
+            }
+            long delta = Math.abs(eventKickoff - center);
+            if (delta < bestDelta) {
+                secondBestDelta = bestDelta;
+                bestDelta = delta;
+                best = event;
+            } else if (delta < secondBestDelta) {
+                secondBestDelta = delta;
+            }
+        }
+        if (best == null) {
+            return Optional.empty();
+        }
+        if (match.getWc26ScheduleId() != null) {
+            return Optional.of(best);
+        }
+        if (secondBestDelta == Long.MAX_VALUE || bestDelta + 3_600_000 <= secondBestDelta) {
+            return Optional.of(best);
+        }
+        return Optional.empty();
     }
 
     private boolean sidesMatch(GameResultRecord match, MarathonbetPrematchEvent event) {

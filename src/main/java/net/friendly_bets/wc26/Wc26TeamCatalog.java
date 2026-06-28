@@ -42,7 +42,7 @@ public final class Wc26TeamCatalog {
         names("SWE", "Sweden");
         names("KSA", "Saudi Arabia", "SaudiArabia");
         names("URU", "Uruguay");
-        names("ESP", "Spain");
+        names("ESP", "Spain", "Испания");
         names("CPV", "Cabo Verde", "Cape Verde", "Cape Verde Islands", "CaboVerde");
         names("IRN", "IR Iran", "Iran");
         names("NZL", "New Zealand");
@@ -54,7 +54,7 @@ public final class Wc26TeamCatalog {
         names("NOR", "Norway");
         names("ARG", "Argentina");
         names("ALG", "Algeria");
-        names("AUT", "Austria");
+        names("AUT", "Austria", "Австрия");
         names("JOR", "Jordan");
         names("ENG", "England");
         names("CRO", "Croatia");

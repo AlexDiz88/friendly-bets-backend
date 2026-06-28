@@ -45,13 +45,23 @@ public class GameResultQueryService {
         return applyBerlinFilterIfNeeded(matches, leagueId, matchday);
     }
 
+    /** Все записи тура без Berlin-фильтра — для sync (иначе playoff без wc26ScheduleId «невидим»). */
+    public List<GameResultRecord> listMatchdayRecordsForSync(
+            String leagueCode,
+            int matchday,
+            String season
+    ) {
+        return gameResultRecordRepository.findByLeagueCodeAndMatchdayAndSeason(
+                leagueCode, matchday, season);
+    }
+
     private List<GameResultRecord> applyBerlinFilterIfNeeded(
             List<GameResultRecord> matches,
             String leagueId,
             int slotOrder
     ) {
         return resolveSlotId(leagueId, slotOrder)
-                .filter(WcBerlinSlotMatchFilter::isBerlinGroupSlot)
+                .filter(WcBerlinSlotMatchFilter::isWcBettingSlot)
                 .map(slotId -> WcBerlinSlotMatchFilter.filterGameResultRecords(
                         slotId,
                         matches,
@@ -60,7 +70,11 @@ public class GameResultQueryService {
                                 return Optional.empty();
                             }
                             return teamsRepository.findById(teamId);
-                        }))
+                        })
+                        .stream()
+                        .filter(record -> !WcBerlinSlotMatchFilter.isPlayoffSlot(slotId)
+                                || !WcBerlinSlotMatchFilter.recordHasPlaceholderSides(record))
+                        .toList())
                 .orElse(matches);
     }
 
