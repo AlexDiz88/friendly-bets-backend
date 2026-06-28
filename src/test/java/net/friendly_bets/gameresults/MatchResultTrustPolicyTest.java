@@ -5,6 +5,7 @@ import net.friendly_bets.models.gameresults.GameResultRecord;
 import net.friendly_bets.models.gameresults.GameResultSourceSnapshot;
 import net.friendly_bets.oddsapi.GameResultNotStarted;
 import net.friendly_bets.wc26.Wc26ScheduleKickoffLookup;
+import net.friendly_bets.wc26.Wc26ScheduleKickoffResolver;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -32,7 +33,7 @@ class MatchResultTrustPolicyTest {
 
     @BeforeEach
     void setUp() {
-        effectiveKickoff = new GameResultEffectiveKickoff(mock(net.friendly_bets.repositories.Wc26ScheduleMatchRepository.class));
+        effectiveKickoff = new GameResultEffectiveKickoff(mock(Wc26ScheduleKickoffResolver.class));
         policy = new MatchResultTrustPolicy(settingsService, stabilizationService, effectiveKickoff);
         when(settingsService.getEffective()).thenReturn(
                 MatchResultSyncSettingsService.EffectiveMatchResultSyncSettings.builder()
