@@ -1,7 +1,7 @@
 package net.friendly_bets.gameresults;
 
 import net.friendly_bets.models.gameresults.GameResultRecord;
-import net.friendly_bets.repositories.Wc26ScheduleMatchRepository;
+import net.friendly_bets.wc26.Wc26ScheduleKickoffResolver;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -17,8 +17,8 @@ class GameResultPollingFilterTest {
 
     @BeforeEach
     void setUp() {
-        Wc26ScheduleMatchRepository scheduleRepository = mock(Wc26ScheduleMatchRepository.class);
-        filter = new GameResultPollingFilter(new GameResultEffectiveKickoff(scheduleRepository));
+        Wc26ScheduleKickoffResolver kickoffResolver = mock(Wc26ScheduleKickoffResolver.class);
+        filter = new GameResultPollingFilter(new GameResultEffectiveKickoff(kickoffResolver));
     }
 
     @Test

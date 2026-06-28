@@ -12,6 +12,7 @@ import net.friendly_bets.oddsapi.mapping.OddsMerger;
 import net.friendly_bets.oddsapi.mapping.OddsMergeResult;
 import org.junit.jupiter.api.Test;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -98,7 +99,7 @@ class MarathonbetBetTitleMapperPlayoffTest {
     private static MarathonbetMarketSelectionDto sel(String name, String odds) {
         return MarathonbetMarketSelectionDto.builder()
                 .name(name)
-                .odds(odds)
+                .odds(new BigDecimal(odds))
                 .build();
     }
 }
