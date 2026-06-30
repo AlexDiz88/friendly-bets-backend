@@ -37,6 +37,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -547,7 +548,18 @@ public class TwentyFourScoreSyncService {
     }
 
     private static boolean needsMatchPage(TwentyFourScoreListMatch listMatch) {
-        return listMatch.getFullTimeScore() == null || listMatch.getFirstHalfScore() == null;
+        if (listMatch.getFullTimeScore() == null || listMatch.getFirstHalfScore() == null) {
+            return true;
+        }
+        return hasUnparsedHalfTimeExtras(listMatch.getFirstHalfScore());
+    }
+
+    private static boolean hasUnparsedHalfTimeExtras(String firstHalfScore) {
+        if (firstHalfScore == null || firstHalfScore.isBlank()) {
+            return false;
+        }
+        String lower = firstHalfScore.toLowerCase(Locale.ROOT);
+        return lower.contains("дв") || lower.contains("пен");
     }
 
     /**

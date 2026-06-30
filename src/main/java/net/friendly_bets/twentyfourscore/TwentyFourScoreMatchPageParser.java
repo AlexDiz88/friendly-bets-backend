@@ -28,15 +28,20 @@ public class TwentyFourScoreMatchPageParser {
             return null;
         }
         long matchId = parseMatchId(matchPath);
-        String fullTime = textOrNull(doc.selectFirst("#score"));
-        String firstHalf = textOrNull(doc.selectFirst("#times"));
+        String fullTimeRaw = textOrNull(doc.selectFirst("#score"));
+        String firstHalfRaw = textOrNull(doc.selectFirst("#times"));
         String statusText = textOrNull(doc.selectFirst("#status"));
         Element datetimeEl = doc.selectFirst("div.datetime");
         LocalDateTime kickoffAt = parseKickoff(datetimeEl != null ? datetimeEl.text() : null);
         Integer matchday = parseMatchday(datetimeEl != null ? datetimeEl.text() : null);
-        TwentyFourScoreScheduleParser.ScoreParts listScores =
-                TwentyFourScoreScheduleParser.parseScoreText(fullTime);
-        String ft = listScores.fullTime() != null ? listScores.fullTime() : normalizeScore(fullTime);
+        TwentyFourScoreScheduleParser.ScoreParts fromScore =
+                TwentyFourScoreScheduleParser.parseScoreText(fullTimeRaw);
+        TwentyFourScoreScheduleParser.ScoreParts fromTimes =
+                TwentyFourScoreScheduleParser.parseScoreText(firstHalfRaw);
+        String ft = coalesce(fromScore.fullTime(), normalizeScore(fullTimeRaw));
+        String fh = coalesce(fromScore.firstHalf(), fromTimes.firstHalf(), fromTimes.fullTime());
+        String ot = coalesce(fromScore.extraTime(), fromTimes.extraTime());
+        String pen = coalesce(fromScore.penalty(), fromTimes.penalty());
         return TwentyFourScoreMatchDetails.builder()
                 .externalMatchId(matchId)
                 .matchPath(matchPath)
@@ -44,9 +49,9 @@ public class TwentyFourScoreMatchPageParser {
                 .awayTeamName(awayEl.text().trim())
                 .statusText(statusText)
                 .fullTimeScore(ft)
-                .firstHalfScore(firstHalf != null ? normalizeScore(firstHalf) : listScores.firstHalf())
-                .extraTimeScore(listScores.extraTime())
-                .penaltyScore(listScores.penalty())
+                .firstHalfScore(fh)
+                .extraTimeScore(ot)
+                .penaltyScore(pen)
                 .liveMinuteLabel(TwentyFourScoreStatusMapper.extractLiveMinute(statusText))
                 .matchday(matchday)
                 .kickoffAt(kickoffAt)
@@ -92,6 +97,18 @@ public class TwentyFourScoreMatchPageParser {
             return null;
         }
         return raw.trim().replaceAll("\\s+", "");
+    }
+
+    private static String coalesce(String... values) {
+        if (values == null) {
+            return null;
+        }
+        for (String value : values) {
+            if (value != null && !value.isBlank()) {
+                return value.trim();
+            }
+        }
+        return null;
     }
 
     private static String textOrNull(Element element) {
