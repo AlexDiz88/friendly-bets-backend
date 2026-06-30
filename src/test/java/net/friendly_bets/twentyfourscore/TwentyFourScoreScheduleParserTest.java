@@ -47,6 +47,28 @@ class TwentyFourScoreScheduleParserTest {
     }
 
     @Test
+    void parseScoreTextHandlesCompactExtraTimeAndPenaltiesInsideParentheses() {
+        TwentyFourScoreScheduleParser.ScoreParts parts = TwentyFourScoreScheduleParser.parseScoreText(
+                "1:1 (0:1дв0:0,пен3:4)"
+        );
+        assertEquals("1:1", parts.fullTime());
+        assertEquals("0:1", parts.firstHalf());
+        assertEquals("0:0", parts.extraTime());
+        assertEquals("3:4", parts.penalty());
+    }
+
+    @Test
+    void parseScoreTextHandlesHalfTimeFieldWithExtrasOnly() {
+        TwentyFourScoreScheduleParser.ScoreParts parts = TwentyFourScoreScheduleParser.parseScoreText(
+                "0:1дв0:0,пен3:4"
+        );
+        assertEquals("0:1", parts.fullTime());
+        assertNull(parts.firstHalf());
+        assertEquals("0:0", parts.extraTime());
+        assertEquals("3:4", parts.penalty());
+    }
+
+    @Test
     void parseScoreTextDetectsLiveMinuteOnDailyPage() {
         TwentyFourScoreScheduleParser.ScoreParts parts = TwentyFourScoreScheduleParser.parseScoreText(
                 "0:1 (0:1) 50'"

@@ -21,9 +21,16 @@ public class TwentyFourScoreScheduleParser {
 
     private static final Pattern MATCH_PATH = Pattern.compile("/football/match/(\\d+)-([^/]+)/?");
     private static final Pattern SCORE_PAIR = Pattern.compile("(\\d+)\\s*:\\s*(\\d+)");
-    private static final Pattern EXTRA_PEN = Pattern.compile(
-            "дв\\s*(\\d+:\\d+).*?пен\\s*(\\d+:\\d+)",
+    private static final Pattern OT_EXTRACT = Pattern.compile(
+            "дв\\s*(\\d+:\\d+)",
             Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE
+    );
+    private static final Pattern PEN_EXTRACT = Pattern.compile(
+            "пен\\s*(\\d+:\\d+)",
+            Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE
+    );
+    private static final Pattern FT_WITH_HT = Pattern.compile(
+            "^(\\d+:\\d+)\\s*\\(\\s*(\\d+:\\d+)\\s*\\)\\s*$"
     );
     private static final Pattern LIVE_MINUTE_SUFFIX = Pattern.compile(
             "\\s(\\d+(?:\\+\\d+)?)\\s*['′]\\s*$"
@@ -138,17 +145,50 @@ public class TwentyFourScoreScheduleParser {
             liveMinuteLabel = minuteMatcher.group(1) + "'";
             text = text.substring(0, minuteMatcher.start()).trim();
         }
-        Matcher extraPen = EXTRA_PEN.matcher(text);
-        if (extraPen.find()) {
-            return new ScoreParts(null, null, extraPen.group(1), extraPen.group(2), liveMinuteLabel, liveStatusText(liveMinuteLabel));
+        String extraTime = extractScore(OT_EXTRACT, text);
+        String penalty = extractScore(PEN_EXTRACT, text);
+        String cleaned = stripExtraMarkers(text, extraTime, penalty);
+
+        String fullTime = null;
+        String firstHalf = null;
+        Matcher ftWithHt = FT_WITH_HT.matcher(cleaned);
+        if (ftWithHt.matches()) {
+            fullTime = ftWithHt.group(1);
+            firstHalf = ftWithHt.group(2);
+        } else {
+            Matcher ft = SCORE_PAIR.matcher(cleaned);
+            if (ft.find()) {
+                fullTime = ft.group(1) + ":" + ft.group(2);
+                if (ft.find()) {
+                    firstHalf = ft.group(1) + ":" + ft.group(2);
+                }
+            }
         }
-        Matcher ft = SCORE_PAIR.matcher(text);
-        String fullTime = ft.find() ? ft.group(1) + ":" + ft.group(2) : null;
-        String firstHalf = ft.find() ? ft.group(1) + ":" + ft.group(2) : null;
         String statusText = liveMinuteLabel != null
                 ? liveStatusText(liveMinuteLabel)
                 : (fullTime != null ? "Завершен" : null);
-        return new ScoreParts(fullTime, firstHalf, null, null, liveMinuteLabel, statusText);
+        return new ScoreParts(fullTime, firstHalf, extraTime, penalty, liveMinuteLabel, statusText);
+    }
+
+    private static String extractScore(Pattern pattern, String text) {
+        Matcher matcher = pattern.matcher(text);
+        if (matcher.find()) {
+            return matcher.group(1);
+        }
+        return null;
+    }
+
+    private static String stripExtraMarkers(String text, String extraTime, String penalty) {
+        String result = text;
+        if (extraTime != null) {
+            result = OT_EXTRACT.matcher(result).replaceAll("");
+        }
+        if (penalty != null) {
+            result = PEN_EXTRACT.matcher(result).replaceAll("");
+        }
+        result = result.replaceAll(",\\s*", " ");
+        result = result.replaceAll("\\s+", " ").trim();
+        return result;
     }
 
     private static String liveStatusText(String liveMinuteLabel) {
