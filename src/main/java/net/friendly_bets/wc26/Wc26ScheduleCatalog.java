@@ -105,6 +105,14 @@ public final class Wc26ScheduleCatalog {
         gm(86, "ARG", "CPV");
         gm(87, "COL", "GHA");
         gm(88, "AUS", "EGY");
+        gm(89, "PAR", "FRA");
+        gm(90, "CAN", "MAR");
+        gm(91, "BRA", "NOR");
+        gm(92, "MEX", "ENG");
+        gm(93, "POR", "ESP");
+        gm(94, "USA", "BEL");
+        gm(95, "ARG", "EGY");
+        gm(96, "SUI", "COL");
     }
 
     private Wc26ScheduleCatalog() {

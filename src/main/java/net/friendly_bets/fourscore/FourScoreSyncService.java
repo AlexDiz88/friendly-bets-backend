@@ -25,6 +25,7 @@ import net.friendly_bets.wc26.WcBerlinSlotMatchFilter;
 import net.friendly_bets.wc26.Wc26ScheduleCatalog;
 import net.friendly_bets.wc26.Wc26ScheduleKickoffResolver;
 import net.friendly_bets.wc26.Wc26ScheduleLinker;
+import net.friendly_bets.wc26.Wc26SlotCatalogBootstrapper;
 import net.friendly_bets.twentyfourscore.TwentyFourScoreSyncService;
 import net.friendly_bets.wc26.Wc26TeamCatalog;
 import net.friendly_bets.config.WcTournamentSlots;
@@ -66,6 +67,7 @@ public class FourScoreSyncService {
     private final GameResultsSyncRepository gameResultsSyncRepository;
     private final Wc26ScheduleLinker wc26ScheduleLinker;
     private final Wc26ScheduleKickoffResolver wc26ScheduleKickoffResolver;
+    private final Wc26SlotCatalogBootstrapper wc26SlotCatalogBootstrapper;
     private final TwentyFourScoreSyncService twentyFourScoreSyncService;
 
     public boolean isEnabledForLeague(String leagueCode) {
@@ -119,6 +121,10 @@ public class FourScoreSyncService {
             for (LocalDate date : dates) {
                 updated += syncDateForRecords(date, leagueCode, season, matchday, leagueId, records);
             }
+        }
+        if (slotIncomplete && wcSlotId.isPresent()) {
+            updated += wc26SlotCatalogBootstrapper.bootstrapMissingKnownPairs(
+                    wcSlotId.get(), leagueCode, season, matchday, leagueId, records);
         }
         if (records.isEmpty()) {
             return updated;

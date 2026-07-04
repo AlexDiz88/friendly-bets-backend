@@ -10,8 +10,10 @@ import net.friendly_bets.repositories.TeamsRepository;
 import net.friendly_bets.services.GetEntityService;
 import net.friendly_bets.services.TournamentFormatExpander;
 import net.friendly_bets.wc26.WcBerlinSlotMatchFilter;
+import net.friendly_bets.wc26.Wc26SlotCatalogBootstrapper;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -23,6 +25,7 @@ public class GameResultQueryService {
     private final GetEntityService getEntityService;
     private final TournamentFormatExpander tournamentFormatExpander;
     private final TeamsRepository teamsRepository;
+    private final Wc26SlotCatalogBootstrapper wc26SlotCatalogBootstrapper;
 
     public List<GameResultRecord> getMatches(
             String pathLeagueOrCompetitionCode,
@@ -40,8 +43,15 @@ public class GameResultQueryService {
             String season,
             String leagueId
     ) {
-        List<GameResultRecord> matches = gameResultRecordRepository.findByLeagueCodeAndMatchdayAndSeason(
-                leagueCode, matchday, season);
+        List<GameResultRecord> matches = new ArrayList<>(
+                gameResultRecordRepository.findByLeagueCodeAndMatchdayAndSeason(
+                        leagueCode, matchday, season));
+        if ("WC".equals(leagueCode)) {
+            resolveSlotId(leagueId, matchday)
+                    .filter(WcBerlinSlotMatchFilter::isWcBettingSlot)
+                    .ifPresent(slotId -> wc26SlotCatalogBootstrapper.bootstrapMissingKnownPairs(
+                            slotId, leagueCode, season, matchday, leagueId, matches));
+        }
         return applyBerlinFilterIfNeeded(matches, leagueId, matchday);
     }
 

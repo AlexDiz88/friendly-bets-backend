@@ -884,6 +884,8 @@
     "date": "2026-07-04",
     "timeLocal": "23:00",
     "stage": "round_of_16",
+    "home": "PAR",
+    "away": "FRA",
     "labelKey": "wc26.matches.m89",
     "venueKey": "houston"
   },
@@ -892,6 +894,8 @@
     "date": "2026-07-04",
     "timeLocal": "19:00",
     "stage": "round_of_16",
+    "home": "CAN",
+    "away": "MAR",
     "labelKey": "wc26.matches.m90",
     "venueKey": "philadelphia"
   },
@@ -900,6 +904,8 @@
     "date": "2026-07-05",
     "timeLocal": "22:00",
     "stage": "round_of_16",
+    "home": "BRA",
+    "away": "NOR",
     "labelKey": "wc26.matches.m91",
     "venueKey": "newYork"
   },
@@ -908,6 +914,8 @@
     "date": "2026-07-06",
     "timeLocal": "02:00",
     "stage": "round_of_16",
+    "home": "MEX",
+    "away": "ENG",
     "labelKey": "wc26.matches.m92",
     "venueKey": "mexicoCity"
   },
@@ -916,6 +924,8 @@
     "date": "2026-07-06",
     "timeLocal": "21:00",
     "stage": "round_of_16",
+    "home": "POR",
+    "away": "ESP",
     "labelKey": "wc26.matches.m93",
     "venueKey": "dallas"
   },
@@ -924,6 +934,8 @@
     "date": "2026-07-07",
     "timeLocal": "02:00",
     "stage": "round_of_16",
+    "home": "USA",
+    "away": "BEL",
     "labelKey": "wc26.matches.m94",
     "venueKey": "seattle"
   },
@@ -932,6 +944,8 @@
     "date": "2026-07-07",
     "timeLocal": "18:00",
     "stage": "round_of_16",
+    "home": "ARG",
+    "away": "EGY",
     "labelKey": "wc26.matches.m95",
     "venueKey": "atlanta"
   },
@@ -940,6 +954,8 @@
     "date": "2026-07-07",
     "timeLocal": "22:00",
     "stage": "round_of_16",
+    "home": "SUI",
+    "away": "COL",
     "labelKey": "wc26.matches.m96",
     "venueKey": "vancouver"
   },
