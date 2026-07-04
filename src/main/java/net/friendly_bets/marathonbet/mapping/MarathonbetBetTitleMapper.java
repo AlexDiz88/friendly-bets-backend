@@ -785,6 +785,7 @@ public class MarathonbetBetTitleMapper {
         return switch (model) {
             case "MTCH_T12GW1" -> BetTitleCode.HOME_WIN_AND_BOTH_TEAMS_SCORE;
             case "MTCH_T12GWX" -> BetTitleCode.DRAW_AND_BOTH_TEAMS_SCORE;
+            case "MTCH_T12GW2" -> BetTitleCode.AWAY_WIN_AND_BOTH_TEAMS_SCORE;
             case "MTCH_T12GWX2" -> BetTitleCode.AWAY_OR_DRAW_AND_BOTH_TEAMS_SCORE;
             case "MTCH_T12GW1X" -> BetTitleCode.HOME_OR_DRAW_AND_BOTH_TEAMS_SCORE;
             case "MTCH_T12GW12" -> BetTitleCode.HOME_OR_AWAY_AND_BOTH_TEAMS_SCORE;
