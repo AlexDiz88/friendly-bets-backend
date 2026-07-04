@@ -31,6 +31,7 @@ class MarathonbetAllowedMarketsTest {
         assertEquals(MarathonbetMarketBucket.CLEAN_WIN, bucket("MTCH_T1W0"));
         assertEquals(MarathonbetMarketBucket.SCORE_DIFF, bucket("MTCH_T1WM"));
         assertEquals(MarathonbetMarketBucket.BTTS_RESULT, bucket("MTCH_T12GW1"));
+        assertEquals(MarathonbetMarketBucket.BTTS_RESULT, bucket("MTCH_T12GW2"));
         assertEquals(MarathonbetMarketBucket.HALF_FULL, bucket("MTCH_DR"));
     }
 

@@ -230,6 +230,25 @@ class MarathonbetBetTitleMapperMarketsTest {
     }
 
     @Test
+    void mapsAwayWinBttsResultToResultBttsCategory() {
+        MarathonbetMarketDto market = MarathonbetMarketDto.builder()
+                .model("MTCH_T12GW2")
+                .name("Обе команды забьют + ЮАР (победа)")
+                .selections(List.of(sel("Да", "11.25"), sel("Нет", "1.037")))
+                .build();
+        MarathonbetExtractedMarkets markets = MarathonbetExtractedMarkets.builder()
+                .bttsResultMarkets(List.of(market))
+                .build();
+        List<MappedOddsQuote> quotes = mapper.map(markets, "Мексика", "ЮАР");
+        assertEquals(2, quotes.size());
+        assertTrue(quotes.stream().allMatch(q -> q.getCategory() == OddsMarketCategory.RESULT_BTTS));
+        assertTrue(quotes.stream().anyMatch(q ->
+                BetTitleCode.AWAY_WIN_AND_BOTH_TEAMS_SCORE == code(q) && "YES".equals(q.getSelectionCode())));
+        assertTrue(quotes.stream().anyMatch(q ->
+                BetTitleCode.AWAY_WIN_AND_BOTH_TEAMS_SCORE == code(q) && "NO".equals(q.getSelectionCode())));
+    }
+
+    @Test
     void mapsCleanWinAndTeamTotal() {
         MarathonbetMarketDto clean = MarathonbetMarketDto.builder()
                 .model("MTCH_T1W0")
