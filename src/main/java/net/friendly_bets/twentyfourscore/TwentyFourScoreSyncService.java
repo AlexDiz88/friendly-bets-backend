@@ -27,6 +27,7 @@ import net.friendly_bets.wc26.WcBerlinSlotMatchFilter;
 import net.friendly_bets.wc26.Wc26ScheduleCatalog;
 import net.friendly_bets.wc26.Wc26ScheduleKickoffResolver;
 import net.friendly_bets.wc26.Wc26ScheduleLinker;
+import net.friendly_bets.wc26.Wc26SlotCatalogBootstrapper;
 import net.friendly_bets.wc26.Wc26TeamCatalog;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -66,6 +67,7 @@ public class TwentyFourScoreSyncService {
     private final Wc26ScheduleKickoffResolver wc26ScheduleKickoffResolver;
     private final TeamAliasResolver teamAliasResolver;
     private final TeamsRepository teamsRepository;
+    private final Wc26SlotCatalogBootstrapper wc26SlotCatalogBootstrapper;
 
     public boolean isEnabledForLeague(String leagueCode) {
         return properties.isEnabled()
@@ -596,6 +598,8 @@ public class TwentyFourScoreSyncService {
                 log.info("24score WC gap: no list match for schedule {} (slot {})", scheduleId, slotId);
             }
         }
+        bootstrapped += wc26SlotCatalogBootstrapper.bootstrapMissingKnownPairs(
+                slotId, leagueCode, season, matchday, leagueId, records);
         return bootstrapped;
     }
 
