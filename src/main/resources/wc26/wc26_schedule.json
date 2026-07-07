@@ -964,6 +964,8 @@
     "date": "2026-07-09",
     "timeLocal": "22:00",
     "stage": "quarter_final",
+    "home": "FRA",
+    "away": "MAR",
     "labelKey": "wc26.matches.m97",
     "venueKey": "boston"
   },
@@ -972,6 +974,8 @@
     "date": "2026-07-10",
     "timeLocal": "21:00",
     "stage": "quarter_final",
+    "home": "ESP",
+    "away": "BEL",
     "labelKey": "wc26.matches.m98",
     "venueKey": "losAngeles"
   },
@@ -980,6 +984,8 @@
     "date": "2026-07-11",
     "timeLocal": "23:00",
     "stage": "quarter_final",
+    "home": "NOR",
+    "away": "ENG",
     "labelKey": "wc26.matches.m99",
     "venueKey": "miami"
   },
@@ -988,6 +994,8 @@
     "date": "2026-07-12",
     "timeLocal": "03:00",
     "stage": "quarter_final",
+    "home": "ARG",
+    "away": "SUI",
     "labelKey": "wc26.matches.m100",
     "venueKey": "kansasCity"
   },
