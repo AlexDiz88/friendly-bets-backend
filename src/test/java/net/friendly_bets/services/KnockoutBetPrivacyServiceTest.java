@@ -122,7 +122,7 @@ class KnockoutBetPrivacyServiceTest {
     private Bet openedBet(String userId, League.LeagueCode leagueCode, String matchDay,
                           String homeTeamId, String awayTeamId) {
         User user = User.builder().id(userId).username(userId).build();
-        Season season = Season.builder().id("season-1").externalSeasonYear(2026).build();
+        Season season = Season.builder().id("season-1").build();
         League league = League.builder().id("league-1").leagueCode(leagueCode).build();
         Team home = Team.builder().id(homeTeamId).title("Home").build();
         Team away = Team.builder().id(awayTeamId).title("Away").build();
