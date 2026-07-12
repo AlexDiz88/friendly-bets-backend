@@ -76,6 +76,9 @@ public class BetDto {
     @Schema(description = "идентификатор записи календаря", example = "12-байтовый хэш ID")
     private String calendarNodeId;
 
+    @Schema(description = "детали ставки скрыты до начала матча (полуфинал/финал/3-е место)", example = "false")
+    private Boolean betDetailsHidden;
+
 
     public static BetDto from(Bet bet) {
         if (WRL_STATUSES.contains(bet.getBetStatus())) {

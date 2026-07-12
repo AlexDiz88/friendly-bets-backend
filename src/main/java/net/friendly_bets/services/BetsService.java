@@ -51,6 +51,7 @@ public class BetsService {
     MatchResultsPollingService matchResultsPollingService;
     GameResultRecordRepository gameResultRecordRepository;
     MatchdaySlotSupport matchdaySupport;
+    KnockoutBetPrivacyService knockoutBetPrivacyService;
 
     @Transactional
     public BetDto addOpenedBet(AuthenticatedUser currentUser, NewBetDto newOpenedBet) {
@@ -223,10 +224,10 @@ public class BetsService {
     // ------------------------------------------------------------------------------------------------------ //
 
 
-    public BetsPage getOpenedBets(String seasonId) {
+    public BetsPage getOpenedBets(String seasonId, String viewerUserId) {
         List<Bet> openedBets = betsRepository.findAllBySeason_IdAndBetStatus(seasonId, Bet.BetStatus.OPENED);
         return BetsPage.builder()
-                .bets(BetDto.from(openedBets))
+                .bets(knockoutBetPrivacyService.toDtoList(openedBets, viewerUserId))
                 .build();
     }
 
@@ -296,7 +297,7 @@ public class BetsService {
                 })
                 .collect(Collectors.toList());
         return BetsPage.builder()
-                .bets(BetDto.from(placedBets))
+                .bets(knockoutBetPrivacyService.toDtoList(placedBets, userId))
                 .build();
     }
 
@@ -324,7 +325,11 @@ public class BetsService {
                 MATCH_BET_STATUSES
         );
         Map<String, Integer> counts = new HashMap<>();
+        Map<KnockoutBetPrivacyService.MatchKey, Boolean> notStartedCache = new HashMap<>();
         for (Bet bet : bets) {
+            if (knockoutBetPrivacyService.shouldHideBetDetails(bet, userId, notStartedCache)) {
+                continue;
+            }
             if (bet.getBetTitle() == null || bet.getHomeTeam() == null || bet.getAwayTeam() == null) {
                 continue;
             }
@@ -372,11 +377,11 @@ public class BetsService {
     // ------------------------------------------------------------------------------------------------------ //
 
 
-    public BetsPage getAllBets(String seasonId, Pageable pageable) {
+    public BetsPage getAllBets(String seasonId, Pageable pageable, String viewerUserId) {
         Page<Bet> allBets = betsRepository.findAllBySeason_IdAndBetStatusIn(seasonId, VALID_BET_STATUSES, pageable);
 
         return BetsPage.builder()
-                .bets(BetDto.from(allBets.getContent()))
+                .bets(knockoutBetPrivacyService.toDtoList(allBets.getContent(), viewerUserId))
                 .totalPages(allBets.getTotalPages())
                 .build();
     }
@@ -393,6 +398,9 @@ public class BetsService {
         User moderator = getEntityService.getUserOrThrow(moderatorId);
         User newUser = getEntityService.getUserOrThrow(editedBet.getUserId());
         Bet bet = getEntityService.getBetOrThrow(editedBetId);
+        if (knockoutBetPrivacyService.shouldHideBetDetails(bet, moderatorId)) {
+            throw new BadRequestException("betDetailsHidden");
+        }
         League league = getEntityService.getLeagueOrThrow(editedBet.getLeagueId());
         leagueMatchdayService.validateMatchDayForLeague(league, editedBet.getMatchDay());
         validateEditedBetStatusTransition(bet.getBetStatus(), Bet.BetStatus.valueOf(editedBet.getBetStatus()));

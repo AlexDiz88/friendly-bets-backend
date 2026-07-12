@@ -31,6 +31,7 @@ public class CalendarsService {
     CalendarsRepository calendarsRepository;
     BetsRepository betsRepository;
     GetEntityService getEntityService;
+    KnockoutBetPrivacyService knockoutBetPrivacyService;
 
 
     public CalendarNodesPage getAllSeasonCalendarNodes(String seasonId) {
@@ -57,7 +58,7 @@ public class CalendarsService {
     /**
      * Lightweight list for «По турам»; optionally includes bets for one calendar node in the same response.
      */
-    public GameweeksOverviewPage getGameweeksOverview(String seasonId, String calendarNodeId) {
+    public GameweeksOverviewPage getGameweeksOverview(String seasonId, String calendarNodeId, String viewerUserId) {
         List<CalendarNode> calendarNodes = getEntityService.getListOfCalendarNodesWithBetsBySeasonOrThrow(seasonId);
         calendarNodes.sort(Comparator.comparing(CalendarNode::getStartDate).reversed());
 
@@ -66,7 +67,7 @@ public class CalendarsService {
             bets = calendarNodes.stream()
                     .filter(node -> calendarNodeId.equals(node.getId()))
                     .findFirst()
-                    .map(node -> toBetsPage(collectBetsForCalendarNode(calendarNodeId, node)))
+                    .map(node -> toBetsPage(collectBetsForCalendarNode(calendarNodeId, node), viewerUserId))
                     .orElse(null);
         }
 
@@ -79,14 +80,14 @@ public class CalendarsService {
     // ------------------------------------------------------------------------------------------------------ //
 
 
-    public BetsPage getActualCalendarNodeBets(String seasonId) {
+    public BetsPage getActualCalendarNodeBets(String seasonId, String viewerUserId) {
         List<CalendarNode> calendarNodes = getEntityService.getListOfCalendarNodesWithBetsBySeasonOrThrow(seasonId);
 
         CalendarNode closestNode = calendarNodes.stream()
                 .min(Comparator.comparing(node -> Math.abs(ChronoUnit.DAYS.between(LocalDate.now(), node.getStartDate()))))
                 .orElseThrow(() -> new BadRequestException("noCalendarNodesBySeason"));
 
-        return getBetsByCalendarNode(closestNode.getId());
+        return getBetsByCalendarNode(closestNode.getId(), viewerUserId);
     }
 
     // ------------------------------------------------------------------------------------------------------ //
@@ -131,8 +132,12 @@ public class CalendarsService {
     // ------------------------------------------------------------------------------------------------------ //
 
 
+    public BetsPage getBetsByCalendarNode(String calendarNodeId, String viewerUserId) {
+        return toBetsPage(collectBetsForCalendarNode(calendarNodeId, null), viewerUserId);
+    }
+
     public BetsPage getBetsByCalendarNode(String calendarNodeId) {
-        return toBetsPage(collectBetsForCalendarNode(calendarNodeId, null));
+        return getBetsByCalendarNode(calendarNodeId, null);
     }
 
     private List<Bet> collectBetsForCalendarNode(String calendarNodeId, CalendarNode cachedNode) {
@@ -152,9 +157,9 @@ public class CalendarsService {
         return betsVisibleInGameweek(legacyBets);
     }
 
-    private BetsPage toBetsPage(List<Bet> bets) {
+    private BetsPage toBetsPage(List<Bet> bets, String viewerUserId) {
         return BetsPage.builder()
-                .bets(BetDto.from(bets))
+                .bets(knockoutBetPrivacyService.toDtoList(bets, viewerUserId))
                 .totalPages(1)
                 .build();
     }

@@ -67,8 +67,10 @@ public class BetsController implements BetsApi {
 
     @Override
     @GetMapping("/opened/seasons/{season-id}")
-    public ResponseEntity<BetsPage> getOpenedBets(@PathVariable("season-id") String seasonId) {
-        return ResponseEntity.ok(betsService.getOpenedBets(seasonId));
+    public ResponseEntity<BetsPage> getOpenedBets(@AuthenticationPrincipal AuthenticatedUser currentUser,
+                                                  @PathVariable("season-id") String seasonId) {
+        String viewerUserId = currentUser != null ? currentUser.getUser().getId() : null;
+        return ResponseEntity.ok(betsService.getOpenedBets(seasonId, viewerUserId));
     }
 
     @Override
@@ -123,12 +125,14 @@ public class BetsController implements BetsApi {
     @Override
     @PreAuthorize("hasAuthority('ADMIN') || hasAuthority('MODERATOR')")
     @GetMapping("/all/seasons/{season-id}")
-    public ResponseEntity<BetsPage> getAllBets(@PathVariable("season-id") String seasonId,
+    public ResponseEntity<BetsPage> getAllBets(@AuthenticationPrincipal AuthenticatedUser currentUser,
+                                               @PathVariable("season-id") String seasonId,
                                                @RequestParam(defaultValue = "0") int page,
                                                @RequestParam(defaultValue = "10") int size,
                                                @RequestParam(required = false) String sortBy) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(sortBy != null ? sortBy : "createdAt").descending());
-        return ResponseEntity.ok(betsService.getAllBets(seasonId, pageable));
+        String viewerUserId = currentUser.getUser().getId();
+        return ResponseEntity.ok(betsService.getAllBets(seasonId, pageable, viewerUserId));
     }
 
     @Override
