@@ -7,10 +7,12 @@ import net.friendly_bets.dto.CalendarNodeDto;
 import net.friendly_bets.dto.CalendarNodesPage;
 import net.friendly_bets.dto.GameweeksOverviewPage;
 import net.friendly_bets.dto.NewCalendarNodeDto;
+import net.friendly_bets.security.details.AuthenticatedUser;
 import net.friendly_bets.services.CalendarsService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
@@ -37,15 +39,19 @@ public class CalendarsController implements CalendarsApi {
     @GetMapping("/seasons/{season-id}/gameweeks-overview")
     public ResponseEntity<GameweeksOverviewPage> getGameweeksOverview(
             @PathVariable("season-id") String seasonId,
-            @RequestParam(value = "calendarNodeId", required = false) String calendarNodeId
+            @RequestParam(value = "calendarNodeId", required = false) String calendarNodeId,
+            @AuthenticationPrincipal AuthenticatedUser currentUser
     ) {
-        return ResponseEntity.ok(calendarsService.getGameweeksOverview(seasonId, calendarNodeId));
+        String viewerUserId = currentUser != null ? currentUser.getUser().getId() : null;
+        return ResponseEntity.ok(calendarsService.getGameweeksOverview(seasonId, calendarNodeId, viewerUserId));
     }
 
     @Override
     @GetMapping("/seasons/{season-id}/actual")
-    public ResponseEntity<BetsPage> getActualCalendarNodeBets(@PathVariable("season-id") String seasonId) {
-        return ResponseEntity.ok(calendarsService.getActualCalendarNodeBets(seasonId));
+    public ResponseEntity<BetsPage> getActualCalendarNodeBets(@AuthenticationPrincipal AuthenticatedUser currentUser,
+                                                              @PathVariable("season-id") String seasonId) {
+        String viewerUserId = currentUser != null ? currentUser.getUser().getId() : null;
+        return ResponseEntity.ok(calendarsService.getActualCalendarNodeBets(seasonId, viewerUserId));
     }
 
     @Override
@@ -58,8 +64,10 @@ public class CalendarsController implements CalendarsApi {
 
     @Override
     @GetMapping("/{calendar-id}/bets")
-    public ResponseEntity<BetsPage> getBetsByCalendarNode(@PathVariable("calendar-id") String calendarNodeId) {
-        return ResponseEntity.ok(calendarsService.getBetsByCalendarNode(calendarNodeId));
+    public ResponseEntity<BetsPage> getBetsByCalendarNode(@AuthenticationPrincipal AuthenticatedUser currentUser,
+                                                            @PathVariable("calendar-id") String calendarNodeId) {
+        String viewerUserId = currentUser != null ? currentUser.getUser().getId() : null;
+        return ResponseEntity.ok(calendarsService.getBetsByCalendarNode(calendarNodeId, viewerUserId));
     }
 
     @Override

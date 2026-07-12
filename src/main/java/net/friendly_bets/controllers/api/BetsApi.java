@@ -83,6 +83,7 @@ public interface BetsApi {
                     content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto")))
     })
     ResponseEntity<BetsPage> getOpenedBets(
+            @Parameter(hidden = true) AuthenticatedUser currentUser,
             @Parameter(description = "Season ID") @NotBlank String seasonId);
 
     @Operation(summary = "Get current user's bets for a league matchday slot", description = "Accessible to authenticated users")
@@ -157,6 +158,7 @@ public interface BetsApi {
                     content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto")))
     })
     ResponseEntity<BetsPage> getAllBets(
+            @Parameter(hidden = true) AuthenticatedUser currentUser,
             @Parameter(description = "Season ID") @NotBlank String seasonId,
             @Parameter(description = "Page number") int page,
             @Parameter(description = "Page size") int size,

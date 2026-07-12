@@ -12,6 +12,7 @@ import net.friendly_bets.dto.BetsPage;
 import net.friendly_bets.dto.CalendarNodeDto;
 import net.friendly_bets.dto.CalendarNodesPage;
 import net.friendly_bets.dto.NewCalendarNodeDto;
+import net.friendly_bets.security.details.AuthenticatedUser;
 import org.springframework.http.ResponseEntity;
 
 import javax.validation.Valid;
@@ -50,6 +51,7 @@ public interface CalendarsApi {
                     content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto")))
     })
     ResponseEntity<BetsPage> getActualCalendarNodeBets(
+            @Parameter(hidden = true) AuthenticatedUser currentUser,
             @Parameter(description = "Season ID") @NotBlank String seasonId);
 
     @Operation(summary = "Add new calendar entry", description = "Accessible only to moderators and administrators")
@@ -72,6 +74,7 @@ public interface CalendarsApi {
                     content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto")))
     })
     ResponseEntity<BetsPage> getBetsByCalendarNode(
+            @Parameter(hidden = true) AuthenticatedUser currentUser,
             @Parameter(description = "Calendar entry ID") @NotBlank String calendarNodeId);
 
     @Operation(summary = "Delete calendar entry", description = "Accessible only to moderators and administrators")
