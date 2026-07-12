@@ -1004,6 +1004,8 @@
     "date": "2026-07-14",
     "timeLocal": "21:00",
     "stage": "semi_final",
+    "home": "FRA",
+    "away": "ESP",
     "labelKey": "wc26.matches.m101",
     "venueKey": "dallas"
   },
@@ -1012,6 +1014,8 @@
     "date": "2026-07-15",
     "timeLocal": "21:00",
     "stage": "semi_final",
+    "home": "ENG",
+    "away": "ARG",
     "labelKey": "wc26.matches.m102",
     "venueKey": "atlanta"
   },
