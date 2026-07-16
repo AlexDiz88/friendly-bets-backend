@@ -1024,6 +1024,8 @@
     "date": "2026-07-18",
     "timeLocal": "23:00",
     "stage": "third_place",
+    "home": "FRA",
+    "away": "ENG",
     "labelKey": "wc26.matches.m103",
     "venueKey": "miami"
   },
@@ -1032,6 +1034,8 @@
     "date": "2026-07-19",
     "timeLocal": "21:00",
     "stage": "final",
+    "home": "ESP",
+    "away": "ARG",
     "labelKey": "wc26.matches.m104",
     "venueKey": "newYork"
   }
