@@ -14,6 +14,7 @@ class FifaMatchParserTest {
         assertEquals("quarter_final", FifaMatchParser.mapKnockoutStage("Quarter-final"));
         assertEquals("semi_final", FifaMatchParser.mapKnockoutStage("Semi-final"));
         assertEquals("third_place", FifaMatchParser.mapKnockoutStage("Play-off for third place"));
+        assertEquals("third_place", FifaMatchParser.mapKnockoutStage("Bronze final"));
         assertEquals("final", FifaMatchParser.mapKnockoutStage("Final"));
         assertNull(FifaMatchParser.mapKnockoutStage("First Stage"));
     }

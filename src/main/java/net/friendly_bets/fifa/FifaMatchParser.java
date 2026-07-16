@@ -168,7 +168,7 @@ public final class FifaMatchParser {
             case "round of 16" -> "round_of_16";
             case "quarter-final", "quarter final" -> "quarter_final";
             case "semi-final", "semi final" -> "semi_final";
-            case "play-off for third place", "playoff for third place" -> "third_place";
+            case "play-off for third place", "playoff for third place", "bronze final" -> "third_place";
             case "final" -> "final";
             default -> null;
         };
