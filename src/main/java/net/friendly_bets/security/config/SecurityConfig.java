@@ -64,6 +64,8 @@ public class SecurityConfig {
                 .antMatchers(HttpMethod.POST, "/api/login").permitAll()
                 .antMatchers("/api/auth/**").permitAll()
                 .antMatchers(HttpMethod.GET, "/api/odds/demo/**").permitAll()
+                .antMatchers(HttpMethod.GET, "/api/client-version").permitAll()
+                .antMatchers(HttpMethod.POST, "/api/client-version/register").permitAll()
                 .and()
                 .formLogin()
                 .loginProcessingUrl("/api/login")
