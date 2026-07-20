@@ -170,7 +170,7 @@ public class TournamentArchiveService {
     }
 
     /**
-     * Display близкий к frontend getGameScoreView (без i18n): FT (HT) [OT… PEN…].
+     * Display как на странице «Результаты» (compact): {@code FT (HT)\n[OT, PEN]} без подписей OT/PEN.
      */
     public static String formatScoreView(GameScore gameScore) {
         if (gameScore == null) {
@@ -195,18 +195,16 @@ public class TournamentArchiveService {
         if (hasOt || hasPen) {
             StringBuilder extras = new StringBuilder();
             if (hasOt && hasFt) {
-                extras.append("OT").append(gameScore.getOverTime().trim());
+                extras.append(gameScore.getOverTime().trim());
             }
             if (hasPen) {
                 if (extras.length() > 0) {
-                    extras.append(' ');
+                    extras.append(", ");
                 }
-                extras.append("PEN").append(gameScore.getPenalty().trim());
+                extras.append(gameScore.getPenalty().trim());
             }
             if (extras.length() > 0) {
-                result.append(" [").append(extras).append(']');
-            } else if (hasPen && !hasFt) {
-                result.append(" [PEN").append(gameScore.getPenalty().trim()).append(']');
+                result.append('\n').append('[').append(extras).append(']');
             }
         }
         return result.toString();
