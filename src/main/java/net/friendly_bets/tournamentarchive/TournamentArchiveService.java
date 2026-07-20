@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
@@ -30,7 +31,6 @@ public class TournamentArchiveService {
     public static final String WC_2026 = "WC_2026";
 
     private final TournamentArchiveRepository tournamentArchiveRepository;
-    private final TournamentArchiveFifaExportService exportService;
     private final TournamentArchiveTeamResolver teamResolver;
     private final ObjectMapper objectMapper;
 
@@ -132,7 +132,7 @@ public class TournamentArchiveService {
 
     @Transactional
     public TournamentArchive importFromReviewFile(String editionCode) {
-        Path path = exportService.reviewJsonPath(editionCode);
+        Path path = reviewJsonPath(editionCode);
         if (!Files.isRegularFile(path)) {
             throw new BadRequestException("tournamentArchiveReviewFileMissing");
         }
@@ -142,6 +142,12 @@ public class TournamentArchiveService {
         } catch (IOException e) {
             throw new BadRequestException("tournamentArchiveImportParseError");
         }
+    }
+
+    public Path reviewJsonPath(String editionCode) {
+        String code = normalize(editionCode);
+        String fileName = "tournament-archive-" + code.toLowerCase(Locale.ROOT).replace('_', '-') + ".json";
+        return Paths.get("data", fileName);
     }
 
     public List<TournamentArchiveMatch> matchesForStage(String editionCode, String stageFilter) {

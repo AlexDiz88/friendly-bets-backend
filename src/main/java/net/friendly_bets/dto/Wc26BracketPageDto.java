@@ -12,9 +12,8 @@ import java.util.List;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class Wc26FifaBracketPageDto {
+public class Wc26BracketPageDto {
 
-    private List<Wc26FifaBracketMatchDto> matches;
+    private List<Wc26BracketMatchDto> matches;
     private LocalDateTime fetchedAt;
-    private String sourceUrl;
 }

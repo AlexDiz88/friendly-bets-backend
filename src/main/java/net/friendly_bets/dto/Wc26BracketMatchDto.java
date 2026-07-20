@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class Wc26FifaBracketMatchDto {
+public class Wc26BracketMatchDto {
 
     private int matchNumber;
     private String stage;
@@ -25,6 +25,5 @@ public class Wc26FifaBracketMatchDto {
     private Integer awayPenaltyScore;
     private String winnerFifaCode;
     private String status;
-    private String liveMinuteLabel;
     private LocalDateTime utcDate;
 }

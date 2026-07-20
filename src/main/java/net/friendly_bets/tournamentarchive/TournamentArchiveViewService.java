@@ -1,12 +1,12 @@
 package net.friendly_bets.tournamentarchive;
 
 import lombok.RequiredArgsConstructor;
-import net.friendly_bets.dto.Wc26FifaBestThirdRowDto;
-import net.friendly_bets.dto.Wc26FifaBracketMatchDto;
-import net.friendly_bets.dto.Wc26FifaBracketPageDto;
-import net.friendly_bets.dto.Wc26FifaGroupTableDto;
-import net.friendly_bets.dto.Wc26FifaStandingRowDto;
-import net.friendly_bets.dto.Wc26FifaStandingsPageDto;
+import net.friendly_bets.dto.Wc26BestThirdRowDto;
+import net.friendly_bets.dto.Wc26BracketMatchDto;
+import net.friendly_bets.dto.Wc26BracketPageDto;
+import net.friendly_bets.dto.Wc26GroupTableDto;
+import net.friendly_bets.dto.Wc26StandingRowDto;
+import net.friendly_bets.dto.Wc26StandingsPageDto;
 import net.friendly_bets.dto.Wc26ScheduleMatchDto;
 import net.friendly_bets.dto.Wc26SchedulePageDto;
 import net.friendly_bets.models.GameScore;
@@ -20,7 +20,6 @@ import net.friendly_bets.repositories.TeamsRepository;
 import net.friendly_bets.wc26.Wc26TeamCatalog;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -57,38 +56,37 @@ public class TournamentArchiveViewService {
         return Wc26SchedulePageDto.builder().matches(matches).build();
     }
 
-    public Wc26FifaStandingsPageDto standingsPage(String editionCode, String groupFilter) {
+    public Wc26StandingsPageDto standingsPage(String editionCode, String groupFilter) {
         TournamentArchive archive = tournamentArchiveService.getByEditionCode(editionCode);
         Map<String, Team> teams = loadTeams(archive);
         Map<String, List<TournamentArchiveStandingRow>> byGroup = new LinkedHashMap<>();
         for (TournamentArchiveStandingRow row : archive.getGroupStandings()) {
             byGroup.computeIfAbsent(row.getGroup(), k -> new ArrayList<>()).add(row);
         }
-        List<Wc26FifaGroupTableDto> groups = new ArrayList<>();
+        List<Wc26GroupTableDto> groups = new ArrayList<>();
         for (Map.Entry<String, List<TournamentArchiveStandingRow>> entry : byGroup.entrySet()) {
-            List<Wc26FifaStandingRowDto> rows = entry.getValue().stream()
+            List<Wc26StandingRowDto> rows = entry.getValue().stream()
                     .sorted(Comparator.comparingInt(TournamentArchiveStandingRow::getRank))
                     .map(r -> toStandingRow(r, teams))
                     .collect(Collectors.toCollection(ArrayList::new));
-            groups.add(Wc26FifaGroupTableDto.builder().group(entry.getKey()).rows(rows).build());
+            groups.add(Wc26GroupTableDto.builder().group(entry.getKey()).rows(rows).build());
         }
         if (groupFilter != null && !groupFilter.isBlank() && !"all".equalsIgnoreCase(groupFilter)) {
             String letter = groupFilter.trim().toUpperCase(Locale.ROOT);
             groups = groups.stream().filter(g -> letter.equals(g.getGroup())).toList();
         }
-        List<Wc26FifaBestThirdRowDto> bestThirds = archive.getBestThirdPlaces().stream()
+        List<Wc26BestThirdRowDto> bestThirds = archive.getBestThirdPlaces().stream()
                 .sorted(Comparator.comparingInt(TournamentArchiveBestThirdRow::getRank))
                 .map(r -> toBestThird(r, teams))
                 .toList();
-        return Wc26FifaStandingsPageDto.builder()
+        return Wc26StandingsPageDto.builder()
                 .groups(groups)
                 .bestThirdPlaces(bestThirds)
                 .fetchedAt(archive.getImportedAt() != null ? archive.getImportedAt() : archive.getExportedAt())
-                .sourceUrl("tournament_archives:" + archive.getEditionCode())
                 .build();
     }
 
-    public Wc26FifaBracketPageDto bracketPage(String editionCode, String stageFilter) {
+    public Wc26BracketPageDto bracketPage(String editionCode, String stageFilter) {
         TournamentArchive archive = tournamentArchiveService.getByEditionCode(editionCode);
         Map<String, Team> teams = loadTeams(archive);
         Map<Integer, TournamentArchiveBracketPair> bracketByMatch = new HashMap<>();
@@ -98,13 +96,12 @@ public class TournamentArchiveViewService {
             }
         }
         List<TournamentArchiveMatch> matches = tournamentArchiveService.knockoutMatches(editionCode, stageFilter);
-        List<Wc26FifaBracketMatchDto> dtos = matches.stream()
+        List<Wc26BracketMatchDto> dtos = matches.stream()
                 .map(m -> toBracketMatch(m, teams, bracketByMatch.get(m.getMatchNumber())))
                 .toList();
-        return Wc26FifaBracketPageDto.builder()
+        return Wc26BracketPageDto.builder()
                 .matches(dtos)
                 .fetchedAt(archive.getImportedAt() != null ? archive.getImportedAt() : archive.getExportedAt())
-                .sourceUrl("tournament_archives:" + archive.getEditionCode())
                 .build();
     }
 
@@ -162,12 +159,12 @@ public class TournamentArchiveViewService {
                 .build();
     }
 
-    private Wc26FifaStandingRowDto toStandingRow(TournamentArchiveStandingRow row, Map<String, Team> teams) {
+    private Wc26StandingRowDto toStandingRow(TournamentArchiveStandingRow row, Map<String, Team> teams) {
         String fifa = row.getFifaCode();
         if (fifa == null || fifa.isBlank()) {
             fifa = fifaOf(row.getTeamId(), teams);
         }
-        return Wc26FifaStandingRowDto.builder()
+        return Wc26StandingRowDto.builder()
                 .rank(row.getRank())
                 .fifaCode(fifa)
                 .played(row.getPlayed())
@@ -180,16 +177,15 @@ public class TournamentArchiveViewService {
                 .points(row.getPoints())
                 .form(List.of())
                 .qualificationStatus(row.getQualificationStatus())
-                .liveNow(false)
                 .build();
     }
 
-    private Wc26FifaBestThirdRowDto toBestThird(TournamentArchiveBestThirdRow row, Map<String, Team> teams) {
+    private Wc26BestThirdRowDto toBestThird(TournamentArchiveBestThirdRow row, Map<String, Team> teams) {
         String fifa = row.getFifaCode();
         if (fifa == null || fifa.isBlank()) {
             fifa = fifaOf(row.getTeamId(), teams);
         }
-        return Wc26FifaBestThirdRowDto.builder()
+        return Wc26BestThirdRowDto.builder()
                 .rank(row.getRank())
                 .group(row.getGroup())
                 .fifaCode(fifa)
@@ -205,7 +201,7 @@ public class TournamentArchiveViewService {
                 .build();
     }
 
-    private Wc26FifaBracketMatchDto toBracketMatch(
+    private Wc26BracketMatchDto toBracketMatch(
             TournamentArchiveMatch m,
             Map<String, Team> teams,
             TournamentArchiveBracketPair pair
@@ -238,7 +234,7 @@ public class TournamentArchiveViewService {
                     ? (runnerUp ? "RU" + pair.getAway() : "W" + pair.getAway())
                     : null;
         }
-        return Wc26FifaBracketMatchDto.builder()
+        return Wc26BracketMatchDto.builder()
                 .matchNumber(m.getMatchNumber())
                 .stage(TournamentArchiveStages.toUiStage(m.getStage()))
                 .homeFifaCode(fifaOf(m.getHomeTeamId(), teams))

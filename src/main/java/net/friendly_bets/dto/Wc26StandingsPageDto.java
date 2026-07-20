@@ -12,10 +12,9 @@ import java.util.List;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class Wc26FifaStandingsPageDto {
+public class Wc26StandingsPageDto {
 
-    private List<Wc26FifaGroupTableDto> groups;
-    private List<Wc26FifaBestThirdRowDto> bestThirdPlaces;
+    private List<Wc26GroupTableDto> groups;
+    private List<Wc26BestThirdRowDto> bestThirdPlaces;
     private LocalDateTime fetchedAt;
-    private String sourceUrl;
 }

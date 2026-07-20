@@ -11,8 +11,8 @@ import java.util.List;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class Wc26FifaGroupTableDto {
+public class Wc26GroupTableDto {
 
     private String group;
-    private List<Wc26FifaStandingRowDto> rows;
+    private List<Wc26StandingRowDto> rows;
 }

@@ -9,7 +9,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class Wc26FifaBestThirdRowDto {
+public class Wc26BestThirdRowDto {
 
     private int rank;
     private String group;
