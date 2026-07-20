@@ -15,6 +15,8 @@ public interface TeamsRepository extends MongoRepository<Team, String> {
 
     Optional<Team> findByTitle(String title);
 
+    Optional<Team> findByCountryIgnoreCase(String country);
+
     @Query("{ 'external_aliases': { $elemMatch: { 'provider': ?0, 'external_id': ?1 } } }")
     Optional<Team> findByExternalAliasId(String provider, int externalId);
 
