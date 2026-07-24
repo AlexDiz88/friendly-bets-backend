@@ -3,7 +3,6 @@ package net.friendly_bets.tournamentarchive;
 import lombok.RequiredArgsConstructor;
 import net.friendly_bets.models.Team;
 import net.friendly_bets.repositories.TeamsRepository;
-import net.friendly_bets.services.TeamAliasResolver;
 import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
@@ -15,7 +14,7 @@ import java.util.Optional;
 import java.util.Set;
 
 /**
- * FIFA 3-letter code (MEX, RSA, …) → Mongo {@link Team#getId()}.
+ * FIFA 3-letter code (MEX, RSA, …) → Mongo {@link Team#getId()} via {@link Team#getCountry()}.
  * Используется при import review-JSON; сами FIFA-коды в коллекцию не пишутся.
  */
 @Component
@@ -33,7 +32,6 @@ public class TournamentArchiveTeamResolver {
             "CUW", List.of("CUW", "CUR")
     );
 
-    private final TeamAliasResolver teamAliasResolver;
     private final TeamsRepository teamsRepository;
 
     private final Map<String, Team> cache = new HashMap<>();
@@ -61,13 +59,11 @@ public class TournamentArchiveTeamResolver {
         if (cache.containsKey(code)) {
             return cache.get(code);
         }
-        Optional<Team> resolved = teamAliasResolver.resolveWc26Code(code);
-        if (resolved.isEmpty()) {
-            for (String country : countryCandidates(code)) {
-                resolved = teamsRepository.findByCountryIgnoreCase(country);
-                if (resolved.isPresent()) {
-                    break;
-                }
+        Optional<Team> resolved = Optional.empty();
+        for (String country : countryCandidates(code)) {
+            resolved = teamsRepository.findByCountryIgnoreCase(country);
+            if (resolved.isPresent()) {
+                break;
             }
         }
         if (resolved.isPresent()) {

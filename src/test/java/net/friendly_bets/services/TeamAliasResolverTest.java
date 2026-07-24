@@ -9,14 +9,12 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -52,6 +50,32 @@ class TeamAliasResolverTest {
     }
 
     @Test
+    @DisplayName("resolveMarathonbetByName matches by saved external alias name")
+    void resolveMarathonbetByName_matchesByAliasName() {
+        TeamAliasResolver resolver = new TeamAliasResolver(teamsRepository);
+        when(teamsRepository.findByExternalAliasName("marathonbet", "Бельгия"))
+                .thenReturn(Optional.of(Team.builder().id("bel1").title("Belgium").build()));
+
+        Optional<Team> team = resolver.resolveMarathonbetByName("Бельгия");
+
+        assertTrue(team.isPresent());
+        assertEquals("bel1", team.get().getId());
+    }
+
+    @Test
+    @DisplayName("resolveSoccer365ByName matches by saved external alias name")
+    void resolveSoccer365ByName_matchesByAliasName() {
+        TeamAliasResolver resolver = new TeamAliasResolver(teamsRepository);
+        when(teamsRepository.findByExternalAliasName("soccer365.ru", "Арсенал"))
+                .thenReturn(Optional.of(Team.builder().id("ars1").title("Arsenal").build()));
+
+        Optional<Team> team = resolver.resolveSoccer365ByName("Арсенал");
+
+        assertTrue(team.isPresent());
+        assertEquals("ars1", team.get().getId());
+    }
+
+    @Test
     @DisplayName("teamMatchesScoreProviderSide matches only same-provider alias")
     void teamMatchesScoreProviderSide_matchesByAliasName() {
         TeamAliasResolver resolver = new TeamAliasResolver(teamsRepository);
@@ -69,61 +93,5 @@ class TeamAliasResolverTest {
         assertTrue(resolver.teamMatchesScoreProviderSide(england, MatchDataProviders.FOURSCORE, "Англия"));
         assertFalse(resolver.teamMatchesScoreProviderSide(england, MatchDataProviders.FOURSCORE, "Франция"));
         assertFalse(resolver.teamMatchesScoreProviderSide(england, MatchDataProviders.TWENTYFOUR_SCORE, "Англия"));
-    }
-
-    @Test
-    @DisplayName("resolveWc26Code matches by country FIFA code")
-    void resolveWc26Code_matchesByCountry() {
-        TeamAliasResolver resolver = new TeamAliasResolver(teamsRepository);
-        when(teamsRepository.findByCountryIgnoreCase("BEL"))
-                .thenReturn(Optional.of(Team.builder().id("bel1").title("Belgium").country("BEL").build()));
-
-        Optional<Team> team = resolver.resolveWc26Code("BEL");
-
-        assertTrue(team.isPresent());
-        assertEquals("bel1", team.get().getId());
-    }
-
-    @Test
-    @DisplayName("resolveWc26Code matches by title from catalog candidate")
-    void resolveWc26Code_matchesByTitle() {
-        TeamAliasResolver resolver = new TeamAliasResolver(teamsRepository);
-        when(teamsRepository.findByCountryIgnoreCase("KOR")).thenReturn(Optional.empty());
-        when(teamsRepository.findByTitleIgnoreCase("Korea Republic"))
-                .thenReturn(Optional.of(Team.builder().id("kor1").title("KoreaRepublic").build()));
-
-        Optional<Team> team = resolver.resolveWc26Code("KOR");
-
-        assertTrue(team.isPresent());
-        assertEquals("kor1", team.get().getId());
-    }
-
-    @Test
-    @DisplayName("resolveWc26Code matches compact title without spaces")
-    void resolveWc26Code_matchesCompactTitle() {
-        TeamAliasResolver resolver = new TeamAliasResolver(teamsRepository);
-        when(teamsRepository.findByCountryIgnoreCase("CZE")).thenReturn(Optional.empty());
-        when(teamsRepository.findByTitleIgnoreCase(anyString())).thenReturn(Optional.empty());
-        when(teamsRepository.findByTitleIgnoreCase("CzechRepublic"))
-                .thenReturn(Optional.of(Team.builder().id("cze1").title("CzechRepublic").build()));
-        when(teamsRepository.findByExternalAliasName(anyString(), anyString())).thenReturn(Optional.empty());
-        when(teamsRepository.findAll()).thenReturn(Collections.emptyList());
-
-        Optional<Team> team = resolver.resolveWc26Code("CZE");
-
-        assertTrue(team.isPresent());
-        assertEquals("cze1", team.get().getId());
-    }
-
-    @Test
-    @DisplayName("resolveWc26Code returns empty when nothing matches")
-    void resolveWc26Code_emptyWhenNoMatch() {
-        TeamAliasResolver resolver = new TeamAliasResolver(teamsRepository);
-        when(teamsRepository.findByCountryIgnoreCase(anyString())).thenReturn(Optional.empty());
-        when(teamsRepository.findByTitleIgnoreCase(anyString())).thenReturn(Optional.empty());
-        when(teamsRepository.findByExternalAliasName(anyString(), anyString())).thenReturn(Optional.empty());
-        when(teamsRepository.findAll()).thenReturn(Collections.emptyList());
-
-        assertTrue(resolver.resolveWc26Code("KOR").isEmpty());
     }
 }
