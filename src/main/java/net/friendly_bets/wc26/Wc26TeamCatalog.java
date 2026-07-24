@@ -8,12 +8,13 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * FIFA 3-letter codes for WC26 group-stage teams → odds-api.io {@code external_name} on {@link net.friendly_bets.models.Team}.
- * Mirrors frontend {@code wc26.teams.*} display names (same strings as odds-api events).
+ * FIFA 3-letter codes for WC26 group-stage teams → known display/title name candidates
+ * used to resolve internal {@link net.friendly_bets.models.Team} without odds-api.io.
+ * Mirrors frontend {@code wc26.teams.*} display names.
  */
 public final class Wc26TeamCatalog {
 
-    private static final Map<String, List<String>> ODDS_API_NAMES_BY_FIFA_CODE = new LinkedHashMap<>();
+    private static final Map<String, List<String>> NAMES_BY_FIFA_CODE = new LinkedHashMap<>();
 
     static {
         names("MEX", "Mexico", "Мексика");
@@ -71,7 +72,7 @@ public final class Wc26TeamCatalog {
             return Optional.empty();
         }
         String compact = normalizeCompact(name);
-        for (Map.Entry<String, List<String>> entry : ODDS_API_NAMES_BY_FIFA_CODE.entrySet()) {
+        for (Map.Entry<String, List<String>> entry : NAMES_BY_FIFA_CODE.entrySet()) {
             if (normalizeCompact(entry.getKey()).equals(compact)) {
                 return Optional.of(entry.getKey());
             }
@@ -112,13 +113,19 @@ public final class Wc26TeamCatalog {
         for (String alternate : alternates) {
             list.add(alternate);
         }
-        ODDS_API_NAMES_BY_FIFA_CODE.put(fifaCode, List.copyOf(list));
+        NAMES_BY_FIFA_CODE.put(fifaCode, List.copyOf(list));
     }
 
-    public static List<String> oddsApiNameCandidatesForFifaCode(String fifaCode) {
+    public static List<String> nameCandidatesForFifaCode(String fifaCode) {
         if (fifaCode == null || fifaCode.isBlank()) {
             return List.of();
         }
-        return ODDS_API_NAMES_BY_FIFA_CODE.getOrDefault(fifaCode.trim(), List.of());
+        return NAMES_BY_FIFA_CODE.getOrDefault(fifaCode.trim(), List.of());
+    }
+
+    /** @deprecated use {@link #nameCandidatesForFifaCode(String)} */
+    @Deprecated
+    public static List<String> oddsApiNameCandidatesForFifaCode(String fifaCode) {
+        return nameCandidatesForFifaCode(fifaCode);
     }
 }

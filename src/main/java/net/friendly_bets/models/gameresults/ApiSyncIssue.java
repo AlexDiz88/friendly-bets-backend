@@ -18,28 +18,6 @@ import java.time.LocalDateTime;
 @Document(collection = "api_sync_issues")
 public class ApiSyncIssue {
 
-    public enum Provider {
-        FOURSCORE,
-        ODDS_API,
-        MARATHONBET
-    }
-
-    public enum IssueType {
-        TEAM_MAPPING_MISSING,
-        EVENT_MAPPING_MISSING,
-        API_SCORE_CHANGED,
-        INVALID_CANONICAL_SCORE,
-        SCORE_NOT_STABLE,
-        PROVIDER_SCORE_MISMATCH,
-        PRIMARY_PROVIDER_UNAVAILABLE,
-        SECONDARY_PROVIDER_UNAVAILABLE,
-        ODDS_MARKET_UNMAPPED,
-        ODDS_SELECTION_UNMAPPED,
-        ODDS_QUOTE_MISMATCH,
-        ODDS_QUOTE_REJECTED,
-        MARATHONBET_FETCH_FAILED
-    }
-
     @MongoId
     @Field(name = "_id")
     private String id;
@@ -83,4 +61,20 @@ public class ApiSyncIssue {
 
     @Field(name = "message")
     private String message;
+
+    public enum IssueType {
+        TEAM_MAPPING_MISSING,
+        EVENT_MAPPING_MISSING,
+        MARATHONBET_FETCH_FAILED,
+        PRIMARY_PROVIDER_UNAVAILABLE,
+        SECONDARY_PROVIDER_UNAVAILABLE,
+        API_SCORE_CHANGED,
+        INVALID_CANONICAL_SCORE,
+        SCORE_NOT_STABLE,
+        PROVIDER_SCORE_MISMATCH,
+        ODDS_MARKET_UNMAPPED,
+        ODDS_SELECTION_UNMAPPED,
+        ODDS_QUOTE_MISMATCH,
+        ODDS_QUOTE_REJECTED
+    }
 }

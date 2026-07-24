@@ -1,7 +1,7 @@
 package net.friendly_bets.marathonbet;
 
 import lombok.RequiredArgsConstructor;
-import net.friendly_bets.oddsapi.OddsSyncCoordinator;
+import net.friendly_bets.marathonbet.config.MarathonbetProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -18,15 +18,12 @@ public class MarathonbetOddsSyncScheduler {
 
     private static final Logger log = LoggerFactory.getLogger(MarathonbetOddsSyncScheduler.class);
 
-    private final OddsSyncCoordinator oddsSyncCoordinator;
+    private final MarathonbetProperties marathonbetProperties;
+    private final MarathonbetSyncService marathonbetSyncService;
 
     @Scheduled(fixedDelayString = "${marathonbet.slot-sync-interval-ms}")
     public void syncCurrentSlot() {
-        try {
-            oddsSyncCoordinator.runMarathonSlotSync(MarathonbetSlotScope.CURRENT);
-        } catch (Exception e) {
-            log.warn("marathonbet current-slot sync failed: {}", e.getMessage());
-        }
+        runScope(MarathonbetSlotScope.CURRENT);
     }
 
     @Scheduled(
@@ -34,10 +31,17 @@ public class MarathonbetOddsSyncScheduler {
             initialDelayString = "${marathonbet.slot-sync-stagger-ms}"
     )
     public void syncNextSlot() {
+        runScope(MarathonbetSlotScope.NEXT);
+    }
+
+    private void runScope(MarathonbetSlotScope scope) {
+        if (!marathonbetProperties.isSyncEnabled()) {
+            return;
+        }
         try {
-            oddsSyncCoordinator.runMarathonSlotSync(MarathonbetSlotScope.NEXT);
+            marathonbetSyncService.runTick(scope);
         } catch (Exception e) {
-            log.warn("marathonbet next-slot sync failed: {}", e.getMessage());
+            log.warn("marathonbet {}-slot sync failed: {}", scope, e.getMessage());
         }
     }
 }

@@ -89,4 +89,7 @@ public class Bet {
 
     @Field(name = "calendar_node_id")
     private String calendarNodeId;
+
+    @Field(name = "match_schedule_id")
+    private String matchScheduleId;
 }

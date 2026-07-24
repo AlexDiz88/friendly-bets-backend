@@ -5,7 +5,6 @@ import net.friendly_bets.models.gameresults.GameResultRecord;
 import net.friendly_bets.models.odds.GameResultMergedOdds;
 import net.friendly_bets.models.odds.OddsMarketGroup;
 import net.friendly_bets.oddsapi.mapping.MappedOddsQuote;
-import net.friendly_bets.oddsapi.mapping.OddsMappingPipeline;
 import net.friendly_bets.oddsapi.mapping.OddsMergeResult;
 import net.friendly_bets.oddsapi.mapping.OddsMerger;
 import net.friendly_bets.oddsapi.mapping.OddsProductionMergeFilter;
@@ -15,51 +14,16 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 /**
- * Персист merged odds: {@link OddsMappingPipeline} (маппинг по БК → мерж → best odds).
+ * Персист merged odds из Marathonbet scrape (и чтение снимков для OddsPick UI).
  */
 @Service
 @RequiredArgsConstructor
 public class OddsMergedOddsService {
 
     private final GameResultMergedOddsRepository mergedOddsRepository;
-    private final OddsMappingPipeline oddsMappingPipeline;
-
-    public OddsMergeResult buildAndPersist(
-            GameResultRecord match,
-            Map<String, List<net.friendly_bets.oddsapi.client.dto.OddsApiMarketDto>> bookmakerMarkets,
-            Map<String, String> canonicalByLower,
-            OddsMatchContext matchContext,
-            List<String> bookmakers,
-            LocalDateTime fetchedAt,
-            boolean frozen
-    ) {
-        OddsMergeResult mergeResult = oddsMappingPipeline.build(bookmakerMarkets, canonicalByLower, matchContext);
-        List<OddsMarketGroup> groups = mergeResult.getMarketGroups();
-        OddsSelectionKey.enrichGroups(groups);
-        enrichBetTitles(groups);
-        OddsResultTotalEnricher.appendCalculatedGroups(groups, bookmakers);
-        OddsHalfCorrectScoreSubgroupSplitter.splitIntoSubgroups(groups);
-        OddsPeriodHandicapSubgroupSplitter.splitIntoSubgroups(groups);
-        OddsResultTotalEnricher.applyCategoryMetadata(groups);
-        OddsLineRowDeduper.dedupeMarketGroups(groups);
-        OddsMerger.sortMarketGroupRows(groups);
-
-        if (match == null || match.getId() == null) {
-            return mergeResult;
-        }
-
-        Optional<GameResultMergedOdds> existing = mergedOddsRepository.findByGameResultId(match.getId());
-        if (existing.isPresent() && existing.get().getFrozenAt() != null) {
-            return mergeResult;
-        }
-
-        persistMergedSnapshot(match.getId(), bookmakers, groups, fetchedAt, frozen);
-        return mergeResult;
-    }
 
     public Optional<GameResultMergedOdds> findByGameResultId(String gameResultId) {
         return mergedOddsRepository.findByGameResultId(gameResultId);

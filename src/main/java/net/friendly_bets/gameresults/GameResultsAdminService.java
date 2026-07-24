@@ -71,8 +71,7 @@ public class GameResultsAdminService {
         record.setFinalizedSource(GameResultFinalizedSource.API.name());
         record.setAdminCorrected(false);
         record.setStableScorePollCount(Math.max(record.getStableScorePollCount(), 2));
-        record.setLastSeenCanonicalScoreHash(
-                net.friendly_bets.gameresults.MatchResultStabilizationService.canonicalScoreHash(normalized));
+        record.setLastSeenCanonicalScoreHash(CanonicalScoreNormalizer.canonicalScoreHash(normalized));
 
         gameResultRecordRepository.save(record);
         return gameResultDisplayService.toDisplayDto(record);

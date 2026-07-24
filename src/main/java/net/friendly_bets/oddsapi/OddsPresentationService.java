@@ -6,45 +6,32 @@ import net.friendly_bets.exceptions.BadRequestException;
 import net.friendly_bets.exceptions.NotFoundException;
 import net.friendly_bets.models.gameresults.GameResultRecord;
 import net.friendly_bets.models.odds.GameResultMergedOdds;
-import net.friendly_bets.models.odds.GameResultOdds;
 import net.friendly_bets.models.odds.OddsMarketGroup;
-import net.friendly_bets.oddsapi.client.OddsApiClient;
-import net.friendly_bets.oddsapi.client.dto.OddsApiEventDto;
-import net.friendly_bets.oddsapi.client.dto.OddsApiEventOddsDto;
-import net.friendly_bets.oddsapi.client.dto.OddsApiMarketDto;
-import net.friendly_bets.oddsapi.config.OddsApiProperties;
 import net.friendly_bets.oddsapi.mapping.BetTitleKey;
 import net.friendly_bets.oddsapi.mapping.OddsMerger;
-import net.friendly_bets.repositories.GameResultOddsRepository;
 import net.friendly_bets.repositories.GameResultRecordRepository;
-import net.friendly_bets.services.GetEntityService;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
-import java.util.Set;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
+/**
+ * Read-only odds presentation from Mongo ({@code game_result_merged_odds}).
+ */
 @Service
 @RequiredArgsConstructor
 public class OddsPresentationService {
 
+    private static final List<String> DEFAULT_PRESENTATION_BOOKMAKERS = List.of("Marathonbet");
+
     private final GameResultRecordRepository gameResultRecordRepository;
-    private final GameResultOddsRepository gameResultOddsRepository;
-    private final OddsApiClient oddsApiClient;
-    private final OddsApiProperties properties;
-    private final OddsApiEventMatcher eventMatcher;
-    private final GetEntityService getEntityService;
     private final OddsMergedOddsService oddsMergedOddsService;
 
     public OddsEventMarketsDto getMarketsForGameResult(String gameResultId) {
-        if (!oddsApiClient.isConfigured()) {
-            throw new BadRequestException("oddsApiNotConfigured");
-        }
         GameResultRecord match = gameResultRecordRepository.findById(gameResultId)
                 .orElseThrow(() -> new NotFoundException("GameResult", gameResultId));
         LocalDateTime now = GameResultNotStarted.nowUtc();
@@ -52,69 +39,16 @@ public class OddsPresentationService {
             throw new BadRequestException("matchAlreadyStarted");
         }
 
-        List<String> bookmakers = properties.getBookmakers();
-        if (bookmakers == null || bookmakers.isEmpty()) {
-            throw new BadRequestException("oddsApiBookmakersNotConfigured");
-        }
-
-        Map<String, String> canonicalByLower = OddsBookmakerKeys.mapApiKeysToConfigured(bookmakers);
-        List<String> canonicalBookmakers = new ArrayList<>(canonicalByLower.values());
-
         Optional<GameResultMergedOdds> mergedSnapshot = oddsMergedOddsService.findByGameResultId(gameResultId);
-        if (mergedSnapshot.isPresent() && mergedSnapshot.get().getFrozenAt() != null) {
-            List<OddsMarketGroup> frozenGroups = new ArrayList<>(mergedSnapshot.get().getMarketGroups());
-            List<String> presentationBookmakers = resolvePresentationBookmakers(mergedSnapshot, canonicalBookmakers);
-            prepareMarketGroupsForPresentation(frozenGroups, presentationBookmakers);
-            return toDto(match, frozenGroups, mergedSnapshot.get().getFetchedAt(), presentationBookmakers);
+        if (mergedSnapshot.isEmpty()
+                || mergedSnapshot.get().getMarketGroups() == null
+                || mergedSnapshot.get().getMarketGroups().isEmpty()) {
+            throw new BadRequestException("oddsNotAvailable");
         }
 
-        List<OddsMarketGroup> groups;
-        LocalDateTime fetchedAt;
+        List<String> presentationBookmakers = resolvePresentationBookmakers(mergedSnapshot);
 
-        if (isMergedSnapshotUsable(mergedSnapshot, now)) {
-            groups = new ArrayList<>(mergedSnapshot.get().getMarketGroups());
-            fetchedAt = mergedSnapshot.get().getFetchedAt() != null ? mergedSnapshot.get().getFetchedAt() : now;
-        } else if (mergedSnapshotHasMarathonbet(mergedSnapshot)) {
-            // Синк Marathonbet — источник истины; не перезаписывать odds-api при открытии диалога.
-            groups = new ArrayList<>(mergedSnapshot.get().getMarketGroups());
-            fetchedAt = mergedSnapshot.get().getFetchedAt() != null ? mergedSnapshot.get().getFetchedAt() : now;
-        } else {
-            List<GameResultOdds> cached = gameResultOddsRepository.findByGameResultId(gameResultId);
-            boolean oddsApiCacheStale = isStale(cached, now);
-            Map<String, List<OddsApiMarketDto>> bookmakerMarkets = oddsApiCacheStale
-                    ? refreshFromApi(match, bookmakers, now)
-                    : fromCached(cached);
-            fetchedAt = oddsApiCacheStale ? now : cached.stream()
-                    .map(GameResultOdds::getFetchedAt)
-                    .filter(java.util.Objects::nonNull)
-                    .max(LocalDateTime::compareTo)
-                    .orElse(now);
-
-            if (bookmakerMarkets.isEmpty()) {
-                if (mergedSnapshot.isPresent() && mergedSnapshot.get().getMarketGroups() != null
-                        && !mergedSnapshot.get().getMarketGroups().isEmpty()) {
-                    groups = mergedSnapshot.get().getMarketGroups();
-                    fetchedAt = mergedSnapshot.get().getFetchedAt() != null ? mergedSnapshot.get().getFetchedAt() : now;
-                } else {
-                    throw new BadRequestException("oddsNotAvailable");
-                }
-            } else {
-                OddsMatchContext matchContext = buildMatchContext(match);
-                var mergeResult = oddsMergedOddsService.buildAndPersist(
-                        match,
-                        bookmakerMarkets,
-                        canonicalByLower,
-                        matchContext,
-                        canonicalBookmakers,
-                        fetchedAt,
-                        false
-                );
-                groups = mergeResult.getMarketGroups();
-            }
-        }
-
-        List<OddsMarketGroup> presentationGroups = new ArrayList<>(groups);
-        List<String> presentationBookmakers = resolvePresentationBookmakers(mergedSnapshot, canonicalBookmakers);
+        List<OddsMarketGroup> presentationGroups = new ArrayList<>(mergedSnapshot.get().getMarketGroups());
         prepareMarketGroupsForPresentation(presentationGroups, presentationBookmakers);
         presentationGroups = presentationGroups.stream()
                 .filter(g -> (g.getRows() != null && !g.getRows().isEmpty())
@@ -125,20 +59,20 @@ public class OddsPresentationService {
             throw new BadRequestException("oddsNotAvailable");
         }
 
+        LocalDateTime fetchedAt = mergedSnapshot.get().getFetchedAt() != null
+                ? mergedSnapshot.get().getFetchedAt()
+                : now;
         return toDto(match, presentationGroups, fetchedAt, presentationBookmakers);
     }
 
-    private List<String> resolvePresentationBookmakers(
-            Optional<GameResultMergedOdds> mergedSnapshot,
-            List<String> oddsApiBookmakers
-    ) {
+    private List<String> resolvePresentationBookmakers(Optional<GameResultMergedOdds> mergedSnapshot) {
         if (mergedSnapshot.isPresent()) {
             List<String> fromMerged = mergedSnapshot.get().getBookmakers();
             if (fromMerged != null && !fromMerged.isEmpty()) {
                 return new ArrayList<>(fromMerged);
             }
         }
-        return oddsApiBookmakers;
+        return new ArrayList<>(DEFAULT_PRESENTATION_BOOKMAKERS);
     }
 
     private void prepareMarketGroupsForPresentation(List<OddsMarketGroup> groups, List<String> bookmakers) {
@@ -184,47 +118,6 @@ public class OddsPresentationService {
                 filterGroupsRecursive(group.getSubgroups(), allowed);
             }
         }
-    }
-
-    private static boolean mergedSnapshotHasMarathonbet(Optional<GameResultMergedOdds> mergedSnapshot) {
-        return MarathonbetMergedOddsGuard.hasProductionMarathonOdds(mergedSnapshot);
-    }
-
-    public Map<String, List<OddsApiMarketDto>> refreshFromApi(
-            GameResultRecord match,
-            List<String> bookmakers,
-            LocalDateTime fetchedAt
-    ) {
-        if (!GameResultNotStarted.isNotStarted(match, fetchedAt)) {
-            return Map.of();
-        }
-        Long eventId = resolveEventId(match);
-        List<OddsApiEventOddsDto> responses = oddsApiClient.fetchOddsMulti(List.of(eventId), bookmakers);
-        if (responses == null || responses.isEmpty()) {
-            return Map.of();
-        }
-        OddsApiEventOddsDto eventOdds = responses.get(0);
-        Map<String, List<OddsApiMarketDto>> byBookmaker = eventOdds.getBookmakers() != null
-                ? eventOdds.getBookmakers()
-                : Map.of();
-
-        for (String bookmaker : bookmakers) {
-            List<OddsApiMarketDto> markets = byBookmaker.get(bookmaker);
-            if (markets == null || markets.isEmpty()) {
-                continue;
-            }
-            GameResultOdds entity = gameResultOddsRepository
-                    .findByGameResultIdAndBookmaker(match.getId(), bookmaker)
-                    .orElse(GameResultOdds.builder()
-                            .gameResultId(match.getId())
-                            .bookmaker(bookmaker)
-                            .build());
-            entity.setOddsApiEventId(eventId);
-            entity.setFetchedAt(fetchedAt);
-            entity.setMarkets(OddsApiMarketMapper.toMarkets(markets));
-            gameResultOddsRepository.save(entity);
-        }
-        return byBookmaker;
     }
 
     public Optional<OddsLineSelection> findSelection(
@@ -324,9 +217,6 @@ public class OddsPresentationService {
         return Optional.empty();
     }
 
-    public record OddsLineSelection(String category, net.friendly_bets.models.odds.OddsLineRow row, String odds) {
-    }
-
     private OddsEventMarketsDto toDto(
             GameResultRecord match,
             List<OddsMarketGroup> groups,
@@ -339,76 +229,16 @@ public class OddsPresentationService {
                 .awayTeamId(match.getAwayTeamId())
                 .status(match.getStatus())
                 .kickoffUtc(match.getUtcDate())
+                .fetchedAt(fetchedAt)
                 .bookmakers(bookmakers)
                 .marketGroups(groups)
-                .fetchedAt(fetchedAt)
                 .build();
     }
 
-    private Long resolveEventId(GameResultRecord match) {
-        if (match.getOddsApiEventId() != null && match.getOddsApiEventId() > 0) {
-            return match.getOddsApiEventId();
-        }
-        String leagueSlug = OddsApiLeagueMapping.toLeagueSlug(
-                net.friendly_bets.models.League.LeagueCode.valueOf(match.getLeagueCode()),
-                properties
-        ).orElseThrow(() -> new BadRequestException("oddsLeagueSlugNotConfigured"));
-
-        List<OddsApiEventDto> events = oddsApiClient.fetchEvents(leagueSlug, "pending");
-        Optional<Long> resolved = eventMatcher.resolveAndPersistEventId(
-                match,
-                events,
-                match.getLeagueCode(),
-                match.getSeason(),
-                match.getMatchday()
-        );
-        return resolved.orElseThrow(() -> new BadRequestException("oddsEventNotMapped"));
-    }
-
-    private boolean isMergedSnapshotUsable(Optional<GameResultMergedOdds> mergedSnapshot, LocalDateTime now) {
-        if (mergedSnapshot.isEmpty()) {
-            return false;
-        }
-        GameResultMergedOdds merged = mergedSnapshot.get();
-        if (merged.getMarketGroups() == null || merged.getMarketGroups().isEmpty()) {
-            return false;
-        }
-        return !isMergedStale(merged, now);
-    }
-
-    private boolean isMergedStale(GameResultMergedOdds merged, LocalDateTime now) {
-        if (merged.getFetchedAt() == null) {
-            return true;
-        }
-        int minutes = properties.getPresentationStaleMinutes();
-        LocalDateTime threshold = now.minusMinutes(Math.max(1, minutes));
-        return merged.getFetchedAt().isBefore(threshold);
-    }
-
-    private boolean isStale(List<GameResultOdds> cached, LocalDateTime now) {
-        if (cached == null || cached.isEmpty()) {
-            return true;
-        }
-        int minutes = properties.getPresentationStaleMinutes();
-        LocalDateTime threshold = now.minusMinutes(Math.max(1, minutes));
-        return cached.stream()
-                .anyMatch(o -> o.getFetchedAt() == null || o.getFetchedAt().isBefore(threshold));
-    }
-
-    private Map<String, List<OddsApiMarketDto>> fromCached(List<GameResultOdds> cached) {
-        Map<String, List<OddsApiMarketDto>> result = new LinkedHashMap<>();
-        for (GameResultOdds doc : cached) {
-            if (doc.getMarkets() == null || doc.getMarkets().isEmpty()) {
-                continue;
-            }
-            result.put(doc.getBookmaker(), OddsStoredMarketsConverter.toApiMarkets(doc.getMarkets()));
-        }
-        return result;
-    }
-
-    private OddsMatchContext buildMatchContext(GameResultRecord match) {
-        String home = getEntityService.getTeamOrThrow(match.getHomeTeamId()).getTitle();
-        String away = getEntityService.getTeamOrThrow(match.getAwayTeamId()).getTitle();
-        return OddsMatchContext.of(home, away);
+    public record OddsLineSelection(
+            String category,
+            net.friendly_bets.models.odds.OddsLineRow row,
+            String odds
+    ) {
     }
 }

@@ -96,4 +96,19 @@ public class CanonicalScoreNormalizer {
     private static String formatScore(int home, int away) {
         return home + ":" + away;
     }
+
+    public static String canonicalScoreHash(GameScore score) {
+        if (!GameScoreValidator.hasValidFullTime(score)) {
+            return null;
+        }
+        return String.join("|",
+                normalizeHashPart(score.getFullTime()),
+                normalizeHashPart(score.getFirstTime()),
+                normalizeHashPart(score.getOverTime()),
+                normalizeHashPart(score.getPenalty()));
+    }
+
+    private static String normalizeHashPart(String part) {
+        return part == null ? "" : part.trim();
+    }
 }

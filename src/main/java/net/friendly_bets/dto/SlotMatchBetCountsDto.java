@@ -15,6 +15,6 @@ import java.util.Map;
 @Schema(description = "Количество ставок участников по матчам слота")
 public class SlotMatchBetCountsDto {
 
-    @Schema(description = "Ключ — homeTeamId_awayTeamId, значение — число размещённых ставок")
+    @Schema(description = "Ключ — matchScheduleId, значение — число размещённых ставок")
     private Map<String, Integer> counts;
 }

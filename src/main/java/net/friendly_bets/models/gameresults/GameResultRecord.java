@@ -110,7 +110,7 @@ public class GameResultRecord {
     @Field(name = "last_seen_combined_stability_hash")
     private String lastSeenCombinedStabilityHash;
 
-    /** Событие odds-api.io после успешного сопоставления. */
+    /** Legacy odds-api event id (unused; kept nullable in Mongo). */
     @Field(name = "odds_api_event_id")
     private Long oddsApiEventId;
 

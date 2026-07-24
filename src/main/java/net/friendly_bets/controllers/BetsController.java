@@ -89,12 +89,9 @@ public class BetsController implements BetsApi {
     @GetMapping("/match/seasons/{season-id}")
     public ResponseEntity<BetsPage> getMatchBets(@AuthenticationPrincipal AuthenticatedUser currentUser,
                                                  @PathVariable("season-id") String seasonId,
-                                                 @RequestParam String leagueId,
-                                                 @RequestParam String matchDay,
-                                                 @RequestParam String homeTeamId,
-                                                 @RequestParam String awayTeamId) {
+                                                 @RequestParam String matchScheduleId) {
         return ResponseEntity.ok(
-                betsService.getMatchBets(currentUser, seasonId, leagueId, matchDay, homeTeamId, awayTeamId)
+                betsService.getMatchBets(currentUser, seasonId, matchScheduleId)
         );
     }
 

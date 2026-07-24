@@ -13,6 +13,6 @@ public class UnmappedExternalTeamNameDto {
 
     private String externalName;
     private Integer externalId;
-    /** {@link net.friendly_bets.gameresults.MatchDataProviders} id, e.g. 4score.ru or odds-api.io */
+    /** Provider id, e.g. 4score.ru or marathonbet */
     private String provider;
 }

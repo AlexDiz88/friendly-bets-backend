@@ -8,7 +8,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 /**
- * Optional standalone Marathonbet tick (disabled by default — use {@link net.friendly_bets.oddsapi.OddsSyncCoordinator}).
+ * Optional standalone Marathonbet tick (disabled by default — use {@link MarathonbetOddsSyncScheduler}).
  */
 @Component
 @ConditionalOnProperty(name = "marathonbet.standalone-scheduler", havingValue = "true")

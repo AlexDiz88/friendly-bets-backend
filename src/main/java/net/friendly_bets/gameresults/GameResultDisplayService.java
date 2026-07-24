@@ -3,14 +3,12 @@ package net.friendly_bets.gameresults;
 import lombok.RequiredArgsConstructor;
 import net.friendly_bets.dto.ExternalMatchDto;
 import net.friendly_bets.dto.TeamDisplayNamesDto;
-import net.friendly_bets.gameresults.MatchDataProviders;
 import net.friendly_bets.models.Team;
 import net.friendly_bets.models.gameresults.GameResultRecord;
 import net.friendly_bets.models.gameresults.GameResultSideSnapshot;
 import net.friendly_bets.models.gameresults.GameResultSourceSnapshot;
 import net.friendly_bets.repositories.TeamsRepository;
 import net.friendly_bets.services.TeamAliasResolver;
-import net.friendly_bets.wc26.Wc26ScheduleKickoffResolver;
 import net.friendly_bets.wc26.Wc26TeamCatalog;
 import org.springframework.stereotype.Service;
 
@@ -24,7 +22,6 @@ public class GameResultDisplayService {
 
     private final TeamsRepository teamsRepository;
     private final TeamAliasResolver teamAliasResolver;
-    private final Wc26ScheduleKickoffResolver wc26ScheduleKickoffResolver;
 
     public List<ExternalMatchDto> toDisplayDtos(List<GameResultRecord> matches) {
         return matches.stream().map(this::toDisplayDto).toList();
@@ -51,50 +48,14 @@ public class GameResultDisplayService {
         return dto;
     }
 
-    /**
-     * Для UI: для ЧМ — kickoff из wc26_schedule (venue → UTC), иначе utcDate API.
-     */
+    /** Display kickoff: stored utc_date only (no schedule/Berlin fallbacks). */
     private LocalDateTime resolveDisplayUtcDate(GameResultRecord match) {
-        if ("WC".equals(match.getLeagueCode())) {
-            Optional<LocalDateTime> fromSchedule = resolveWcScheduleKickoffUtc(match);
-            if (fromSchedule.isPresent()) {
-                return fromSchedule.get();
-            }
-        }
         if (match.getUtcDate() != null) {
             return match.getUtcDate();
         }
         GameResultSourceSnapshot source = match.primaryExternalSource();
         if (source != null && source.getUtcDate() != null) {
             return source.getUtcDate();
-        }
-        if ("WC".equals(match.getLeagueCode())) {
-            return resolveWcScheduleKickoffUtc(match).orElse(null);
-        }
-        return null;
-    }
-
-    private Optional<LocalDateTime> resolveWcScheduleKickoffUtc(GameResultRecord match) {
-        if (match.getWc26ScheduleId() != null) {
-            return wc26ScheduleKickoffResolver.kickoffUtc(match.getWc26ScheduleId());
-        }
-        GameResultSourceSnapshot source = match.primaryExternalSource();
-        String homeFifa = fifaFromTeamId(match.getHomeTeamId(), source != null ? source.getHome() : null);
-        String awayFifa = fifaFromTeamId(match.getAwayTeamId(), source != null ? source.getAway() : null);
-        return wc26ScheduleKickoffResolver.kickoffForTeamPair(homeFifa, awayFifa);
-    }
-
-    private String fifaFromTeamId(String teamId, GameResultSideSnapshot sideFallback) {
-        if (teamId != null && !teamId.isBlank()) {
-            Optional<Team> team = teamsRepository.findById(teamId);
-            if (team.isPresent()) {
-                return Wc26TeamCatalog.fifaCodeForKnownName(team.get().getTitle())
-                        .or(() -> Optional.ofNullable(team.get().getCountry()).flatMap(Wc26TeamCatalog::fifaCodeForKnownName))
-                        .orElse(null);
-            }
-        }
-        if (sideFallback != null) {
-            return Wc26TeamCatalog.fifaCodeForKnownName(sideFallback.getExternalName()).orElse(null);
         }
         return null;
     }
