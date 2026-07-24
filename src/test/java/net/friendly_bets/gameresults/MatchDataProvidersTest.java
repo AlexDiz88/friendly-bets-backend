@@ -11,7 +11,8 @@ class MatchDataProvidersTest {
     void sourcesStorageKey_hasNoDotsForMongoMapKeys() {
         assertEquals("4score", MatchDataProviders.sourcesStorageKey(MatchDataProviders.FOURSCORE));
         assertEquals("24score", MatchDataProviders.sourcesStorageKey(MatchDataProviders.TWENTYFOUR_SCORE));
-        assertEquals("odds_api", MatchDataProviders.sourcesStorageKey(MatchDataProviders.ODDS_API));
+        assertEquals("soccer365", MatchDataProviders.sourcesStorageKey(MatchDataProviders.SOCCER365));
+        assertEquals("marathonbet", MatchDataProviders.sourcesStorageKey(MatchDataProviders.MARATHONBET));
         assertFalse(MatchDataProviders.sourcesStorageKey(MatchDataProviders.FOURSCORE).contains("."));
     }
 }

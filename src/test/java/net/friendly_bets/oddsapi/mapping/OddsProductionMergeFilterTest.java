@@ -6,8 +6,6 @@ import net.friendly_bets.models.enums.BetTitleCode;
 import net.friendly_bets.oddsapi.OddsMarketCategory;
 import org.junit.jupiter.api.Test;
 
-import java.util.List;
-
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -16,7 +14,7 @@ class OddsProductionMergeFilterTest {
     @Test
     void includesNonHandicapQuotesFromAnyBookmaker() {
         MappedOddsQuote quote = MappedOddsQuote.builder()
-                .bookmaker(Bet365OddsAdapter.BOOKMAKER)
+                .bookmaker("any-bookmaker")
                 .category(OddsMarketCategory.MATCH_RESULT)
                 .mappingStatus(OddsMappingStatus.OK)
                 .odds("2.00")
@@ -31,31 +29,13 @@ class OddsProductionMergeFilterTest {
     }
 
     @Test
-    void excludesBet365HandicapFromProductionMerge() {
+    void excludesNonMarathonbetHandicapFromProductionMerge() {
         MappedOddsQuote quote = MappedOddsQuote.builder()
-                .bookmaker(Bet365OddsAdapter.BOOKMAKER)
-                .marketName("Alternative Asian Handicap")
-                .category(OddsMarketCategory.HANDICAP)
-                .mappingStatus(OddsMappingStatus.OK)
-                .odds("1.400")
-                .betTitle(BetTitle.builder()
-                        .code(BetTitleCode.HANDICAP_AWAY_MINUS_1_0.getCode())
-                        .label(BetTitleCode.HANDICAP_AWAY_MINUS_1_0.getLabel())
-                        .isNot(false)
-                        .build())
-                .build();
-
-        assertFalse(OddsProductionMergeFilter.includeInProductionMerge(quote));
-    }
-
-    @Test
-    void excludesXbetHandicapFromProductionMerge() {
-        MappedOddsQuote quote = MappedOddsQuote.builder()
-                .bookmaker(XbetOddsAdapter.BOOKMAKER)
+                .bookmaker("odds-api")
                 .marketName("Spread")
                 .category(OddsMarketCategory.HANDICAP)
                 .mappingStatus(OddsMappingStatus.OK)
-                .odds("4.700")
+                .odds("1.400")
                 .betTitle(BetTitle.builder()
                         .code(BetTitleCode.HANDICAP_AWAY_MINUS_1_0.getCode())
                         .label(BetTitleCode.HANDICAP_AWAY_MINUS_1_0.getLabel())
