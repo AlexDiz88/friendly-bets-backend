@@ -53,4 +53,8 @@ public class NewBetDto {
     @NotNull(message = "{field.bet.blankCalendarNodeId}")
     @NotBlank(message = "{field.bet.blankCalendarNodeId}")
     private String calendarNodeId;
+
+    @NotNull(message = "{field.isNull}")
+    @NotBlank(message = "{field.isBlank}")
+    private String matchScheduleId;
 }

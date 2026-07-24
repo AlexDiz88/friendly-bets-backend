@@ -21,4 +21,19 @@ public interface MatchScheduleRepository extends MongoRepository<MatchSchedule, 
             String homeTeamId,
             String awayTeamId
     );
+
+    List<MatchSchedule> findByLeagueCodeAndSeasonIdAndMatchdayOrderByUtcKickoffAsc(
+            String leagueCode,
+            String seasonId,
+            int matchday
+    );
+
+    List<MatchSchedule> findByLeagueIdAndSeasonIdAndHomeTeamIdAndAwayTeamId(
+            String leagueId,
+            String seasonId,
+            String homeTeamId,
+            String awayTeamId
+    );
+
+    List<MatchSchedule> findByLeagueIdAndSeasonId(String leagueId, String seasonId);
 }

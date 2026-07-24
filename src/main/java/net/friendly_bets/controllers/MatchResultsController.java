@@ -3,17 +3,16 @@ package net.friendly_bets.controllers;
 import lombok.RequiredArgsConstructor;
 import net.friendly_bets.dto.ExternalCompetitionInfoDto;
 import net.friendly_bets.dto.ExternalMatchdayPageDto;
-import net.friendly_bets.dto.ExternalMatchdaySyncDto;
 import net.friendly_bets.exceptions.NotFoundException;
 import net.friendly_bets.gameresults.ExternalCompetitionService;
 import net.friendly_bets.gameresults.GameResultCollector;
-import net.friendly_bets.gameresults.GameResultDisplayService;
-import net.friendly_bets.gameresults.GameResultQueryService;
 import net.friendly_bets.gameresults.LeagueCodePathSupport;
 import net.friendly_bets.models.GameResult;
 import net.friendly_bets.models.Season;
-import net.friendly_bets.repositories.GameResultsSyncRepository;
+import net.friendly_bets.models.schedule.MatchSchedule;
 import net.friendly_bets.repositories.SeasonsRepository;
+import net.friendly_bets.services.MatchScheduleDisplayService;
+import net.friendly_bets.services.MatchScheduleQueryService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -25,10 +24,9 @@ import java.util.List;
 @RequestMapping("/api/match-results")
 public class MatchResultsController {
 
-    private final GameResultQueryService gameResultQueryService;
-    private final GameResultDisplayService gameResultDisplayService;
+    private final MatchScheduleQueryService matchScheduleQueryService;
+    private final MatchScheduleDisplayService matchScheduleDisplayService;
     private final ExternalCompetitionService externalCompetitionService;
-    private final GameResultsSyncRepository gameResultsSyncRepository;
     private final SeasonsRepository seasonsRepository;
     private final GameResultCollector gameResultCollector;
 
@@ -50,19 +48,12 @@ public class MatchResultsController {
             @RequestParam(defaultValue = "2025") String season,
             @RequestParam(required = false) String leagueId) {
 
-        String leagueCode = LeagueCodePathSupport.resolveStorageLeagueCode(pathLeagueOrCompetitionCode);
-
-        ExternalMatchdaySyncDto syncDto = gameResultsSyncRepository
-                .findByLeagueCodeAndMatchdayAndSeason(leagueCode, matchday, season)
-                .map(ExternalMatchdaySyncDto::from)
-                .orElse(null);
-
-        var matches = gameResultQueryService.getMatches(
+        List<MatchSchedule> matches = matchScheduleQueryService.getMatches(
                 pathLeagueOrCompetitionCode, matchday, season, leagueId);
 
         return ResponseEntity.ok(ExternalMatchdayPageDto.builder()
-                .sync(syncDto)
-                .matches(gameResultDisplayService.toDisplayDtos(matches))
+                .sync(null)
+                .matches(matchScheduleDisplayService.toDisplayDtos(matches, season))
                 .build());
     }
 
