@@ -3,7 +3,7 @@ package net.friendly_bets.soccer365;
 import lombok.Builder;
 import lombok.Value;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -32,7 +32,7 @@ public class Soccer365ParsedSchedule {
     public static class Match {
         String homeName;
         String awayName;
-        LocalDateTime utcKickoff;
+        Instant utcKickoff;
         String status;
     }
 

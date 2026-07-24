@@ -2,7 +2,7 @@ package net.friendly_bets.soccer365;
 
 import org.junit.jupiter.api.Test;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -45,7 +45,7 @@ class Soccer365ScheduleParserTest {
         Soccer365ParsedSchedule.Match match = parsed.getRounds().get(0).getMatches().get(0);
         assertEquals("Арсенал", match.getHomeName());
         assertEquals("Ковентри Сити", match.getAwayName());
-        assertEquals(LocalDateTime.of(2026, 8, 21, 19, 0), match.getUtcKickoff());
+        assertEquals(Instant.parse("2026-08-21T19:00:00Z"), match.getUtcKickoff());
         assertEquals("SCHEDULED", match.getStatus());
         assertEquals(2, parsed.getClubFilterNames().size());
         assertTrue(parsed.getClubFilterNames().contains("Арсенал"));

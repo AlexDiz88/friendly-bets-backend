@@ -6,12 +6,12 @@ import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 import org.springframework.stereotype.Component;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
-import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -105,7 +105,7 @@ public class Soccer365ScheduleParser {
         if (homeName.isBlank() || awayName.isBlank()) {
             return Optional.empty();
         }
-        LocalDateTime utcKickoff = resolveUtcKickoff(gameBlock);
+        Instant utcKickoff = resolveUtcKickoff(gameBlock);
         String homeGoals = textOf(gameBlock.selectFirst(".ht .gls"));
         String awayGoals = textOf(gameBlock.selectFirst(".at .gls"));
         String status = isPlaceholderScore(homeGoals) && isPlaceholderScore(awayGoals)
@@ -119,14 +119,14 @@ public class Soccer365ScheduleParser {
                 .build());
     }
 
-    private LocalDateTime resolveUtcKickoff(Element gameBlock) {
+    private Instant resolveUtcKickoff(Element gameBlock) {
         Element script = gameBlock.selectFirst("script[type=application/ld+json]");
         if (script != null) {
             Matcher matcher = JSON_LD_START.matcher(script.html());
             if (matcher.find()) {
                 try {
                     OffsetDateTime odt = OffsetDateTime.parse(matcher.group(1).trim(), ISO_OFFSET);
-                    return odt.withOffsetSameInstant(ZoneOffset.UTC).toLocalDateTime();
+                    return odt.toInstant();
                 } catch (Exception ignored) {
                     // fall through to display time
                 }
@@ -139,7 +139,7 @@ public class Soccer365ScheduleParser {
         return null;
     }
 
-    Optional<LocalDateTime> parseDisplayKickoffAsMoscowUtc(String raw) {
+    Optional<Instant> parseDisplayKickoffAsMoscowUtc(String raw) {
         if (raw == null || raw.isBlank()) {
             return Optional.empty();
         }
@@ -162,7 +162,7 @@ public class Soccer365ScheduleParser {
             int hour = Integer.parseInt(matcher.group(4));
             int minute = Integer.parseInt(matcher.group(5));
             LocalDateTime moscowLocal = LocalDateTime.of(LocalDate.of(year, month, day), LocalTime.of(hour, minute));
-            return Optional.of(moscowLocal.atZone(MOSCOW).withZoneSameInstant(ZoneOffset.UTC).toLocalDateTime());
+            return Optional.of(moscowLocal.atZone(MOSCOW).toInstant());
         } catch (Exception e) {
             return Optional.empty();
         }

@@ -11,6 +11,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 import org.springframework.data.mongodb.core.mapping.MongoId;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 
 @NoArgsConstructor
@@ -58,9 +59,9 @@ public class MatchSchedule {
     @Field(name = "away_team_id")
     private String awayTeamId;
 
-    /** Kickoff stored as UTC (no zone offset in BSON LocalDateTime). */
+    /** Absolute kickoff instant (BSON Date = UTC). */
     @Field(name = "utc_kickoff")
-    private LocalDateTime utcKickoff;
+    private Instant utcKickoff;
 
     @Field(name = "status")
     private String status;

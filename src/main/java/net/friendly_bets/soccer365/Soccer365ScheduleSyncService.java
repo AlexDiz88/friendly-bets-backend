@@ -22,8 +22,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
-import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -222,7 +222,7 @@ public class Soccer365ScheduleSyncService {
         if (days <= 0) {
             return false;
         }
-        LocalDateTime earliest = null;
+        Instant earliest = null;
         for (Soccer365ParsedSchedule.Round round : parsed.getRounds()) {
             if (!window.contains(round.getNumber())) {
                 continue;
@@ -239,7 +239,7 @@ public class Soccer365ScheduleSyncService {
         if (earliest == null) {
             return false;
         }
-        long daysUntil = ChronoUnit.DAYS.between(LocalDateTime.now(ZoneOffset.UTC), earliest);
+        long daysUntil = ChronoUnit.DAYS.between(Instant.now(), earliest);
         return daysUntil > days;
     }
 
