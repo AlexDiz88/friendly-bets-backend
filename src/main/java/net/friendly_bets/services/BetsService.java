@@ -10,7 +10,6 @@ import net.friendly_bets.models.*;
 import net.friendly_bets.models.enums.BetTitleCode;
 import net.friendly_bets.exceptions.ForbiddenException;
 import net.friendly_bets.gameresults.MatchdaySlotSupport;
-import net.friendly_bets.gameresults.MatchResultsPollingService;
 import net.friendly_bets.models.gameresults.GameResultRecord;
 import net.friendly_bets.oddsapi.GameResultNotStarted;
 import net.friendly_bets.repositories.BetsRepository;
@@ -48,7 +47,6 @@ public class BetsService {
     GameweekStatsService gameweekStatsService;
     BetTitleStatsService betTitleStatsService;
     LeagueMatchdayService leagueMatchdayService;
-    MatchResultsPollingService matchResultsPollingService;
     GameResultRecordRepository gameResultRecordRepository;
     MatchdaySlotSupport matchdaySupport;
     KnockoutBetPrivacyService knockoutBetPrivacyService;
@@ -91,7 +89,6 @@ public class BetsService {
         leagueMatchdayService.updateCurrentMatchDayAfterBet(season, league);
         calendarsService.addBetToCalendarNode(openedBet, newOpenedBet.getCalendarNodeId(), newOpenedBet.getLeagueId(), newOpenedBet.getMatchDay());
         playerStatsService.calculateStatsBasedOnNewOpenedBet(season.getId(), league.getId(), user, true);
-        matchResultsPollingService.registerPollingForOpenedBet(openedBet);
 
         return BetDto.from(openedBet);
     }

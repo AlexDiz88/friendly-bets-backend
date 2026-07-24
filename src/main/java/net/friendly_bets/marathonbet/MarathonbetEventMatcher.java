@@ -12,7 +12,6 @@ import net.friendly_bets.oddsapi.TeamNameNormalizer;
 import net.friendly_bets.repositories.GameResultRecordRepository;
 import net.friendly_bets.services.GetEntityService;
 import net.friendly_bets.services.TeamAliasResolver;
-import net.friendly_bets.wc26.Wc26MatchKickoffUtc;
 import net.friendly_bets.wc26.Wc26TeamCatalog;
 import org.springframework.stereotype.Component;
 
@@ -127,11 +126,10 @@ public class MarathonbetEventMatcher {
             GameResultRecord match,
             List<MarathonbetPrematchEvent> events
     ) {
-        Optional<LocalDateTime> kickoff = Wc26MatchKickoffUtc.resolveForEventMatching(match);
-        if (kickoff.isEmpty() || events == null) {
+        if (match.getUtcDate() == null || events == null) {
             return List.of();
         }
-        long center = kickoff.get().toInstant(ZoneOffset.UTC).toEpochMilli();
+        long center = match.getUtcDate().toInstant(ZoneOffset.UTC).toEpochMilli();
         long windowMs = properties.getEventWindowHours() * 3_600_000L;
         List<MarathonbetPrematchEvent> filtered = new ArrayList<>();
         for (MarathonbetPrematchEvent event : events) {
@@ -147,11 +145,10 @@ public class MarathonbetEventMatcher {
             GameResultRecord match,
             List<MarathonbetPrematchEvent> matched
     ) {
-        Optional<LocalDateTime> kickoff = Wc26MatchKickoffUtc.resolveForEventMatching(match);
-        if (kickoff.isEmpty()) {
+        if (match.getUtcDate() == null) {
             return Optional.empty();
         }
-        long center = kickoff.get().toInstant(ZoneOffset.UTC).toEpochMilli();
+        long center = match.getUtcDate().toInstant(ZoneOffset.UTC).toEpochMilli();
         MarathonbetPrematchEvent best = null;
         long bestDelta = Long.MAX_VALUE;
         long secondBestDelta = Long.MAX_VALUE;
