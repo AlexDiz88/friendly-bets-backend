@@ -52,7 +52,6 @@ public class MatchResultsController {
                 pathLeagueOrCompetitionCode, matchday, season, leagueId);
 
         return ResponseEntity.ok(ExternalMatchdayPageDto.builder()
-                .sync(null)
                 .matches(matchScheduleDisplayService.toDisplayDtos(matches, season))
                 .build());
     }
