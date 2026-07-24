@@ -4,7 +4,6 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.springframework.data.annotation.Transient;
 import org.springframework.data.mongodb.core.mapping.Field;
 
 @NoArgsConstructor
@@ -21,10 +20,6 @@ public class TournamentArchiveBestThirdRow {
 
     @Field(name = "team_id")
     private String teamId;
-
-    /** Только review/import; в Mongo не сохраняется. */
-    @Transient
-    private String fifaCode;
 
     @Field(name = "played")
     private int played;
