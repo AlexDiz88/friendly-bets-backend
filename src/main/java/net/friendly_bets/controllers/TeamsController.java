@@ -3,7 +3,6 @@ package net.friendly_bets.controllers;
 import lombok.RequiredArgsConstructor;
 import net.friendly_bets.controllers.api.TeamsApi;
 import net.friendly_bets.dto.NewTeamDto;
-import net.friendly_bets.dto.PurgeOddsApiAliasesResultDto;
 import net.friendly_bets.dto.TeamDto;
 import net.friendly_bets.dto.TeamsPage;
 import net.friendly_bets.dto.UpdateTeamDto;
@@ -52,12 +51,6 @@ public class TeamsController implements TeamsApi {
             @RequestBody @Valid UpdateTeamDto updateTeam
     ) {
         return ResponseEntity.ok(teamsService.updateTeam(teamId, updateTeam));
-    }
-
-    @PostMapping("/purge-odds-api-aliases")
-    @PreAuthorize("hasAuthority('ADMIN')")
-    public ResponseEntity<PurgeOddsApiAliasesResultDto> purgeOddsApiAliases() {
-        return ResponseEntity.ok(teamsService.purgeOddsApiAliases());
     }
 
 }
