@@ -9,12 +9,14 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -23,42 +25,10 @@ class TeamAliasResolverTest {
     @Mock
     TeamsRepository teamsRepository;
 
-    TeamAliasResolver resolver = null;
-
-    @Test
-    @DisplayName("resolveOddsApi prefers id over name when both match different teams")
-    void resolveOddsApi_prefersIdOverName() {
-        resolver = new TeamAliasResolver(teamsRepository);
-        when(teamsRepository.findByExternalAliasId("odds-api.io", 100))
-                .thenReturn(Optional.of(Team.builder().id("by-id").title("ById").build()));
-        when(teamsRepository.findByExternalAliasName("odds-api.io", "Other Name"))
-                .thenReturn(Optional.of(Team.builder().id("by-name").title("ByName").build()));
-
-        Optional<Team> team = resolver.resolveOddsApi(100, "Other Name");
-
-        assertTrue(team.isPresent());
-        assertEquals("by-id", team.get().getId());
-    }
-
-    @Test
-    @DisplayName("resolveOddsApi falls back to name when id is missing")
-    void resolveOddsApi_fallsBackToName() {
-        resolver = new TeamAliasResolver(teamsRepository);
-        when(teamsRepository.findByExternalAliasId("odds-api.io", 999))
-                .thenReturn(Optional.empty());
-        when(teamsRepository.findByExternalAliasName("odds-api.io", "Brighton & Hove Albion"))
-                .thenReturn(Optional.of(Team.builder().id("bha1").title("Brighton").build()));
-
-        Optional<Team> team = resolver.resolveOddsApi(999, "Brighton & Hove Albion");
-
-        assertTrue(team.isPresent());
-        assertEquals("bha1", team.get().getId());
-    }
-
     @Test
     @DisplayName("resolveTwentyFourScoreByName matches by saved external alias name")
     void resolveTwentyFourScoreByName_matchesByAliasName() {
-        resolver = new TeamAliasResolver(teamsRepository);
+        TeamAliasResolver resolver = new TeamAliasResolver(teamsRepository);
         when(teamsRepository.findByExternalAliasName("24score.pro", "Турция"))
                 .thenReturn(Optional.of(Team.builder().id("tur1").title("Turkey").build()));
 
@@ -71,7 +41,7 @@ class TeamAliasResolverTest {
     @Test
     @DisplayName("resolveFourScoreByName matches by saved external alias name")
     void resolveFourScoreByName_matchesByAliasName() {
-        resolver = new TeamAliasResolver(teamsRepository);
+        TeamAliasResolver resolver = new TeamAliasResolver(teamsRepository);
         when(teamsRepository.findByExternalAliasName("4score.ru", "Англия"))
                 .thenReturn(Optional.of(Team.builder().id("eng1").title("England").build()));
 
@@ -84,7 +54,7 @@ class TeamAliasResolverTest {
     @Test
     @DisplayName("teamMatchesScoreProviderSide matches only same-provider alias")
     void teamMatchesScoreProviderSide_matchesByAliasName() {
-        resolver = new TeamAliasResolver(teamsRepository);
+        TeamAliasResolver resolver = new TeamAliasResolver(teamsRepository);
         Team england = Team.builder()
                 .id("eng1")
                 .title("England")
@@ -102,10 +72,24 @@ class TeamAliasResolverTest {
     }
 
     @Test
-    @DisplayName("resolveWc26Code matches by odds-api alias name from catalog")
-    void resolveWc26Code_matchesByOddsApiName() {
-        resolver = new TeamAliasResolver(teamsRepository);
-        when(teamsRepository.findByExternalAliasName("odds-api.io", "Korea Republic"))
+    @DisplayName("resolveWc26Code matches by country FIFA code")
+    void resolveWc26Code_matchesByCountry() {
+        TeamAliasResolver resolver = new TeamAliasResolver(teamsRepository);
+        when(teamsRepository.findByCountryIgnoreCase("BEL"))
+                .thenReturn(Optional.of(Team.builder().id("bel1").title("Belgium").country("BEL").build()));
+
+        Optional<Team> team = resolver.resolveWc26Code("BEL");
+
+        assertTrue(team.isPresent());
+        assertEquals("bel1", team.get().getId());
+    }
+
+    @Test
+    @DisplayName("resolveWc26Code matches by title from catalog candidate")
+    void resolveWc26Code_matchesByTitle() {
+        TeamAliasResolver resolver = new TeamAliasResolver(teamsRepository);
+        when(teamsRepository.findByCountryIgnoreCase("KOR")).thenReturn(Optional.empty());
+        when(teamsRepository.findByTitleIgnoreCase("Korea Republic"))
                 .thenReturn(Optional.of(Team.builder().id("kor1").title("KoreaRepublic").build()));
 
         Optional<Team> team = resolver.resolveWc26Code("KOR");
@@ -115,13 +99,15 @@ class TeamAliasResolverTest {
     }
 
     @Test
-    @DisplayName("resolveWc26Code tries catalog alternates for odds-api name")
-    void resolveWc26Code_triesOddsApiAlternates() {
-        resolver = new TeamAliasResolver(teamsRepository);
-        when(teamsRepository.findByExternalAliasName("odds-api.io", "Czechia"))
-                .thenReturn(Optional.empty());
-        when(teamsRepository.findByExternalAliasName("odds-api.io", "Czech Republic"))
+    @DisplayName("resolveWc26Code matches compact title without spaces")
+    void resolveWc26Code_matchesCompactTitle() {
+        TeamAliasResolver resolver = new TeamAliasResolver(teamsRepository);
+        when(teamsRepository.findByCountryIgnoreCase("CZE")).thenReturn(Optional.empty());
+        when(teamsRepository.findByTitleIgnoreCase(anyString())).thenReturn(Optional.empty());
+        when(teamsRepository.findByTitleIgnoreCase("CzechRepublic"))
                 .thenReturn(Optional.of(Team.builder().id("cze1").title("CzechRepublic").build()));
+        when(teamsRepository.findByExternalAliasName(anyString(), anyString())).thenReturn(Optional.empty());
+        when(teamsRepository.findAll()).thenReturn(Collections.emptyList());
 
         Optional<Team> team = resolver.resolveWc26Code("CZE");
 
@@ -130,29 +116,14 @@ class TeamAliasResolverTest {
     }
 
     @Test
-    @DisplayName("resolveWc26Code returns empty when odds-api alias is missing")
-    void resolveWc26Code_emptyWhenNoAliasMatches() {
-        resolver = new TeamAliasResolver(teamsRepository);
-        when(teamsRepository.findByExternalAliasName("odds-api.io", "Korea Republic"))
-                .thenReturn(Optional.empty());
-        when(teamsRepository.findByExternalAliasName("odds-api.io", "South Korea"))
-                .thenReturn(Optional.empty());
+    @DisplayName("resolveWc26Code returns empty when nothing matches")
+    void resolveWc26Code_emptyWhenNoMatch() {
+        TeamAliasResolver resolver = new TeamAliasResolver(teamsRepository);
+        when(teamsRepository.findByCountryIgnoreCase(anyString())).thenReturn(Optional.empty());
+        when(teamsRepository.findByTitleIgnoreCase(anyString())).thenReturn(Optional.empty());
+        when(teamsRepository.findByExternalAliasName(anyString(), anyString())).thenReturn(Optional.empty());
+        when(teamsRepository.findAll()).thenReturn(Collections.emptyList());
 
         assertTrue(resolver.resolveWc26Code("KOR").isEmpty());
-    }
-
-    @Test
-    @DisplayName("oddsApiAliasesMapped requires both id and name aliases when present")
-    void oddsApiAliasesMapped_requiresBothWhenPresent() {
-        resolver = new TeamAliasResolver(teamsRepository);
-        when(teamsRepository.findByExternalAliasId("odds-api.io", 42))
-                .thenReturn(Optional.of(Team.builder().id("t1").title("T1").build()));
-        when(teamsRepository.findByExternalAliasName("odds-api.io", "Team A"))
-                .thenReturn(Optional.of(Team.builder().id("t1").title("T1").build()));
-        when(teamsRepository.findByExternalAliasName("odds-api.io", "Team B"))
-                .thenReturn(Optional.empty());
-
-        assertTrue(resolver.oddsApiAliasesMapped(42, "Team A"));
-        assertFalse(resolver.oddsApiAliasesMapped(42, "Team B"));
     }
 }

@@ -7,7 +7,6 @@ import net.friendly_bets.exceptions.NotFoundException;
 import net.friendly_bets.models.gameresults.GameResultRecord;
 import net.friendly_bets.models.odds.GameResultMergedOdds;
 import net.friendly_bets.models.odds.OddsMarketGroup;
-import net.friendly_bets.oddsapi.config.OddsApiProperties;
 import net.friendly_bets.oddsapi.mapping.BetTitleKey;
 import net.friendly_bets.oddsapi.mapping.OddsMerger;
 import net.friendly_bets.repositories.GameResultRecordRepository;
@@ -22,14 +21,14 @@ import java.util.Set;
 
 /**
  * Read-only odds presentation from Mongo ({@code game_result_merged_odds}).
- * No live odds-api fetch/sync.
  */
 @Service
 @RequiredArgsConstructor
 public class OddsPresentationService {
 
+    private static final List<String> DEFAULT_PRESENTATION_BOOKMAKERS = List.of("Marathonbet");
+
     private final GameResultRecordRepository gameResultRecordRepository;
-    private final OddsApiProperties properties;
     private final OddsMergedOddsService oddsMergedOddsService;
 
     public OddsEventMarketsDto getMarketsForGameResult(String gameResultId) {
@@ -47,11 +46,7 @@ public class OddsPresentationService {
             throw new BadRequestException("oddsNotAvailable");
         }
 
-        List<String> bookmakers = properties.getBookmakers();
-        if (bookmakers == null) {
-            bookmakers = List.of();
-        }
-        List<String> presentationBookmakers = resolvePresentationBookmakers(mergedSnapshot, bookmakers);
+        List<String> presentationBookmakers = resolvePresentationBookmakers(mergedSnapshot);
 
         List<OddsMarketGroup> presentationGroups = new ArrayList<>(mergedSnapshot.get().getMarketGroups());
         prepareMarketGroupsForPresentation(presentationGroups, presentationBookmakers);
@@ -70,17 +65,14 @@ public class OddsPresentationService {
         return toDto(match, presentationGroups, fetchedAt, presentationBookmakers);
     }
 
-    private List<String> resolvePresentationBookmakers(
-            Optional<GameResultMergedOdds> mergedSnapshot,
-            List<String> oddsApiBookmakers
-    ) {
+    private List<String> resolvePresentationBookmakers(Optional<GameResultMergedOdds> mergedSnapshot) {
         if (mergedSnapshot.isPresent()) {
             List<String> fromMerged = mergedSnapshot.get().getBookmakers();
             if (fromMerged != null && !fromMerged.isEmpty()) {
                 return new ArrayList<>(fromMerged);
             }
         }
-        return new ArrayList<>(oddsApiBookmakers);
+        return new ArrayList<>(DEFAULT_PRESENTATION_BOOKMAKERS);
     }
 
     private void prepareMarketGroupsForPresentation(List<OddsMarketGroup> groups, List<String> bookmakers) {

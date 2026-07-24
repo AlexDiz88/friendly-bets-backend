@@ -112,10 +112,32 @@ public class ApiSyncIssueService {
         if ("24score.pro".equals(provider)) {
             return teamAliasResolver.resolveTwentyFourScoreByName(externalName).isPresent();
         }
-        if ("odds-api.io".equals(provider)) {
-            return teamAliasResolver.oddsApiAliasesMapped(externalId, externalName);
+        if ("soccer365.ru".equals(provider)) {
+            return teamAliasResolver.resolveSoccer365ByName(externalName).isPresent();
         }
         return false;
+    }
+
+    public void recordTeamMappingMissing(
+            String provider,
+            String leagueCode,
+            String season,
+            Integer matchday,
+            String homeTeamName,
+            String awayTeamName,
+            String message
+    ) {
+        apiSyncIssueRepository.save(ApiSyncIssue.builder()
+                .createdAt(LocalDateTime.now())
+                .provider(provider)
+                .issueType(ApiSyncIssue.IssueType.TEAM_MAPPING_MISSING.name())
+                .leagueCode(leagueCode)
+                .season(season)
+                .matchday(matchday)
+                .homeTeamName(homeTeamName)
+                .awayTeamName(awayTeamName)
+                .message(message)
+                .build());
     }
 
     private static boolean namesMatch(String expected, String actual) {

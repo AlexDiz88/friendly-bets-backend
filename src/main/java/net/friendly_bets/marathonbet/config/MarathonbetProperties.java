@@ -23,7 +23,6 @@ public class MarathonbetProperties {
     private int syncJitterMinutes = 15;
     private Map<String, Long> tournamentTreeIds = new HashMap<>(Map.of("WC", 2_253_726L));
     private List<String> primaryForLeagues = new ArrayList<>(List.of("WC"));
-    private boolean fallbackToOddsApi = true;
     private int eventWindowHours = 6;
     /** Random pause lower bound between per-event SSE fetches (ms). */
     private long sseDelayMinMs = 1_500L;

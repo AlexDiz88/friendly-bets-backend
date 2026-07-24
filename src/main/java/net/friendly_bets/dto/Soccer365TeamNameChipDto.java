@@ -9,10 +9,9 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @Builder
 @Data
-public class UnmappedExternalTeamNameDto {
+public class Soccer365TeamNameChipDto {
 
     private String externalName;
-    private Integer externalId;
-    /** Provider id, e.g. 4score.ru or marathonbet */
     private String provider;
+    private boolean alreadyMapped;
 }

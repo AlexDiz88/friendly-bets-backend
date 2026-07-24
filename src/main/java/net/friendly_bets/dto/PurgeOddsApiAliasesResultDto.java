@@ -9,10 +9,8 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @Builder
 @Data
-public class UnmappedExternalTeamNameDto {
+public class PurgeOddsApiAliasesResultDto {
 
-    private String externalName;
-    private Integer externalId;
-    /** Provider id, e.g. 4score.ru or marathonbet */
-    private String provider;
+    private int teamsUpdated;
+    private int aliasesRemoved;
 }

@@ -12,7 +12,6 @@ import net.friendly_bets.oddsapi.TeamNameNormalizer;
 import net.friendly_bets.repositories.GameResultRecordRepository;
 import net.friendly_bets.services.GetEntityService;
 import net.friendly_bets.services.TeamAliasResolver;
-import net.friendly_bets.wc26.Wc26TeamCatalog;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
@@ -197,12 +196,6 @@ public class MarathonbetEventMatcher {
             Optional<Team> byFifa = teamAliasResolver.resolveWc26Code(fifaCode.get());
             if (byFifa.isPresent() && teamId.equals(byFifa.get().getId())) {
                 return true;
-            }
-            for (String oddsName : Wc26TeamCatalog.oddsApiNameCandidatesForFifaCode(fifaCode.get())) {
-                Optional<Team> byOdds = teamAliasResolver.resolveOddsApiByName(oddsName);
-                if (byOdds.isPresent() && teamId.equals(byOdds.get().getId())) {
-                    return true;
-                }
             }
         }
 

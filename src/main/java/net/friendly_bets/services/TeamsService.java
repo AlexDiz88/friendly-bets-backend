@@ -4,6 +4,7 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import net.friendly_bets.dto.NewTeamDto;
+import net.friendly_bets.dto.PurgeOddsApiAliasesResultDto;
 import net.friendly_bets.dto.TeamDto;
 import net.friendly_bets.dto.TeamDisplayNamesDto;
 import net.friendly_bets.dto.TeamExternalAliasDto;
@@ -86,6 +87,7 @@ public class TeamsService {
 
         if (update.getExternalAliases() != null) {
             team.setExternalAliases(update.getExternalAliases().stream()
+                    .filter(a -> a != null && !TeamTitleUtils.ODDS_API_PROVIDER.equals(a.getProvider()))
                     .map(TeamExternalAliasDto::toEntity)
                     .collect(Collectors.toCollection(ArrayList::new)));
         }
@@ -95,6 +97,37 @@ public class TeamsService {
             purgeTeamMappingIssuesForAliases(team.getExternalAliases());
         }
         return TeamDto.from(team);
+    }
+
+    /**
+     * Removes every {@code external_aliases[]} entry with {@code provider = odds-api.io} from all teams.
+     */
+    @Transactional
+    public PurgeOddsApiAliasesResultDto purgeOddsApiAliases() {
+        int teamsUpdated = 0;
+        int aliasesRemoved = 0;
+        List<Team> toSave = new ArrayList<>();
+        for (Team team : teamsRepository.findAll()) {
+            List<TeamExternalAlias> aliases = team.getExternalAliases();
+            if (aliases == null || aliases.isEmpty()) {
+                continue;
+            }
+            int before = aliases.size();
+            aliases.removeIf(a -> a != null && TeamTitleUtils.ODDS_API_PROVIDER.equals(a.getProvider()));
+            int removed = before - aliases.size();
+            if (removed > 0) {
+                aliasesRemoved += removed;
+                teamsUpdated++;
+                toSave.add(team);
+            }
+        }
+        if (!toSave.isEmpty()) {
+            teamsRepository.saveAll(toSave);
+        }
+        return PurgeOddsApiAliasesResultDto.builder()
+                .teamsUpdated(teamsUpdated)
+                .aliasesRemoved(aliasesRemoved)
+                .build();
     }
 
     private void purgeTeamMappingIssuesForAliases(List<TeamExternalAlias> aliases) {
@@ -116,7 +149,12 @@ public class TeamsService {
     private static List<TeamExternalAlias> buildAliases(List<TeamExternalAliasDto> fromDto) {
         List<TeamExternalAlias> aliases = new ArrayList<>();
         if (fromDto != null) {
-            aliases.addAll(fromDto.stream().map(TeamExternalAliasDto::toEntity).toList());
+            for (TeamExternalAliasDto dto : fromDto) {
+                if (dto == null || TeamTitleUtils.ODDS_API_PROVIDER.equals(dto.getProvider())) {
+                    continue;
+                }
+                aliases.add(dto.toEntity());
+            }
         }
         return aliases;
     }
