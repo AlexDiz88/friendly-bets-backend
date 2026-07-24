@@ -262,8 +262,9 @@ public class BetsService {
             throw new BadRequestException("invalidRequest");
         }
         Season season = getEntityService.getSeasonOrThrow(seasonId);
-        String userId = currentUser.getUser().getId();
-        if (!isSeasonParticipant(season, userId)) {
+        User viewer = currentUser.getUser();
+        String userId = viewer.getId();
+        if (!canViewMatchBets(season, viewer)) {
             throw new ForbiddenException("notSeasonParticipant");
         }
         MatchSchedule schedule = matchScheduleRepository.findById(matchScheduleId.trim())
@@ -309,8 +310,9 @@ public class BetsService {
             throw new BadRequestException("invalidRequest");
         }
         Season season = getEntityService.getSeasonOrThrow(seasonId);
-        String userId = currentUser.getUser().getId();
-        if (!isSeasonParticipant(season, userId)) {
+        User viewer = currentUser.getUser();
+        String userId = viewer.getId();
+        if (!canViewMatchBets(season, viewer)) {
             throw new ForbiddenException("notSeasonParticipant");
         }
         League league = getEntityService.getLeagueOrThrow(leagueId);
@@ -491,6 +493,16 @@ public class BetsService {
 
     private static boolean isModeratorOrAdmin(User.Role role) {
         return role == User.Role.MODERATOR || role == User.Role.ADMIN;
+    }
+
+    private static boolean canViewMatchBets(Season season, User viewer) {
+        if (viewer == null) {
+            return false;
+        }
+        if (isModeratorOrAdmin(viewer.getRole())) {
+            return true;
+        }
+        return isSeasonParticipant(season, viewer.getId());
     }
 
     private static boolean isSeasonParticipant(Season season, String userId) {
