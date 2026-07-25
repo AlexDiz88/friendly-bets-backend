@@ -134,10 +134,18 @@ public class MarathonbetSyncService {
         return last;
     }
 
+    /**
+     * Manual admin sync.
+     * <ul>
+     *   <li>{@code force=false}: current matchday only, SSE only for matches without odds.</li>
+     *   <li>{@code force=true}: given matchday + matchScheduleIds, SSE even if odds exist.</li>
+     * </ul>
+     */
     public MarathonbetSyncResult syncSlot(
             String leagueId,
-            int matchday,
             String season,
+            boolean force,
+            Integer matchday,
             List<String> matchScheduleIds
     ) {
         if (!properties.isSyncEnabled()) {
@@ -154,6 +162,34 @@ public class MarathonbetSyncService {
         }
 
         String resolvedSeason = resolveSeason(season, league);
+        List<Integer> slotOrders;
+        List<String> idFilter;
+        OddsSsePolicy ssePolicy;
+        if (force) {
+            if (matchday == null || matchday < 1) {
+                throw new BadRequestException("matchdayRequired");
+            }
+            if (matchScheduleIds == null || matchScheduleIds.isEmpty()) {
+                throw new BadRequestException("matchScheduleIdsRequired");
+            }
+            slotOrders = List.of(matchday);
+            idFilter = matchScheduleIds;
+            ssePolicy = OddsSsePolicy.FORCE;
+        } else {
+            ExternalCompetitionInfoDto info = externalCompetitionService.getCompetitionInfoForLeague(
+                    league.getId(),
+                    resolvedSeason
+            );
+            List<Integer> currentOnly = MarathonbetSyncSlotWindow.resolveSlotOrders(
+                    info, MarathonbetSlotScope.CURRENT);
+            if (currentOnly.isEmpty()) {
+                throw new BadRequestException("currentMatchdayUnresolved");
+            }
+            slotOrders = currentOnly;
+            idFilter = null;
+            ssePolicy = OddsSsePolicy.MISSING_ONLY;
+        }
+
         pipelineLock.lock();
         try {
             List<MarathonbetHttpLogEntry> httpLogs = new ArrayList<>();
@@ -174,21 +210,21 @@ public class MarathonbetSyncService {
             MarathonbetSyncRun run = MarathonbetSyncRun.builder()
                     .startedAt(LocalDateTime.now())
                     .manual(true)
-                    .slotScope(MarathonbetSlotScope.BOTH.name())
+                    .slotScope(MarathonbetSlotScope.CURRENT.name())
                     .leagueCode(code)
                     .season(resolvedSeason)
-                    .slotOrders(List.of(matchday))
+                    .slotOrders(slotOrders)
                     .tournamentFetched(true)
                     .build();
 
             SlotSyncCounters counters = syncMatches(
                     league,
-                    List.of(matchday),
+                    slotOrders,
                     resolvedSeason,
                     prematch,
-                    matchScheduleIds,
+                    idFilter,
                     true,
-                    false,
+                    ssePolicy,
                     false,
                     httpLogs
             );
@@ -207,7 +243,7 @@ public class MarathonbetSyncService {
                     null
             );
 
-            return toResult(code, resolvedSeason, List.of(matchday), counters, true, null);
+            return toResult(code, resolvedSeason, slotOrders, counters, true, null);
         } finally {
             pipelineLock.unlock();
         }
@@ -293,7 +329,7 @@ public class MarathonbetSyncService {
                 prematch,
                 null,
                 failWhenNoPending,
-                true,
+                OddsSsePolicy.REFRESH_WINDOW,
                 applyStagePause,
                 httpLogs
         );
@@ -333,7 +369,7 @@ public class MarathonbetSyncService {
             List<MarathonbetPrematchEvent> prematch,
             List<String> matchScheduleIds,
             boolean failWhenNoPending,
-            boolean applyRefreshPolicy,
+            OddsSsePolicy ssePolicy,
             boolean applyStagePause,
             List<MarathonbetHttpLogEntry> httpLogs
     ) {
@@ -378,15 +414,26 @@ public class MarathonbetSyncService {
         List<MatchSchedule> toFetch = new ArrayList<>();
         int skippedFar = 0;
         for (MatchSchedule match : pending) {
-            if (applyRefreshPolicy) {
-                boolean hasOdds = oddsMergedOddsService.findByMatchScheduleId(match.getId())
-                        .map(odds -> odds.getMarketGroups() != null && !odds.getMarketGroups().isEmpty())
-                        .orElse(false);
-                if (!MarathonbetSyncBatchSupport.needsSseRefresh(
-                        match, hasOdds, now, properties.getSseRefreshWithinHours())) {
+            if (ssePolicy == OddsSsePolicy.FORCE) {
+                toFetch.add(match);
+                continue;
+            }
+            boolean hasOdds = oddsMergedOddsService.findByMatchScheduleId(match.getId())
+                    .map(odds -> odds.getMarketGroups() != null && !odds.getMarketGroups().isEmpty())
+                    .orElse(false);
+            if (ssePolicy == OddsSsePolicy.MISSING_ONLY) {
+                if (hasOdds) {
                     skippedFar++;
                     continue;
                 }
+                toFetch.add(match);
+                continue;
+            }
+            // REFRESH_WINDOW (cron)
+            if (!MarathonbetSyncBatchSupport.needsSseRefresh(
+                    match, hasOdds, now, properties.getSseRefreshWithinHours())) {
+                skippedFar++;
+                continue;
             }
             toFetch.add(match);
         }

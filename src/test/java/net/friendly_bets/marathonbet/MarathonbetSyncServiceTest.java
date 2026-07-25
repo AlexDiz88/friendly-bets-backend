@@ -120,12 +120,13 @@ class MarathonbetSyncServiceTest {
                         .outcome(MarathonbetHttpOutcome.SUCCESS)
                         .body(objectMapper.readTree("{\"markets\":{}}"))
                         .build());
+        when(oddsMergedOddsService.findByMatchScheduleId("ms-1")).thenReturn(Optional.empty());
         when(betTitleMapper.map(any(), eq("Мексика"), eq("ЮАР")))
                 .thenReturn(List.of(MappedOddsQuote.builder().bookmaker("marathonbet").build()));
         when(oddsMergedOddsService.buildAndPersistFromQuotes(any(), any(), any(), any(), eq(false), eq(25_819_358L)))
                 .thenReturn(OddsMergeResult.builder().marketGroups(List.of()).build());
 
-        MarathonbetSyncResult result = syncService.syncSlot("wc-league", 3, "2026", null);
+        MarathonbetSyncResult result = syncService.syncSlot("wc-league", "2026", true, 3, List.of("ms-1"));
 
         verify(scrapeService).fetchEventSnapshotResult(25_819_358L);
         assertEquals(1, result.getSseCalls());

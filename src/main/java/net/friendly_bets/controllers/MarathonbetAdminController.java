@@ -20,16 +20,21 @@ public class MarathonbetAdminController {
 
     private final MarathonbetSyncService marathonbetSyncService;
 
+    /**
+     * Manual ODDS sync. Default: current matchday, SSE only for matches without odds.
+     * With {@code force=true}: require matchday + matchScheduleIds and re-fetch even if odds exist.
+     */
     @PostMapping("/sync-slot")
     @PreAuthorize("hasAuthority('ADMIN') || hasAuthority('MODERATOR')")
     public ResponseEntity<Map<String, Object>> syncSlot(
             @RequestParam String leagueId,
-            @RequestParam int matchday,
+            @RequestParam(defaultValue = "false") boolean force,
+            @RequestParam(required = false) Integer matchday,
             @RequestParam(required = false) String season,
             @RequestParam(required = false) List<String> matchScheduleIds
     ) {
         MarathonbetSyncResult result = marathonbetSyncService.syncSlot(
-                leagueId, matchday, season, matchScheduleIds);
+                leagueId, season, force, matchday, matchScheduleIds);
         return ResponseEntity.ok(Map.of(
                 "message", "marathonbetSyncCompleted",
                 "tournamentFetched", result.isTournamentFetched(),
