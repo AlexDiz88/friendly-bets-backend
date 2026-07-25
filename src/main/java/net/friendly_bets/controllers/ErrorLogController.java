@@ -27,6 +27,12 @@ public class ErrorLogController {
         return ResponseEntity.ok(errorLogService.listRecent());
     }
 
+    @GetMapping("/count")
+    @PreAuthorize("hasAuthority('ADMIN') || hasAuthority('MODERATOR')")
+    public ResponseEntity<Map<String, Long>> count() {
+        return ResponseEntity.ok(Map.of("count", errorLogService.count()));
+    }
+
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAuthority('ADMIN') || hasAuthority('MODERATOR')")
     public ResponseEntity<Map<String, String>> delete(@PathVariable String id) {

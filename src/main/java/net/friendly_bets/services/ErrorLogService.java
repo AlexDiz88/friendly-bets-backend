@@ -186,6 +186,10 @@ public class ErrorLogService {
         return ErrorLogDto.fromList(errorLogRepository.findTop200ByOrderByCreatedAtDesc());
     }
 
+    public long count() {
+        return errorLogRepository.count();
+    }
+
     @Transactional
     public void deleteById(String id) {
         if (id == null || id.isBlank()) {
