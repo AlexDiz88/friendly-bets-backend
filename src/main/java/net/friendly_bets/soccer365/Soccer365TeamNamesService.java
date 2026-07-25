@@ -45,7 +45,7 @@ public class Soccer365TeamNamesService {
         return unmapped;
     }
 
-    static League.LeagueCode parseLeagueCode(String leagueCodeRaw) {
+    public static League.LeagueCode parseLeagueCode(String leagueCodeRaw) {
         if (leagueCodeRaw == null || leagueCodeRaw.isBlank()) {
             throw new BadRequestException("leagueCodeRequired");
         }

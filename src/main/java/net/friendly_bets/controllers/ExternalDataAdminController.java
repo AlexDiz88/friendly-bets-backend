@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import net.friendly_bets.dto.ExternalDataLayerConfigDto;
 import net.friendly_bets.dto.LiveMatchSyncResultDto;
 import net.friendly_bets.dto.Soccer365ScheduleSyncResultDto;
+import net.friendly_bets.dto.Soccer365TeamNameChipDto;
 import net.friendly_bets.models.League;
 import net.friendly_bets.models.Season;
 import net.friendly_bets.models.schedule.MatchSchedule;
@@ -15,6 +16,7 @@ import net.friendly_bets.providers.OddsProvider;
 import net.friendly_bets.providers.ScheduleProvider;
 import net.friendly_bets.repositories.MatchScheduleRepository;
 import net.friendly_bets.services.ExternalDataLayerConfigService;
+import net.friendly_bets.services.ExternalTeamNamesService;
 import net.friendly_bets.services.GetEntityService;
 import net.friendly_bets.services.MatchFinalizeOrchestrator;
 import net.friendly_bets.services.RunningSeasonLookup;
@@ -42,6 +44,7 @@ public class ExternalDataAdminController {
     private final GetEntityService getEntityService;
     private final MatchScheduleRepository matchScheduleRepository;
     private final MatchFinalizeOrchestrator matchFinalizeOrchestrator;
+    private final ExternalTeamNamesService externalTeamNamesService;
 
     @GetMapping("/layers")
     @PreAuthorize("hasAuthority('ADMIN')")
@@ -59,6 +62,15 @@ public class ExternalDataAdminController {
                 configService.update(body != null ? body.toEntityLayers() : null),
                 configService.capabilitiesCatalog()
         ));
+    }
+
+    @PostMapping("/team-names")
+    @PreAuthorize("hasAuthority('ADMIN')")
+    public ResponseEntity<List<Soccer365TeamNameChipDto>> fetchTeamNames(
+            @RequestParam String provider,
+            @RequestParam String leagueCode
+    ) {
+        return ResponseEntity.ok(externalTeamNamesService.fetchUnmappedTeamNames(provider, leagueCode));
     }
 
     @PostMapping("/schedule/sync")
