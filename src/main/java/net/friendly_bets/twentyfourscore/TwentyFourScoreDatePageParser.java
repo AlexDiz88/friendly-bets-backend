@@ -48,8 +48,25 @@ public class TwentyFourScoreDatePageParser {
     }
 
     private java.util.Optional<TwentyFourScoreParsedDatePage.MatchRow> parseMatchRow(Element row) {
-        Element home = row.selectFirst(".tm1, td.team span.tm1, td.team:nth-of-type(1) a, td.team:nth-of-type(1)");
-        Element away = row.selectFirst(".tm2, td.team span.tm2, td.team:nth-of-type(2) a, td.team:nth-of-type(2)");
+        Element home = row.selectFirst("span.tm1");
+        Element away = row.selectFirst("span.tm2");
+        if (home == null || away == null) {
+            Elements teamCells = row.select("td.team");
+            if (teamCells.size() >= 2) {
+                if (home == null) {
+                    home = teamCells.get(0).selectFirst("a, span");
+                    if (home == null) {
+                        home = teamCells.get(0);
+                    }
+                }
+                if (away == null) {
+                    away = teamCells.get(1).selectFirst("a, span");
+                    if (away == null) {
+                        away = teamCells.get(1);
+                    }
+                }
+            }
+        }
         Element scoreCell = row.selectFirst("td.score, .score");
         if (home == null || away == null) {
             return java.util.Optional.empty();

@@ -35,4 +35,30 @@ class TwentyFourScoreDatePageParserTest {
         assertEquals("FINISHED", row.getStatus());
         assertEquals("849893", row.getExternalMatchId());
     }
+
+    @Test
+    @DisplayName("home/away not swapped when first td is time (nth-of-type trap)")
+    void parsesHomeAwayWithTimeColumn() {
+        String html = """
+                <table class="daymatches fbl">
+                <tbody>
+                	<tr><th colspan="5" class="champheader"><div class="champheader_title"><a>Россия Премьер-лига</a></div></th></tr>
+                	<tr class="odd" id="row_853885">
+                		<td class="time">14:00</td>
+                		<td class="team"><a href="/football/team/russia/dynamo_moscow/"><span class="tm1">Динамо М</span></a></td>
+                		<td class="team"><a href="/football/team/russia/krylya_sovetov/"><span class="tm2">Крылья Советов</span></a></td>
+                		<td class="score"><a href="/football/match/853885-dynamo_moscow-krylya_sovetov" class="match"><b>0:0</b> (0:0)</a></td>
+                	</tr>
+                </tbody>
+                </table>
+                """;
+
+        TwentyFourScoreParsedDatePage page = parser.parse(html);
+        assertFalse(page.getCompetitions().isEmpty());
+        assertFalse(page.getCompetitions().get(0).getMatches().isEmpty());
+        TwentyFourScoreParsedDatePage.MatchRow row = page.getCompetitions().get(0).getMatches().get(0);
+        assertEquals("Динамо М", row.getHomeName());
+        assertEquals("Крылья Советов", row.getAwayName());
+        assertEquals("853885", row.getExternalMatchId());
+    }
 }

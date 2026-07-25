@@ -40,8 +40,6 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class ExternalDataSandboxService {
 
-    private static final int RAW_MAX_CHARS = 300_000;
-
     private final Soccer365HttpClient soccer365HttpClient;
     private final Soccer365ScheduleParser soccer365ScheduleParser;
     private final Soccer365GameParser soccer365GameParser;
@@ -59,19 +57,24 @@ public class ExternalDataSandboxService {
             throw new BadRequestException("sandboxCompetitionIdRequired");
         }
         int competitionId = request.getCompetitionId();
+        Integer roundFilter = request.getRound();
+        if (roundFilter != null && roundFilter <= 0) {
+            throw new BadRequestException("sandboxRoundInvalid");
+        }
+        Integer limit = request.getLimit();
+        if (limit != null && limit <= 0) {
+            throw new BadRequestException("sandboxLimitInvalid");
+        }
         long started = System.currentTimeMillis();
         try {
             String html = soccer365HttpClient.fetchScheduleHtml(competitionId);
             Soccer365ParsedSchedule parsed = soccer365ScheduleParser.parse(html, competitionId);
-            TruncatedRaw raw = truncateRaw(html);
             return ExternalDataSandboxResultDto.builder()
                     .success(true)
                     .layer(ExternalDataLayer.SCHEDULE.name())
                     .provider(provider)
                     .durationMs(System.currentTimeMillis() - started)
-                    .parsed(toScheduleParsed(parsed))
-                    .rawPayload(raw.payload())
-                    .rawTruncated(raw.truncated())
+                    .parsed(toScheduleParsed(parsed, roundFilter, limit))
                     .build();
         } catch (BadRequestException e) {
             return fail(ExternalDataLayer.SCHEDULE, provider, started, e.getMessage(), null);
@@ -102,15 +105,12 @@ public class ExternalDataSandboxService {
                 }
                 JsonNode body = fetch.getBody();
                 List<MarathonbetPrematchEvent> events = MarathonbetTournamentParser.parsePrematchEvents(body);
-                TruncatedRaw raw = truncateRaw(body != null ? body.toString() : "");
                 return ExternalDataSandboxResultDto.builder()
                         .success(true)
                         .layer(ExternalDataLayer.ODDS.name())
                         .provider(provider)
                         .durationMs(System.currentTimeMillis() - started)
                         .parsed(toOddsTournamentParsed(treeId, events))
-                        .rawPayload(raw.payload())
-                        .rawTruncated(raw.truncated())
                         .build();
             }
             MarathonbetHttpFetchResult fetch = marathonbetScrapeService.fetchEventSnapshotResult(treeId);
@@ -119,15 +119,12 @@ public class ExternalDataSandboxService {
             }
             JsonNode body = fetch.getBody();
             MarathonbetExtractedMarkets markets = MarathonbetMarketExtractor.extractAll(body);
-            TruncatedRaw raw = truncateRaw(body != null ? body.toString() : "");
             return ExternalDataSandboxResultDto.builder()
                     .success(true)
                     .layer(ExternalDataLayer.ODDS.name())
                     .provider(provider)
                     .durationMs(System.currentTimeMillis() - started)
                     .parsed(toOddsEventParsed(treeId, markets))
-                    .rawPayload(raw.payload())
-                    .rawTruncated(raw.truncated())
                     .build();
         } catch (BadRequestException e) {
             return fail(ExternalDataLayer.ODDS, provider, started, e.getMessage(), null);
@@ -164,15 +161,12 @@ public class ExternalDataSandboxService {
                     .filter(c -> c.getTitle() != null
                             && c.getTitle().toLowerCase(Locale.ROOT).contains(titleContains.toLowerCase(Locale.ROOT)))
                     .collect(Collectors.toList());
-            TruncatedRaw raw = truncateRaw(html);
             return ExternalDataSandboxResultDto.builder()
                     .success(true)
                     .layer(ExternalDataLayer.LIVE.name())
                     .provider(provider)
                     .durationMs(System.currentTimeMillis() - started)
                     .parsed(toLiveParsed(date.toString(), titleContains, all.size(), filtered))
-                    .rawPayload(raw.payload())
-                    .rawTruncated(raw.truncated())
                     .build();
         } catch (BadRequestException e) {
             return fail(ExternalDataLayer.LIVE, provider, started, e.getMessage(), null);
@@ -194,7 +188,6 @@ public class ExternalDataSandboxService {
         try {
             String html = soccer365HttpClient.fetchGameHtml(gameId);
             Soccer365ParsedFullMatch parsed = soccer365GameParser.parse(html);
-            TruncatedRaw raw = truncateRaw(html);
             Map<String, Object> summary = new LinkedHashMap<>();
             summary.put("gameId", gameId);
             summary.put("statusText", parsed.getStatusText());
@@ -208,8 +201,6 @@ public class ExternalDataSandboxService {
                     .provider(provider)
                     .durationMs(System.currentTimeMillis() - started)
                     .parsed(summary)
-                    .rawPayload(raw.payload())
-                    .rawTruncated(raw.truncated())
                     .build();
         } catch (BadRequestException e) {
             return fail(ExternalDataLayer.FULL_MATCH, provider, started, e.getMessage(), null);
@@ -242,23 +233,32 @@ public class ExternalDataSandboxService {
                 .build();
     }
 
-    private static TruncatedRaw truncateRaw(String raw) {
-        if (raw == null) {
-            return new TruncatedRaw("", false);
-        }
-        if (raw.length() <= RAW_MAX_CHARS) {
-            return new TruncatedRaw(raw, false);
-        }
-        return new TruncatedRaw(raw.substring(0, RAW_MAX_CHARS), true);
-    }
-
-    private static Map<String, Object> toScheduleParsed(Soccer365ParsedSchedule parsed) {
-        int matchesCount = 0;
-        List<Map<String, Object>> rounds = new ArrayList<>();
+    private static Map<String, Object> toScheduleParsed(
+            Soccer365ParsedSchedule parsed,
+            Integer roundFilter,
+            Integer limit
+    ) {
+        int matchesTotal = 0;
         for (Soccer365ParsedSchedule.Round round : parsed.getRounds()) {
+            matchesTotal += round.getMatches() != null ? round.getMatches().size() : 0;
+        }
+
+        int remaining = limit != null ? limit : Integer.MAX_VALUE;
+        int matchesReturned = 0;
+        List<Map<String, Object>> rounds = new ArrayList<>();
+
+        for (Soccer365ParsedSchedule.Round round : parsed.getRounds()) {
+            if (roundFilter != null && round.getNumber() != roundFilter) {
+                continue;
+            }
+            if (remaining <= 0) {
+                break;
+            }
             List<Map<String, Object>> matches = new ArrayList<>();
             for (Soccer365ParsedSchedule.Match match : round.getMatches()) {
-                matchesCount++;
+                if (remaining <= 0) {
+                    break;
+                }
                 Map<String, Object> row = new LinkedHashMap<>();
                 row.put("homeName", match.getHomeName());
                 row.put("awayName", match.getAwayName());
@@ -266,18 +266,29 @@ public class ExternalDataSandboxService {
                 row.put("status", match.getStatus());
                 row.put("soccer365GameId", match.getSoccer365GameId());
                 matches.add(row);
+                remaining--;
+                matchesReturned++;
             }
-            Map<String, Object> roundMap = new LinkedHashMap<>();
-            roundMap.put("number", round.getNumber());
-            roundMap.put("matches", matches);
-            rounds.add(roundMap);
+            if (!matches.isEmpty()) {
+                Map<String, Object> roundMap = new LinkedHashMap<>();
+                roundMap.put("number", round.getNumber());
+                roundMap.put("matches", matches);
+                rounds.add(roundMap);
+            }
         }
+
+        boolean truncated = matchesReturned < matchesTotal;
+
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("competitionId", parsed.getCompetitionId());
+        out.put("roundFilter", roundFilter);
+        out.put("limit", limit);
+        out.put("matchesTotal", matchesTotal);
+        out.put("roundsTotal", parsed.getRounds().size());
         out.put("roundsCount", rounds.size());
-        out.put("matchesCount", matchesCount);
+        out.put("matchesCount", matchesReturned);
+        out.put("parsedTruncated", truncated);
         out.put("rounds", rounds);
-        out.put("clubFilterNames", parsed.getClubFilterNames());
         return out;
     }
 
@@ -375,8 +386,5 @@ public class ExternalDataSandboxService {
         out.put("matchesCount", matchesCount);
         out.put("competitions", competitions);
         return out;
-    }
-
-    private record TruncatedRaw(String payload, boolean truncated) {
     }
 }

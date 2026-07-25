@@ -18,6 +18,4 @@ public class ExternalDataSandboxResultDto {
     private String errorDetail;
     /** Layer-specific structured summary (JSON object). */
     private Object parsed;
-    private String rawPayload;
-    private boolean rawTruncated;
 }
