@@ -22,7 +22,7 @@ public class MarathonbetSyncResult {
     @Builder.Default
     int mappingFailures = 0;
     @Builder.Default
-    List<String> failedGameResultIds = new ArrayList<>();
+    List<String> failedMatchScheduleIds = new ArrayList<>();
     String leagueCode;
     String season;
     @Builder.Default

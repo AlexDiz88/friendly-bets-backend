@@ -17,16 +17,20 @@ import java.util.List;
 @AllArgsConstructor
 @Builder
 @Data
-@Document(collection = "game_result_merged_odds")
-public class GameResultMergedOdds {
+@Document(collection = "odds")
+public class Odds {
 
     @MongoId
     @Field(name = "_id")
     private String id;
 
     @Indexed(unique = true)
-    @Field(name = "game_result_id")
-    private String gameResultId;
+    @Field(name = "match_schedule_id")
+    private String matchScheduleId;
+
+    /** Cached Marathonbet event treeId after successful match. */
+    @Field(name = "marathonbet_tree_id")
+    private Long marathonbetTreeId;
 
     @Field(name = "fetched_at")
     private LocalDateTime fetchedAt;

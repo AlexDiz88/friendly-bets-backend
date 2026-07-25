@@ -12,18 +12,18 @@ public interface ApiSyncIssueRepository extends MongoRepository<ApiSyncIssue, St
 
     boolean existsByProviderAndIssueTypeAndExternalMatchId(String provider, String issueType, Long externalMatchId);
 
-    boolean existsByProviderAndIssueTypeAndGameResultId(String provider, String issueType, String gameResultId);
+    boolean existsByProviderAndIssueTypeAndMatchScheduleId(String provider, String issueType, String matchScheduleId);
 
-    Optional<ApiSyncIssue> findFirstByProviderAndIssueTypeAndGameResultId(
+    Optional<ApiSyncIssue> findFirstByProviderAndIssueTypeAndMatchScheduleId(
             String provider,
             String issueType,
-            String gameResultId
+            String matchScheduleId
     );
 
-    Optional<ApiSyncIssue> findFirstByProviderAndIssueTypeAndGameResultIdAndMessage(
+    Optional<ApiSyncIssue> findFirstByProviderAndIssueTypeAndMatchScheduleIdAndMessage(
             String provider,
             String issueType,
-            String gameResultId,
+            String matchScheduleId,
             String message
     );
 

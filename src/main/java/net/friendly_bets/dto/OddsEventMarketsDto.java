@@ -16,7 +16,7 @@ import java.util.List;
 @NoArgsConstructor
 public class OddsEventMarketsDto {
 
-    private String gameResultId;
+    private String matchScheduleId;
     private String homeTeamId;
     private String awayTeamId;
     private String status;

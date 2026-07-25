@@ -17,9 +17,9 @@ public class OddsEventController {
 
     private final OddsPresentationService oddsPresentationService;
 
-    @GetMapping("/{gameResultId}")
+    @GetMapping("/{matchScheduleId}")
     @PreAuthorize("hasAuthority('USER') || hasAuthority('MODERATOR') || hasAuthority('ADMIN')")
-    public ResponseEntity<OddsEventMarketsDto> getEventMarkets(@PathVariable String gameResultId) {
-        return ResponseEntity.ok(oddsPresentationService.getMarketsForGameResult(gameResultId));
+    public ResponseEntity<OddsEventMarketsDto> getEventMarkets(@PathVariable String matchScheduleId) {
+        return ResponseEntity.ok(oddsPresentationService.getMarketsForMatchSchedule(matchScheduleId));
     }
 }

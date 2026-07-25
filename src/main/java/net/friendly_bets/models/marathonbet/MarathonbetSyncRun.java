@@ -84,7 +84,7 @@ public class MarathonbetSyncRun {
     @Field(name = "error_summary")
     private String errorSummary;
 
-    @Field(name = "failed_game_result_ids")
+    @Field(name = "failed_match_schedule_ids")
     @Builder.Default
-    private List<String> failedGameResultIds = new ArrayList<>();
+    private List<String> failedMatchScheduleIds = new ArrayList<>();
 }

@@ -45,10 +45,10 @@ public class MarathonbetAdminController {
             @RequestParam String leagueId,
             @RequestParam int matchday,
             @RequestParam(required = false) String season,
-            @RequestParam(required = false) List<String> gameResultIds
+            @RequestParam(required = false) List<String> matchScheduleIds
     ) {
         MarathonbetSyncResult result = marathonbetSyncService.syncSlot(
-                leagueId, matchday, season, gameResultIds);
+                leagueId, matchday, season, matchScheduleIds);
         return ResponseEntity.ok(Map.of(
                 "message", "marathonbetSyncCompleted",
                 "tournamentFetched", result.isTournamentFetched(),
@@ -57,7 +57,7 @@ public class MarathonbetAdminController {
                 "mergedSaved", result.getMergedSaved(),
                 "sseCalls", result.getSseCalls(),
                 "mappingFailures", result.getMappingFailures(),
-                "failedGameResultIds", result.getFailedGameResultIds()
+                "failedMatchScheduleIds", result.getFailedMatchScheduleIds()
         ));
     }
 

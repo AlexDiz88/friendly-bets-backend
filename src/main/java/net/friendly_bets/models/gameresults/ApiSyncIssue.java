@@ -44,8 +44,8 @@ public class ApiSyncIssue {
     @Field(name = "external_match_id")
     private Long externalMatchId;
 
-    @Field(name = "game_result_id")
-    private String gameResultId;
+    @Field(name = "match_schedule_id")
+    private String matchScheduleId;
 
     @Field(name = "home_team_name")
     private String homeTeamName;

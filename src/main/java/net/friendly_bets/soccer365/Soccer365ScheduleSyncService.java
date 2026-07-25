@@ -12,6 +12,7 @@ import net.friendly_bets.models.Season;
 import net.friendly_bets.models.Team;
 import net.friendly_bets.models.TournamentFormat;
 import net.friendly_bets.models.schedule.MatchSchedule;
+import net.friendly_bets.oddsapi.OddsMergedOddsService;
 import net.friendly_bets.repositories.MatchScheduleRepository;
 import net.friendly_bets.services.GetEntityService;
 import net.friendly_bets.services.RunningSeasonLookup;
@@ -48,6 +49,7 @@ public class Soccer365ScheduleSyncService {
     private final TeamAliasResolver teamAliasResolver;
     private final MatchScheduleRepository matchScheduleRepository;
     private final ApiSyncIssueService apiSyncIssueService;
+    private final OddsMergedOddsService oddsMergedOddsService;
 
     public Soccer365ScheduleSyncResultDto syncByLeagueCode(String leagueCodeRaw) {
         League.LeagueCode leagueCode = Soccer365TeamNamesService.parseLeagueCode(leagueCodeRaw);
@@ -215,6 +217,7 @@ public class Soccer365ScheduleSyncService {
         }
         existing.setFetchedAt(fetchedAt);
         matchScheduleRepository.save(existing);
+        oddsMergedOddsService.deleteIfFinalized(existing);
     }
 
     private boolean shouldSkipFarKickoff(Soccer365ParsedSchedule parsed, Set<Integer> window) {
