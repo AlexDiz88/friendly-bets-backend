@@ -414,7 +414,7 @@ public class MarathonbetSyncService {
                 matched += outcome.matched() ? 1 : 0;
                 saved += outcome.saved() ? 1 : 0;
                 sseCalls += outcome.sseCall() ? 1 : 0;
-                if (outcome.failed()) {
+                if (outcome.failure()) {
                     failures++;
                     if (match.getId() != null) {
                         failedIds.add(match.getId());
@@ -454,7 +454,7 @@ public class MarathonbetSyncService {
                 matchday
         );
         if (eventOpt.isEmpty()) {
-            return MatchSyncOutcome.failed();
+            return MatchSyncOutcome.mappingMiss();
         }
         MarathonbetPrematchEvent event = eventOpt.get();
         try {
@@ -640,12 +640,12 @@ public class MarathonbetSyncService {
         }
     }
 
-    private record MatchSyncOutcome(boolean matched, boolean saved, boolean sseCall, boolean failed) {
+    private record MatchSyncOutcome(boolean matched, boolean saved, boolean sseCall, boolean failure) {
         static MatchSyncOutcome ok() {
             return new MatchSyncOutcome(true, true, true, false);
         }
 
-        static MatchSyncOutcome failed() {
+        static MatchSyncOutcome mappingMiss() {
             return new MatchSyncOutcome(false, false, false, true);
         }
 
