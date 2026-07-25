@@ -29,7 +29,6 @@ import net.friendly_bets.services.RunningSeasonLookup;
 import net.friendly_bets.providers.ExternalDataLayer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
@@ -212,18 +211,6 @@ public class MarathonbetSyncService {
         } finally {
             pipelineLock.unlock();
         }
-    }
-
-    public Optional<MarathonbetSyncRun> findLatestRun() {
-        return syncRunRepository.findFirstByOrderByStartedAtDesc();
-    }
-
-    public List<MarathonbetSyncRun> findRecentRuns(int limit) {
-        int safeLimit = Math.max(1, Math.min(limit, 100));
-        return syncRunRepository.findByStartedAtAfterOrderByStartedAtDesc(
-                LocalDateTime.now().minusDays(30),
-                PageRequest.of(0, safeLimit)
-        );
     }
 
     private MarathonbetSyncResult syncLeagueLocked(
