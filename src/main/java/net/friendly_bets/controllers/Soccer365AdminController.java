@@ -3,7 +3,9 @@ package net.friendly_bets.controllers;
 import lombok.RequiredArgsConstructor;
 import net.friendly_bets.dto.Soccer365ScheduleSyncResultDto;
 import net.friendly_bets.dto.Soccer365TeamNameChipDto;
-import net.friendly_bets.soccer365.Soccer365ScheduleSyncService;
+import net.friendly_bets.providers.ExternalDataLayer;
+import net.friendly_bets.providers.LayerProviderRouter;
+import net.friendly_bets.providers.ScheduleProvider;
 import net.friendly_bets.soccer365.Soccer365TeamNamesService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -20,7 +22,7 @@ import java.util.List;
 public class Soccer365AdminController {
 
     private final Soccer365TeamNamesService teamNamesService;
-    private final Soccer365ScheduleSyncService scheduleSyncService;
+    private final LayerProviderRouter router;
 
     @PostMapping("/team-names")
     @PreAuthorize("hasAuthority('ADMIN')")
@@ -35,6 +37,11 @@ public class Soccer365AdminController {
     public ResponseEntity<Soccer365ScheduleSyncResultDto> syncSchedule(
             @RequestParam String leagueCode
     ) {
-        return ResponseEntity.ok(scheduleSyncService.syncByLeagueCode(leagueCode));
+        return ResponseEntity.ok(router.execute(
+                ExternalDataLayer.SCHEDULE,
+                ScheduleProvider.class,
+                p -> p.syncByLeagueCode(leagueCode),
+                leagueCode
+        ));
     }
 }

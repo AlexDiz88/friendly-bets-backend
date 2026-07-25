@@ -10,7 +10,6 @@ import net.friendly_bets.dto.TeamExternalAliasDto;
 import net.friendly_bets.dto.TeamsPage;
 import net.friendly_bets.dto.UpdateTeamDto;
 import net.friendly_bets.exceptions.ConflictException;
-import net.friendly_bets.gameresults.ApiSyncIssueService;
 import net.friendly_bets.models.Team;
 import net.friendly_bets.models.TeamDisplayNames;
 import net.friendly_bets.models.TeamExternalAlias;
@@ -32,7 +31,7 @@ public class TeamsService {
 
     TeamsRepository teamsRepository;
     GetEntityService getEntityService;
-    ApiSyncIssueService apiSyncIssueService;
+    ErrorLogService errorLogService;
 
     public TeamsPage getAll() {
         List<Team> allTeams = teamsRepository.findAll();
@@ -106,10 +105,9 @@ public class TeamsService {
             if (alias.getProvider() == null) {
                 continue;
             }
-            apiSyncIssueService.purgeTeamMappingIssuesForExternalTeam(
+            errorLogService.purgeTeamMappingIssuesForExternalTeam(
                     alias.getProvider(),
-                    alias.getExternalName(),
-                    alias.getExternalId()
+                    alias.getExternalName()
             );
         }
     }

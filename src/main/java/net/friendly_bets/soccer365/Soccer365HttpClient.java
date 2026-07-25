@@ -34,6 +34,17 @@ public class Soccer365HttpClient {
         return getHtml(scheduleUrl, competitionUrl);
     }
 
+    public String fetchGameHtml(String gameId) {
+        if (gameId == null || gameId.isBlank()) {
+            throw new BadRequestException("soccer365GameIdRequired");
+        }
+        String id = gameId.trim();
+        String base = trimTrailingSlash(properties.getBaseUrl());
+        String gameUrl = base + "/games/" + id + "/";
+        jitterSleep();
+        return getHtml(gameUrl, gameUrl);
+    }
+
     private String getHtml(String url, String referer) {
         try {
             HttpRequest.Builder builder = HttpRequest.newBuilder()

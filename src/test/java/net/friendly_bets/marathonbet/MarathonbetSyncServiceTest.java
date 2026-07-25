@@ -1,7 +1,6 @@
 package net.friendly_bets.marathonbet;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import net.friendly_bets.gameresults.ApiSyncIssueService;
 import net.friendly_bets.gameresults.ExternalCompetitionService;
 import net.friendly_bets.gameresults.MatchdaySlotSupport;
 import net.friendly_bets.marathonbet.client.MarathonbetHttpFetchResult;
@@ -15,6 +14,7 @@ import net.friendly_bets.oddsapi.OddsMergedOddsService;
 import net.friendly_bets.oddsapi.mapping.MappedOddsQuote;
 import net.friendly_bets.oddsapi.mapping.OddsMergeResult;
 import net.friendly_bets.repositories.MarathonbetSyncRunRepository;
+import net.friendly_bets.services.ErrorLogService;
 import net.friendly_bets.services.GetEntityService;
 import net.friendly_bets.services.MatchScheduleQueryService;
 import net.friendly_bets.services.RunningSeasonLookup;
@@ -61,7 +61,7 @@ class MarathonbetSyncServiceTest {
     @Mock
     GetEntityService getEntityService;
     @Mock
-    ApiSyncIssueService apiSyncIssueService;
+    ErrorLogService errorLogService;
     @Mock
     MarathonbetSyncRunRepository syncRunRepository;
 

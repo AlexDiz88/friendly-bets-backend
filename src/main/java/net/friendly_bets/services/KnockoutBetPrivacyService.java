@@ -8,9 +8,9 @@ import net.friendly_bets.gameresults.MatchdaySlotSupport;
 import net.friendly_bets.models.Bet;
 import net.friendly_bets.models.League;
 import net.friendly_bets.models.Season;
-import net.friendly_bets.models.gameresults.GameResultRecord;
-import net.friendly_bets.oddsapi.GameResultNotStarted;
-import net.friendly_bets.repositories.GameResultRecordRepository;
+import net.friendly_bets.models.schedule.MatchSchedule;
+import net.friendly_bets.oddsapi.MatchScheduleNotStarted;
+import net.friendly_bets.repositories.MatchScheduleRepository;
 import net.friendly_bets.utils.KnockoutBetPrivacyStages;
 import org.springframework.stereotype.Service;
 
@@ -26,12 +26,12 @@ import java.util.stream.Collectors;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class KnockoutBetPrivacyService {
 
-    GameResultRecordRepository gameResultRecordRepository;
+    MatchScheduleRepository matchScheduleRepository;
     MatchdaySlotSupport matchdaySupport;
 
     public record MatchKey(
-            String leagueCode,
-            String storageSeason,
+            String leagueId,
+            String seasonId,
             String homeTeamId,
             String awayTeamId,
             String matchDay
@@ -88,14 +88,13 @@ public class KnockoutBetPrivacyService {
             return true;
         }
         League league = bet.getLeague();
-        if (league == null || league.getLeagueCode() == null) {
+        if (league == null || league.getId() == null) {
             return true;
         }
         Season season = bet.getSeason();
-        String storageSeason = matchdaySupport.resolveExternalSeasonYear(season, league.getLeagueCode());
         MatchKey key = new MatchKey(
-                league.getLeagueCode().name(),
-                storageSeason,
+                league.getId(),
+                season.getId(),
                 homeTeamId,
                 awayTeamId,
                 bet.getMatchDay()
@@ -104,9 +103,9 @@ public class KnockoutBetPrivacyService {
     }
 
     private boolean resolveMatchNotStarted(Bet bet, MatchKey key) {
-        List<GameResultRecord> matches = gameResultRecordRepository.findByLeagueCodeAndSeasonAndHomeTeamIdAndAwayTeamId(
-                key.leagueCode(),
-                key.storageSeason(),
+        List<MatchSchedule> matches = matchScheduleRepository.findByLeagueIdAndSeasonIdAndHomeTeamIdAndAwayTeamId(
+                key.leagueId(),
+                key.seasonId(),
                 key.homeTeamId(),
                 key.awayTeamId()
         );
@@ -115,13 +114,13 @@ public class KnockoutBetPrivacyService {
         }
         League league = bet.getLeague();
         Optional<Integer> slotOrder = matchdaySupport.resolveSlotOrder(league, key.matchDay());
-        Optional<GameResultRecord> match = matches.stream()
+        Optional<MatchSchedule> match = matches.stream()
                 .filter(record -> slotOrder.isEmpty() || Objects.equals(record.getMatchday(), slotOrder.get()))
                 .findFirst();
         if (match.isEmpty()) {
             return true;
         }
-        return GameResultNotStarted.isNotStarted(match.get());
+        return MatchScheduleNotStarted.isNotStarted(match.get());
     }
 
     private static BetDto maskDetails(BetDto dto) {

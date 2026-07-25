@@ -116,7 +116,34 @@ public class Soccer365ScheduleParser {
                 .awayName(awayName)
                 .utcKickoff(utcKickoff)
                 .status(status)
+                .soccer365GameId(resolveSoccer365GameId(gameBlock))
                 .build());
+    }
+
+    private static String resolveSoccer365GameId(Element gameBlock) {
+        Element link = gameBlock.selectFirst("a.game_link[dt-id]");
+        if (link != null) {
+            String dtId = link.attr("dt-id");
+            if (dtId != null && !dtId.isBlank()) {
+                return dtId.trim();
+            }
+        }
+        Element any = gameBlock.selectFirst("[dt-id]");
+        if (any != null) {
+            String dtId = any.attr("dt-id");
+            if (dtId != null && !dtId.isBlank()) {
+                return dtId.trim();
+            }
+        }
+        Element href = gameBlock.selectFirst("a.game_link[href*=/games/]");
+        if (href != null) {
+            String path = href.attr("href");
+            Matcher matcher = Pattern.compile("/games/(\\d+)").matcher(path);
+            if (matcher.find()) {
+                return matcher.group(1);
+            }
+        }
+        return null;
     }
 
     private Instant resolveUtcKickoff(Element gameBlock) {

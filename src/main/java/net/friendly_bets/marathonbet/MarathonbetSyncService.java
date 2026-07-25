@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import lombok.RequiredArgsConstructor;
 import net.friendly_bets.dto.ExternalCompetitionInfoDto;
 import net.friendly_bets.exceptions.BadRequestException;
-import net.friendly_bets.gameresults.ApiSyncIssueService;
 import net.friendly_bets.gameresults.ExternalCompetitionService;
 import net.friendly_bets.gameresults.MatchdaySlotSupport;
 import net.friendly_bets.marathonbet.client.MarathonbetHttpFetchResult;
@@ -23,9 +22,11 @@ import net.friendly_bets.oddsapi.mapping.MappedOddsQuote;
 import net.friendly_bets.oddsapi.mapping.OddsMergeResult;
 import net.friendly_bets.repositories.MarathonbetSyncRunRepository;
 import net.friendly_bets.services.GetEntityService;
+import net.friendly_bets.services.ErrorLogService;
 import net.friendly_bets.services.MatchScheduleDisplayService;
 import net.friendly_bets.services.MatchScheduleQueryService;
 import net.friendly_bets.services.RunningSeasonLookup;
+import net.friendly_bets.providers.ExternalDataLayer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.PageRequest;
@@ -61,7 +62,7 @@ public class MarathonbetSyncService {
     private final MatchdaySlotSupport matchdaySupport;
     private final RunningSeasonLookup runningSeasonLookup;
     private final GetEntityService getEntityService;
-    private final ApiSyncIssueService apiSyncIssueService;
+    private final ErrorLogService errorLogService;
     private final MarathonbetSyncRunRepository syncRunRepository;
 
     /** Ensures only one league runs listing+SSE at a time. */
@@ -272,8 +273,25 @@ public class MarathonbetSyncService {
                     tournamentResult.getHttpStatus(),
                     tournamentResult.getOutcome()
             );
-            apiSyncIssueService.recordMarathonbetFetchFailed(code, season, errorSummary);
-            apiSyncIssueService.recordMarathonbetPrimaryUnavailable(code, season, errorSummary);
+            errorLogService.record(ErrorLogService.Entry.builder()
+                    .severity(ErrorLogService.SEVERITY_ERROR)
+                    .layer(ExternalDataLayer.ODDS.name())
+                    .provider("marathonbet")
+                    .code(ErrorLogService.CODE_PROVIDER_FETCH_FAILED)
+                    .message(errorSummary)
+                    .leagueCode(code)
+                    .season(season)
+                    .build());
+            errorLogService.record(ErrorLogService.Entry.builder()
+                    .severity(ErrorLogService.SEVERITY_ERROR)
+                    .layer(ExternalDataLayer.ODDS.name())
+                    .provider("marathonbet")
+                    .providerRole(ErrorLogService.ROLE_PRIMARY)
+                    .code(ErrorLogService.CODE_PRIMARY_UNAVAILABLE)
+                    .message(errorSummary)
+                    .leagueCode(code)
+                    .season(season)
+                    .build());
             finalizeRun(run, httpLogs, false, 0, 0, 0, 0, 0, 0, List.of(), errorSummary);
             return toResult(code, season, slotOrders, SlotSyncCounters.empty(), false, errorSummary);
         }

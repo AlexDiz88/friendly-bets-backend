@@ -3,7 +3,6 @@ package net.friendly_bets.soccer365;
 import lombok.RequiredArgsConstructor;
 import net.friendly_bets.dto.Soccer365ScheduleSyncResultDto;
 import net.friendly_bets.exceptions.BadRequestException;
-import net.friendly_bets.gameresults.ApiSyncIssueService;
 import net.friendly_bets.gameresults.MatchDataProviders;
 import net.friendly_bets.gameresults.MatchdaySlotSupport;
 import net.friendly_bets.models.ExpandedMatchdaySlot;
@@ -15,9 +14,13 @@ import net.friendly_bets.models.schedule.MatchSchedule;
 import net.friendly_bets.oddsapi.OddsMergedOddsService;
 import net.friendly_bets.repositories.MatchScheduleRepository;
 import net.friendly_bets.services.GetEntityService;
+import net.friendly_bets.services.ErrorLogService;
 import net.friendly_bets.services.RunningSeasonLookup;
 import net.friendly_bets.services.TeamAliasResolver;
 import net.friendly_bets.services.TournamentFormatExpander;
+import net.friendly_bets.providers.ExternalDataLayer;
+import net.friendly_bets.providers.ExternalDataProvider;
+import net.friendly_bets.providers.ScheduleProvider;
 import net.friendly_bets.soccer365.config.Soccer365Properties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,9 +37,19 @@ import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
-public class Soccer365ScheduleSyncService {
+public class Soccer365ScheduleSyncService implements ScheduleProvider {
 
     private static final Logger log = LoggerFactory.getLogger(Soccer365ScheduleSyncService.class);
+
+    @Override
+    public String providerId() {
+        return MatchDataProviders.SOCCER365;
+    }
+
+    @Override
+    public Set<ExternalDataLayer> capabilities() {
+        return ExternalDataProvider.of(ExternalDataLayer.SCHEDULE);
+    }
 
     private final Soccer365Properties properties;
     private final Soccer365HttpClient httpClient;
@@ -48,7 +61,7 @@ public class Soccer365ScheduleSyncService {
     private final GetEntityService getEntityService;
     private final TeamAliasResolver teamAliasResolver;
     private final MatchScheduleRepository matchScheduleRepository;
-    private final ApiSyncIssueService apiSyncIssueService;
+    private final ErrorLogService errorLogService;
     private final OddsMergedOddsService oddsMergedOddsService;
 
     public Soccer365ScheduleSyncResultDto syncByLeagueCode(String leagueCodeRaw) {
@@ -144,7 +157,7 @@ public class Soccer365ScheduleSyncService {
                     if (away.isEmpty()) {
                         unmappedNames.add(match.getAwayName());
                     }
-                    apiSyncIssueService.recordTeamMappingMissing(
+                    errorLogService.recordTeamMappingMissing(
                             MatchDataProviders.SOCCER365,
                             leagueCode.name(),
                             externalSeason,
@@ -214,6 +227,10 @@ public class Soccer365ScheduleSyncService {
         }
         if (match.getStatus() != null) {
             existing.setStatus(match.getStatus());
+        }
+        if (match.getSoccer365GameId() != null && !match.getSoccer365GameId().isBlank()) {
+            existing.putExternalId(MatchDataProviders.sourcesStorageKey(MatchDataProviders.SOCCER365),
+                    match.getSoccer365GameId());
         }
         existing.setFetchedAt(fetchedAt);
         matchScheduleRepository.save(existing);

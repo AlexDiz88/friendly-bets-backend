@@ -1,12 +1,12 @@
 package net.friendly_bets.marathonbet;
 
 import lombok.RequiredArgsConstructor;
-import net.friendly_bets.gameresults.ApiSyncIssueService;
 import net.friendly_bets.marathonbet.config.MarathonbetProperties;
 import net.friendly_bets.models.Team;
 import net.friendly_bets.models.odds.Odds;
 import net.friendly_bets.models.schedule.MatchSchedule;
 import net.friendly_bets.repositories.OddsRepository;
+import net.friendly_bets.services.ErrorLogService;
 import net.friendly_bets.services.TeamAliasResolver;
 import org.springframework.stereotype.Component;
 
@@ -20,7 +20,7 @@ import java.util.Optional;
 public class MarathonbetEventMatcher {
 
     private final TeamAliasResolver teamAliasResolver;
-    private final ApiSyncIssueService apiSyncIssueService;
+    private final ErrorLogService errorLogService;
     private final OddsRepository oddsRepository;
     private final MarathonbetProperties properties;
 
@@ -45,11 +45,11 @@ public class MarathonbetEventMatcher {
                 if (disambiguated.isPresent()) {
                     return disambiguated;
                 }
-                apiSyncIssueService.recordMarathonbetEventMappingMissing(
-                        match, leagueCode, season, matchday, "ambiguousMarathonbetEventMatch");
+                errorLogService.recordEventMappingMissing(
+                        match, "marathonbet", leagueCode, season, matchday, "ambiguousMarathonbetEventMatch");
             } else {
-                apiSyncIssueService.recordMarathonbetEventMappingMissing(
-                        match, leagueCode, season, matchday, null);
+                errorLogService.recordEventMappingMissing(
+                        match, "marathonbet", leagueCode, season, matchday, null);
             }
             return Optional.empty();
         }
