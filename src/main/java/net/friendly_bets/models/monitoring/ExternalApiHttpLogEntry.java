@@ -1,4 +1,4 @@
-package net.friendly_bets.models.marathonbet;
+package net.friendly_bets.models.monitoring;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -12,13 +12,14 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @Builder
 @Data
-public class MarathonbetHttpLogEntry {
+public class ExternalApiHttpLogEntry {
 
     @Field(name = "request_type")
     private String requestType;
 
-    @Field(name = "target_id")
-    private Long targetId;
+    /** Provider-specific target (URL, treeId, gameId, …). */
+    @Field(name = "target")
+    private String target;
 
     @Field(name = "http_status")
     private Integer httpStatus;

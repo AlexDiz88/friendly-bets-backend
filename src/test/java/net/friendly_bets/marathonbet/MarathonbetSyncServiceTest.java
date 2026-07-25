@@ -9,12 +9,13 @@ import net.friendly_bets.marathonbet.client.MarathonbetTournamentClient;
 import net.friendly_bets.marathonbet.config.MarathonbetProperties;
 import net.friendly_bets.marathonbet.mapping.MarathonbetBetTitleMapper;
 import net.friendly_bets.models.League;
+import net.friendly_bets.models.monitoring.ExternalApiMonitoringRun;
 import net.friendly_bets.models.schedule.MatchSchedule;
 import net.friendly_bets.oddsapi.OddsMergedOddsService;
 import net.friendly_bets.oddsapi.mapping.MappedOddsQuote;
 import net.friendly_bets.oddsapi.mapping.OddsMergeResult;
-import net.friendly_bets.repositories.MarathonbetSyncRunRepository;
 import net.friendly_bets.services.ErrorLogService;
+import net.friendly_bets.services.ExternalApiMonitoringService;
 import net.friendly_bets.services.GetEntityService;
 import net.friendly_bets.services.MatchScheduleQueryService;
 import net.friendly_bets.services.RunningSeasonLookup;
@@ -26,6 +27,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -63,7 +65,7 @@ class MarathonbetSyncServiceTest {
     @Mock
     ErrorLogService errorLogService;
     @Mock
-    MarathonbetSyncRunRepository syncRunRepository;
+    ExternalApiMonitoringService monitoringService;
 
     @InjectMocks
     MarathonbetSyncService syncService;
@@ -80,6 +82,17 @@ class MarathonbetSyncServiceTest {
         when(properties.getSseRefreshWithinHours()).thenReturn(48);
         when(properties.getTournamentTreeIds()).thenReturn(java.util.Map.of("WC", 2_253_726L));
         when(properties.tournamentTreeIdForLeague("WC")).thenReturn(2_253_726L);
+        when(monitoringService.begin(any(), any(), any(), any(), any())).thenAnswer(inv ->
+                ExternalApiMonitoringRun.builder()
+                        .layer(inv.getArgument(0))
+                        .provider(inv.getArgument(1))
+                        .trigger(inv.getArgument(2))
+                        .leagueCode(inv.getArgument(3))
+                        .season(inv.getArgument(4))
+                        .startedAt(LocalDateTime.now())
+                        .build());
+        when(monitoringService.finalizeAndSave(any(), any(), any(), any(), any(), any()))
+                .thenAnswer(inv -> inv.getArgument(0));
     }
 
     @Test

@@ -1,9 +1,11 @@
-package net.friendly_bets.models.marathonbet;
+package net.friendly_bets.models.monitoring;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import net.friendly_bets.providers.ExternalDataLayer;
+import org.springframework.data.mongodb.core.index.CompoundIndex;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
@@ -17,12 +19,26 @@ import java.util.List;
 @AllArgsConstructor
 @Builder
 @Data
-@Document(collection = "marathonbet_sync_runs")
-public class MarathonbetSyncRun {
+@Document(collection = "external_api_monitoring")
+@CompoundIndex(name = "layer_started_at", def = "{'layer': 1, 'started_at': -1}")
+public class ExternalApiMonitoringRun {
 
     @MongoId
     @Field(name = "_id")
     private String id;
+
+    @Field(name = "layer")
+    @Indexed
+    private ExternalDataLayer layer;
+
+    @Field(name = "provider")
+    private String provider;
+
+    @Field(name = "trigger")
+    private ExternalApiMonitoringTrigger trigger;
+
+    @Field(name = "status")
+    private ExternalApiMonitoringStatus status;
 
     @Field(name = "started_at")
     @Indexed
@@ -31,45 +47,31 @@ public class MarathonbetSyncRun {
     @Field(name = "finished_at")
     private LocalDateTime finishedAt;
 
+    @Field(name = "duration_ms")
+    private Long durationMs;
+
     @Field(name = "league_code")
     private String leagueCode;
 
     @Field(name = "season")
     private String season;
 
+    @Field(name = "matchday")
+    private Integer matchday;
+
     @Field(name = "slot_orders")
     @Builder.Default
     private List<Integer> slotOrders = new ArrayList<>();
 
-    @Field(name = "tournament_fetched")
-    private boolean tournamentFetched;
-
-    @Field(name = "matches_eligible")
-    private int matchesEligible;
-
-    @Field(name = "matches_matched")
-    private int matchesMatched;
-
-    @Field(name = "merged_saved")
-    private int mergedSaved;
-
-    @Field(name = "sse_calls")
-    private int sseCalls;
-
-    @Field(name = "mapping_failures")
-    private int mappingFailures;
-
-    @Field(name = "fallback_used")
-    private boolean fallbackUsed;
+    @Field(name = "slot_scope")
+    private String slotScope;
 
     @Field(name = "manual")
     private boolean manual;
 
-    @Field(name = "slot_scope")
-    private String slotScope;
-
-    @Field(name = "duration_ms")
-    private Long durationMs;
+    @Field(name = "counters")
+    @Builder.Default
+    private ExternalApiMonitoringCounters counters = new ExternalApiMonitoringCounters();
 
     @Field(name = "http_requests_total")
     private int httpRequestsTotal;
@@ -79,7 +81,7 @@ public class MarathonbetSyncRun {
 
     @Field(name = "http_logs")
     @Builder.Default
-    private List<MarathonbetHttpLogEntry> httpLogs = new ArrayList<>();
+    private List<ExternalApiHttpLogEntry> httpLogs = new ArrayList<>();
 
     @Field(name = "error_summary")
     private String errorSummary;
@@ -87,4 +89,7 @@ public class MarathonbetSyncRun {
     @Field(name = "failed_match_schedule_ids")
     @Builder.Default
     private List<String> failedMatchScheduleIds = new ArrayList<>();
+
+    @Field(name = "failover_used")
+    private boolean failoverUsed;
 }

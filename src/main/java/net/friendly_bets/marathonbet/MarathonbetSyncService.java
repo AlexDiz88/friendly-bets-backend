@@ -13,16 +13,19 @@ import net.friendly_bets.marathonbet.config.MarathonbetProperties;
 import net.friendly_bets.marathonbet.mapping.MarathonbetBetTitleMapper;
 import net.friendly_bets.models.League;
 import net.friendly_bets.models.Season;
-import net.friendly_bets.models.marathonbet.MarathonbetHttpLogEntry;
-import net.friendly_bets.models.marathonbet.MarathonbetSyncRun;
+import net.friendly_bets.models.monitoring.ExternalApiHttpLogEntry;
+import net.friendly_bets.models.monitoring.ExternalApiMonitoringCounters;
+import net.friendly_bets.models.monitoring.ExternalApiMonitoringRun;
+import net.friendly_bets.models.monitoring.ExternalApiMonitoringStatus;
+import net.friendly_bets.models.monitoring.ExternalApiMonitoringTrigger;
 import net.friendly_bets.models.schedule.MatchSchedule;
 import net.friendly_bets.oddsapi.MatchScheduleNotStarted;
 import net.friendly_bets.oddsapi.OddsMergedOddsService;
 import net.friendly_bets.oddsapi.mapping.MappedOddsQuote;
 import net.friendly_bets.oddsapi.mapping.OddsMergeResult;
-import net.friendly_bets.repositories.MarathonbetSyncRunRepository;
 import net.friendly_bets.services.GetEntityService;
 import net.friendly_bets.services.ErrorLogService;
+import net.friendly_bets.services.ExternalApiMonitoringService;
 import net.friendly_bets.services.MatchScheduleDisplayService;
 import net.friendly_bets.services.MatchScheduleQueryService;
 import net.friendly_bets.services.RunningSeasonLookup;
@@ -31,12 +34,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
-import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
@@ -62,7 +63,7 @@ public class MarathonbetSyncService {
     private final RunningSeasonLookup runningSeasonLookup;
     private final GetEntityService getEntityService;
     private final ErrorLogService errorLogService;
-    private final MarathonbetSyncRunRepository syncRunRepository;
+    private final ExternalApiMonitoringService monitoringService;
 
     /** Ensures only one league runs listing+SSE at a time. */
     private final ReentrantLock pipelineLock = new ReentrantLock();
@@ -192,7 +193,7 @@ public class MarathonbetSyncService {
 
         pipelineLock.lock();
         try {
-            List<MarathonbetHttpLogEntry> httpLogs = new ArrayList<>();
+            List<ExternalApiHttpLogEntry> httpLogs = new ArrayList<>();
             LocalDateTime tournamentRequestedAt = LocalDateTime.now();
             MarathonbetHttpFetchResult tournamentResult = tournamentClient.fetchTournament(tournamentId);
             httpLogs.add(MarathonbetHttpLogSupport.toLogEntry(
@@ -202,20 +203,37 @@ public class MarathonbetSyncService {
                     tournamentRequestedAt
             ));
             if (!tournamentResult.isSuccess()) {
+                ExternalApiMonitoringRun failedRun = monitoringService.begin(
+                        ExternalDataLayer.ODDS,
+                        "marathonbet",
+                        ExternalApiMonitoringTrigger.ADMIN,
+                        code,
+                        resolvedSeason
+                );
+                failedRun.setSlotScope(MarathonbetSlotScope.CURRENT.name());
+                failedRun.setSlotOrders(slotOrders);
+                finalizeOddsRun(
+                        failedRun,
+                        httpLogs,
+                        false,
+                        0, 0, 0, 0, 0, 0,
+                        List.of(),
+                        tournamentResult.toErrorKey()
+                );
                 throw new BadRequestException(tournamentResult.toErrorKey());
             }
             List<MarathonbetPrematchEvent> prematch =
                     MarathonbetTournamentParser.parsePrematchEvents(tournamentResult.getBody());
 
-            MarathonbetSyncRun run = MarathonbetSyncRun.builder()
-                    .startedAt(LocalDateTime.now())
-                    .manual(true)
-                    .slotScope(MarathonbetSlotScope.CURRENT.name())
-                    .leagueCode(code)
-                    .season(resolvedSeason)
-                    .slotOrders(slotOrders)
-                    .tournamentFetched(true)
-                    .build();
+            ExternalApiMonitoringRun run = monitoringService.begin(
+                    ExternalDataLayer.ODDS,
+                    "marathonbet",
+                    ExternalApiMonitoringTrigger.ADMIN,
+                    code,
+                    resolvedSeason
+            );
+            run.setSlotScope(MarathonbetSlotScope.CURRENT.name());
+            run.setSlotOrders(slotOrders);
 
             SlotSyncCounters counters = syncMatches(
                     league,
@@ -229,7 +247,7 @@ public class MarathonbetSyncService {
                     httpLogs
             );
 
-            finalizeRun(
+            finalizeOddsRun(
                     run,
                     httpLogs,
                     true,
@@ -264,19 +282,20 @@ public class MarathonbetSyncService {
         );
         List<Integer> slotOrders = MarathonbetSyncSlotWindow.resolveSlotOrders(info, MarathonbetSlotScope.BOTH);
 
-        List<MarathonbetHttpLogEntry> httpLogs = new ArrayList<>();
-        MarathonbetSyncRun run = MarathonbetSyncRun.builder()
-                .startedAt(LocalDateTime.now())
-                .manual(false)
-                .slotScope(MarathonbetSlotScope.BOTH.name())
-                .leagueCode(code)
-                .season(season)
-                .slotOrders(slotOrders)
-                .build();
+        List<ExternalApiHttpLogEntry> httpLogs = new ArrayList<>();
+        ExternalApiMonitoringRun run = monitoringService.begin(
+                ExternalDataLayer.ODDS,
+                "marathonbet",
+                ExternalApiMonitoringTrigger.CRON,
+                code,
+                season
+        );
+        run.setSlotScope(MarathonbetSlotScope.BOTH.name());
+        run.setSlotOrders(slotOrders);
 
         if (slotOrders.isEmpty()) {
             log.debug("marathonbet syncLeague skipped: no slots for {}", code);
-            finalizeRun(run, httpLogs, false, 0, 0, 0, 0, 0, 0, List.of(), null);
+            finalizeOddsRun(run, httpLogs, false, 0, 0, 0, 0, 0, 0, List.of(), "noSlots");
             return toResult(code, season, slotOrders, SlotSyncCounters.empty(), false, null);
         }
 
@@ -315,7 +334,7 @@ public class MarathonbetSyncService {
                     .leagueCode(code)
                     .season(season)
                     .build());
-            finalizeRun(run, httpLogs, false, 0, 0, 0, 0, 0, 0, List.of(), errorSummary);
+            finalizeOddsRun(run, httpLogs, false, 0, 0, 0, 0, 0, 0, List.of(), errorSummary);
             return toResult(code, season, slotOrders, SlotSyncCounters.empty(), false, errorSummary);
         }
 
@@ -334,7 +353,7 @@ public class MarathonbetSyncService {
                 httpLogs
         );
 
-        finalizeRun(
+        finalizeOddsRun(
                 run,
                 httpLogs,
                 true,
@@ -371,7 +390,7 @@ public class MarathonbetSyncService {
             boolean failWhenNoPending,
             OddsSsePolicy ssePolicy,
             boolean applyStagePause,
-            List<MarathonbetHttpLogEntry> httpLogs
+            List<ExternalApiHttpLogEntry> httpLogs
     ) {
         String leagueCode = league.getLeagueCode().name();
         Instant now = Instant.now();
@@ -496,7 +515,7 @@ public class MarathonbetSyncService {
             String season,
             int matchday,
             LocalDateTime fetchedAt,
-            List<MarathonbetHttpLogEntry> httpLogs
+            List<ExternalApiHttpLogEntry> httpLogs
     ) {
         Optional<MarathonbetPrematchEvent> eventOpt = eventMatcher.resolveAndRecordMappingIssue(
                 match,
@@ -575,9 +594,9 @@ public class MarathonbetSyncService {
         return matchdaySupport.resolveExternalSeasonYear(active, league.getLeagueCode());
     }
 
-    private void finalizeRun(
-            MarathonbetSyncRun run,
-            List<MarathonbetHttpLogEntry> httpLogs,
+    private void finalizeOddsRun(
+            ExternalApiMonitoringRun run,
+            List<ExternalApiHttpLogEntry> httpLogs,
             boolean tournamentFetched,
             int eligible,
             int matched,
@@ -588,29 +607,33 @@ public class MarathonbetSyncService {
             List<String> failedIds,
             String errorSummary
     ) {
-        run.setTournamentFetched(tournamentFetched);
-        run.setMatchesEligible(eligible);
-        run.setMatchesMatched(matched);
-        run.setMergedSaved(saved);
-        run.setSseCalls(sseCalls);
-        run.setMappingFailures(mappingFailures);
-        run.setFailedMatchScheduleIds(new ArrayList<>(new LinkedHashSet<>(failedIds)));
+        String summary = errorSummary;
         if (skippedFar > 0) {
-            run.setErrorSummary(errorSummary == null
+            summary = summary == null
                     ? "skippedFar=" + skippedFar
-                    : errorSummary + "; skippedFar=" + skippedFar);
+                    : summary + "; skippedFar=" + skippedFar;
+        }
+        ExternalApiMonitoringCounters counters = ExternalApiMonitoringCounters.builder()
+                .eligible(eligible)
+                .matched(matched)
+                .saved(saved)
+                .sseCalls(sseCalls)
+                .mappingFailures(mappingFailures)
+                .skipped(skippedFar)
+                .tournamentFetched(tournamentFetched)
+                .build();
+        ExternalApiMonitoringStatus status;
+        if (summary != null && !tournamentFetched && eligible == 0 && matched == 0 && saved == 0
+                && !"noSlots".equals(errorSummary)) {
+            status = ExternalApiMonitoringStatus.FAILED;
+        } else if ("noSlots".equals(errorSummary) || (eligible == 0 && tournamentFetched)) {
+            status = ExternalApiMonitoringStatus.SKIPPED;
+        } else if (mappingFailures > 0 || ExternalApiMonitoringService.countFailed(httpLogs) > 0) {
+            status = saved > 0 ? ExternalApiMonitoringStatus.PARTIAL : ExternalApiMonitoringStatus.FAILED;
         } else {
-            run.setErrorSummary(errorSummary);
+            status = ExternalApiMonitoringStatus.SUCCESS;
         }
-        run.setHttpLogs(httpLogs);
-        run.setHttpRequestsTotal(httpLogs.size());
-        run.setHttpRequestsFailed(MarathonbetHttpLogSupport.countFailed(httpLogs));
-        LocalDateTime finishedAt = LocalDateTime.now();
-        run.setFinishedAt(finishedAt);
-        if (run.getStartedAt() != null) {
-            run.setDurationMs(Duration.between(run.getStartedAt(), finishedAt).toMillis());
-        }
-        syncRunRepository.save(run);
+        monitoringService.finalizeAndSave(run, status, counters, httpLogs, failedIds, summary);
     }
 
     private MarathonbetSyncResult toResult(

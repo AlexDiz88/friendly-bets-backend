@@ -15,11 +15,13 @@ import net.friendly_bets.providers.LiveMatchProvider;
 import net.friendly_bets.providers.OddsProvider;
 import net.friendly_bets.providers.ScheduleProvider;
 import net.friendly_bets.repositories.MatchScheduleRepository;
+import net.friendly_bets.services.ExternalApiMonitoringService;
 import net.friendly_bets.services.ExternalDataLayerConfigService;
 import net.friendly_bets.services.ExternalTeamNamesService;
 import net.friendly_bets.services.GetEntityService;
 import net.friendly_bets.services.MatchFinalizeOrchestrator;
 import net.friendly_bets.services.RunningSeasonLookup;
+import net.friendly_bets.models.monitoring.ExternalApiMonitoringTrigger;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -112,18 +114,24 @@ public class ExternalDataAdminController {
                         && l.getLeagueCode().name().equalsIgnoreCase(leagueCode.trim()))
                 .findFirst()
                 .orElseThrow(() -> new net.friendly_bets.exceptions.BadRequestException("leagueNotFoundInSeason"));
-        LiveMatchProvider.LiveSyncResult result = router.execute(
-                ExternalDataLayer.LIVE,
-                LiveMatchProvider.class,
-                p -> p.syncLeagueLive(season, league),
-                league.getLeagueCode().name()
-        );
+        ExternalApiMonitoringService.setTriggerOverride(ExternalApiMonitoringTrigger.ADMIN);
         try {
-            matchFinalizeOrchestrator.finalizePendingFullMatches(result.pendingFullMatchIds());
-        } catch (RuntimeException ignored) {
-            // FULL failures are already in error_logs via LayerProviderRouter
+            LiveMatchProvider.LiveSyncResult result = router.execute(
+                    ExternalDataLayer.LIVE,
+                    LiveMatchProvider.class,
+                    p -> p.syncLeagueLive(season, league),
+                    league.getLeagueCode().name()
+            );
+            try {
+                ExternalApiMonitoringService.setTriggerOverride(ExternalApiMonitoringTrigger.ADMIN);
+                matchFinalizeOrchestrator.finalizePendingFullMatches(result.pendingFullMatchIds());
+            } catch (RuntimeException ignored) {
+                // FULL failures are already in error_logs via LayerProviderRouter
+            }
+            return ResponseEntity.ok(LiveMatchSyncResultDto.from(result));
+        } finally {
+            ExternalApiMonitoringService.clearTriggerOverride();
         }
-        return ResponseEntity.ok(LiveMatchSyncResultDto.from(result));
     }
 
     @PostMapping("/full-match/{matchScheduleId}")
@@ -131,11 +139,16 @@ public class ExternalDataAdminController {
     public ResponseEntity<MatchSchedule> fetchFullMatch(@PathVariable String matchScheduleId) {
         MatchSchedule match = matchScheduleRepository.findById(matchScheduleId)
                 .orElseThrow(() -> new net.friendly_bets.exceptions.NotFoundException("MatchSchedule", matchScheduleId));
-        MatchSchedule updated = router.execute(
-                ExternalDataLayer.FULL_MATCH,
-                FullMatchProvider.class,
-                p -> p.fetchAndPersistFullDetails(match)
-        );
-        return ResponseEntity.ok(updated);
+        ExternalApiMonitoringService.setTriggerOverride(ExternalApiMonitoringTrigger.ADMIN);
+        try {
+            MatchSchedule updated = router.execute(
+                    ExternalDataLayer.FULL_MATCH,
+                    FullMatchProvider.class,
+                    p -> p.fetchAndPersistFullDetails(match)
+            );
+            return ResponseEntity.ok(updated);
+        } finally {
+            ExternalApiMonitoringService.clearTriggerOverride();
+        }
     }
 }
