@@ -3,6 +3,7 @@ package net.friendly_bets.soccer365;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -49,5 +50,34 @@ class Soccer365ScheduleParserTest {
         assertEquals("SCHEDULED", match.getStatus());
         assertEquals(2, parsed.getClubFilterNames().size());
         assertTrue(parsed.getClubFilterNames().contains("Арсенал"));
+    }
+
+    @Test
+    void parseTeamNamesFromMatchday_usesScheduleNamesNotClubFilter() {
+        String html = """
+                <div class="selectbox-menu">
+                  <a href="javascript:void(0)" onclick="filtersData('club','100');">Лидс Юнайтед</a>
+                  <a href="javascript:void(0)" onclick="filtersData('club','101');">Эвертон</a>
+                </div>
+                <div class="cmp_stg_ttl">1-й тур</div>
+                <div class="game_block">
+                  <div class="status"><span class="size10">15.08, 17:30</span></div>
+                  <div class="result">
+                    <div class="ht"><div class="name"><span>Лидс</span></div><div class="gls">-</div></div>
+                    <div class="at"><div class="name"><span>Эвертон</span></div><div class="gls">-</div></div>
+                  </div>
+                </div>
+                <div class="cmp_stg_ttl">2-й тур</div>
+                <div class="game_block">
+                  <div class="status"><span class="size10">22.08, 17:30</span></div>
+                  <div class="result">
+                    <div class="ht"><div class="name"><span>Арсенал</span></div><div class="gls">-</div></div>
+                    <div class="at"><div class="name"><span>Челси</span></div><div class="gls">-</div></div>
+                  </div>
+                </div>
+                """;
+
+        assertEquals(List.of("Лидс", "Эвертон"), parser.parseTeamNamesFromMatchday(html, 12, 1));
+        assertTrue(parser.parseClubFilterNames(html).contains("Лидс Юнайтед"));
     }
 }

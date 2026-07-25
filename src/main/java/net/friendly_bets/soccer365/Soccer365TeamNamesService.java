@@ -30,7 +30,10 @@ public class Soccer365TeamNamesService {
         runningSeasonLookup.findRunningSeasonOrThrow("noActiveSeasonWasFounded");
 
         String html = httpClient.fetchScheduleHtml(competitionId);
-        List<String> names = scheduleParser.parseClubFilterNames(html);
+        List<String> names = scheduleParser.parseTeamNamesFromMatchday(html, competitionId, 1);
+        if (names.isEmpty()) {
+            throw new BadRequestException("soccer365MatchdayOneTeamNamesEmpty");
+        }
         List<Soccer365TeamNameChipDto> unmapped = new ArrayList<>();
         for (String name : names) {
             boolean mapped = teamAliasResolver.resolveSoccer365ByName(name).isPresent();

@@ -84,6 +84,25 @@ public class Soccer365ScheduleParser {
         return new ArrayList<>(names);
     }
 
+    /** Names from schedule game_blocks for matchday (not club-filter labels). */
+    public List<String> parseTeamNamesFromMatchday(String html, int competitionId, int matchday) {
+        Soccer365ParsedSchedule parsed = parse(html, competitionId);
+        Soccer365ParsedSchedule.Round round = parsed.roundsByNumber().get(matchday);
+        if (round == null || round.getMatches() == null || round.getMatches().isEmpty()) {
+            return List.of();
+        }
+        Set<String> names = new LinkedHashSet<>();
+        for (Soccer365ParsedSchedule.Match match : round.getMatches()) {
+            if (match.getHomeName() != null && !match.getHomeName().isBlank()) {
+                names.add(match.getHomeName().trim());
+            }
+            if (match.getAwayName() != null && !match.getAwayName().isBlank()) {
+                names.add(match.getAwayName().trim());
+            }
+        }
+        return new ArrayList<>(names);
+    }
+
     private Optional<Integer> parseRoundNumber(String title) {
         if (title == null || title.isBlank()) {
             return Optional.empty();
