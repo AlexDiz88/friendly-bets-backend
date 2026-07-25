@@ -75,7 +75,11 @@ class MarathonbetSyncServiceTest {
         when(properties.isSyncEnabled()).thenReturn(true);
         when(properties.getSseDelayMinMs()).thenReturn(0L);
         when(properties.getSseDelayMaxMs()).thenReturn(0L);
+        when(properties.getStageSize()).thenReturn(5);
+        when(properties.getStagePauseMinutes()).thenReturn(0);
+        when(properties.getSseRefreshWithinHours()).thenReturn(48);
         when(properties.getTournamentTreeIds()).thenReturn(java.util.Map.of("WC", 2_253_726L));
+        when(properties.tournamentTreeIdForLeague("WC")).thenReturn(2_253_726L);
     }
 
     @Test
