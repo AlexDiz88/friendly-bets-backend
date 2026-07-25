@@ -49,7 +49,7 @@ public class ExternalDataAdminController {
     private final ExternalTeamNamesService externalTeamNamesService;
 
     @GetMapping("/layers")
-    @PreAuthorize("hasAuthority('ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ADMIN','MODERATOR')")
     public ResponseEntity<ExternalDataLayerConfigDto> getLayers() {
         return ResponseEntity.ok(ExternalDataLayerConfigDto.from(
                 configService.getOrCreateDefaults(),
