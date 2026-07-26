@@ -6,7 +6,6 @@ public final class MatchDataProviders {
     public static final String MARATHONBET = "marathonbet";
     public static final String TWENTYFOUR_SCORE = "24score.pro";
     public static final String SOCCER365 = "soccer365.ru";
-    public static final String AISCORE = "aiscore.com";
 
     private MatchDataProviders() {
     }
