@@ -20,6 +20,7 @@ import net.friendly_bets.models.schedule.MatchSchedule;
 import net.friendly_bets.oddsapi.OddsMergedOddsService;
 import net.friendly_bets.providers.ExternalDataLayer;
 import net.friendly_bets.providers.ExternalDataProvider;
+import net.friendly_bets.providers.MatchSchedulesUpdatedEvent;
 import net.friendly_bets.providers.ScheduleProvider;
 import net.friendly_bets.repositories.MatchScheduleRepository;
 import net.friendly_bets.services.ErrorLogService;
@@ -31,6 +32,7 @@ import net.friendly_bets.services.TournamentFormatExpander;
 import net.friendly_bets.utils.TeamTitleUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -60,6 +62,7 @@ public class AiscoreScheduleSyncService implements ScheduleProvider {
     private final ErrorLogService errorLogService;
     private final OddsMergedOddsService oddsMergedOddsService;
     private final ExternalApiMonitoringService monitoringService;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     public String providerId() {
@@ -106,7 +109,10 @@ public class AiscoreScheduleSyncService implements ScheduleProvider {
         );
         List<ExternalApiHttpLogEntry> httpLogs = new ArrayList<>();
         try {
-            return syncLeagueBody(season, league, respectFarKickoffSkip, run, httpLogs, externalSeason, explicitMatchday);
+            Soccer365ScheduleSyncResultDto result = syncLeagueBody(
+                    season, league, respectFarKickoffSkip, run, httpLogs, externalSeason, explicitMatchday);
+            eventPublisher.publishEvent(new MatchSchedulesUpdatedEvent());
+            return result;
         } catch (RuntimeException e) {
             monitoringService.finalizeAndSave(
                     run,
