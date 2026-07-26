@@ -43,6 +43,8 @@ public class MarathonbetAdminController {
                 "mergedSaved", result.getMergedSaved(),
                 "sseCalls", result.getSseCalls(),
                 "mappingFailures", result.getMappingFailures(),
+                "skippedFar", result.getSkippedFar(),
+                "skippedNoBookieEvent", result.getSkippedNoBookieEvent(),
                 "failedMatchScheduleIds", result.getFailedMatchScheduleIds()
         ));
     }

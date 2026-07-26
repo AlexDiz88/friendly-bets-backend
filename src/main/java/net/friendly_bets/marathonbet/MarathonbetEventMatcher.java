@@ -24,7 +24,7 @@ public class MarathonbetEventMatcher {
     private final OddsRepository oddsRepository;
     private final MarathonbetProperties properties;
 
-    public Optional<MarathonbetPrematchEvent> resolveAndRecordMappingIssue(
+    public MarathonbetEventResolveResult resolveAndRecordMappingIssue(
             MatchSchedule match,
             List<MarathonbetPrematchEvent> tournamentEvents,
             String leagueCode,
@@ -32,28 +32,43 @@ public class MarathonbetEventMatcher {
             int matchday
     ) {
         Optional<MarathonbetPrematchEvent> resolved = resolve(match, tournamentEvents);
-        if (resolved.isEmpty() && match != null && match.getId() != null) {
-            List<MarathonbetPrematchEvent> candidates = filterByKickoffWindow(match, tournamentEvents);
-            List<MarathonbetPrematchEvent> matched = new ArrayList<>();
-            for (MarathonbetPrematchEvent event : candidates) {
-                if (sidesMatch(match, event)) {
-                    matched.add(event);
-                }
-            }
-            if (matched.size() > 1) {
-                Optional<MarathonbetPrematchEvent> disambiguated = pickClosestKickoff(match, matched);
-                if (disambiguated.isPresent()) {
-                    return disambiguated;
-                }
-                errorLogService.recordEventMappingMissing(
-                        match, "marathonbet", leagueCode, season, matchday, "ambiguousMarathonbetEventMatch");
-            } else {
-                errorLogService.recordEventMappingMissing(
-                        match, "marathonbet", leagueCode, season, matchday, null);
-            }
-            return Optional.empty();
+        if (resolved.isPresent()) {
+            return MarathonbetEventResolveResult.matched(resolved.get());
         }
-        return resolved;
+        if (match == null || match.getId() == null) {
+            return MarathonbetEventResolveResult.miss(MarathonbetEventResolveResult.MissKind.MAPPING_FAILURE);
+        }
+        if (match.getUtcKickoff() == null) {
+            errorLogService.recordEventMappingMissing(
+                    match, "marathonbet", leagueCode, season, matchday, "matchKickoffMissing");
+            return MarathonbetEventResolveResult.miss(MarathonbetEventResolveResult.MissKind.MAPPING_FAILURE);
+        }
+
+        List<MarathonbetPrematchEvent> candidates = filterByKickoffWindow(match, tournamentEvents);
+        if (candidates.isEmpty()) {
+            // Soft: fixture not on bookie tournament page yet (e.g. next matchday).
+            return MarathonbetEventResolveResult.miss(MarathonbetEventResolveResult.MissKind.NO_BOOKIE_EVENT);
+        }
+
+        List<MarathonbetPrematchEvent> matched = new ArrayList<>();
+        for (MarathonbetPrematchEvent event : candidates) {
+            if (sidesMatch(match, event)) {
+                matched.add(event);
+            }
+        }
+        if (matched.size() > 1) {
+            Optional<MarathonbetPrematchEvent> disambiguated = pickClosestKickoff(match, matched);
+            if (disambiguated.isPresent()) {
+                return MarathonbetEventResolveResult.matched(disambiguated.get());
+            }
+            errorLogService.recordEventMappingMissing(
+                    match, "marathonbet", leagueCode, season, matchday, "ambiguousMarathonbetEventMatch");
+            return MarathonbetEventResolveResult.miss(MarathonbetEventResolveResult.MissKind.MAPPING_FAILURE);
+        }
+
+        errorLogService.recordEventMappingMissing(
+                match, "marathonbet", leagueCode, season, matchday, null);
+        return MarathonbetEventResolveResult.miss(MarathonbetEventResolveResult.MissKind.MAPPING_FAILURE);
     }
 
     public Optional<MarathonbetPrematchEvent> resolve(

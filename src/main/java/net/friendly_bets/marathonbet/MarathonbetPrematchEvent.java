@@ -28,4 +28,10 @@ public class MarathonbetPrematchEvent {
                 .displayTimeMillis(displayTime)
                 .build();
     }
+
+    /** True for real fixtures; false for outright / season nodes (null teams). */
+    public boolean isMatchEvent() {
+        return homeTeam != null && !homeTeam.isBlank()
+                && awayTeam != null && !awayTeam.isBlank();
+    }
 }

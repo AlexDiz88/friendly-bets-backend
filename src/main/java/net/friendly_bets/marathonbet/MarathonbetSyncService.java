@@ -1,6 +1,5 @@
 package net.friendly_bets.marathonbet;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import lombok.RequiredArgsConstructor;
 import net.friendly_bets.dto.ExternalCompetitionInfoDto;
 import net.friendly_bets.exceptions.BadRequestException;
@@ -216,8 +215,7 @@ public class MarathonbetSyncService {
                         failedRun,
                         httpLogs,
                         false,
-                        0, 0, 0, 0, 0, 0,
-                        List.of(),
+                        SlotSyncCounters.empty(),
                         tournamentResult.toErrorKey()
                 );
                 throw new BadRequestException(tournamentResult.toErrorKey());
@@ -247,19 +245,7 @@ public class MarathonbetSyncService {
                     httpLogs
             );
 
-            finalizeOddsRun(
-                    run,
-                    httpLogs,
-                    true,
-                    counters.matchesEligible(),
-                    counters.matchesMatched(),
-                    counters.mergedSaved(),
-                    counters.sseCalls(),
-                    counters.mappingFailures(),
-                    counters.skippedFar(),
-                    counters.failedMatchScheduleIds(),
-                    null
-            );
+            finalizeOddsRun(run, httpLogs, true, counters, null);
 
             return toResult(code, resolvedSeason, slotOrders, counters, true, null);
         } finally {
@@ -295,7 +281,7 @@ public class MarathonbetSyncService {
 
         if (slotOrders.isEmpty()) {
             log.debug("marathonbet syncLeague skipped: no slots for {}", code);
-            finalizeOddsRun(run, httpLogs, false, 0, 0, 0, 0, 0, 0, List.of(), "noSlots");
+            finalizeOddsRun(run, httpLogs, false, SlotSyncCounters.empty(), "noSlots");
             return toResult(code, season, slotOrders, SlotSyncCounters.empty(), false, null);
         }
 
@@ -334,7 +320,7 @@ public class MarathonbetSyncService {
                     .leagueCode(code)
                     .season(season)
                     .build());
-            finalizeOddsRun(run, httpLogs, false, 0, 0, 0, 0, 0, 0, List.of(), errorSummary);
+            finalizeOddsRun(run, httpLogs, false, SlotSyncCounters.empty(), errorSummary);
             return toResult(code, season, slotOrders, SlotSyncCounters.empty(), false, errorSummary);
         }
 
@@ -353,28 +339,18 @@ public class MarathonbetSyncService {
                 httpLogs
         );
 
-        finalizeOddsRun(
-                run,
-                httpLogs,
-                true,
-                counters.matchesEligible(),
-                counters.matchesMatched(),
-                counters.mergedSaved(),
-                counters.sseCalls(),
-                counters.mappingFailures(),
-                counters.skippedFar(),
-                counters.failedMatchScheduleIds(),
-                null
-        );
+        finalizeOddsRun(run, httpLogs, true, counters, null);
 
         log.info(
-                "marathonbet syncLeague {}: eligible={}, matched={}, saved={}, sse={}, skippedFar={}, stages paused={}",
+                "marathonbet syncLeague {}: eligible={}, matched={}, saved={}, sse={}, skippedFar={}, noBookie={}, mappingFail={}, stages paused={}",
                 code,
                 counters.matchesEligible(),
                 counters.matchesMatched(),
                 counters.mergedSaved(),
                 counters.sseCalls(),
                 counters.skippedFar(),
+                counters.skippedNoBookieEvent(),
+                counters.mappingFailures(),
                 applyStagePause
         );
 
@@ -466,7 +442,8 @@ public class MarathonbetSyncService {
         int matched = 0;
         int saved = 0;
         int sseCalls = 0;
-        int failures = 0;
+        int mappingFailures = 0;
+        int skippedNoBookieEvent = 0;
         List<String> failedIds = new ArrayList<>();
 
         for (int stageIndex = 0; stageIndex < stages.size(); stageIndex++) {
@@ -485,8 +462,10 @@ public class MarathonbetSyncService {
                 matched += outcome.matched() ? 1 : 0;
                 saved += outcome.saved() ? 1 : 0;
                 sseCalls += outcome.sseCall() ? 1 : 0;
-                if (outcome.failure()) {
-                    failures++;
+                if (outcome.noBookieEvent()) {
+                    skippedNoBookieEvent++;
+                } else if (outcome.hardFailure()) {
+                    mappingFailures++;
                     if (match.getId() != null) {
                         failedIds.add(match.getId());
                     }
@@ -502,8 +481,9 @@ public class MarathonbetSyncService {
                 matched,
                 saved,
                 sseCalls,
-                failures,
+                mappingFailures,
                 skippedFar,
+                skippedNoBookieEvent,
                 failedIds
         );
     }
@@ -517,17 +497,20 @@ public class MarathonbetSyncService {
             LocalDateTime fetchedAt,
             List<ExternalApiHttpLogEntry> httpLogs
     ) {
-        Optional<MarathonbetPrematchEvent> eventOpt = eventMatcher.resolveAndRecordMappingIssue(
+        MarathonbetEventResolveResult resolveResult = eventMatcher.resolveAndRecordMappingIssue(
                 match,
                 prematch,
                 leagueCode,
                 season,
                 matchday
         );
-        if (eventOpt.isEmpty()) {
+        if (!resolveResult.isMatched()) {
+            if (resolveResult.getMissKind() == MarathonbetEventResolveResult.MissKind.NO_BOOKIE_EVENT) {
+                return MatchSyncOutcome.missNoBookie();
+            }
             return MatchSyncOutcome.mappingMiss();
         }
-        MarathonbetPrematchEvent event = eventOpt.get();
+        MarathonbetPrematchEvent event = resolveResult.getEvent();
         try {
             sleepBeforeSse();
             LocalDateTime sseRequestedAt = LocalDateTime.now();
@@ -598,28 +581,32 @@ public class MarathonbetSyncService {
             ExternalApiMonitoringRun run,
             List<ExternalApiHttpLogEntry> httpLogs,
             boolean tournamentFetched,
-            int eligible,
-            int matched,
-            int saved,
-            int sseCalls,
-            int mappingFailures,
-            int skippedFar,
-            List<String> failedIds,
+            SlotSyncCounters counters,
             String errorSummary
     ) {
+        int eligible = counters.matchesEligible();
+        int matched = counters.matchesMatched();
+        int saved = counters.mergedSaved();
+        int sseCalls = counters.sseCalls();
+        int mappingFailures = counters.mappingFailures();
+        int skippedFar = counters.skippedFar();
+        int skippedNoBookie = counters.skippedNoBookieEvent();
+        List<String> failedIds = counters.failedMatchScheduleIds();
+
         String summary = errorSummary;
-        if (skippedFar > 0) {
+        if (mappingFailures > 0) {
             summary = summary == null
-                    ? "skippedFar=" + skippedFar
-                    : summary + "; skippedFar=" + skippedFar;
+                    ? "mappingFailures=" + mappingFailures
+                    : summary + "; mappingFailures=" + mappingFailures;
         }
-        ExternalApiMonitoringCounters counters = ExternalApiMonitoringCounters.builder()
+        // Soft skips stay in counters only (not red errorSummary): skippedFar + noBookieEventYet.
+        ExternalApiMonitoringCounters monitoringCounters = ExternalApiMonitoringCounters.builder()
                 .eligible(eligible)
                 .matched(matched)
                 .saved(saved)
                 .sseCalls(sseCalls)
                 .mappingFailures(mappingFailures)
-                .skipped(skippedFar)
+                .skipped(skippedFar + skippedNoBookie)
                 .tournamentFetched(tournamentFetched)
                 .build();
         ExternalApiMonitoringStatus status;
@@ -633,7 +620,7 @@ public class MarathonbetSyncService {
         } else {
             status = ExternalApiMonitoringStatus.SUCCESS;
         }
-        monitoringService.finalizeAndSave(run, status, counters, httpLogs, failedIds, summary);
+        monitoringService.finalizeAndSave(run, status, monitoringCounters, httpLogs, failedIds, summary);
     }
 
     private MarathonbetSyncResult toResult(
@@ -652,6 +639,7 @@ public class MarathonbetSyncService {
                 .sseCalls(counters.sseCalls())
                 .mappingFailures(counters.mappingFailures())
                 .skippedFar(counters.skippedFar())
+                .skippedNoBookieEvent(counters.skippedNoBookieEvent())
                 .failedMatchScheduleIds(counters.failedMatchScheduleIds())
                 .leagueCode(code)
                 .season(season)
@@ -708,28 +696,39 @@ public class MarathonbetSyncService {
             int sseCalls,
             int mappingFailures,
             int skippedFar,
+            int skippedNoBookieEvent,
             List<String> failedMatchScheduleIds
     ) {
         static SlotSyncCounters empty() {
-            return new SlotSyncCounters(0, 0, 0, 0, 0, 0, List.of());
+            return new SlotSyncCounters(0, 0, 0, 0, 0, 0, 0, List.of());
         }
     }
 
-    private record MatchSyncOutcome(boolean matched, boolean saved, boolean sseCall, boolean failure) {
+    private record MatchSyncOutcome(
+            boolean matched,
+            boolean saved,
+            boolean sseCall,
+            boolean hardFailure,
+            boolean noBookieEvent
+    ) {
         static MatchSyncOutcome ok() {
-            return new MatchSyncOutcome(true, true, true, false);
+            return new MatchSyncOutcome(true, true, true, false, false);
+        }
+
+        static MatchSyncOutcome missNoBookie() {
+            return new MatchSyncOutcome(false, false, false, false, true);
         }
 
         static MatchSyncOutcome mappingMiss() {
-            return new MatchSyncOutcome(false, false, false, true);
+            return new MatchSyncOutcome(false, false, false, true, false);
         }
 
         static MatchSyncOutcome matchedFailed() {
-            return new MatchSyncOutcome(true, false, false, true);
+            return new MatchSyncOutcome(true, false, false, true, false);
         }
 
         static MatchSyncOutcome matchedFailedSse() {
-            return new MatchSyncOutcome(true, false, true, true);
+            return new MatchSyncOutcome(true, false, true, true, false);
         }
     }
 }

@@ -24,6 +24,8 @@ public class MarathonbetSyncResult {
     @Builder.Default
     int skippedFar = 0;
     @Builder.Default
+    int skippedNoBookieEvent = 0;
+    @Builder.Default
     List<String> failedMatchScheduleIds = new ArrayList<>();
     String leagueCode;
     String season;

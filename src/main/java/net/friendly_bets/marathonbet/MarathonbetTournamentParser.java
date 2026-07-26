@@ -21,7 +21,7 @@ public final class MarathonbetTournamentParser {
         List<MarathonbetPrematchEvent> result = new ArrayList<>();
         for (JsonNode node : events) {
             MarathonbetPrematchEvent event = MarathonbetPrematchEvent.fromJson(node);
-            if (event != null) {
+            if (event != null && event.isMatchEvent()) {
                 result.add(event);
             }
         }

@@ -29,11 +29,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -77,10 +77,10 @@ class MarathonbetSyncServiceTest {
         when(properties.isSyncEnabled()).thenReturn(true);
         when(properties.getSseDelayMinMs()).thenReturn(0L);
         when(properties.getSseDelayMaxMs()).thenReturn(0L);
-        when(properties.getStageSize()).thenReturn(5);
-        when(properties.getStagePauseMinutes()).thenReturn(0);
-        when(properties.getSseRefreshWithinHours()).thenReturn(48);
-        when(properties.getTournamentTreeIds()).thenReturn(java.util.Map.of("WC", 2_253_726L));
+        lenient().when(properties.getStageSize()).thenReturn(5);
+        lenient().when(properties.getStagePauseMinutes()).thenReturn(0);
+        lenient().when(properties.getSseRefreshWithinHours()).thenReturn(48);
+        lenient().when(properties.getTournamentTreeIds()).thenReturn(java.util.Map.of("WC", 2_253_726L));
         when(properties.tournamentTreeIdForLeague("WC")).thenReturn(2_253_726L);
         when(monitoringService.begin(any(), any(), any(), any(), any())).thenAnswer(inv ->
                 ExternalApiMonitoringRun.builder()
@@ -112,6 +112,7 @@ class MarathonbetSyncServiceTest {
 
         MatchSchedule match = MatchSchedule.builder()
                 .id("ms-1")
+                .matchday(3)
                 .status("SCHEDULED")
                 .utcKickoff(Instant.now().plusSeconds(86_400))
                 .build();
@@ -124,7 +125,7 @@ class MarathonbetSyncServiceTest {
                 .awayTeam("ЮАР")
                 .build();
         when(eventMatcher.resolveAndRecordMappingIssue(eq(match), any(), eq("WC"), any(), eq(3)))
-                .thenReturn(Optional.of(event));
+                .thenReturn(MarathonbetEventResolveResult.matched(event));
 
         when(scrapeService.fetchEventSnapshotResult(25_819_358L))
                 .thenReturn(MarathonbetHttpFetchResult.builder()
@@ -133,7 +134,6 @@ class MarathonbetSyncServiceTest {
                         .outcome(MarathonbetHttpOutcome.SUCCESS)
                         .body(objectMapper.readTree("{\"markets\":{}}"))
                         .build());
-        when(oddsMergedOddsService.findByMatchScheduleId("ms-1")).thenReturn(Optional.empty());
         when(betTitleMapper.map(any(), eq("Мексика"), eq("ЮАР")))
                 .thenReturn(List.of(MappedOddsQuote.builder().bookmaker("marathonbet").build()));
         when(oddsMergedOddsService.buildAndPersistFromQuotes(any(), any(), any(), any(), eq(false), eq(25_819_358L)))
