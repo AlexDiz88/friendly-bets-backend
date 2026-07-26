@@ -1,5 +1,6 @@
 package net.friendly_bets.soccer365;
 
+import net.friendly_bets.gameresults.GameScoreFromGoals;
 import net.friendly_bets.models.GameScore;
 import net.friendly_bets.models.schedule.MatchGoalEvent;
 import net.friendly_bets.models.schedule.MatchTeamStats;
@@ -21,21 +22,31 @@ import java.util.regex.Pattern;
 @Component
 public class Soccer365GameParser {
 
-    private static final Pattern SCORE = Pattern.compile("(\\d{1,2})\\s*:\\s*(\\d{1,2})");
     private static final Pattern MINUTE = Pattern.compile("(\\d{1,3})");
 
     public Soccer365ParsedFullMatch parse(String html) {
         Document doc = Jsoup.parse(html != null ? html : "");
-        String statusText = textOrEmpty(doc.selectFirst(".live_game_status"));
+        String statusText = normalizeStatusText(textOrEmpty(doc.selectFirst(".live_game_status")));
         List<MatchGoalEvent> goals = parseGoals(doc);
-        GameScore score = buildScore(statusText, goals, doc);
+        GameScore score = GameScoreFromGoals.from(goals);
         MatchTeamStats stats = parseFullMatchStats(doc);
         return Soccer365ParsedFullMatch.builder()
                 .statusText(statusText)
+                .homeTeamName(textOrEmpty(doc.selectFirst(".live_game_ht a")))
+                .awayTeamName(textOrEmpty(doc.selectFirst(".live_game_at a")))
+                .competitionName(parseCompetitionName(doc))
                 .gameScore(score)
                 .goals(goals)
                 .stats(stats)
                 .build();
+    }
+
+    private static String parseCompetitionName(Document doc) {
+        String fromHeader = textOrEmpty(doc.selectFirst("#game_events .block_title a, .block_header .block_title a"));
+        if (!fromHeader.isBlank()) {
+            return fromHeader;
+        }
+        return blankToNull(textOrEmpty(doc.selectFirst("a[href*=/competitions/]")));
     }
 
     private List<MatchGoalEvent> parseGoals(Document doc) {
@@ -46,110 +57,89 @@ public class Soccer365GameParser {
             if (minEl == null) {
                 continue;
             }
-            Element homeGoal = row.selectFirst(".event_ht_icon.live_goal, .event_ht_icon.live_psg");
-            Element awayGoal = row.selectFirst(".event_at_icon.live_goal, .event_at_icon.live_psg");
-            if (homeGoal == null && awayGoal == null) {
+            Element homeIcon = firstIcon(row, true);
+            Element awayIcon = firstIcon(row, false);
+            if (homeIcon == null && awayIcon == null) {
                 continue;
             }
-            boolean penaltyShootout = (homeGoal != null && homeGoal.hasClass("live_psg"))
-                    || (awayGoal != null && awayGoal.hasClass("live_psg"));
-            String side = homeGoal != null ? "HOME" : "AWAY";
-            Element sideBlock = homeGoal != null ? row.selectFirst(".event_ht") : row.selectFirst(".event_at");
+            Element icon = homeIcon != null ? homeIcon : awayIcon;
+            boolean onHomeSide = homeIcon != null;
+            boolean ownGoal = icon.hasClass("live_owngoal");
+            boolean penalty = icon.hasClass("live_pengoal") || icon.hasClass("live_mispen");
+            boolean shootoutGoal = icon.hasClass("live_psg");
+            boolean shootoutMiss = icon.hasClass("live_psm");
+            boolean inMatchMiss = icon.hasClass("live_mispen");
+            boolean penaltyShootout = shootoutGoal || shootoutMiss;
+            boolean missed = shootoutMiss || inMatchMiss;
+            // soccer365 places the goal icon on the side that is credited on the scoreboard
+            // (for own goals: benefiting team, not the player who scored into own net).
+            String side = onHomeSide ? "HOME" : "AWAY";
+            Element sideBlock = onHomeSide ? row.selectFirst(".event_ht") : row.selectFirst(".event_at");
             String player = sideBlock != null ? textOrEmpty(sideBlock.selectFirst(".img16 span a, .img16 span")) : null;
+            if (player == null || player.isBlank()) {
+                player = sideBlock != null ? textOrEmpty(sideBlock) : null;
+                if (player != null) {
+                    // strip icon-only noise
+                    player = player.replaceAll("\\s+", " ").trim();
+                }
+            }
             String minuteLabel = normalizeMinuteLabel(minEl);
             goals.add(MatchGoalEvent.builder()
                     .minute(minuteLabel)
                     .minuteNumber(parseMinuteNumber(minuteLabel))
                     .teamSide(side)
                     .playerName(blankToNull(player))
+                    .penalty(penalty)
                     .penaltyShootout(penaltyShootout)
+                    .ownGoal(ownGoal)
+                    .missed(missed)
                     .build());
         }
         return goals;
     }
 
-    private GameScore buildScore(String statusText, List<MatchGoalEvent> goals, Document doc) {
-        int htHome = 0, htAway = 0;
-        int ftHome = 0, ftAway = 0;
-        int otHome = 0, otAway = 0;
-        int penHome = 0, penAway = 0;
-        boolean anyOt = false;
-        boolean anyPen = false;
-
-        for (MatchGoalEvent goal : goals) {
-            if (Boolean.TRUE.equals(goal.getPenaltyShootout())) {
-                anyPen = true;
-                if ("HOME".equals(goal.getTeamSide())) {
-                    penHome++;
-                } else {
-                    penAway++;
-                }
-                continue;
-            }
-            int minute = goal.getMinuteNumber() != null ? goal.getMinuteNumber() : 0;
-            if ("HOME".equals(goal.getTeamSide())) {
-                if (minute <= 45) {
-                    htHome++;
-                }
-                if (minute <= 90) {
-                    ftHome++;
-                } else {
-                    anyOt = true;
-                    otHome++;
-                }
-            } else {
-                if (minute <= 45) {
-                    htAway++;
-                }
-                if (minute <= 90) {
-                    ftAway++;
-                } else {
-                    anyOt = true;
-                    otAway++;
-                }
-            }
+    private static Element firstIcon(Element row, boolean home) {
+        String prefix = home ? ".event_ht_icon" : ".event_at_icon";
+        Element el = row.selectFirst(prefix + ".live_goal");
+        if (el != null) {
+            return el;
         }
-
-        int afterOtHome = ftHome + otHome;
-        int afterOtAway = ftAway + otAway;
-
-        // Prefer board score (after OT, before pens) when present.
-        Element board = doc.selectFirst(".live_game_goals");
-        if (board != null) {
-            Elements spans = board.select(".live_game_goal span");
-            if (spans.size() >= 2) {
-                Integer h = parseIntSafe(spans.get(0).text());
-                Integer a = parseIntSafe(spans.get(1).text());
-                if (h != null && a != null) {
-                    afterOtHome = h;
-                    afterOtAway = a;
-                    if (afterOtHome != ftHome || afterOtAway != ftAway) {
-                        anyOt = true;
-                    }
-                }
-            }
+        el = row.selectFirst(prefix + ".live_pengoal");
+        if (el != null) {
+            return el;
         }
+        el = row.selectFirst(prefix + ".live_owngoal");
+        if (el != null) {
+            return el;
+        }
+        el = row.selectFirst(prefix + ".live_psg");
+        if (el != null) {
+            return el;
+        }
+        el = row.selectFirst(prefix + ".live_psm");
+        if (el != null) {
+            return el;
+        }
+        return row.selectFirst(prefix + ".live_mispen");
+    }
 
-        Matcher penMatcher = SCORE.matcher(statusText != null ? statusText : "");
-        if (statusText != null && statusText.toLowerCase(Locale.ROOT).contains("пенал") && penMatcher.find()) {
-            anyPen = true;
-            penHome = Integer.parseInt(penMatcher.group(1));
-            penAway = Integer.parseInt(penMatcher.group(2));
+    /**
+     * Keep only the finished marker; drop score tails like {@code "Завершен. 7:6 по пенальти"}.
+     * DB status is written as {@code FINISHED} by FULL_MATCH separately.
+     */
+    static String normalizeStatusText(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return null;
         }
-
-        GameScore.GameScoreBuilder builder = GameScore.builder()
-                .fullTime(formatScore(ftHome, ftAway))
-                .firstTime(formatScore(htHome, htAway));
-        if (anyOt) {
-            builder.overTime(formatScore(afterOtHome, afterOtAway));
+        String trimmed = raw.replace('\u00a0', ' ').trim();
+        String lower = trimmed.toLowerCase(Locale.ROOT);
+        if (lower.startsWith("завершен")) {
+            return "Завершен";
         }
-        if (anyPen) {
-            builder.penalty(formatScore(penHome, penAway));
-            if (!anyOt && (afterOtHome != ftHome || afterOtAway != ftAway)) {
-                builder.overTime(formatScore(afterOtHome, afterOtAway));
-            }
+        if (lower.startsWith("finished")) {
+            return "Finished";
         }
-        return builder.build();
+        return trimmed;
     }
 
     private MatchTeamStats parseFullMatchStats(Document doc) {
@@ -164,10 +154,16 @@ public class Soccer365GameParser {
         Integer sotH = null, sotA = null;
         Integer possH = null, possA = null;
         Integer ycH = null, ycA = null;
+        Double xgH = null, xgA = null;
         for (Element item : full.select(".stats_item")) {
             String title = textOrEmpty(item.selectFirst(".stats_title")).toLowerCase(Locale.ROOT);
             Elements vals = item.select(".stats_inf");
             if (vals.size() < 2) {
+                continue;
+            }
+            if (title.contains("xg") || title.contains("ожидаемые голы")) {
+                xgH = parseDoubleSafe(vals.get(0).text());
+                xgA = parseDoubleSafe(vals.get(1).text());
                 continue;
             }
             Integer home = parseIntSafe(vals.get(0).text());
@@ -175,7 +171,8 @@ public class Soccer365GameParser {
             if (title.contains("удары в створ")) {
                 sotH = home;
                 sotA = away;
-            } else if (title.equals("удары") || title.startsWith("удары ")) {
+            } else if (title.equals("удары")) {
+                // exact title only — not "Удары в каркас" / "Удары в створ"
                 shotsH = home;
                 shotsA = away;
             } else if (title.contains("владение")) {
@@ -186,7 +183,7 @@ public class Soccer365GameParser {
                 ycA = away;
             }
         }
-        if (shotsH == null && sotH == null && possH == null && ycH == null) {
+        if (shotsH == null && sotH == null && possH == null && ycH == null && xgH == null) {
             return null;
         }
         return MatchTeamStats.builder()
@@ -198,12 +195,18 @@ public class Soccer365GameParser {
                 .possessionAway(possA)
                 .yellowCardsHome(ycH)
                 .yellowCardsAway(ycA)
+                .xgHome(xgH)
+                .xgAway(xgA)
                 .build();
     }
 
     private static String normalizeMinuteLabel(Element minEl) {
         String raw = minEl.text().replace('\u00a0', ' ').trim().replace("'", "");
-        if (minEl.selectFirst("sup") != null && !raw.contains("+")) {
+        // Keep full stoppage labels like "45+3" / "90+6" when present in text.
+        if (raw.contains("+")) {
+            return raw;
+        }
+        if (minEl.selectFirst("sup") != null) {
             Matcher m = MINUTE.matcher(raw);
             if (m.find()) {
                 return m.group(1) + "+";
@@ -221,12 +224,7 @@ public class Soccer365GameParser {
             return null;
         }
         try {
-            int base = Integer.parseInt(m.group(1));
-            if (label.contains("+")) {
-                // injury time: keep base minute for bucketing (90+/120+)
-                return base;
-            }
-            return base;
+            return Integer.parseInt(m.group(1));
         } catch (NumberFormatException e) {
             return null;
         }
@@ -247,8 +245,20 @@ public class Soccer365GameParser {
         }
     }
 
-    private static String formatScore(int home, int away) {
-        return home + ":" + away;
+    private static Double parseDoubleSafe(String text) {
+        if (text == null) {
+            return null;
+        }
+        String normalized = text.trim().replace(',', '.');
+        Matcher m = Pattern.compile("-?\\d+(?:\\.\\d+)?").matcher(normalized);
+        if (!m.find()) {
+            return null;
+        }
+        try {
+            return Double.parseDouble(m.group());
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 
     private static String textOrEmpty(Element el) {

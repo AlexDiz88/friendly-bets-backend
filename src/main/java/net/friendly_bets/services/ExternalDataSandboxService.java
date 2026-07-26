@@ -191,6 +191,9 @@ public class ExternalDataSandboxService {
             Map<String, Object> summary = new LinkedHashMap<>();
             summary.put("gameId", gameId);
             summary.put("statusText", parsed.getStatusText());
+            summary.put("homeTeamName", parsed.getHomeTeamName());
+            summary.put("awayTeamName", parsed.getAwayTeamName());
+            summary.put("competitionName", parsed.getCompetitionName());
             summary.put("gameScore", parsed.getGameScore());
             summary.put("goalsCount", parsed.getGoals() != null ? parsed.getGoals().size() : 0);
             summary.put("goals", parsed.getGoals());

@@ -27,6 +27,18 @@ public class MatchGoalEvent {
     @Field(name = "player_name")
     private String playerName;
 
+    /** Goal from a penalty kick during the match (not shootout). */
+    @Field(name = "is_penalty")
+    private Boolean penalty;
+
+    /** Goal in a penalty shootout after ET. */
     @Field(name = "is_penalty_shootout")
     private Boolean penaltyShootout;
+
+    @Field(name = "is_own_goal")
+    private Boolean ownGoal;
+
+    /** Missed penalty (in-match or shootout); does not count toward score. */
+    @Field(name = "is_missed")
+    private Boolean missed;
 }

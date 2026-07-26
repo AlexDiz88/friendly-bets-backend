@@ -14,6 +14,9 @@ import java.util.List;
 public class Soccer365ParsedFullMatch {
 
     String statusText;
+    String homeTeamName;
+    String awayTeamName;
+    String competitionName;
     GameScore gameScore;
     @Builder.Default
     List<MatchGoalEvent> goals = new ArrayList<>();
