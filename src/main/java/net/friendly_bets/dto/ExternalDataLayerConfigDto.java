@@ -4,7 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import net.friendly_bets.models.providers.ExternalDataLayerConfig;
+import net.friendly_bets.models.AppSettings;
 import net.friendly_bets.providers.ExternalDataLayer;
 
 import java.util.EnumMap;
@@ -28,7 +28,7 @@ public class ExternalDataLayerConfigDto {
         private String primaryProvider;
         private String secondaryProvider;
 
-        public static LayerAssignmentDto from(ExternalDataLayerConfig.LayerAssignment a) {
+        public static LayerAssignmentDto from(AppSettings.LayerAssignment a) {
             if (a == null) {
                 return LayerAssignmentDto.builder().build();
             }
@@ -38,8 +38,8 @@ public class ExternalDataLayerConfigDto {
                     .build();
         }
 
-        public ExternalDataLayerConfig.LayerAssignment toEntity() {
-            return ExternalDataLayerConfig.LayerAssignment.builder()
+        public AppSettings.LayerAssignment toEntity() {
+            return AppSettings.LayerAssignment.builder()
                     .primaryProvider(primaryProvider)
                     .secondaryProvider(secondaryProvider)
                     .build();
@@ -47,11 +47,11 @@ public class ExternalDataLayerConfigDto {
     }
 
     public static ExternalDataLayerConfigDto from(
-            ExternalDataLayerConfig config,
+            AppSettings.ExternalDataLayersBlock config,
             Map<String, List<String>> capabilities
     ) {
         Map<ExternalDataLayer, LayerAssignmentDto> layers = new EnumMap<>(ExternalDataLayer.class);
-        if (config.getLayers() != null) {
+        if (config != null && config.getLayers() != null) {
             config.getLayers().forEach((layer, assignment) ->
                     layers.put(layer, LayerAssignmentDto.from(assignment)));
         }
@@ -61,8 +61,8 @@ public class ExternalDataLayerConfigDto {
                 .build();
     }
 
-    public Map<ExternalDataLayer, ExternalDataLayerConfig.LayerAssignment> toEntityLayers() {
-        Map<ExternalDataLayer, ExternalDataLayerConfig.LayerAssignment> map = new EnumMap<>(ExternalDataLayer.class);
+    public Map<ExternalDataLayer, AppSettings.LayerAssignment> toEntityLayers() {
+        Map<ExternalDataLayer, AppSettings.LayerAssignment> map = new EnumMap<>(ExternalDataLayer.class);
         if (layers != null) {
             layers.forEach((layer, dto) -> map.put(layer, dto != null ? dto.toEntity() : null));
         }

@@ -2,11 +2,9 @@ package net.friendly_bets.services;
 
 import lombok.RequiredArgsConstructor;
 import net.friendly_bets.exceptions.BadRequestException;
-import net.friendly_bets.gameresults.MatchDataProviders;
-import net.friendly_bets.models.providers.ExternalDataLayerConfig;
+import net.friendly_bets.models.AppSettings;
 import net.friendly_bets.providers.ExternalDataLayer;
 import net.friendly_bets.providers.LayerProviderRegistry;
-import net.friendly_bets.repositories.ExternalDataLayerConfigRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,47 +17,55 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class ExternalDataLayerConfigService {
 
-    private final ExternalDataLayerConfigRepository repository;
+    private final AppSettingsService appSettingsService;
     private final LayerProviderRegistry registry;
 
     @Transactional
-    public ExternalDataLayerConfig getOrCreateDefaults() {
-        return repository.findById(ExternalDataLayerConfig.SINGLETON_ID)
-                .orElseGet(this::createDefaults);
+    public AppSettings.ExternalDataLayersBlock getOrCreateDefaults() {
+        AppSettings settings = appSettingsService.getOrCreate();
+        if (settings.getExternalDataLayers() == null) {
+            settings.setExternalDataLayers(AppSettingsService.defaultExternalDataLayers());
+            appSettingsService.save(settings);
+        }
+        return settings.getExternalDataLayers();
     }
 
-    public ExternalDataLayerConfig.LayerAssignment assignment(ExternalDataLayer layer) {
-        ExternalDataLayerConfig config = getOrCreateDefaults();
-        ExternalDataLayerConfig.LayerAssignment assignment = config.getLayers() != null
+    public AppSettings.LayerAssignment assignment(ExternalDataLayer layer) {
+        AppSettings.ExternalDataLayersBlock config = getOrCreateDefaults();
+        AppSettings.LayerAssignment assignment = config.getLayers() != null
                 ? config.getLayers().get(layer)
                 : null;
         if (assignment == null) {
-            assignment = defaultAssignment(layer);
+            assignment = AppSettingsService.defaultLayerAssignment(layer);
         }
         return assignment;
     }
 
     @Transactional
-    public ExternalDataLayerConfig update(Map<ExternalDataLayer, ExternalDataLayerConfig.LayerAssignment> layers) {
+    public AppSettings.ExternalDataLayersBlock update(Map<ExternalDataLayer, AppSettings.LayerAssignment> layers) {
         if (layers == null) {
             throw new BadRequestException("externalDataLayerConfigRequired");
         }
-        ExternalDataLayerConfig config = getOrCreateDefaults();
-        Map<ExternalDataLayer, ExternalDataLayerConfig.LayerAssignment> next = new EnumMap<>(ExternalDataLayer.class);
+        AppSettings settings = appSettingsService.getOrCreate();
+        Map<ExternalDataLayer, AppSettings.LayerAssignment> next = new EnumMap<>(ExternalDataLayer.class);
         for (ExternalDataLayer layer : ExternalDataLayer.values()) {
-            ExternalDataLayerConfig.LayerAssignment incoming = layers.get(layer);
+            AppSettings.LayerAssignment incoming = layers.get(layer);
             if (incoming == null) {
-                next.put(layer, defaultAssignment(layer));
+                next.put(layer, AppSettingsService.defaultLayerAssignment(layer));
                 continue;
             }
             validateAssignment(layer, incoming);
-            next.put(layer, ExternalDataLayerConfig.LayerAssignment.builder()
+            next.put(layer, AppSettings.LayerAssignment.builder()
                     .primaryProvider(blankToNull(incoming.getPrimaryProvider()))
                     .secondaryProvider(blankToNull(incoming.getSecondaryProvider()))
                     .build());
         }
-        config.setLayers(next);
-        return repository.save(config);
+        AppSettings.ExternalDataLayersBlock block = AppSettings.ExternalDataLayersBlock.builder()
+                .layers(next)
+                .build();
+        settings.setExternalDataLayers(block);
+        appSettingsService.save(settings);
+        return block;
     }
 
     public Map<String, List<String>> capabilitiesCatalog() {
@@ -70,33 +76,7 @@ public class ExternalDataLayerConfigService {
         return catalog;
     }
 
-    private ExternalDataLayerConfig createDefaults() {
-        Map<ExternalDataLayer, ExternalDataLayerConfig.LayerAssignment> layers = new EnumMap<>(ExternalDataLayer.class);
-        for (ExternalDataLayer layer : ExternalDataLayer.values()) {
-            layers.put(layer, defaultAssignment(layer));
-        }
-        ExternalDataLayerConfig created = ExternalDataLayerConfig.builder()
-                .id(ExternalDataLayerConfig.SINGLETON_ID)
-                .layers(layers)
-                .build();
-        return repository.save(created);
-    }
-
-    private ExternalDataLayerConfig.LayerAssignment defaultAssignment(ExternalDataLayer layer) {
-        return switch (layer) {
-            case SCHEDULE, FULL_MATCH -> ExternalDataLayerConfig.LayerAssignment.builder()
-                    .primaryProvider(MatchDataProviders.SOCCER365)
-                    .build();
-            case ODDS -> ExternalDataLayerConfig.LayerAssignment.builder()
-                    .primaryProvider(MatchDataProviders.MARATHONBET)
-                    .build();
-            case LIVE -> ExternalDataLayerConfig.LayerAssignment.builder()
-                    .primaryProvider(MatchDataProviders.TWENTYFOUR_SCORE)
-                    .build();
-        };
-    }
-
-    private void validateAssignment(ExternalDataLayer layer, ExternalDataLayerConfig.LayerAssignment assignment) {
+    private void validateAssignment(ExternalDataLayer layer, AppSettings.LayerAssignment assignment) {
         String primary = blankToNull(assignment.getPrimaryProvider());
         String secondary = blankToNull(assignment.getSecondaryProvider());
         if (primary != null) {

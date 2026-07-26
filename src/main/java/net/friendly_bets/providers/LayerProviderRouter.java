@@ -2,7 +2,7 @@ package net.friendly_bets.providers;
 
 import lombok.RequiredArgsConstructor;
 import net.friendly_bets.exceptions.BadRequestException;
-import net.friendly_bets.models.providers.ExternalDataLayerConfig;
+import net.friendly_bets.models.AppSettings;
 import net.friendly_bets.services.ErrorLogService;
 import net.friendly_bets.services.ExternalDataLayerConfigService;
 import org.slf4j.Logger;
@@ -38,7 +38,7 @@ public class LayerProviderRouter {
             Function<T, R> operation,
             String leagueCode
     ) {
-        ExternalDataLayerConfig.LayerAssignment assignment = configService.assignment(layer);
+        AppSettings.LayerAssignment assignment = configService.assignment(layer);
         String primaryId = assignment.getPrimaryProvider();
         if (primaryId == null || primaryId.isBlank()) {
             errorLogService.recordLayerFailure(
