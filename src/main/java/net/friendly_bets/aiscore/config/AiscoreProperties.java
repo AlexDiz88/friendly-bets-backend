@@ -3,9 +3,7 @@ package net.friendly_bets.aiscore.config;
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 @Data
@@ -21,6 +19,11 @@ public class AiscoreProperties {
     private long httpDelayMaxMs = 4_500L;
     private int skipWhenKickoffFartherThanDays = 60;
     /**
+     * Optional outbound proxy for Cloudflare-blocked datacenter IPs, e.g.
+     * {@code http://127.0.0.1:8888} (host + port required).
+     */
+    private String httpProxy;
+    /**
      * Path after baseUrl without leading slash, e.g.
      * {@code tournament-english-premier-league/mo07dni2vfxknxy}.
      * Schedule URL = {@code {baseUrl}/{path}/schedule}.
@@ -31,5 +34,4 @@ public class AiscoreProperties {
             "CL", "tournament-uefa-champions-league/xo17pji02i37jw5",
             "LE", "tournament-uefa-europa-league/2jr7owi6es1q0em"
     ));
-    private List<String> enabledLeagues = new ArrayList<>(List.of("EPL", "BL", "CL", "LE"));
 }

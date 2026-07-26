@@ -32,7 +32,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -42,8 +41,6 @@ import java.util.Set;
 public class TwentyFourScoreLiveProvider implements LiveMatchProvider {
 
     private static final Logger log = LoggerFactory.getLogger(TwentyFourScoreLiveProvider.class);
-    private static final Set<String> FINISHED = Set.of("FINISHED", "AWARDED", "COMPLETED", "FT", "AET", "PEN");
-
     private final TwentyFourScoreHttpClient httpClient;
     private final TwentyFourScoreDatePageParser datePageParser;
     private final MatchScheduleRepository matchScheduleRepository;
@@ -88,9 +85,11 @@ public class TwentyFourScoreLiveProvider implements LiveMatchProvider {
             return LiveSyncResult.of(leagueCode, 0, 0, "leagueNotSupported");
         }
 
-        List<MatchSchedule> candidates = matchScheduleRepository.findByLeagueIdAndSeasonId(league.getId(), season.getId())
-                .stream()
-                .filter(this::isLiveCandidate)
+        Instant now = Instant.now();
+        List<MatchSchedule> leagueSchedules = matchScheduleRepository.findByLeagueIdAndSeasonId(
+                league.getId(), season.getId());
+        List<MatchSchedule> candidates = leagueSchedules.stream()
+                .filter(s -> TwentyFourScoreLiveSupport.isLiveHttpCandidate(s, now))
                 .toList();
         if (candidates.isEmpty()) {
             monitoringService.finalizeAndSave(
@@ -160,11 +159,11 @@ public class TwentyFourScoreLiveProvider implements LiveMatchProvider {
                     if (row.isEmpty()) {
                         continue;
                     }
-                    boolean wasFinished = isFinishedStatus(schedule.getStatus());
+                    boolean wasFinished = TwentyFourScoreLiveSupport.isFinishedStatus(schedule.getStatus());
                     applyLiveRow(schedule, row.get());
                     matchScheduleRepository.save(schedule);
                     updated++;
-                    if (!wasFinished && isFinishedStatus(schedule.getStatus())) {
+                    if (!wasFinished && TwentyFourScoreLiveSupport.isFinishedStatus(schedule.getStatus())) {
                         finishedDetected++;
                     }
                 }
@@ -185,13 +184,16 @@ public class TwentyFourScoreLiveProvider implements LiveMatchProvider {
             throw e;
         }
 
-        List<String> pendingFullIds = candidates.stream()
-                .filter(s -> isFinishedStatus(s.getStatus()) && s.getFullDetailsFetchedAt() == null)
+        LinkedHashSet<String> pendingFullIds = candidates.stream()
+                .filter(s -> TwentyFourScoreLiveSupport.needsFullMatch(s))
                 .map(MatchSchedule::getId)
                 .filter(id -> id != null && !id.isBlank())
-                .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new))
-                .stream()
-                .toList();
+                .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
+        leagueSchedules.stream()
+                .filter(TwentyFourScoreLiveSupport::needsFullMatch)
+                .map(MatchSchedule::getId)
+                .filter(id -> id != null && !id.isBlank())
+                .forEach(pendingFullIds::add);
 
         if (!pendingFullIds.isEmpty()) {
             log.info("24score LIVE {} pending FULL for {} match(es)", league.getLeagueCode(), pendingFullIds.size());
@@ -210,29 +212,7 @@ public class TwentyFourScoreLiveProvider implements LiveMatchProvider {
                 null
         );
 
-        return new LiveSyncResult(leagueCode, updated, finishedDetected, null, pendingFullIds);
-    }
-
-    private boolean isLiveCandidate(MatchSchedule schedule) {
-        if (schedule == null) {
-            return false;
-        }
-        if (schedule.getFinalizedAt() != null || schedule.getFullDetailsFetchedAt() != null) {
-            return false;
-        }
-        String status = normalize(schedule.getStatus());
-        if (FINISHED.contains(status)) {
-            return true; // pending FULL
-        }
-        if ("LIVE".equals(status) || "IN_PLAY".equals(status) || "PAUSED".equals(status) || "HALFTIME".equals(status)) {
-            return true;
-        }
-        Instant kickoff = schedule.getUtcKickoff();
-        if (kickoff == null) {
-            return false;
-        }
-        Instant now = Instant.now();
-        return !kickoff.isAfter(now) && kickoff.isAfter(now.minusSeconds(4 * 3600L));
+        return new LiveSyncResult(leagueCode, updated, finishedDetected, null, List.copyOf(pendingFullIds));
     }
 
     private Optional<TwentyFourScoreParsedDatePage.MatchRow> findRow(
@@ -273,7 +253,7 @@ public class TwentyFourScoreLiveProvider implements LiveMatchProvider {
                     // keep previous
                 }
             }
-        } else if (isFinishedStatus(row.getStatus())) {
+        } else if (TwentyFourScoreLiveSupport.isFinishedStatus(row.getStatus())) {
             schedule.setLiveMinute(null);
             schedule.setLiveMinuteLabel(null);
         }
@@ -286,13 +266,5 @@ public class TwentyFourScoreLiveProvider implements LiveMatchProvider {
             schedule.setGameScore(score);
         }
         schedule.setFetchedAt(Instant.now());
-    }
-
-    private static boolean isFinishedStatus(String status) {
-        return FINISHED.contains(normalize(status));
-    }
-
-    private static String normalize(String status) {
-        return status == null ? "" : status.trim().toUpperCase(Locale.ROOT);
     }
 }
