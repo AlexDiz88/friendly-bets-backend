@@ -365,10 +365,6 @@ public class Soccer365ScheduleSyncService implements ScheduleProvider {
         if (match.getStatus() != null) {
             existing.setStatus(match.getStatus());
         }
-        if (match.getSoccer365GameId() != null && !match.getSoccer365GameId().isBlank()) {
-            existing.putExternalId(MatchDataProviders.sourcesStorageKey(MatchDataProviders.SOCCER365),
-                    match.getSoccer365GameId());
-        }
         existing.setFetchedAt(fetchedAt);
         matchScheduleRepository.save(existing);
         oddsMergedOddsService.deleteIfFinalized(existing);

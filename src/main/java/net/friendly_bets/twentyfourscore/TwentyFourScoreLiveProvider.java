@@ -285,12 +285,6 @@ public class TwentyFourScoreLiveProvider implements LiveMatchProvider {
             }
             schedule.setGameScore(score);
         }
-        if (row.getExternalMatchId() != null) {
-            schedule.putExternalId(
-                    MatchDataProviders.sourcesStorageKey(MatchDataProviders.TWENTYFOUR_SCORE),
-                    row.getExternalMatchId()
-            );
-        }
         schedule.setFetchedAt(Instant.now());
     }
 

@@ -10,21 +10,4 @@ public final class MatchDataProviders {
 
     private MatchDataProviders() {
     }
-
-    /** Ключ вложенного документа / external_ids в MongoDB (без точек в имени поля). */
-    public static String sourcesStorageKey(String providerId) {
-        if (providerId == null) {
-            return null;
-        }
-        if (TWENTYFOUR_SCORE.equals(providerId)) {
-            return "24score";
-        }
-        if (SOCCER365.equals(providerId)) {
-            return "soccer365";
-        }
-        if (AISCORE.equals(providerId)) {
-            return "aiscore";
-        }
-        return providerId.replace('-', '_');
-    }
 }

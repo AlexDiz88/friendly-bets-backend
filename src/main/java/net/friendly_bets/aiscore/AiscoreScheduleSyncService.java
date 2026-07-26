@@ -366,12 +366,6 @@ public class AiscoreScheduleSyncService implements ScheduleProvider {
         if (match.getStatus() != null) {
             existing.setStatus(match.getStatus());
         }
-        if (match.getAiscoreMatchId() != null && !match.getAiscoreMatchId().isBlank()) {
-            existing.putExternalId(
-                    MatchDataProviders.sourcesStorageKey(MatchDataProviders.AISCORE),
-                    match.getAiscoreMatchId()
-            );
-        }
         existing.setFetchedAt(fetchedAt);
         matchScheduleRepository.save(existing);
         oddsMergedOddsService.deleteIfFinalized(existing);

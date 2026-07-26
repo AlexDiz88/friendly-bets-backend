@@ -11,8 +11,10 @@ import net.friendly_bets.models.monitoring.ExternalApiMonitoringTrigger;
 import net.friendly_bets.models.schedule.MatchSchedule;
 import net.friendly_bets.providers.ExternalDataLayer;
 import net.friendly_bets.providers.ExternalDataProvider;
+import net.friendly_bets.providers.FullMatchDetails;
 import net.friendly_bets.providers.FullMatchProvider;
 import net.friendly_bets.repositories.MatchScheduleRepository;
+import net.friendly_bets.services.ErrorLogService;
 import net.friendly_bets.services.ExternalApiMonitoringService;
 import org.springframework.stereotype.Service;
 
@@ -25,10 +27,12 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class Soccer365FullMatchProvider implements FullMatchProvider {
 
+    private final Soccer365FullMatchResolver fullMatchResolver;
     private final Soccer365HttpClient httpClient;
     private final Soccer365GameParser gameParser;
     private final MatchScheduleRepository matchScheduleRepository;
     private final ExternalApiMonitoringService monitoringService;
+    private final ErrorLogService errorLogService;
 
     @Override
     public String providerId() {
@@ -69,17 +73,21 @@ public class Soccer365FullMatchProvider implements FullMatchProvider {
             );
             return current;
         }
-        String gameId = current.externalId(MatchDataProviders.sourcesStorageKey(MatchDataProviders.SOCCER365));
-        if (gameId == null || gameId.isBlank()) {
+
+        String gameId;
+        try {
+            gameId = fullMatchResolver.resolveGameId(current);
+        } catch (BadRequestException e) {
             monitoringService.finalizeAndSave(
                     run,
                     ExternalApiMonitoringStatus.FAILED,
                     ExternalApiMonitoringCounters.builder().requested(1).build(),
                     httpLogs,
                     List.of(current.getId()),
-                    "soccer365GameIdRequired"
+                    e.getMessage()
             );
-            throw new BadRequestException("soccer365GameIdRequired");
+            errorLogService.recordFullMatchFailure(current, MatchDataProviders.SOCCER365, e.getMessage());
+            throw e;
         }
 
         Instant reqAt = Instant.now();
@@ -116,11 +124,13 @@ public class Soccer365FullMatchProvider implements FullMatchProvider {
                     List.of(current.getId()),
                     e.getMessage()
             );
+            errorLogService.recordFullMatchFailure(current, MatchDataProviders.SOCCER365, e.getMessage());
             throw e;
         }
 
         Soccer365ParsedFullMatch parsed = gameParser.parse(html);
-        if (parsed.getGameScore() == null || parsed.getGameScore().getFullTime() == null) {
+        FullMatchDetails details = toDetails(parsed);
+        if (details.getGameScore() == null || details.getGameScore().getFullTime() == null) {
             monitoringService.finalizeAndSave(
                     run,
                     ExternalApiMonitoringStatus.FAILED,
@@ -129,13 +139,14 @@ public class Soccer365FullMatchProvider implements FullMatchProvider {
                     List.of(current.getId()),
                     "soccer365FullMatchParseFailed"
             );
+            errorLogService.recordFullMatchFailure(current, MatchDataProviders.SOCCER365, "soccer365FullMatchParseFailed");
             throw new BadRequestException("soccer365FullMatchParseFailed");
         }
 
         Instant now = Instant.now();
-        current.setGameScore(parsed.getGameScore());
-        current.setGoals(parsed.getGoals());
-        current.setStats(parsed.getStats());
+        current.setGameScore(details.getGameScore());
+        current.setGoals(details.getGoals());
+        current.setStats(details.getStats());
         current.setStatus("FINISHED");
         current.setLiveMinute(null);
         current.setLiveMinuteLabel(null);
@@ -154,5 +165,14 @@ public class Soccer365FullMatchProvider implements FullMatchProvider {
                 null
         );
         return saved;
+    }
+
+    private static FullMatchDetails toDetails(Soccer365ParsedFullMatch parsed) {
+        return FullMatchDetails.builder()
+                .gameScore(parsed.getGameScore())
+                .goals(parsed.getGoals() != null ? parsed.getGoals() : List.of())
+                .stats(parsed.getStats())
+                .statusText(parsed.getStatusText())
+                .build();
     }
 }
