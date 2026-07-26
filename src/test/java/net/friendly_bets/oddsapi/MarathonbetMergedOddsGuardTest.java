@@ -1,7 +1,7 @@
 package net.friendly_bets.oddsapi;
 
 import net.friendly_bets.marathonbet.MarathonbetBookmaker;
-import net.friendly_bets.models.odds.GameResultMergedOdds;
+import net.friendly_bets.models.odds.Odds;
 import net.friendly_bets.models.odds.OddsMarketGroup;
 import org.junit.jupiter.api.Test;
 
@@ -15,8 +15,8 @@ class MarathonbetMergedOddsGuardTest {
 
     @Test
     void hasProductionMarathonOdds_trueWhenMarathonBookmakerAndGroupsPresent() {
-        GameResultMergedOdds doc = GameResultMergedOdds.builder()
-                .gameResultId("gr1")
+        Odds doc = Odds.builder()
+                .matchScheduleId("ms1")
                 .bookmakers(List.of(MarathonbetBookmaker.KEY))
                 .marketGroups(List.of(OddsMarketGroup.builder().category("RESULT").build()))
                 .build();
@@ -28,13 +28,13 @@ class MarathonbetMergedOddsGuardTest {
     void hasProductionMarathonOdds_falseWhenEmptyOrMissingMarathon() {
         assertFalse(MarathonbetMergedOddsGuard.hasProductionMarathonOdds(Optional.empty()));
 
-        GameResultMergedOdds noGroups = GameResultMergedOdds.builder()
+        Odds noGroups = Odds.builder()
                 .bookmakers(List.of(MarathonbetBookmaker.KEY))
                 .marketGroups(List.of())
                 .build();
         assertFalse(MarathonbetMergedOddsGuard.hasProductionMarathonOdds(Optional.of(noGroups)));
 
-        GameResultMergedOdds oddsApiOnly = GameResultMergedOdds.builder()
+        Odds oddsApiOnly = Odds.builder()
                 .bookmakers(List.of("Bet365"))
                 .marketGroups(List.of(OddsMarketGroup.builder().category("RESULT").build()))
                 .build();

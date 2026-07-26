@@ -1,45 +1,48 @@
 package net.friendly_bets.marathonbet;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import lombok.RequiredArgsConstructor;
 import net.friendly_bets.dto.ExternalCompetitionInfoDto;
 import net.friendly_bets.exceptions.BadRequestException;
-import net.friendly_bets.gameresults.ApiSyncIssueService;
 import net.friendly_bets.gameresults.ExternalCompetitionService;
 import net.friendly_bets.gameresults.MatchdaySlotSupport;
-import net.friendly_bets.gameresults.GameResultQueryService;
 import net.friendly_bets.marathonbet.client.MarathonbetHttpFetchResult;
 import net.friendly_bets.marathonbet.client.MarathonbetRequestType;
 import net.friendly_bets.marathonbet.client.MarathonbetTournamentClient;
 import net.friendly_bets.marathonbet.config.MarathonbetProperties;
-import net.friendly_bets.models.marathonbet.MarathonbetHttpLogEntry;
 import net.friendly_bets.marathonbet.mapping.MarathonbetBetTitleMapper;
 import net.friendly_bets.models.League;
 import net.friendly_bets.models.Season;
-import net.friendly_bets.models.gameresults.GameResultRecord;
-import net.friendly_bets.models.marathonbet.MarathonbetSyncRun;
-import net.friendly_bets.oddsapi.GameResultNotStarted;
+import net.friendly_bets.models.monitoring.ExternalApiHttpLogEntry;
+import net.friendly_bets.models.monitoring.ExternalApiMonitoringCounters;
+import net.friendly_bets.models.monitoring.ExternalApiMonitoringRun;
+import net.friendly_bets.models.monitoring.ExternalApiMonitoringStatus;
+import net.friendly_bets.models.monitoring.ExternalApiMonitoringTrigger;
+import net.friendly_bets.models.schedule.MatchSchedule;
+import net.friendly_bets.oddsapi.MatchScheduleNotStarted;
 import net.friendly_bets.oddsapi.OddsMergedOddsService;
 import net.friendly_bets.oddsapi.mapping.MappedOddsQuote;
 import net.friendly_bets.oddsapi.mapping.OddsMergeResult;
-import net.friendly_bets.repositories.MarathonbetSyncRunRepository;
 import net.friendly_bets.services.GetEntityService;
+import net.friendly_bets.services.ErrorLogService;
+import net.friendly_bets.services.ExternalApiMonitoringService;
+import net.friendly_bets.services.MatchScheduleDisplayService;
+import net.friendly_bets.services.MatchScheduleQueryService;
 import net.friendly_bets.services.RunningSeasonLookup;
+import net.friendly_bets.providers.ExternalDataLayer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
-import org.springframework.data.domain.PageRequest;
-
-import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.locks.ReentrantLock;
 
 @Service
 @RequiredArgsConstructor
@@ -53,20 +56,63 @@ public class MarathonbetSyncService {
     private final MarathonbetEventMatcher eventMatcher;
     private final MarathonbetBetTitleMapper betTitleMapper;
     private final OddsMergedOddsService oddsMergedOddsService;
-    private final GameResultQueryService gameResultQueryService;
+    private final MatchScheduleQueryService matchScheduleQueryService;
     private final ExternalCompetitionService externalCompetitionService;
     private final MatchdaySlotSupport matchdaySupport;
     private final RunningSeasonLookup runningSeasonLookup;
     private final GetEntityService getEntityService;
-    private final ApiSyncIssueService apiSyncIssueService;
-    private final MarathonbetSyncRunRepository syncRunRepository;
+    private final ErrorLogService errorLogService;
+    private final ExternalApiMonitoringService monitoringService;
 
+    /** Ensures only one league runs listing+SSE at a time. */
+    private final ReentrantLock pipelineLock = new ReentrantLock();
+
+    /**
+     * Scheduled per-league sync (current + next slots), with stage batching and refresh policy.
+     */
+    public MarathonbetSyncResult syncLeague(String leagueCode) {
+        return syncLeague(leagueCode, true);
+    }
+
+    public MarathonbetSyncResult syncLeague(String leagueCode, boolean applyStagePause) {
+        if (!properties.isSyncEnabled()) {
+            return MarathonbetSyncResult.builder().build();
+        }
+        if (leagueCode == null || leagueCode.isBlank()) {
+            return MarathonbetSyncResult.builder().build();
+        }
+        String code = leagueCode.trim().toUpperCase(Locale.ROOT);
+        Long tournamentId = properties.tournamentTreeIdForLeague(code);
+        if (tournamentId == null || tournamentId <= 0) {
+            log.debug("marathonbet syncLeague skipped: no tournamentTreeId for {}", code);
+            return MarathonbetSyncResult.builder().leagueCode(code).build();
+        }
+
+        Optional<Season> active = runningSeasonLookup.findRunningSeason();
+        if (active.isEmpty() || active.get().getLeagues() == null) {
+            return MarathonbetSyncResult.builder().leagueCode(code).build();
+        }
+        League league = findLeagueInSeason(active.get(), code);
+        if (league == null) {
+            log.debug("marathonbet syncLeague skipped: league {} not in active season", code);
+            return MarathonbetSyncResult.builder().leagueCode(code).build();
+        }
+
+        pipelineLock.lock();
+        try {
+            applyJitter();
+            return syncLeagueLocked(league, code, tournamentId, active.get(), applyStagePause, false);
+        } finally {
+            pipelineLock.unlock();
+        }
+    }
+
+    /** Legacy entry: sync every configured league in the active season (sequential, mutex held per league). */
     public MarathonbetSyncResult runTick() {
         return runTick(MarathonbetSlotScope.BOTH);
     }
 
     public MarathonbetSyncResult runTick(MarathonbetSlotScope scope) {
-        applyJitter();
         if (!properties.isSyncEnabled()) {
             return MarathonbetSyncResult.builder().build();
         }
@@ -74,56 +120,79 @@ public class MarathonbetSyncService {
         if (active.isEmpty() || active.get().getLeagues() == null) {
             return MarathonbetSyncResult.builder().build();
         }
-
-        List<MarathonbetHttpLogEntry> httpLogs = new ArrayList<>();
-        LocalDateTime startedAt = LocalDateTime.now();
-        MarathonbetSyncRun run = MarathonbetSyncRun.builder()
-                .startedAt(startedAt)
-                .manual(false)
-                .slotScope(scope.name())
-                .build();
-
-        int eligible = 0;
-        int matched = 0;
-        int saved = 0;
-        int sseCalls = 0;
-        int mappingFailures = 0;
-        List<String> failedIds = new ArrayList<>();
-        List<Integer> allSlots = new ArrayList<>();
-        boolean tournamentFetched = false;
-        String leagueCode = null;
-        String season = null;
-        String errorSummary = null;
-
+        MarathonbetSyncResult last = MarathonbetSyncResult.builder().build();
         for (League league : active.get().getLeagues()) {
-            if (league == null || league.getLeagueCode() != League.LeagueCode.WC) {
+            if (league == null || league.getLeagueCode() == null) {
                 continue;
             }
-            if (!isPrimaryLeague(league.getLeagueCode().name())) {
+            String code = league.getLeagueCode().name();
+            if (properties.tournamentTreeIdForLeague(code) == null) {
                 continue;
             }
-            Long tournamentId = properties.getTournamentTreeIds().get("WC");
-            if (tournamentId == null || tournamentId <= 0) {
-                continue;
-            }
+            last = syncLeague(code, true);
+        }
+        return last;
+    }
 
-            leagueCode = league.getLeagueCode().name();
-            season = matchdaySupport.resolveExternalSeasonYear(active.get(), league.getLeagueCode());
+    /**
+     * Manual admin sync.
+     * <ul>
+     *   <li>{@code force=false}: current matchday only, SSE only for matches without odds.</li>
+     *   <li>{@code force=true}: given matchday + matchScheduleIds, SSE even if odds exist.</li>
+     * </ul>
+     */
+    public MarathonbetSyncResult syncSlot(
+            String leagueId,
+            String season,
+            boolean force,
+            Integer matchday,
+            List<String> matchScheduleIds
+    ) {
+        if (!properties.isSyncEnabled()) {
+            throw new BadRequestException("marathonbetSyncDisabled");
+        }
+        League league = getEntityService.getLeagueOrThrow(leagueId);
+        if (league.getLeagueCode() == null) {
+            throw new BadRequestException("marathonbetInvalidTournamentId");
+        }
+        String code = league.getLeagueCode().name();
+        Long tournamentId = properties.tournamentTreeIdForLeague(code);
+        if (tournamentId == null || tournamentId <= 0) {
+            throw new BadRequestException("marathonbetInvalidTournamentId");
+        }
+
+        String resolvedSeason = resolveSeason(season, league);
+        List<Integer> slotOrders;
+        List<String> idFilter;
+        OddsSsePolicy ssePolicy;
+        if (force) {
+            if (matchday == null || matchday < 1) {
+                throw new BadRequestException("matchdayRequired");
+            }
+            if (matchScheduleIds == null || matchScheduleIds.isEmpty()) {
+                throw new BadRequestException("matchScheduleIdsRequired");
+            }
+            slotOrders = List.of(matchday);
+            idFilter = matchScheduleIds;
+            ssePolicy = OddsSsePolicy.FORCE;
+        } else {
             ExternalCompetitionInfoDto info = externalCompetitionService.getCompetitionInfoForLeague(
                     league.getId(),
-                    season
+                    resolvedSeason
             );
-            List<Integer> slotOrders = MarathonbetSyncSlotWindow.resolveSlotOrders(info, scope);
-            allSlots.addAll(slotOrders);
-            run.setLeagueCode(leagueCode);
-            run.setSeason(season);
-            run.setSlotOrders(slotOrders);
-
-            if (slotOrders.isEmpty()) {
-                log.debug("marathonbet sync tick skipped: no slots for scope {}", scope);
-                continue;
+            List<Integer> currentOnly = MarathonbetSyncSlotWindow.resolveSlotOrders(
+                    info, MarathonbetSlotScope.CURRENT);
+            if (currentOnly.isEmpty()) {
+                throw new BadRequestException("currentMatchdayUnresolved");
             }
+            slotOrders = currentOnly;
+            idFilter = null;
+            ssePolicy = OddsSsePolicy.MISSING_ONLY;
+        }
 
+        pipelineLock.lock();
+        try {
+            List<ExternalApiHttpLogEntry> httpLogs = new ArrayList<>();
             LocalDateTime tournamentRequestedAt = LocalDateTime.now();
             MarathonbetHttpFetchResult tournamentResult = tournamentClient.fetchTournament(tournamentId);
             httpLogs.add(MarathonbetHttpLogSupport.toLogEntry(
@@ -133,100 +202,89 @@ public class MarathonbetSyncService {
                     tournamentRequestedAt
             ));
             if (!tournamentResult.isSuccess()) {
-                errorSummary = tournamentResult.toErrorKey();
-                log.warn(
-                        "marathonbet tournament fetch failed: status={}, outcome={}, durationMs={}",
-                        tournamentResult.getHttpStatus(),
-                        tournamentResult.getOutcome(),
-                        tournamentResult.getDurationMs()
+                ExternalApiMonitoringRun failedRun = monitoringService.begin(
+                        ExternalDataLayer.ODDS,
+                        "marathonbet",
+                        ExternalApiMonitoringTrigger.ADMIN,
+                        code,
+                        resolvedSeason
                 );
-                apiSyncIssueService.recordMarathonbetFetchFailed(leagueCode, season, errorSummary);
-                apiSyncIssueService.recordMarathonbetPrimaryUnavailable(leagueCode, season, errorSummary);
-                break;
-            }
-            tournamentFetched = true;
-            JsonNode tournamentRoot = tournamentResult.getBody();
-
-            List<MarathonbetPrematchEvent> prematch = MarathonbetTournamentParser.parsePrematchEvents(tournamentRoot);
-            for (int matchday : slotOrders) {
-                SlotSyncCounters counters = syncLeagueMatchday(
-                        league,
-                        matchday,
-                        season,
-                        prematch,
-                        null,
+                failedRun.setSlotScope(MarathonbetSlotScope.CURRENT.name());
+                failedRun.setSlotOrders(slotOrders);
+                finalizeOddsRun(
+                        failedRun,
+                        httpLogs,
                         false,
-                        httpLogs
+                        SlotSyncCounters.empty(),
+                        tournamentResult.toErrorKey()
                 );
-                eligible += counters.matchesEligible();
-                matched += counters.matchesMatched();
-                saved += counters.mergedSaved();
-                sseCalls += counters.sseCalls();
-                mappingFailures += counters.mappingFailures();
-                failedIds.addAll(counters.failedGameResultIds());
+                throw new BadRequestException(tournamentResult.toErrorKey());
             }
+            List<MarathonbetPrematchEvent> prematch =
+                    MarathonbetTournamentParser.parsePrematchEvents(tournamentResult.getBody());
+
+            ExternalApiMonitoringRun run = monitoringService.begin(
+                    ExternalDataLayer.ODDS,
+                    "marathonbet",
+                    ExternalApiMonitoringTrigger.ADMIN,
+                    code,
+                    resolvedSeason
+            );
+            run.setSlotScope(MarathonbetSlotScope.CURRENT.name());
+            run.setSlotOrders(slotOrders);
+
+            SlotSyncCounters counters = syncMatches(
+                    league,
+                    slotOrders,
+                    resolvedSeason,
+                    prematch,
+                    idFilter,
+                    true,
+                    ssePolicy,
+                    false,
+                    httpLogs
+            );
+
+            finalizeOddsRun(run, httpLogs, true, counters, null);
+
+            return toResult(code, resolvedSeason, slotOrders, counters, true, null);
+        } finally {
+            pipelineLock.unlock();
         }
-
-        finalizeRun(
-                run,
-                httpLogs,
-                tournamentFetched,
-                eligible,
-                matched,
-                saved,
-                sseCalls,
-                mappingFailures,
-                failedIds,
-                errorSummary
-        );
-
-        log.info(
-                "marathonbet sync tick scope={}: fetched={}, eligible={}, matched={}, saved={}, sse={}, httpFail={}/{}",
-                scope,
-                tournamentFetched,
-                eligible,
-                matched,
-                saved,
-                sseCalls,
-                run.getHttpRequestsFailed(),
-                run.getHttpRequestsTotal()
-        );
-
-        return MarathonbetSyncResult.builder()
-                .tournamentFetched(tournamentFetched)
-                .matchesEligible(eligible)
-                .matchesMatched(matched)
-                .mergedSaved(saved)
-                .sseCalls(sseCalls)
-                .mappingFailures(mappingFailures)
-                .failedGameResultIds(run.getFailedGameResultIds())
-                .leagueCode(leagueCode)
-                .season(season)
-                .slotOrders(allSlots)
-                .errorSummary(errorSummary)
-                .build();
     }
 
-    public MarathonbetSyncResult syncSlot(
-            String leagueId,
-            int matchday,
-            String season,
-            List<String> gameResultIds
+    private MarathonbetSyncResult syncLeagueLocked(
+            League league,
+            String code,
+            long tournamentId,
+            Season seasonEntity,
+            boolean applyStagePause,
+            boolean failWhenNoPending
     ) {
-        if (!properties.isSyncEnabled()) {
-            throw new BadRequestException("marathonbetSyncDisabled");
-        }
-        League league = getEntityService.getLeagueOrThrow(leagueId);
-        if (league.getLeagueCode() != League.LeagueCode.WC) {
-            throw new BadRequestException("marathonbetWcOnly");
-        }
-        Long tournamentId = properties.getTournamentTreeIds().get("WC");
-        if (tournamentId == null || tournamentId <= 0) {
-            throw new BadRequestException("marathonbetInvalidTournamentId");
+        String season = matchdaySupport.resolveExternalSeasonYear(seasonEntity, league.getLeagueCode());
+        ExternalCompetitionInfoDto info = externalCompetitionService.getCompetitionInfoForLeague(
+                league.getId(),
+                season
+        );
+        List<Integer> slotOrders = MarathonbetSyncSlotWindow.resolveSlotOrders(info, MarathonbetSlotScope.BOTH);
+
+        List<ExternalApiHttpLogEntry> httpLogs = new ArrayList<>();
+        ExternalApiMonitoringRun run = monitoringService.begin(
+                ExternalDataLayer.ODDS,
+                "marathonbet",
+                ExternalApiMonitoringTrigger.CRON,
+                code,
+                season
+        );
+        run.setSlotScope(MarathonbetSlotScope.BOTH.name());
+        run.setSlotOrders(slotOrders);
+
+        if (slotOrders.isEmpty()) {
+            log.debug("marathonbet syncLeague skipped: no slots for {}", code);
+            finalizeOddsRun(run, httpLogs, false, SlotSyncCounters.empty(), "noSlots");
+            return toResult(code, season, slotOrders, SlotSyncCounters.empty(), false, null);
         }
 
-        String resolvedSeason = resolveSeason(season, league);
-        List<MarathonbetHttpLogEntry> httpLogs = new ArrayList<>();
         LocalDateTime tournamentRequestedAt = LocalDateTime.now();
         MarathonbetHttpFetchResult tournamentResult = tournamentClient.fetchTournament(tournamentId);
         httpLogs.add(MarathonbetHttpLogSupport.toLogEntry(
@@ -236,100 +294,108 @@ public class MarathonbetSyncService {
                 tournamentRequestedAt
         ));
         if (!tournamentResult.isSuccess()) {
-            throw new BadRequestException(tournamentResult.toErrorKey());
+            String errorSummary = tournamentResult.toErrorKey();
+            log.warn(
+                    "marathonbet tournament fetch failed league={}: status={}, outcome={}",
+                    code,
+                    tournamentResult.getHttpStatus(),
+                    tournamentResult.getOutcome()
+            );
+            errorLogService.record(ErrorLogService.Entry.builder()
+                    .severity(ErrorLogService.SEVERITY_ERROR)
+                    .layer(ExternalDataLayer.ODDS.name())
+                    .provider("marathonbet")
+                    .code(ErrorLogService.CODE_PROVIDER_FETCH_FAILED)
+                    .message(errorSummary)
+                    .leagueCode(code)
+                    .season(season)
+                    .build());
+            errorLogService.record(ErrorLogService.Entry.builder()
+                    .severity(ErrorLogService.SEVERITY_ERROR)
+                    .layer(ExternalDataLayer.ODDS.name())
+                    .provider("marathonbet")
+                    .providerRole(ErrorLogService.ROLE_PRIMARY)
+                    .code(ErrorLogService.CODE_PRIMARY_UNAVAILABLE)
+                    .message(errorSummary)
+                    .leagueCode(code)
+                    .season(season)
+                    .build());
+            finalizeOddsRun(run, httpLogs, false, SlotSyncCounters.empty(), errorSummary);
+            return toResult(code, season, slotOrders, SlotSyncCounters.empty(), false, errorSummary);
         }
-        JsonNode tournamentRoot = tournamentResult.getBody();
-        List<MarathonbetPrematchEvent> prematch = MarathonbetTournamentParser.parsePrematchEvents(tournamentRoot);
 
-        MarathonbetSyncRun run = MarathonbetSyncRun.builder()
-                .startedAt(LocalDateTime.now())
-                .manual(true)
-                .slotScope(MarathonbetSlotScope.BOTH.name())
-                .leagueCode(league.getLeagueCode().name())
-                .season(resolvedSeason)
-                .slotOrders(List.of(matchday))
-                .tournamentFetched(true)
-                .build();
+        List<MarathonbetPrematchEvent> prematch =
+                MarathonbetTournamentParser.parsePrematchEvents(tournamentResult.getBody());
 
-        SlotSyncCounters counters = syncLeagueMatchday(
+        SlotSyncCounters counters = syncMatches(
                 league,
-                matchday,
-                resolvedSeason,
+                slotOrders,
+                season,
                 prematch,
-                gameResultIds,
-                true,
+                null,
+                failWhenNoPending,
+                OddsSsePolicy.REFRESH_WINDOW,
+                applyStagePause,
                 httpLogs
         );
 
-        finalizeRun(
-                run,
-                httpLogs,
-                true,
+        finalizeOddsRun(run, httpLogs, true, counters, null);
+
+        log.info(
+                "marathonbet syncLeague {}: eligible={}, matched={}, saved={}, sse={}, skippedFar={}, noBookie={}, mappingFail={}, stages paused={}",
+                code,
                 counters.matchesEligible(),
                 counters.matchesMatched(),
                 counters.mergedSaved(),
                 counters.sseCalls(),
+                counters.skippedFar(),
+                counters.skippedNoBookieEvent(),
                 counters.mappingFailures(),
-                counters.failedGameResultIds(),
-                null
+                applyStagePause
         );
 
-        return MarathonbetSyncResult.builder()
-                .tournamentFetched(true)
-                .matchesEligible(counters.matchesEligible())
-                .matchesMatched(counters.matchesMatched())
-                .mergedSaved(counters.mergedSaved())
-                .sseCalls(counters.sseCalls())
-                .mappingFailures(counters.mappingFailures())
-                .failedGameResultIds(counters.failedGameResultIds())
-                .leagueCode(league.getLeagueCode().name())
-                .season(resolvedSeason)
-                .slotOrders(List.of(matchday))
-                .build();
+        return toResult(code, season, slotOrders, counters, true, null);
     }
 
-    public Optional<MarathonbetSyncRun> findLatestRun() {
-        return syncRunRepository.findFirstByOrderByStartedAtDesc();
-    }
-
-    public List<MarathonbetSyncRun> findRecentRuns(int limit) {
-        int safeLimit = Math.max(1, Math.min(limit, 100));
-        return syncRunRepository.findByStartedAtAfterOrderByStartedAtDesc(
-                LocalDateTime.now().minusDays(30),
-                PageRequest.of(0, safeLimit)
-        );
-    }
-
-    private SlotSyncCounters syncLeagueMatchday(
+    private SlotSyncCounters syncMatches(
             League league,
-            int matchday,
+            List<Integer> matchdays,
             String season,
             List<MarathonbetPrematchEvent> prematch,
-            List<String> gameResultIds,
+            List<String> matchScheduleIds,
             boolean failWhenNoPending,
-            List<MarathonbetHttpLogEntry> httpLogs
+            OddsSsePolicy ssePolicy,
+            boolean applyStagePause,
+            List<ExternalApiHttpLogEntry> httpLogs
     ) {
         String leagueCode = league.getLeagueCode().name();
-        List<GameResultRecord> matches = gameResultQueryService.getMatches(
-                leagueCode,
-                matchday,
-                season,
-                league.getId()
-        );
-        if (gameResultIds != null && !gameResultIds.isEmpty()) {
-            Set<String> allowed = new HashSet<>(gameResultIds);
-            matches = matches.stream()
-                    .filter(m -> m.getId() != null && allowed.contains(m.getId()))
-                    .toList();
-        }
+        Instant now = Instant.now();
+        LocalDateTime fetchedAt = LocalDateTime.now();
 
-        LocalDateTime now = GameResultNotStarted.nowUtc();
-        List<GameResultRecord> pending = new ArrayList<>();
-        for (GameResultRecord match : matches) {
-            if (GameResultNotStarted.isNotStarted(match, now)) {
-                pending.add(match);
-            } else {
-                oddsMergedOddsService.freezeIfNeeded(match, now);
+        List<MatchSchedule> pending = new ArrayList<>();
+        for (int matchday : matchdays) {
+            List<MatchSchedule> matches = matchScheduleQueryService.getMatches(
+                    leagueCode,
+                    matchday,
+                    season,
+                    league.getId()
+            );
+            if (matchScheduleIds != null && !matchScheduleIds.isEmpty()) {
+                Set<String> allowed = new HashSet<>(matchScheduleIds);
+                matches = matches.stream()
+                        .filter(m -> m.getId() != null && allowed.contains(m.getId()))
+                        .toList();
+            }
+            for (MatchSchedule match : matches) {
+                if (MatchScheduleDisplayService.isFinalized(match)) {
+                    oddsMergedOddsService.deleteIfFinalized(match);
+                    continue;
+                }
+                if (MatchScheduleNotStarted.isNotStarted(match, now)) {
+                    pending.add(match);
+                } else {
+                    oddsMergedOddsService.freezeIfNeeded(match, now);
+                }
             }
         }
 
@@ -337,90 +403,76 @@ public class MarathonbetSyncService {
             if (failWhenNoPending) {
                 throw new BadRequestException("oddsSyncNoMatchdayMatches");
             }
-            return new SlotSyncCounters(0, 0, 0, 0, 0, List.of());
+            return SlotSyncCounters.empty();
         }
+
+        List<MatchSchedule> toFetch = new ArrayList<>();
+        int skippedFar = 0;
+        for (MatchSchedule match : pending) {
+            if (ssePolicy == OddsSsePolicy.FORCE) {
+                toFetch.add(match);
+                continue;
+            }
+            boolean hasOdds = oddsMergedOddsService.findByMatchScheduleId(match.getId())
+                    .map(odds -> odds.getMarketGroups() != null && !odds.getMarketGroups().isEmpty())
+                    .orElse(false);
+            if (ssePolicy == OddsSsePolicy.MISSING_ONLY) {
+                if (hasOdds) {
+                    skippedFar++;
+                    continue;
+                }
+                toFetch.add(match);
+                continue;
+            }
+            // REFRESH_WINDOW (cron)
+            if (!MarathonbetSyncBatchSupport.needsSseRefresh(
+                    match, hasOdds, now, properties.getSseRefreshWithinHours())) {
+                skippedFar++;
+                continue;
+            }
+            toFetch.add(match);
+        }
+
+        List<MatchSchedule> sorted = MarathonbetSyncBatchSupport.sortByKickoff(toFetch);
+        List<List<MatchSchedule>> stages = MarathonbetSyncBatchSupport.partitionStages(
+                sorted,
+                properties.getStageSize()
+        );
 
         int matched = 0;
         int saved = 0;
         int sseCalls = 0;
-        int failures = 0;
+        int mappingFailures = 0;
+        int skippedNoBookieEvent = 0;
         List<String> failedIds = new ArrayList<>();
 
-        for (GameResultRecord match : pending) {
-            Optional<MarathonbetPrematchEvent> eventOpt = eventMatcher.resolveAndPersistTreeId(
-                    match,
-                    prematch,
-                    leagueCode,
-                    season,
-                    matchday
-            );
-            if (eventOpt.isEmpty()) {
-                failures++;
-                if (match.getId() != null) {
-                    failedIds.add(match.getId());
-                }
-                continue;
-            }
-            matched++;
-            MarathonbetPrematchEvent event = eventOpt.get();
-            try {
-                sleepBeforeSse();
-                LocalDateTime sseRequestedAt = LocalDateTime.now();
-                MarathonbetHttpFetchResult sseResult = scrapeService.fetchEventSnapshotResult(event.getTreeId());
-                httpLogs.add(MarathonbetHttpLogSupport.toLogEntry(
-                        sseResult,
-                        MarathonbetRequestType.SSE,
-                        event.getTreeId(),
-                        sseRequestedAt
-                ));
-                if (!sseResult.isSuccess()) {
-                    log.warn(
-                            "marathonbet SSE failed treeId={}: status={}, outcome={}",
-                            event.getTreeId(),
-                            sseResult.getHttpStatus(),
-                            sseResult.getOutcome()
-                    );
-                    failures++;
-                    failedIds.add(match.getId());
-                    continue;
-                }
-                JsonNode eventRoot = sseResult.getBody();
-                sseCalls++;
-                MarathonbetExtractedMarkets extracted = MarathonbetMarketExtractor.extractAll(eventRoot);
-                List<MappedOddsQuote> quotes = betTitleMapper.map(
-                        extracted,
-                        event.getHomeTeam(),
-                        event.getAwayTeam()
-                );
-                if (quotes.isEmpty()) {
-                    failures++;
-                    failedIds.add(match.getId());
-                    continue;
-                }
-                OddsMergeResult mergeResult = oddsMergedOddsService.buildAndPersistFromQuotes(
+        for (int stageIndex = 0; stageIndex < stages.size(); stageIndex++) {
+            List<MatchSchedule> stage = stages.get(stageIndex);
+            log.debug("marathonbet league={} stage={}/{} size={}", leagueCode, stageIndex + 1, stages.size(), stage.size());
+            for (MatchSchedule match : stage) {
+                MatchSyncOutcome outcome = syncOneMatch(
                         match,
-                        quotes,
-                        List.of(MarathonbetBookmaker.KEY),
-                        now,
-                        false
+                        prematch,
+                        leagueCode,
+                        season,
+                        match.getMatchday(),
+                        fetchedAt,
+                        httpLogs
                 );
-                if (mergeResult.getMarketGroups() != null && !mergeResult.getMarketGroups().isEmpty()) {
-                    saved++;
-                } else {
-                    failures++;
-                    failedIds.add(match.getId());
+                matched += outcome.matched() ? 1 : 0;
+                saved += outcome.saved() ? 1 : 0;
+                sseCalls += outcome.sseCall() ? 1 : 0;
+                if (outcome.noBookieEvent()) {
+                    skippedNoBookieEvent++;
+                } else if (outcome.hardFailure()) {
+                    mappingFailures++;
+                    if (match.getId() != null) {
+                        failedIds.add(match.getId());
+                    }
                 }
-                log.debug("marathonbet SSE snapshot for treeId={}", event.getTreeId());
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                failures++;
-                failedIds.add(match.getId());
-            } catch (Exception e) {
-                log.warn("marathonbet sync match failed gameResultId={}: {}", match.getId(), e.getMessage());
-                failures++;
-                if (match.getId() != null) {
-                    failedIds.add(match.getId());
-                }
+            }
+            if (applyStagePause && stageIndex < stages.size() - 1) {
+                sleepStagePause();
             }
         }
 
@@ -429,15 +481,92 @@ public class MarathonbetSyncService {
                 matched,
                 saved,
                 sseCalls,
-                failures,
+                mappingFailures,
+                skippedFar,
+                skippedNoBookieEvent,
                 failedIds
         );
     }
 
-    private boolean isPrimaryLeague(String leagueCode) {
-        return properties.getPrimaryForLeagues() != null
-                && properties.getPrimaryForLeagues().stream()
-                .anyMatch(code -> code != null && code.equalsIgnoreCase(leagueCode));
+    private MatchSyncOutcome syncOneMatch(
+            MatchSchedule match,
+            List<MarathonbetPrematchEvent> prematch,
+            String leagueCode,
+            String season,
+            int matchday,
+            LocalDateTime fetchedAt,
+            List<ExternalApiHttpLogEntry> httpLogs
+    ) {
+        MarathonbetEventResolveResult resolveResult = eventMatcher.resolveAndRecordMappingIssue(
+                match,
+                prematch,
+                leagueCode,
+                season,
+                matchday
+        );
+        if (!resolveResult.isMatched()) {
+            if (resolveResult.getMissKind() == MarathonbetEventResolveResult.MissKind.NO_BOOKIE_EVENT) {
+                return MatchSyncOutcome.missNoBookie();
+            }
+            return MatchSyncOutcome.mappingMiss();
+        }
+        MarathonbetPrematchEvent event = resolveResult.getEvent();
+        try {
+            sleepBeforeSse();
+            LocalDateTime sseRequestedAt = LocalDateTime.now();
+            MarathonbetHttpFetchResult sseResult = scrapeService.fetchEventSnapshotResult(event.getTreeId());
+            httpLogs.add(MarathonbetHttpLogSupport.toLogEntry(
+                    sseResult,
+                    MarathonbetRequestType.SSE,
+                    event.getTreeId(),
+                    sseRequestedAt
+            ));
+            if (!sseResult.isSuccess()) {
+                log.warn(
+                        "marathonbet SSE failed treeId={}: status={}, outcome={}",
+                        event.getTreeId(),
+                        sseResult.getHttpStatus(),
+                        sseResult.getOutcome()
+                );
+                return MatchSyncOutcome.matchedFailed();
+            }
+            MarathonbetExtractedMarkets extracted = MarathonbetMarketExtractor.extractAll(sseResult.getBody());
+            List<MappedOddsQuote> quotes = betTitleMapper.map(
+                    extracted,
+                    event.getHomeTeam(),
+                    event.getAwayTeam()
+            );
+            if (quotes.isEmpty()) {
+                return MatchSyncOutcome.matchedFailedSse();
+            }
+            OddsMergeResult mergeResult = oddsMergedOddsService.buildAndPersistFromQuotes(
+                    match,
+                    quotes,
+                    List.of(MarathonbetBookmaker.KEY),
+                    fetchedAt,
+                    false,
+                    event.getTreeId()
+            );
+            boolean saved = mergeResult.getMarketGroups() != null && !mergeResult.getMarketGroups().isEmpty();
+            return saved ? MatchSyncOutcome.ok() : MatchSyncOutcome.matchedFailedSse();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return MatchSyncOutcome.matchedFailed();
+        } catch (Exception e) {
+            log.warn("marathonbet sync match failed matchScheduleId={}: {}", match.getId(), e.getMessage());
+            return MatchSyncOutcome.matchedFailed();
+        }
+    }
+
+    private static League findLeagueInSeason(Season season, String leagueCode) {
+        for (League league : season.getLeagues()) {
+            if (league != null
+                    && league.getLeagueCode() != null
+                    && leagueCode.equalsIgnoreCase(league.getLeagueCode().name())) {
+                return league;
+            }
+        }
+        return null;
     }
 
     private String resolveSeason(String requestedSeason, League league) {
@@ -448,35 +577,75 @@ public class MarathonbetSyncService {
         return matchdaySupport.resolveExternalSeasonYear(active, league.getLeagueCode());
     }
 
-    private void finalizeRun(
-            MarathonbetSyncRun run,
-            List<MarathonbetHttpLogEntry> httpLogs,
+    private void finalizeOddsRun(
+            ExternalApiMonitoringRun run,
+            List<ExternalApiHttpLogEntry> httpLogs,
             boolean tournamentFetched,
-            int eligible,
-            int matched,
-            int saved,
-            int sseCalls,
-            int mappingFailures,
-            List<String> failedIds,
+            SlotSyncCounters counters,
             String errorSummary
     ) {
-        run.setTournamentFetched(tournamentFetched);
-        run.setMatchesEligible(eligible);
-        run.setMatchesMatched(matched);
-        run.setMergedSaved(saved);
-        run.setSseCalls(sseCalls);
-        run.setMappingFailures(mappingFailures);
-        run.setFailedGameResultIds(new ArrayList<>(new LinkedHashSet<>(failedIds)));
-        run.setErrorSummary(errorSummary);
-        run.setHttpLogs(httpLogs);
-        run.setHttpRequestsTotal(httpLogs.size());
-        run.setHttpRequestsFailed(MarathonbetHttpLogSupport.countFailed(httpLogs));
-        LocalDateTime finishedAt = LocalDateTime.now();
-        run.setFinishedAt(finishedAt);
-        if (run.getStartedAt() != null) {
-            run.setDurationMs(Duration.between(run.getStartedAt(), finishedAt).toMillis());
+        int eligible = counters.matchesEligible();
+        int matched = counters.matchesMatched();
+        int saved = counters.mergedSaved();
+        int sseCalls = counters.sseCalls();
+        int mappingFailures = counters.mappingFailures();
+        int skippedFar = counters.skippedFar();
+        int skippedNoBookie = counters.skippedNoBookieEvent();
+        List<String> failedIds = counters.failedMatchScheduleIds();
+
+        String summary = errorSummary;
+        if (mappingFailures > 0) {
+            summary = summary == null
+                    ? "mappingFailures=" + mappingFailures
+                    : summary + "; mappingFailures=" + mappingFailures;
         }
-        syncRunRepository.save(run);
+        // Soft skips stay in counters only (not red errorSummary): skippedFar + noBookieEventYet.
+        ExternalApiMonitoringCounters monitoringCounters = ExternalApiMonitoringCounters.builder()
+                .eligible(eligible)
+                .matched(matched)
+                .saved(saved)
+                .sseCalls(sseCalls)
+                .mappingFailures(mappingFailures)
+                .skipped(skippedFar + skippedNoBookie)
+                .tournamentFetched(tournamentFetched)
+                .build();
+        ExternalApiMonitoringStatus status;
+        if (summary != null && !tournamentFetched && eligible == 0 && matched == 0 && saved == 0
+                && !"noSlots".equals(errorSummary)) {
+            status = ExternalApiMonitoringStatus.FAILED;
+        } else if ("noSlots".equals(errorSummary) || (eligible == 0 && tournamentFetched)) {
+            status = ExternalApiMonitoringStatus.SKIPPED;
+        } else if (mappingFailures > 0 || ExternalApiMonitoringService.countFailed(httpLogs) > 0) {
+            status = saved > 0 ? ExternalApiMonitoringStatus.PARTIAL : ExternalApiMonitoringStatus.FAILED;
+        } else {
+            status = ExternalApiMonitoringStatus.SUCCESS;
+        }
+        monitoringService.finalizeAndSave(run, status, monitoringCounters, httpLogs, failedIds, summary);
+    }
+
+    private MarathonbetSyncResult toResult(
+            String code,
+            String season,
+            List<Integer> slotOrders,
+            SlotSyncCounters counters,
+            boolean tournamentFetched,
+            String errorSummary
+    ) {
+        return MarathonbetSyncResult.builder()
+                .tournamentFetched(tournamentFetched)
+                .matchesEligible(counters.matchesEligible())
+                .matchesMatched(counters.matchesMatched())
+                .mergedSaved(counters.mergedSaved())
+                .sseCalls(counters.sseCalls())
+                .mappingFailures(counters.mappingFailures())
+                .skippedFar(counters.skippedFar())
+                .skippedNoBookieEvent(counters.skippedNoBookieEvent())
+                .failedMatchScheduleIds(counters.failedMatchScheduleIds())
+                .leagueCode(code)
+                .season(season)
+                .slotOrders(slotOrders)
+                .errorSummary(errorSummary)
+                .build();
     }
 
     private void sleepBeforeSse() throws InterruptedException {
@@ -490,6 +659,20 @@ public class MarathonbetSyncService {
                 : ThreadLocalRandom.current().nextLong(min, max + 1);
         if (delayMs > 0) {
             Thread.sleep(delayMs);
+        }
+    }
+
+    private void sleepStagePause() {
+        int minutes = Math.max(0, properties.getStagePauseMinutes());
+        if (minutes <= 0) {
+            return;
+        }
+        long baseMs = minutes * 60_000L;
+        long jitterMs = ThreadLocalRandom.current().nextLong(0, 60_000L);
+        try {
+            Thread.sleep(baseMs + jitterMs);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
         }
     }
 
@@ -512,7 +695,40 @@ public class MarathonbetSyncService {
             int mergedSaved,
             int sseCalls,
             int mappingFailures,
-            List<String> failedGameResultIds
+            int skippedFar,
+            int skippedNoBookieEvent,
+            List<String> failedMatchScheduleIds
     ) {
+        static SlotSyncCounters empty() {
+            return new SlotSyncCounters(0, 0, 0, 0, 0, 0, 0, List.of());
+        }
+    }
+
+    private record MatchSyncOutcome(
+            boolean matched,
+            boolean saved,
+            boolean sseCall,
+            boolean hardFailure,
+            boolean noBookieEvent
+    ) {
+        static MatchSyncOutcome ok() {
+            return new MatchSyncOutcome(true, true, true, false, false);
+        }
+
+        static MatchSyncOutcome missNoBookie() {
+            return new MatchSyncOutcome(false, false, false, false, true);
+        }
+
+        static MatchSyncOutcome mappingMiss() {
+            return new MatchSyncOutcome(false, false, false, true, false);
+        }
+
+        static MatchSyncOutcome matchedFailed() {
+            return new MatchSyncOutcome(true, false, false, true, false);
+        }
+
+        static MatchSyncOutcome matchedFailedSse() {
+            return new MatchSyncOutcome(true, false, true, true, false);
+        }
     }
 }

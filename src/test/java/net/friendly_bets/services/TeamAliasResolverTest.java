@@ -37,19 +37,6 @@ class TeamAliasResolverTest {
     }
 
     @Test
-    @DisplayName("resolveFourScoreByName matches by saved external alias name")
-    void resolveFourScoreByName_matchesByAliasName() {
-        TeamAliasResolver resolver = new TeamAliasResolver(teamsRepository);
-        when(teamsRepository.findByExternalAliasName("4score.ru", "Англия"))
-                .thenReturn(Optional.of(Team.builder().id("eng1").title("England").build()));
-
-        Optional<Team> team = resolver.resolveFourScoreByName("Англия");
-
-        assertTrue(team.isPresent());
-        assertEquals("eng1", team.get().getId());
-    }
-
-    @Test
     @DisplayName("resolveMarathonbetByName matches by saved external alias name")
     void resolveMarathonbetByName_matchesByAliasName() {
         TeamAliasResolver resolver = new TeamAliasResolver(teamsRepository);
@@ -84,14 +71,14 @@ class TeamAliasResolverTest {
                 .title("England")
                 .externalAliases(List.of(
                         net.friendly_bets.models.TeamExternalAlias.builder()
-                                .provider(MatchDataProviders.FOURSCORE)
+                                .provider(MatchDataProviders.TWENTYFOUR_SCORE)
                                 .externalName("Англия")
                                 .build()
                 ))
                 .build();
 
-        assertTrue(resolver.teamMatchesScoreProviderSide(england, MatchDataProviders.FOURSCORE, "Англия"));
-        assertFalse(resolver.teamMatchesScoreProviderSide(england, MatchDataProviders.FOURSCORE, "Франция"));
-        assertFalse(resolver.teamMatchesScoreProviderSide(england, MatchDataProviders.TWENTYFOUR_SCORE, "Англия"));
+        assertTrue(resolver.teamMatchesScoreProviderSide(england, MatchDataProviders.TWENTYFOUR_SCORE, "Англия"));
+        assertFalse(resolver.teamMatchesScoreProviderSide(england, MatchDataProviders.TWENTYFOUR_SCORE, "Франция"));
+        assertFalse(resolver.teamMatchesScoreProviderSide(england, MatchDataProviders.SOCCER365, "Англия"));
     }
 }

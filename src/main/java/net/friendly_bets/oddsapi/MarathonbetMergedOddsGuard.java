@@ -1,23 +1,23 @@
 package net.friendly_bets.oddsapi;
 
 import net.friendly_bets.marathonbet.MarathonbetBookmaker;
-import net.friendly_bets.models.odds.GameResultMergedOdds;
+import net.friendly_bets.models.odds.Odds;
 
 import java.util.Optional;
 
 /**
- * Marathonbet — primary source for production merged odds; odds-api must not overwrite them.
+ * Marathonbet — primary source for production merged odds.
  */
 final class MarathonbetMergedOddsGuard {
 
     private MarathonbetMergedOddsGuard() {
     }
 
-    static boolean hasProductionMarathonOdds(Optional<GameResultMergedOdds> merged) {
+    static boolean hasProductionMarathonOdds(Optional<Odds> merged) {
         if (merged.isEmpty()) {
             return false;
         }
-        GameResultMergedOdds doc = merged.get();
+        Odds doc = merged.get();
         if (doc.getMarketGroups() == null || doc.getMarketGroups().isEmpty()) {
             return false;
         }

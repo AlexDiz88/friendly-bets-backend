@@ -45,7 +45,12 @@ public class MatchScheduleDisplayService {
                 .leagueId(schedule.getLeagueId())
                 .gameScore(schedule.getGameScore())
                 .fetchedAt(schedule.getFetchedAt())
+                .finalizedAt(schedule.getFinalizedAt() != null
+                        ? LocalDateTime.ofInstant(schedule.getFinalizedAt(), ZoneOffset.UTC)
+                        : null)
+                .finalizedSource(schedule.getFinalizedByProvider())
                 .finalized(finalized)
+                .liveMinuteLabel(schedule.getLiveMinuteLabel())
                 .adminCorrected(false)
                 .build();
 

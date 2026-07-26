@@ -1,23 +1,24 @@
 package net.friendly_bets.marathonbet;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import net.friendly_bets.gameresults.ApiSyncIssueService;
 import net.friendly_bets.gameresults.ExternalCompetitionService;
 import net.friendly_bets.gameresults.MatchdaySlotSupport;
-import net.friendly_bets.gameresults.GameResultQueryService;
 import net.friendly_bets.marathonbet.client.MarathonbetHttpFetchResult;
 import net.friendly_bets.marathonbet.client.MarathonbetHttpOutcome;
 import net.friendly_bets.marathonbet.client.MarathonbetTournamentClient;
 import net.friendly_bets.marathonbet.config.MarathonbetProperties;
 import net.friendly_bets.marathonbet.mapping.MarathonbetBetTitleMapper;
 import net.friendly_bets.models.League;
-import net.friendly_bets.models.gameresults.GameResultRecord;
+import net.friendly_bets.models.monitoring.ExternalApiMonitoringRun;
+import net.friendly_bets.models.schedule.MatchSchedule;
 import net.friendly_bets.oddsapi.OddsMergedOddsService;
 import net.friendly_bets.oddsapi.mapping.MappedOddsQuote;
 import net.friendly_bets.oddsapi.mapping.OddsMergeResult;
-import net.friendly_bets.repositories.MarathonbetSyncRunRepository;
-import net.friendly_bets.repositories.SeasonsRepository;
+import net.friendly_bets.services.ErrorLogService;
+import net.friendly_bets.services.ExternalApiMonitoringService;
 import net.friendly_bets.services.GetEntityService;
+import net.friendly_bets.services.MatchScheduleQueryService;
+import net.friendly_bets.services.RunningSeasonLookup;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -25,13 +26,14 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -51,19 +53,19 @@ class MarathonbetSyncServiceTest {
     @Mock
     OddsMergedOddsService oddsMergedOddsService;
     @Mock
-    GameResultQueryService gameResultQueryService;
+    MatchScheduleQueryService matchScheduleQueryService;
     @Mock
     ExternalCompetitionService externalCompetitionService;
     @Mock
     MatchdaySlotSupport matchdaySupport;
     @Mock
-    SeasonsRepository seasonsRepository;
+    RunningSeasonLookup runningSeasonLookup;
     @Mock
     GetEntityService getEntityService;
     @Mock
-    ApiSyncIssueService apiSyncIssueService;
+    ErrorLogService errorLogService;
     @Mock
-    MarathonbetSyncRunRepository syncRunRepository;
+    ExternalApiMonitoringService monitoringService;
 
     @InjectMocks
     MarathonbetSyncService syncService;
@@ -75,7 +77,22 @@ class MarathonbetSyncServiceTest {
         when(properties.isSyncEnabled()).thenReturn(true);
         when(properties.getSseDelayMinMs()).thenReturn(0L);
         when(properties.getSseDelayMaxMs()).thenReturn(0L);
-        when(properties.getTournamentTreeIds()).thenReturn(java.util.Map.of("WC", 2_253_726L));
+        lenient().when(properties.getStageSize()).thenReturn(5);
+        lenient().when(properties.getStagePauseMinutes()).thenReturn(0);
+        lenient().when(properties.getSseRefreshWithinHours()).thenReturn(48);
+        lenient().when(properties.getTournamentTreeIds()).thenReturn(java.util.Map.of("WC", 2_253_726L));
+        when(properties.tournamentTreeIdForLeague("WC")).thenReturn(2_253_726L);
+        when(monitoringService.begin(any(), any(), any(), any(), any())).thenAnswer(inv ->
+                ExternalApiMonitoringRun.builder()
+                        .layer(inv.getArgument(0))
+                        .provider(inv.getArgument(1))
+                        .trigger(inv.getArgument(2))
+                        .leagueCode(inv.getArgument(3))
+                        .season(inv.getArgument(4))
+                        .startedAt(LocalDateTime.now())
+                        .build());
+        when(monitoringService.finalizeAndSave(any(), any(), any(), any(), any(), any()))
+                .thenAnswer(inv -> inv.getArgument(0));
     }
 
     @Test
@@ -93,12 +110,13 @@ class MarathonbetSyncServiceTest {
                         .body(objectMapper.readTree("{\"prematchEvents\":[]}"))
                         .build());
 
-        GameResultRecord match = GameResultRecord.builder()
-                .id("gr-1")
+        MatchSchedule match = MatchSchedule.builder()
+                .id("ms-1")
+                .matchday(3)
                 .status("SCHEDULED")
-                .utcDate(LocalDateTime.now().plusDays(1))
+                .utcKickoff(Instant.now().plusSeconds(86_400))
                 .build();
-        when(gameResultQueryService.getMatches(eq("WC"), eq(3), any(), eq("wc-league")))
+        when(matchScheduleQueryService.getMatches(eq("WC"), eq(3), any(), eq("wc-league")))
                 .thenReturn(List.of(match));
 
         MarathonbetPrematchEvent event = MarathonbetPrematchEvent.builder()
@@ -106,8 +124,8 @@ class MarathonbetSyncServiceTest {
                 .homeTeam("Мексика")
                 .awayTeam("ЮАР")
                 .build();
-        when(eventMatcher.resolveAndPersistTreeId(eq(match), any(), eq("WC"), any(), eq(3)))
-                .thenReturn(Optional.of(event));
+        when(eventMatcher.resolveAndRecordMappingIssue(eq(match), any(), eq("WC"), any(), eq(3)))
+                .thenReturn(MarathonbetEventResolveResult.matched(event));
 
         when(scrapeService.fetchEventSnapshotResult(25_819_358L))
                 .thenReturn(MarathonbetHttpFetchResult.builder()
@@ -118,10 +136,10 @@ class MarathonbetSyncServiceTest {
                         .build());
         when(betTitleMapper.map(any(), eq("Мексика"), eq("ЮАР")))
                 .thenReturn(List.of(MappedOddsQuote.builder().bookmaker("marathonbet").build()));
-        when(oddsMergedOddsService.buildAndPersistFromQuotes(any(), any(), any(), any(), eq(false)))
+        when(oddsMergedOddsService.buildAndPersistFromQuotes(any(), any(), any(), any(), eq(false), eq(25_819_358L)))
                 .thenReturn(OddsMergeResult.builder().marketGroups(List.of()).build());
 
-        MarathonbetSyncResult result = syncService.syncSlot("wc-league", 3, "2026", null);
+        MarathonbetSyncResult result = syncService.syncSlot("wc-league", "2026", true, 3, List.of("ms-1"));
 
         verify(scrapeService).fetchEventSnapshotResult(25_819_358L);
         assertEquals(1, result.getSseCalls());

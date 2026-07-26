@@ -4,14 +4,12 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import net.friendly_bets.dto.NewTeamDto;
-import net.friendly_bets.dto.PurgeOddsApiAliasesResultDto;
 import net.friendly_bets.dto.TeamDto;
 import net.friendly_bets.dto.TeamDisplayNamesDto;
 import net.friendly_bets.dto.TeamExternalAliasDto;
 import net.friendly_bets.dto.TeamsPage;
 import net.friendly_bets.dto.UpdateTeamDto;
 import net.friendly_bets.exceptions.ConflictException;
-import net.friendly_bets.gameresults.ApiSyncIssueService;
 import net.friendly_bets.models.Team;
 import net.friendly_bets.models.TeamDisplayNames;
 import net.friendly_bets.models.TeamExternalAlias;
@@ -33,7 +31,7 @@ public class TeamsService {
 
     TeamsRepository teamsRepository;
     GetEntityService getEntityService;
-    ApiSyncIssueService apiSyncIssueService;
+    ErrorLogService errorLogService;
 
     public TeamsPage getAll() {
         List<Team> allTeams = teamsRepository.findAll();
@@ -99,37 +97,6 @@ public class TeamsService {
         return TeamDto.from(team);
     }
 
-    /**
-     * Removes every {@code external_aliases[]} entry with {@code provider = odds-api.io} from all teams.
-     */
-    @Transactional
-    public PurgeOddsApiAliasesResultDto purgeOddsApiAliases() {
-        int teamsUpdated = 0;
-        int aliasesRemoved = 0;
-        List<Team> toSave = new ArrayList<>();
-        for (Team team : teamsRepository.findAll()) {
-            List<TeamExternalAlias> aliases = team.getExternalAliases();
-            if (aliases == null || aliases.isEmpty()) {
-                continue;
-            }
-            int before = aliases.size();
-            aliases.removeIf(a -> a != null && TeamTitleUtils.ODDS_API_PROVIDER.equals(a.getProvider()));
-            int removed = before - aliases.size();
-            if (removed > 0) {
-                aliasesRemoved += removed;
-                teamsUpdated++;
-                toSave.add(team);
-            }
-        }
-        if (!toSave.isEmpty()) {
-            teamsRepository.saveAll(toSave);
-        }
-        return PurgeOddsApiAliasesResultDto.builder()
-                .teamsUpdated(teamsUpdated)
-                .aliasesRemoved(aliasesRemoved)
-                .build();
-    }
-
     private void purgeTeamMappingIssuesForAliases(List<TeamExternalAlias> aliases) {
         if (aliases == null) {
             return;
@@ -138,10 +105,9 @@ public class TeamsService {
             if (alias.getProvider() == null) {
                 continue;
             }
-            apiSyncIssueService.purgeTeamMappingIssuesForExternalTeam(
+            errorLogService.purgeTeamMappingIssuesForExternalTeam(
                     alias.getProvider(),
-                    alias.getExternalName(),
-                    alias.getExternalId()
+                    alias.getExternalName()
             );
         }
     }

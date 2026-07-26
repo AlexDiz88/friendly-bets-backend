@@ -1,7 +1,6 @@
 package net.friendly_bets.services;
 
 import lombok.RequiredArgsConstructor;
-import net.friendly_bets.gameresults.MatchDataProviders;
 import net.friendly_bets.models.Team;
 import net.friendly_bets.models.TeamExternalAlias;
 import net.friendly_bets.repositories.TeamsRepository;
@@ -23,10 +22,6 @@ public class TeamAliasResolver {
         return resolveByProviderName(TeamTitleUtils.MARATHONBET_PROVIDER, marathonTeamName);
     }
 
-    public Optional<Team> resolveFourScoreByName(String fourScoreTeamName) {
-        return resolveByProviderName(TeamTitleUtils.FOURSCORE_PROVIDER, fourScoreTeamName);
-    }
-
     public Optional<Team> resolveTwentyFourScoreByName(String twentyFourScoreTeamName) {
         return resolveByProviderName(TeamTitleUtils.TWENTYFOUR_SCORE_PROVIDER, twentyFourScoreTeamName);
     }
@@ -44,15 +39,15 @@ public class TeamAliasResolver {
 
     /** Сопоставление стороны матча с внутренней командой только по alias того же провайдера. */
     public boolean teamMatchesScoreProviderSide(Team team, String provider, String externalTeamName) {
-        if (team == null || externalTeamName == null || externalTeamName.isBlank()) {
+        if (team == null || provider == null || provider.isBlank()
+                || externalTeamName == null || externalTeamName.isBlank()) {
             return false;
         }
-        String resolvedProvider = provider != null ? provider : MatchDataProviders.FOURSCORE;
         if (team.getExternalAliases() == null) {
             return false;
         }
         for (TeamExternalAlias alias : team.getExternalAliases()) {
-            if (resolvedProvider.equals(alias.getProvider())
+            if (provider.equals(alias.getProvider())
                     && externalTeamName.equals(alias.getExternalName())) {
                 return true;
             }

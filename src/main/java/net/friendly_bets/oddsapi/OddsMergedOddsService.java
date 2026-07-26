@@ -1,43 +1,65 @@
 package net.friendly_bets.oddsapi;
 
 import lombok.RequiredArgsConstructor;
-import net.friendly_bets.models.gameresults.GameResultRecord;
-import net.friendly_bets.models.odds.GameResultMergedOdds;
+import net.friendly_bets.models.odds.Odds;
 import net.friendly_bets.models.odds.OddsMarketGroup;
+import net.friendly_bets.models.schedule.MatchSchedule;
 import net.friendly_bets.oddsapi.mapping.MappedOddsQuote;
 import net.friendly_bets.oddsapi.mapping.OddsMergeResult;
 import net.friendly_bets.oddsapi.mapping.OddsMerger;
 import net.friendly_bets.oddsapi.mapping.OddsProductionMergeFilter;
-import net.friendly_bets.repositories.GameResultMergedOddsRepository;
+import net.friendly_bets.repositories.OddsRepository;
+import net.friendly_bets.services.MatchScheduleDisplayService;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
 /**
- * Персист merged odds из Marathonbet scrape (и чтение снимков для OddsPick UI).
+ * Persist / read merged odds from Marathonbet scrape ({@code odds} collection).
  */
 @Service
 @RequiredArgsConstructor
 public class OddsMergedOddsService {
 
-    private final GameResultMergedOddsRepository mergedOddsRepository;
+    private final OddsRepository oddsRepository;
 
-    public Optional<GameResultMergedOdds> findByGameResultId(String gameResultId) {
-        return mergedOddsRepository.findByGameResultId(gameResultId);
+    public Optional<Odds> findByMatchScheduleId(String matchScheduleId) {
+        return oddsRepository.findByMatchScheduleId(matchScheduleId);
+    }
+
+    public void deleteByMatchScheduleId(String matchScheduleId) {
+        if (matchScheduleId == null || matchScheduleId.isBlank()) {
+            return;
+        }
+        oddsRepository.deleteByMatchScheduleId(matchScheduleId);
+    }
+
+    /**
+     * Delete odds when the schedule is finalized (FINISHED / score present).
+     */
+    public void deleteIfFinalized(MatchSchedule schedule) {
+        if (schedule == null || schedule.getId() == null) {
+            return;
+        }
+        if (MatchScheduleDisplayService.isFinalized(schedule)) {
+            oddsRepository.deleteByMatchScheduleId(schedule.getId());
+        }
     }
 
     /**
      * Persist merged odds from pre-mapped quotes (e.g. Marathonbet scrape).
      */
     public OddsMergeResult buildAndPersistFromQuotes(
-            GameResultRecord match,
+            MatchSchedule match,
             List<MappedOddsQuote> quotes,
             List<String> bookmakers,
             LocalDateTime fetchedAt,
-            boolean frozen
+            boolean frozen,
+            Long marathonbetTreeId
     ) {
         List<MappedOddsQuote> prodMergeInput = new ArrayList<>();
         if (quotes != null) {
@@ -62,51 +84,55 @@ public class OddsMergedOddsService {
             return mergeResult;
         }
 
-        Optional<GameResultMergedOdds> existing = mergedOddsRepository.findByGameResultId(match.getId());
+        Optional<Odds> existing = oddsRepository.findByMatchScheduleId(match.getId());
         if (existing.isPresent() && existing.get().getFrozenAt() != null) {
             return mergeResult;
         }
 
-        persistMergedSnapshot(match.getId(), bookmakers, groups, fetchedAt, frozen);
+        persistMergedSnapshot(match.getId(), bookmakers, groups, fetchedAt, frozen, marathonbetTreeId);
         return mergeResult;
     }
 
-    public void freezeIfNeeded(GameResultRecord match, LocalDateTime now) {
-        if (match == null || match.getId() == null || GameResultNotStarted.isNotStarted(match, now)) {
+    public void freezeIfNeeded(MatchSchedule match, Instant now) {
+        if (match == null || match.getId() == null || MatchScheduleNotStarted.isNotStarted(match, now)) {
             return;
         }
-        mergedOddsRepository.findByGameResultId(match.getId()).ifPresent(doc -> {
+        oddsRepository.findByMatchScheduleId(match.getId()).ifPresent(doc -> {
             if (doc.getFrozenAt() == null) {
-                doc.setFrozenAt(now);
-                mergedOddsRepository.save(doc);
+                doc.setFrozenAt(LocalDateTime.now());
+                oddsRepository.save(doc);
             }
         });
     }
 
     /**
-     * Один документ на матч: полная замена market_groups (не append).
+     * One document per match: full replace of market_groups (not append).
      */
     private void persistMergedSnapshot(
-            String gameResultId,
+            String matchScheduleId,
             List<String> bookmakers,
             List<OddsMarketGroup> groups,
             LocalDateTime fetchedAt,
-            boolean frozen
+            boolean frozen,
+            Long marathonbetTreeId
     ) {
-        GameResultMergedOdds entity = mergedOddsRepository.findByGameResultId(gameResultId)
-                .orElse(GameResultMergedOdds.builder()
-                        .gameResultId(gameResultId)
+        Odds entity = oddsRepository.findByMatchScheduleId(matchScheduleId)
+                .orElse(Odds.builder()
+                        .matchScheduleId(matchScheduleId)
                         .build());
         entity.setFetchedAt(fetchedAt);
         entity.setBookmakers(bookmakers != null ? new ArrayList<>(bookmakers) : List.of());
         entity.setMarketGroups(new ArrayList<>(groups));
+        if (marathonbetTreeId != null && marathonbetTreeId > 0) {
+            entity.setMarathonbetTreeId(marathonbetTreeId);
+        }
         if (frozen) {
             entity.setFrozenAt(fetchedAt);
         }
-        mergedOddsRepository.save(entity);
+        oddsRepository.save(entity);
     }
 
-    /** Подписи строк и betTitle для UI (в т.ч. при чтении снимка из MongoDB). */
+    /** Row labels and betTitle for UI (including when reading a snapshot from MongoDB). */
     public void enrichBetTitles(List<OddsMarketGroup> groups) {
         if (groups == null) {
             return;
@@ -142,7 +168,7 @@ public class OddsMergedOddsService {
                 }
                 group.setRows(bettable);
             } catch (IllegalArgumentException ignored) {
-                // напр. RESULT_TOTAL-родитель без строк
+                // e.g. RESULT_TOTAL parent without rows
             }
         }
         if (group.getSubgroups() != null) {

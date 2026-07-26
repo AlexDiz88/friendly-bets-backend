@@ -3,8 +3,8 @@ package net.friendly_bets.services;
 import lombok.RequiredArgsConstructor;
 import net.friendly_bets.dto.ClientVersionDto;
 import net.friendly_bets.exceptions.BadRequestException;
-import net.friendly_bets.models.ClientVersion;
-import net.friendly_bets.repositories.ClientVersionRepository;
+import net.friendly_bets.models.AppSettings;
+import net.friendly_bets.repositories.AppSettingsRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -14,12 +14,14 @@ import java.time.LocalDateTime;
 @RequiredArgsConstructor
 public class ClientVersionService {
 
-    private final ClientVersionRepository clientVersionRepository;
+    private final AppSettingsService appSettingsService;
+    private final AppSettingsRepository appSettingsRepository;
 
     @Transactional(readOnly = true)
     public ClientVersionDto getCurrent() {
-        return clientVersionRepository.findById(ClientVersion.CURRENT_ID)
-                .map(doc -> ClientVersionDto.builder().buildId(doc.getBuildId()).build())
+        return appSettingsRepository.findById(AppSettings.DEFAULT_ID)
+                .map(AppSettings::getClientVersion)
+                .map(block -> ClientVersionDto.builder().buildId(block != null ? block.getBuildId() : null).build())
                 .orElseGet(() -> ClientVersionDto.builder().buildId(null).build());
     }
 
@@ -36,7 +38,8 @@ public class ClientVersionService {
             throw new BadRequestException("invalidClientBuildId");
         }
 
-        ClientVersion current = clientVersionRepository.findById(ClientVersion.CURRENT_ID).orElse(null);
+        AppSettings settings = appSettingsService.getOrCreate();
+        AppSettings.ClientVersionBlock current = settings.getClientVersion();
         if (current != null && current.getBuildId() != null) {
             long existing;
             try {
@@ -49,12 +52,12 @@ public class ClientVersionService {
             }
         }
 
-        ClientVersion saved = clientVersionRepository.save(ClientVersion.builder()
-                .id(ClientVersion.CURRENT_ID)
+        AppSettings.ClientVersionBlock next = AppSettings.ClientVersionBlock.builder()
                 .buildId(buildId)
                 .updatedAt(LocalDateTime.now())
-                .build());
-
-        return ClientVersionDto.builder().buildId(saved.getBuildId()).build();
+                .build();
+        settings.setClientVersion(next);
+        appSettingsService.save(settings);
+        return ClientVersionDto.builder().buildId(next.getBuildId()).build();
     }
 }

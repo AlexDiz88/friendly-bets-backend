@@ -13,6 +13,6 @@ public class UnmappedExternalTeamNameDto {
 
     private String externalName;
     private Integer externalId;
-    /** Provider id, e.g. 4score.ru or marathonbet */
+    /** Provider id, e.g. soccer365.ru or marathonbet */
     private String provider;
 }

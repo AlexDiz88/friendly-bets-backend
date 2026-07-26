@@ -4,15 +4,17 @@ import lombok.RequiredArgsConstructor;
 import net.friendly_bets.dto.OddsEventMarketsDto;
 import net.friendly_bets.exceptions.BadRequestException;
 import net.friendly_bets.exceptions.NotFoundException;
-import net.friendly_bets.models.gameresults.GameResultRecord;
-import net.friendly_bets.models.odds.GameResultMergedOdds;
+import net.friendly_bets.models.odds.Odds;
 import net.friendly_bets.models.odds.OddsMarketGroup;
+import net.friendly_bets.models.schedule.MatchSchedule;
 import net.friendly_bets.oddsapi.mapping.BetTitleKey;
 import net.friendly_bets.oddsapi.mapping.OddsMerger;
-import net.friendly_bets.repositories.GameResultRecordRepository;
+import net.friendly_bets.repositories.MatchScheduleRepository;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -20,7 +22,7 @@ import java.util.Optional;
 import java.util.Set;
 
 /**
- * Read-only odds presentation from Mongo ({@code game_result_merged_odds}).
+ * Read-only odds presentation from Mongo ({@code odds}).
  */
 @Service
 @RequiredArgsConstructor
@@ -28,18 +30,18 @@ public class OddsPresentationService {
 
     private static final List<String> DEFAULT_PRESENTATION_BOOKMAKERS = List.of("Marathonbet");
 
-    private final GameResultRecordRepository gameResultRecordRepository;
+    private final MatchScheduleRepository matchScheduleRepository;
     private final OddsMergedOddsService oddsMergedOddsService;
 
-    public OddsEventMarketsDto getMarketsForGameResult(String gameResultId) {
-        GameResultRecord match = gameResultRecordRepository.findById(gameResultId)
-                .orElseThrow(() -> new NotFoundException("GameResult", gameResultId));
-        LocalDateTime now = GameResultNotStarted.nowUtc();
-        if (!GameResultNotStarted.isNotStarted(match, now)) {
+    public OddsEventMarketsDto getMarketsForMatchSchedule(String matchScheduleId) {
+        MatchSchedule match = matchScheduleRepository.findById(matchScheduleId)
+                .orElseThrow(() -> new NotFoundException("MatchSchedule", matchScheduleId));
+        Instant now = Instant.now();
+        if (!MatchScheduleNotStarted.isNotStarted(match, now)) {
             throw new BadRequestException("matchAlreadyStarted");
         }
 
-        Optional<GameResultMergedOdds> mergedSnapshot = oddsMergedOddsService.findByGameResultId(gameResultId);
+        Optional<Odds> mergedSnapshot = oddsMergedOddsService.findByMatchScheduleId(matchScheduleId);
         if (mergedSnapshot.isEmpty()
                 || mergedSnapshot.get().getMarketGroups() == null
                 || mergedSnapshot.get().getMarketGroups().isEmpty()) {
@@ -61,11 +63,11 @@ public class OddsPresentationService {
 
         LocalDateTime fetchedAt = mergedSnapshot.get().getFetchedAt() != null
                 ? mergedSnapshot.get().getFetchedAt()
-                : now;
+                : LocalDateTime.ofInstant(now, ZoneOffset.UTC);
         return toDto(match, presentationGroups, fetchedAt, presentationBookmakers);
     }
 
-    private List<String> resolvePresentationBookmakers(Optional<GameResultMergedOdds> mergedSnapshot) {
+    private List<String> resolvePresentationBookmakers(Optional<Odds> mergedSnapshot) {
         if (mergedSnapshot.isPresent()) {
             List<String> fromMerged = mergedSnapshot.get().getBookmakers();
             if (fromMerged != null && !fromMerged.isEmpty()) {
@@ -121,11 +123,11 @@ public class OddsPresentationService {
     }
 
     public Optional<OddsLineSelection> findSelection(
-            String gameResultId,
+            String matchScheduleId,
             String selectionKey,
             String bookmaker
     ) {
-        OddsEventMarketsDto markets = getMarketsForGameResult(gameResultId);
+        OddsEventMarketsDto markets = getMarketsForMatchSchedule(matchScheduleId);
         for (OddsMarketGroup group : markets.getMarketGroups()) {
             Optional<OddsLineSelection> found = findSelectionInGroup(group, selectionKey, bookmaker);
             if (found.isPresent()) {
@@ -168,13 +170,13 @@ public class OddsPresentationService {
     }
 
     public Optional<OddsLineSelection> findByBetTitle(
-            String gameResultId,
+            String matchScheduleId,
             short betTitleCode,
             boolean isNot,
             String bookmaker
     ) {
         BetTitleKey key = new BetTitleKey(betTitleCode, isNot);
-        OddsEventMarketsDto markets = getMarketsForGameResult(gameResultId);
+        OddsEventMarketsDto markets = getMarketsForMatchSchedule(matchScheduleId);
         for (OddsMarketGroup group : markets.getMarketGroups()) {
             Optional<OddsLineSelection> found = findByBetTitleInGroup(group, key, bookmaker);
             if (found.isPresent()) {
@@ -218,17 +220,20 @@ public class OddsPresentationService {
     }
 
     private OddsEventMarketsDto toDto(
-            GameResultRecord match,
+            MatchSchedule match,
             List<OddsMarketGroup> groups,
             LocalDateTime fetchedAt,
             List<String> bookmakers
     ) {
+        LocalDateTime kickoffUtc = match.getUtcKickoff() != null
+                ? LocalDateTime.ofInstant(match.getUtcKickoff(), ZoneOffset.UTC)
+                : null;
         return OddsEventMarketsDto.builder()
-                .gameResultId(match.getId())
+                .matchScheduleId(match.getId())
                 .homeTeamId(match.getHomeTeamId())
                 .awayTeamId(match.getAwayTeamId())
                 .status(match.getStatus())
-                .kickoffUtc(match.getUtcDate())
+                .kickoffUtc(kickoffUtc)
                 .fetchedAt(fetchedAt)
                 .bookmakers(bookmakers)
                 .marketGroups(groups)

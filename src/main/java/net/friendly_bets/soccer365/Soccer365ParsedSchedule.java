@@ -34,6 +34,8 @@ public class Soccer365ParsedSchedule {
         String awayName;
         Instant utcKickoff;
         String status;
+        /** soccer365 {@code dt-id} /games/{id}/ */
+        String soccer365GameId;
     }
 
     public Map<Integer, Round> roundsByNumber() {

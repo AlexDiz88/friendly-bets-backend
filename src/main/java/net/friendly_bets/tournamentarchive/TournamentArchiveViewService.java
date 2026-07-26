@@ -160,13 +160,9 @@ public class TournamentArchiveViewService {
     }
 
     private Wc26StandingRowDto toStandingRow(TournamentArchiveStandingRow row, Map<String, Team> teams) {
-        String fifa = row.getFifaCode();
-        if (fifa == null || fifa.isBlank()) {
-            fifa = fifaOf(row.getTeamId(), teams);
-        }
         return Wc26StandingRowDto.builder()
                 .rank(row.getRank())
-                .fifaCode(fifa)
+                .fifaCode(fifaOf(row.getTeamId(), teams))
                 .played(row.getPlayed())
                 .wins(row.getWins())
                 .draws(row.getDraws())
@@ -181,14 +177,10 @@ public class TournamentArchiveViewService {
     }
 
     private Wc26BestThirdRowDto toBestThird(TournamentArchiveBestThirdRow row, Map<String, Team> teams) {
-        String fifa = row.getFifaCode();
-        if (fifa == null || fifa.isBlank()) {
-            fifa = fifaOf(row.getTeamId(), teams);
-        }
         return Wc26BestThirdRowDto.builder()
                 .rank(row.getRank())
                 .group(row.getGroup())
-                .fifaCode(fifa)
+                .fifaCode(fifaOf(row.getTeamId(), teams))
                 .played(row.getPlayed())
                 .wins(row.getWins())
                 .draws(row.getDraws())

@@ -2,15 +2,11 @@ package net.friendly_bets.services;
 
 import net.friendly_bets.dto.NewBetDto;
 import net.friendly_bets.exceptions.BadRequestException;
-import net.friendly_bets.gameresults.MatchDataProviders;
 import net.friendly_bets.models.BetTitle;
 import net.friendly_bets.models.Season;
 import net.friendly_bets.models.enums.BetTitleCode;
-import net.friendly_bets.models.gameresults.GameResultRecord;
-import net.friendly_bets.models.gameresults.GameResultSideSnapshot;
-import net.friendly_bets.models.gameresults.GameResultSourceSnapshot;
-import net.friendly_bets.oddsapi.GameResultNotStarted;
-import net.friendly_bets.repositories.GameResultRecordRepository;
+import net.friendly_bets.models.schedule.MatchSchedule;
+import net.friendly_bets.repositories.MatchScheduleRepository;
 import net.friendly_bets.repositories.SeasonsRepository;
 import net.friendly_bets.support.AbstractMongoIntegrationTest;
 import net.friendly_bets.support.TestDataFactory;
@@ -19,9 +15,10 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.Map;
+import java.time.temporal.ChronoUnit;
 
 import static net.friendly_bets.support.TestDataFactory.authUser;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -37,19 +34,19 @@ class UserAddOpenedBetIntegrationTest extends AbstractMongoIntegrationTest {
     TestDataFactory testData;
 
     @Autowired
-    GameResultRecordRepository gameResultRecordRepository;
+    MatchScheduleRepository matchScheduleRepository;
 
     @Autowired
     SeasonsRepository seasonsRepository;
 
     @Test
-    @DisplayName("USER addOpenedBet succeeds before match kickoff when game result exists")
+    @DisplayName("USER addOpenedBet succeeds before match kickoff when schedule exists")
     void userAddOpenedBet_beforeKickoff_succeeds() {
         TwoPlayersTestFixture fx = testData.createTwoPlayersFirstMatchdaySetup(2);
         setSeasonDates(fx.getSeason());
-        saveScheduledMatch(fx, GameResultNotStarted.nowUtc().plusHours(3));
+        MatchSchedule schedule = saveScheduledMatch(fx, Instant.now().plus(3, ChronoUnit.HOURS));
 
-        NewBetDto bet = newBetForPlayer(fx);
+        NewBetDto bet = newBetForPlayer(fx, schedule);
         var result = betsService.addOpenedBet(authUser(fx.getPlayerOne()), bet);
         assertNotNull(result.getId());
     }
@@ -59,9 +56,9 @@ class UserAddOpenedBetIntegrationTest extends AbstractMongoIntegrationTest {
     void userAddOpenedBet_afterKickoff_rejects() {
         TwoPlayersTestFixture fx = testData.createTwoPlayersFirstMatchdaySetup(2);
         setSeasonDates(fx.getSeason());
-        saveScheduledMatch(fx, GameResultNotStarted.nowUtc().minusMinutes(5));
+        MatchSchedule schedule = saveScheduledMatch(fx, Instant.now().minus(5, ChronoUnit.MINUTES));
 
-        NewBetDto bet = newBetForPlayer(fx);
+        NewBetDto bet = newBetForPlayer(fx, schedule);
         BadRequestException ex = assertThrows(
                 BadRequestException.class,
                 () -> betsService.addOpenedBet(authUser(fx.getPlayerOne()), bet)
@@ -74,9 +71,9 @@ class UserAddOpenedBetIntegrationTest extends AbstractMongoIntegrationTest {
     void moderatorAddOpenedBet_afterKickoff_succeeds() {
         TwoPlayersTestFixture fx = testData.createTwoPlayersFirstMatchdaySetup(2);
         setSeasonDates(fx.getSeason());
-        saveScheduledMatch(fx, GameResultNotStarted.nowUtc().minusMinutes(5));
+        MatchSchedule schedule = saveScheduledMatch(fx, Instant.now().minus(5, ChronoUnit.MINUTES));
 
-        NewBetDto bet = newBetForPlayer(fx);
+        NewBetDto bet = newBetForPlayer(fx, schedule);
         var result = betsService.addOpenedBet(authUser(fx.getModerator()), bet);
         assertNotNull(result.getId());
     }
@@ -87,31 +84,22 @@ class UserAddOpenedBetIntegrationTest extends AbstractMongoIntegrationTest {
         seasonsRepository.save(season);
     }
 
-    private void saveScheduledMatch(TwoPlayersTestFixture fx, LocalDateTime kickoff) {
-        gameResultRecordRepository.save(GameResultRecord.builder()
+    private MatchSchedule saveScheduledMatch(TwoPlayersTestFixture fx, Instant kickoff) {
+        return matchScheduleRepository.save(MatchSchedule.builder()
+                .seasonId(fx.getSeason().getId())
+                .leagueId(fx.getLeague().getId())
                 .leagueCode("EPL")
                 .matchday(1)
-                .season("2025")
+                .slotId(fx.getMatchDay())
                 .status("SCHEDULED")
-                .utcDate(kickoff)
+                .utcKickoff(kickoff)
                 .homeTeamId(fx.getHomeTeam().getId())
                 .awayTeamId(fx.getAwayTeam().getId())
-                .leagueId(fx.getLeague().getId())
                 .fetchedAt(LocalDateTime.now())
-                .provider(MatchDataProviders.FOURSCORE)
-                .sources(Map.of(
-                        MatchDataProviders.sourcesStorageKey(MatchDataProviders.FOURSCORE),
-                        GameResultSourceSnapshot.builder()
-                                .externalMatchId(42_001L)
-                                .externalCompetitionCode("PL")
-                                .home(GameResultSideSnapshot.builder().externalId("1").externalName("Home").build())
-                                .away(GameResultSideSnapshot.builder().externalId("2").externalName("Away").build())
-                                .build()
-                ))
                 .build());
     }
 
-    private static NewBetDto newBetForPlayer(TwoPlayersTestFixture fx) {
+    private static NewBetDto newBetForPlayer(TwoPlayersTestFixture fx, MatchSchedule schedule) {
         return NewBetDto.builder()
                 .userId(fx.getPlayerOne().getId())
                 .seasonId(fx.getSeason().getId())
@@ -119,6 +107,7 @@ class UserAddOpenedBetIntegrationTest extends AbstractMongoIntegrationTest {
                 .matchDay(fx.getMatchDay())
                 .homeTeamId(fx.getHomeTeam().getId())
                 .awayTeamId(fx.getAwayTeam().getId())
+                .matchScheduleId(schedule.getId())
                 .betTitle(BetTitle.builder()
                         .code(BetTitleCode.HOME_WIN.getCode())
                         .label(BetTitleCode.HOME_WIN.getLabel())

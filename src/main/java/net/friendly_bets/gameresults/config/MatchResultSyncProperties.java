@@ -7,14 +7,9 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties(prefix = "match-result-sync")
 public class MatchResultSyncProperties {
 
-    private String primaryProvider = "4score.ru";
-    private String secondaryProvider = "24score.pro";
-    private boolean dualVerificationEnabled = true;
-    private int requireStablePolls = 2;
-    private int minMinutesAfterKickoff = 0;
-    /** Автоматически вызывать {@code setBetResults} после опроса провайдеров. */
+    /** Автоматически вызывать settle после FULL finalize. */
     private boolean autoSettleEnabled = true;
-    /** 5 minutes */
+    /** LIVE poll interval (default 5 minutes). */
     private long pollingIntervalMs = 300_000L;
     private String defaultSeason = "2025";
     /**

@@ -13,6 +13,5 @@ import java.util.List;
 @AllArgsConstructor
 public class ExternalMatchdayPageDto {
 
-    private ExternalMatchdaySyncDto sync;
     private List<ExternalMatchDto> matches;
 }

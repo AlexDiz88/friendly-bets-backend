@@ -1,11 +1,12 @@
 package net.friendly_bets.marathonbet;
 
 import lombok.RequiredArgsConstructor;
-import net.friendly_bets.gameresults.ApiSyncIssueService;
 import net.friendly_bets.marathonbet.config.MarathonbetProperties;
 import net.friendly_bets.models.Team;
-import net.friendly_bets.models.gameresults.GameResultRecord;
-import net.friendly_bets.repositories.GameResultRecordRepository;
+import net.friendly_bets.models.odds.Odds;
+import net.friendly_bets.models.schedule.MatchSchedule;
+import net.friendly_bets.repositories.OddsRepository;
+import net.friendly_bets.services.ErrorLogService;
 import net.friendly_bets.services.TeamAliasResolver;
 import org.springframework.stereotype.Component;
 
@@ -19,63 +20,72 @@ import java.util.Optional;
 public class MarathonbetEventMatcher {
 
     private final TeamAliasResolver teamAliasResolver;
-    private final ApiSyncIssueService apiSyncIssueService;
-    private final GameResultRecordRepository gameResultRecordRepository;
+    private final ErrorLogService errorLogService;
+    private final OddsRepository oddsRepository;
     private final MarathonbetProperties properties;
 
-    public Optional<MarathonbetPrematchEvent> resolveAndPersistTreeId(
-            GameResultRecord match,
+    public MarathonbetEventResolveResult resolveAndRecordMappingIssue(
+            MatchSchedule match,
             List<MarathonbetPrematchEvent> tournamentEvents,
             String leagueCode,
             String season,
             int matchday
     ) {
         Optional<MarathonbetPrematchEvent> resolved = resolve(match, tournamentEvents);
-        if (resolved.isEmpty() && match != null && match.getId() != null) {
-            List<MarathonbetPrematchEvent> candidates = filterByKickoffWindow(match, tournamentEvents);
-            List<MarathonbetPrematchEvent> matched = new ArrayList<>();
-            for (MarathonbetPrematchEvent event : candidates) {
-                if (sidesMatch(match, event)) {
-                    matched.add(event);
-                }
-            }
-            if (matched.size() > 1) {
-                Optional<MarathonbetPrematchEvent> disambiguated = pickClosestKickoff(match, matched);
-                if (disambiguated.isPresent()) {
-                    return disambiguated;
-                }
-                apiSyncIssueService.recordMarathonbetEventMappingMissing(
-                        match, leagueCode, season, matchday, "ambiguousMarathonbetEventMatch");
-            } else {
-                apiSyncIssueService.recordMarathonbetEventMappingMissing(
-                        match, leagueCode, season, matchday, null);
-            }
-            return Optional.empty();
+        if (resolved.isPresent()) {
+            return MarathonbetEventResolveResult.matched(resolved.get());
         }
-        if (resolved.isEmpty()) {
-            return Optional.empty();
+        if (match == null || match.getId() == null) {
+            return MarathonbetEventResolveResult.miss(MarathonbetEventResolveResult.MissKind.MAPPING_FAILURE);
         }
-        if (match != null && match.getId() != null) {
-            long treeId = resolved.get().getTreeId();
-            if (match.getMarathonbetTreeId() == null || match.getMarathonbetTreeId() != treeId) {
-                match.setMarathonbetTreeId(treeId);
-                gameResultRecordRepository.save(match);
+        if (match.getUtcKickoff() == null) {
+            errorLogService.recordEventMappingMissing(
+                    match, "marathonbet", leagueCode, season, matchday, "matchKickoffMissing");
+            return MarathonbetEventResolveResult.miss(MarathonbetEventResolveResult.MissKind.MAPPING_FAILURE);
+        }
+
+        List<MarathonbetPrematchEvent> candidates = filterByKickoffWindow(match, tournamentEvents);
+        if (candidates.isEmpty()) {
+            // Soft: fixture not on bookie tournament page yet (e.g. next matchday).
+            return MarathonbetEventResolveResult.miss(MarathonbetEventResolveResult.MissKind.NO_BOOKIE_EVENT);
+        }
+
+        List<MarathonbetPrematchEvent> matched = new ArrayList<>();
+        for (MarathonbetPrematchEvent event : candidates) {
+            if (sidesMatch(match, event)) {
+                matched.add(event);
             }
         }
-        return resolved;
+        if (matched.size() > 1) {
+            Optional<MarathonbetPrematchEvent> disambiguated = pickClosestKickoff(match, matched);
+            if (disambiguated.isPresent()) {
+                return MarathonbetEventResolveResult.matched(disambiguated.get());
+            }
+            errorLogService.recordEventMappingMissing(
+                    match, "marathonbet", leagueCode, season, matchday, "ambiguousMarathonbetEventMatch");
+            return MarathonbetEventResolveResult.miss(MarathonbetEventResolveResult.MissKind.MAPPING_FAILURE);
+        }
+
+        errorLogService.recordEventMappingMissing(
+                match, "marathonbet", leagueCode, season, matchday, null);
+        return MarathonbetEventResolveResult.miss(MarathonbetEventResolveResult.MissKind.MAPPING_FAILURE);
     }
 
     public Optional<MarathonbetPrematchEvent> resolve(
-            GameResultRecord match,
+            MatchSchedule match,
             List<MarathonbetPrematchEvent> tournamentEvents
     ) {
         if (match == null) {
             return Optional.empty();
         }
-        if (match.getMarathonbetTreeId() != null && match.getMarathonbetTreeId() > 0) {
-            return tournamentEvents.stream()
-                    .filter(e -> e.getTreeId() == match.getMarathonbetTreeId())
+        Long cachedTreeId = resolveCachedTreeId(match.getId());
+        if (cachedTreeId != null && cachedTreeId > 0) {
+            Optional<MarathonbetPrematchEvent> byTreeId = tournamentEvents.stream()
+                    .filter(e -> e.getTreeId() == cachedTreeId)
                     .findFirst();
+            if (byTreeId.isPresent()) {
+                return byTreeId;
+            }
         }
 
         List<MarathonbetPrematchEvent> candidates = filterByKickoffWindow(match, tournamentEvents);
@@ -95,7 +105,7 @@ public class MarathonbetEventMatcher {
     }
 
     public List<MarathonbetPrematchEvent> eventsForPendingMatches(
-            List<GameResultRecord> pending,
+            List<MatchSchedule> pending,
             List<MarathonbetPrematchEvent> tournamentEvents
     ) {
         if (pending == null || pending.isEmpty() || tournamentEvents == null || tournamentEvents.isEmpty()) {
@@ -103,7 +113,7 @@ public class MarathonbetEventMatcher {
         }
         LinkedHashSet<Long> seen = new LinkedHashSet<>();
         List<MarathonbetPrematchEvent> result = new ArrayList<>();
-        for (GameResultRecord match : pending) {
+        for (MatchSchedule match : pending) {
             for (MarathonbetPrematchEvent event : filterByKickoffWindow(match, tournamentEvents)) {
                 if (seen.add(event.getTreeId())) {
                     result.add(event);
@@ -113,14 +123,23 @@ public class MarathonbetEventMatcher {
         return result;
     }
 
+    private Long resolveCachedTreeId(String matchScheduleId) {
+        if (matchScheduleId == null || matchScheduleId.isBlank()) {
+            return null;
+        }
+        return oddsRepository.findByMatchScheduleId(matchScheduleId)
+                .map(Odds::getMarathonbetTreeId)
+                .orElse(null);
+    }
+
     private List<MarathonbetPrematchEvent> filterByKickoffWindow(
-            GameResultRecord match,
+            MatchSchedule match,
             List<MarathonbetPrematchEvent> events
     ) {
-        if (match.getUtcDate() == null || events == null) {
+        if (match.getUtcKickoff() == null || events == null) {
             return List.of();
         }
-        long center = match.getUtcDate().toInstant(java.time.ZoneOffset.UTC).toEpochMilli();
+        long center = match.getUtcKickoff().toEpochMilli();
         long windowMs = properties.getEventWindowHours() * 3_600_000L;
         List<MarathonbetPrematchEvent> filtered = new ArrayList<>();
         for (MarathonbetPrematchEvent event : events) {
@@ -133,13 +152,13 @@ public class MarathonbetEventMatcher {
     }
 
     private Optional<MarathonbetPrematchEvent> pickClosestKickoff(
-            GameResultRecord match,
+            MatchSchedule match,
             List<MarathonbetPrematchEvent> matched
     ) {
-        if (match.getUtcDate() == null) {
+        if (match.getUtcKickoff() == null) {
             return Optional.empty();
         }
-        long center = match.getUtcDate().toInstant(java.time.ZoneOffset.UTC).toEpochMilli();
+        long center = match.getUtcKickoff().toEpochMilli();
         MarathonbetPrematchEvent best = null;
         long bestDelta = Long.MAX_VALUE;
         long secondBestDelta = Long.MAX_VALUE;
@@ -167,14 +186,14 @@ public class MarathonbetEventMatcher {
         return Optional.empty();
     }
 
-    private boolean sidesMatch(GameResultRecord match, MarathonbetPrematchEvent event) {
+    private boolean sidesMatch(MatchSchedule match, MarathonbetPrematchEvent event) {
         return sideMatches(match, event, true) && sideMatches(match, event, false);
     }
 
     /**
      * Only truth source: scraped Marathonbet name ↔ {@code external_aliases} provider {@code marathonbet}.
      */
-    private boolean sideMatches(GameResultRecord match, MarathonbetPrematchEvent event, boolean home) {
+    private boolean sideMatches(MatchSchedule match, MarathonbetPrematchEvent event, boolean home) {
         String marathonName = home ? event.getHomeTeam() : event.getAwayTeam();
         String teamId = home ? match.getHomeTeamId() : match.getAwayTeamId();
         if (teamId == null || teamId.isBlank() || marathonName == null || marathonName.isBlank()) {

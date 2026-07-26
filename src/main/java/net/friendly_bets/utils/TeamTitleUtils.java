@@ -10,7 +10,6 @@ public final class TeamTitleUtils {
     /** Legacy provider id used only for one-shot purge of aliases from Mongo. */
     public static final String ODDS_API_PROVIDER = "odds-api.io";
     public static final String MARATHONBET_PROVIDER = "marathonbet";
-    public static final String FOURSCORE_PROVIDER = "4score.ru";
     /** {@link net.friendly_bets.gameresults.MatchDataProviders#TWENTYFOUR_SCORE} */
     public static final String TWENTYFOUR_SCORE_PROVIDER = "24score.pro";
     /** {@link net.friendly_bets.gameresults.MatchDataProviders#SOCCER365} */

@@ -3,8 +3,11 @@ package net.friendly_bets.controllers;
 import lombok.RequiredArgsConstructor;
 import net.friendly_bets.dto.Soccer365ScheduleSyncResultDto;
 import net.friendly_bets.dto.Soccer365TeamNameChipDto;
-import net.friendly_bets.soccer365.Soccer365ScheduleSyncService;
-import net.friendly_bets.soccer365.Soccer365TeamNamesService;
+import net.friendly_bets.providers.ExternalDataLayer;
+import net.friendly_bets.providers.LayerProviderRouter;
+import net.friendly_bets.providers.ScheduleProvider;
+import net.friendly_bets.services.ExternalTeamNamesService;
+import net.friendly_bets.utils.TeamTitleUtils;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -19,22 +22,30 @@ import java.util.List;
 @RequestMapping("/api/admin/soccer365")
 public class Soccer365AdminController {
 
-    private final Soccer365TeamNamesService teamNamesService;
-    private final Soccer365ScheduleSyncService scheduleSyncService;
+    private final ExternalTeamNamesService externalTeamNamesService;
+    private final LayerProviderRouter router;
 
+    /** @deprecated prefer {@code POST /api/admin/external-data/team-names} */
     @PostMapping("/team-names")
     @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<List<Soccer365TeamNameChipDto>> fetchTeamNames(
             @RequestParam String leagueCode
     ) {
-        return ResponseEntity.ok(teamNamesService.fetchUnmappedTeamNames(leagueCode));
+        return ResponseEntity.ok(externalTeamNamesService.fetchUnmappedTeamNames(
+                TeamTitleUtils.SOCCER365_PROVIDER, leagueCode));
     }
 
+    /** @deprecated prefer {@code POST /api/admin/external-data/schedule/sync} */
     @PostMapping("/sync-schedule")
     @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<Soccer365ScheduleSyncResultDto> syncSchedule(
             @RequestParam String leagueCode
     ) {
-        return ResponseEntity.ok(scheduleSyncService.syncByLeagueCode(leagueCode));
+        return ResponseEntity.ok(router.execute(
+                ExternalDataLayer.SCHEDULE,
+                ScheduleProvider.class,
+                p -> p.syncByLeagueCode(leagueCode),
+                leagueCode
+        ));
     }
 }
