@@ -15,7 +15,6 @@ import org.springframework.http.ResponseEntity;
 import javax.validation.Valid;
 import javax.validation.constraints.NotBlank;
 import java.util.List;
-import java.util.Map;
 
 @Tags(value = {
         @Tag(name = "Seasons")
@@ -189,15 +188,4 @@ public interface SeasonsApi {
     ResponseEntity<SeasonDto> removeLeagueFromSeason(
             @Parameter(description = "Season ID") @NotBlank String seasonId,
             @Parameter(description = "League ID") @NotBlank String leagueId);
-
-    @Operation(summary = "DB update", description = "Available to admin only")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Successfully updated the database",
-                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = Map.class))),
-            @ApiResponse(responseCode = "400", description = "Bad request, database update issue",
-                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto"))),
-            @ApiResponse(responseCode = "403", description = "User not authenticated or not authorized",
-                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto")))
-    })
-    ResponseEntity<Map<String, Object>> dbUpdate();
 }

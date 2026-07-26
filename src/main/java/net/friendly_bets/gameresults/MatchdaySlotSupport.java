@@ -66,9 +66,6 @@ public class MatchdaySlotSupport {
     }
 
     public Optional<MatchdaySlotKey> buildMatchdayKey(League league, String matchDay, String externalSeason) {
-        if (!LeagueCompetitionMapping.isSupported(league.getLeagueCode())) {
-            return Optional.empty();
-        }
         return resolveSlotOrder(league, matchDay)
                 .map(order -> new MatchdaySlotKey(
                         league.getLeagueCode().name(),

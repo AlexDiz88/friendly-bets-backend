@@ -12,6 +12,7 @@ import net.friendly_bets.providers.ExternalDataLayer;
 import net.friendly_bets.repositories.ExternalApiMonitoringRepository;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -110,6 +111,14 @@ public class ExternalApiMonitoringService {
 
     public ExternalApiMonitoringRun latestByLayer(ExternalDataLayer layer) {
         return repository.findFirstByLayerOrderByStartedAtDesc(layer);
+    }
+
+    @Transactional
+    public long deleteByLayer(ExternalDataLayer layer) {
+        if (layer == null) {
+            throw new BadRequestException("externalApiMonitoringLayerRequired");
+        }
+        return repository.deleteByLayer(layer);
     }
 
     public static int countFailed(List<ExternalApiHttpLogEntry> logs) {

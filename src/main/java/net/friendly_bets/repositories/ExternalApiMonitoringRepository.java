@@ -22,4 +22,6 @@ public interface ExternalApiMonitoringRepository extends MongoRepository<Externa
     );
 
     ExternalApiMonitoringRun findFirstByLayerOrderByStartedAtDesc(ExternalDataLayer layer);
+
+    long deleteByLayer(ExternalDataLayer layer);
 }

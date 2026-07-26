@@ -12,7 +12,6 @@ import net.friendly_bets.services.TournamentFormatsService;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -24,14 +23,8 @@ public class ExternalCompetitionService {
 
     public ExternalCompetitionInfoDto getCompetitionInfoForLeague(String leagueId, String season) {
         League league = getEntityService.getLeagueOrThrow(leagueId);
-        Optional<String> competitionCode = LeagueCompetitionMapping.toCompetitionCode(league.getLeagueCode());
-        if (competitionCode.isEmpty()) {
-            throw new BadRequestException("leagueNotMappedToExternalCompetition");
-        }
-
-        String code = competitionCode.get();
         if (league.getTournamentFormatId() == null || league.getTournamentFormatId().isBlank()) {
-            return fallback(code, season, leagueId);
+            throw new BadRequestException("leagueHasNoTournamentFormat");
         }
 
         TournamentFormat format = getEntityService.getTournamentFormatOrThrow(league.getTournamentFormatId());
@@ -43,28 +36,12 @@ public class ExternalCompetitionService {
         int currentMatchday = gameResultsCurrentSlotResolver.resolveCurrentSlotOrder(league, format, season);
 
         return ExternalCompetitionInfoDto.builder()
-                .competitionCode(code)
+                .competitionCode(league.getLeagueCode().name())
                 .season(season)
                 .leagueId(leagueId)
                 .currentMatchday(currentMatchday)
                 .matchdayCount(matchdayCount)
                 .matchdaySlots(slots)
-                .build();
-    }
-
-    public ExternalCompetitionInfoDto getCompetitionInfo(String competitionCode, String season) {
-        return fallback(competitionCode, season, null);
-    }
-
-    private ExternalCompetitionInfoDto fallback(String competitionCode, String season, String leagueId) {
-        int matchdayCount = LeagueSlotDefaults.totalMatchdaySlots(competitionCode);
-        return ExternalCompetitionInfoDto.builder()
-                .competitionCode(competitionCode)
-                .season(season)
-                .leagueId(leagueId)
-                .currentMatchday(1)
-                .matchdayCount(matchdayCount)
-                .matchdaySlots(LeagueSlotDefaults.buildMatchdaySlots(competitionCode))
                 .build();
     }
 }

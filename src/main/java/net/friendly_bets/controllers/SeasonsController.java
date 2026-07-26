@@ -13,7 +13,6 @@ import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequiredArgsConstructor
@@ -125,13 +124,6 @@ public class SeasonsController implements SeasonsApi {
     public ResponseEntity<SeasonDto> removeLeagueFromSeason(@PathVariable("season-id") String seasonId,
                                                             @PathVariable("league-id") String leagueId) {
         return ResponseEntity.ok(seasonsService.removeLeagueFromSeason(seasonId, leagueId));
-    }
-
-    @Override
-    @PreAuthorize("hasAuthority('ADMIN')")
-    @GetMapping("/db-update")
-    public ResponseEntity<Map<String, Object>> dbUpdate() {
-        return ResponseEntity.ok(seasonsService.dbUpdate());
     }
 
     @GetMapping("/without-dates")
