@@ -8,6 +8,7 @@ import net.friendly_bets.providers.ExternalDataLayer;
 import net.friendly_bets.services.ExternalApiMonitoringService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -56,6 +57,17 @@ public class ExternalApiMonitoringController {
     @PreAuthorize("hasAuthority('ADMIN') || hasAuthority('MODERATOR')")
     public ResponseEntity<ExternalApiMonitoringRunDto> getById(@PathVariable String id) {
         return ResponseEntity.ok(ExternalApiMonitoringRunDto.from(monitoringService.getById(id)));
+    }
+
+    @DeleteMapping
+    @PreAuthorize("hasAuthority('ADMIN') || hasAuthority('MODERATOR')")
+    public ResponseEntity<Map<String, Object>> deleteByLayer(@RequestParam String layer) {
+        ExternalDataLayer parsed = parseLayer(layer);
+        long deleted = monitoringService.deleteByLayer(parsed);
+        return ResponseEntity.ok(Map.of(
+                "message", "externalApiMonitoringLayerCleared",
+                "deleted", deleted
+        ));
     }
 
     private static ExternalDataLayer parseLayer(String layer) {
