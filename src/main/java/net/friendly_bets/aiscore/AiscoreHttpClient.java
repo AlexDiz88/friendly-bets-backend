@@ -1,6 +1,5 @@
 package net.friendly_bets.aiscore;
 
-import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import net.friendly_bets.aiscore.config.AiscoreProperties;
 import net.friendly_bets.exceptions.BadRequestException;
@@ -19,6 +18,7 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 @Component
 @RequiredArgsConstructor
@@ -32,28 +32,38 @@ public class AiscoreHttpClient {
 
     private final AiscoreProperties properties;
     private final AtomicBoolean homepageWarmed = new AtomicBoolean(false);
+    private final AtomicReference<HttpClient> httpClientRef = new AtomicReference<>();
 
     /**
      * Cloudflare often returns 403 for Java HttpClient over HTTP/2 and for datacenter IPs.
      * HTTP/1.1 + cookie jar + homepage warm-up; optional {@code aiscore.http-proxy} for hosting.
      */
-    private HttpClient httpClient;
-
-    @PostConstruct
-    void initClient() {
-        CookieManager cookies = new CookieManager();
-        cookies.setCookiePolicy(CookiePolicy.ACCEPT_ALL);
-        HttpClient.Builder builder = HttpClient.newBuilder()
-                .connectTimeout(Duration.ofSeconds(20))
-                .followRedirects(HttpClient.Redirect.NORMAL)
-                .version(HttpClient.Version.HTTP_1_1)
-                .cookieHandler(cookies);
-        ProxySelector proxy = resolveProxy(properties.getHttpProxy());
-        if (proxy != null) {
-            builder.proxy(proxy);
-            log.info("aiscore HTTP client using proxy {}", properties.getHttpProxy());
+    private HttpClient client() {
+        HttpClient existing = httpClientRef.get();
+        if (existing != null) {
+            return existing;
         }
-        this.httpClient = builder.build();
+        synchronized (httpClientRef) {
+            existing = httpClientRef.get();
+            if (existing != null) {
+                return existing;
+            }
+            CookieManager cookies = new CookieManager();
+            cookies.setCookiePolicy(CookiePolicy.ACCEPT_ALL);
+            HttpClient.Builder builder = HttpClient.newBuilder()
+                    .connectTimeout(Duration.ofSeconds(20))
+                    .followRedirects(HttpClient.Redirect.NORMAL)
+                    .version(HttpClient.Version.HTTP_1_1)
+                    .cookieHandler(cookies);
+            ProxySelector proxy = resolveProxy(properties.getHttpProxy());
+            if (proxy != null) {
+                builder.proxy(proxy);
+                log.info("aiscore HTTP client using proxy {}", properties.getHttpProxy());
+            }
+            HttpClient created = builder.build();
+            httpClientRef.set(created);
+            return created;
+        }
     }
 
     public String fetchScheduleHtml(String tournamentPath) {
@@ -116,7 +126,7 @@ public class AiscoreHttpClient {
             if (referer != null && !referer.isBlank()) {
                 builder.header("Referer", referer);
             }
-            HttpResponse<String> response = httpClient.send(builder.build(), HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> response = client().send(builder.build(), HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() >= 400) {
                 String cfRay = response.headers().firstValue("cf-ray").orElse("-");
                 String server = response.headers().firstValue("server").orElse("-");
