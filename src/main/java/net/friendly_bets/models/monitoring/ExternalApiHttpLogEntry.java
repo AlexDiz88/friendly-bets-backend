@@ -6,7 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.data.mongodb.core.mapping.Field;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @NoArgsConstructor
 @AllArgsConstructor
@@ -37,5 +37,5 @@ public class ExternalApiHttpLogEntry {
     private Integer retryAfterSeconds;
 
     @Field(name = "requested_at")
-    private LocalDateTime requestedAt;
+    private Instant requestedAt;
 }

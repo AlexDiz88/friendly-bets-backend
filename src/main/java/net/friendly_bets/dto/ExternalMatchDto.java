@@ -6,7 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import net.friendly_bets.models.GameScore;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Data
 @Builder
@@ -20,7 +20,7 @@ public class ExternalMatchDto {
     private int matchday;
     private String season;
     private String status;
-    private LocalDateTime utcDate;
+    private Instant utcDate;
     private String homeTeamName;
     private String awayTeamName;
     private String homeTeamId;
@@ -35,8 +35,8 @@ public class ExternalMatchDto {
     private String awayTeamCountry;
     private String leagueId;
     private GameScore gameScore;
-    private LocalDateTime fetchedAt;
-    private LocalDateTime finalizedAt;
+    private Instant fetchedAt;
+    private Instant finalizedAt;
     private String finalizedSource;
     private boolean adminCorrected;
     private boolean finalized;

@@ -15,7 +15,7 @@ import net.friendly_bets.repositories.TournamentFormatsRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -53,7 +53,7 @@ public class TournamentFormatsService {
         TournamentFormat format = TournamentFormat.builder()
                 .formatCode(dto.getFormatCode().trim())
                 .name(dto.getName().trim())
-                .createdAt(LocalDateTime.now())
+                .createdAt(Instant.now())
                 .regularStage(dto.getRegularStage() != null ? dto.getRegularStage().toEntity() : null)
                 .groupStage(dto.getGroupStage() != null ? dto.getGroupStage().toEntity() : null)
                 .playoff(toPlayoffEntity(dto.getPlayoff()))

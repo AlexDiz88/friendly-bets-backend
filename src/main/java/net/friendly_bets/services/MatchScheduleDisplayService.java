@@ -9,8 +9,6 @@ import net.friendly_bets.repositories.TeamsRepository;
 import net.friendly_bets.wc26.Wc26TeamCatalog;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
@@ -39,15 +37,13 @@ public class MatchScheduleDisplayService {
                 .matchday(schedule.getMatchday())
                 .season(seasonYear)
                 .status(schedule.getStatus())
-                .utcDate(toUtcLocalDateTime(schedule))
+                .utcDate(schedule.getUtcKickoff())
                 .homeTeamId(schedule.getHomeTeamId())
                 .awayTeamId(schedule.getAwayTeamId())
                 .leagueId(schedule.getLeagueId())
                 .gameScore(schedule.getGameScore())
                 .fetchedAt(schedule.getFetchedAt())
-                .finalizedAt(schedule.getFinalizedAt() != null
-                        ? LocalDateTime.ofInstant(schedule.getFinalizedAt(), ZoneOffset.UTC)
-                        : null)
+                .finalizedAt(schedule.getFinalizedAt())
                 .finalizedSource(schedule.getFinalizedByProvider())
                 .finalized(finalized)
                 .liveMinuteLabel(schedule.getLiveMinuteLabel())
@@ -110,12 +106,5 @@ public class MatchScheduleDisplayService {
             return false;
         }
         return FINISHED_STATUSES.contains(status.trim().toUpperCase(Locale.ROOT));
-    }
-
-    private static LocalDateTime toUtcLocalDateTime(MatchSchedule schedule) {
-        if (schedule.getUtcKickoff() == null) {
-            return null;
-        }
-        return LocalDateTime.ofInstant(schedule.getUtcKickoff(), ZoneOffset.UTC);
     }
 }

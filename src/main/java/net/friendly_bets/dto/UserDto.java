@@ -39,6 +39,9 @@ public class UserDto {
     @Schema(description = "показывать переключатель темы в шапке")
     private Boolean showThemeToggle;
 
+    @Schema(description = "IANA часовой пояс для отображения времени", example = "Europe/Berlin")
+    private String timezone;
+
     @Schema(description = "аватар пользователя в формате base64")
     private String avatar;
 
@@ -56,6 +59,7 @@ public class UserDto {
                 .language(user.getLanguage())
                 .themePreference(user.getThemePreference())
                 .showThemeToggle(user.getShowThemeToggle())
+                .timezone(net.friendly_bets.utils.UserTimeZones.defaultIfBlank(user.getTimezone()))
                 .avatar(user.getAvatar() != null ?
                         Base64.getEncoder().encodeToString(user.getAvatar().getData()) : null)
                 .build();

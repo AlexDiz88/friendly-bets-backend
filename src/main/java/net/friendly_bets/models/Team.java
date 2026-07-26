@@ -8,7 +8,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 import org.springframework.data.mongodb.core.mapping.MongoId;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -24,7 +24,7 @@ public class Team {
     private String id;
 
     @Field(name = "created_at")
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     /**
      * Уникальный ключ: PascalCase без пробелов ({@code ManchesterUnited}).

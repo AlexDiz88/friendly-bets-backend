@@ -17,7 +17,6 @@ import net.friendly_bets.services.ExternalApiMonitoringService;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -83,7 +82,7 @@ public class Soccer365FullMatchProvider implements FullMatchProvider {
             throw new BadRequestException("soccer365GameIdRequired");
         }
 
-        LocalDateTime reqAt = LocalDateTime.now();
+        Instant reqAt = Instant.now();
         long t0 = System.currentTimeMillis();
         String html;
         try {
@@ -143,7 +142,7 @@ public class Soccer365FullMatchProvider implements FullMatchProvider {
         current.setFullDetailsFetchedAt(now);
         current.setFinalizedAt(now);
         current.setFinalizedByProvider(MatchDataProviders.SOCCER365);
-        current.setFetchedAt(LocalDateTime.now());
+        current.setFetchedAt(Instant.now());
         MatchSchedule saved = matchScheduleRepository.save(current);
 
         monitoringService.finalizeAndSave(

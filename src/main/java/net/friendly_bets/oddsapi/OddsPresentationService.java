@@ -13,8 +13,6 @@ import net.friendly_bets.repositories.MatchScheduleRepository;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -61,9 +59,9 @@ public class OddsPresentationService {
             throw new BadRequestException("oddsNotAvailable");
         }
 
-        LocalDateTime fetchedAt = mergedSnapshot.get().getFetchedAt() != null
+        Instant fetchedAt = mergedSnapshot.get().getFetchedAt() != null
                 ? mergedSnapshot.get().getFetchedAt()
-                : LocalDateTime.ofInstant(now, ZoneOffset.UTC);
+                : now;
         return toDto(match, presentationGroups, fetchedAt, presentationBookmakers);
     }
 
@@ -222,12 +220,10 @@ public class OddsPresentationService {
     private OddsEventMarketsDto toDto(
             MatchSchedule match,
             List<OddsMarketGroup> groups,
-            LocalDateTime fetchedAt,
+            Instant fetchedAt,
             List<String> bookmakers
     ) {
-        LocalDateTime kickoffUtc = match.getUtcKickoff() != null
-                ? LocalDateTime.ofInstant(match.getUtcKickoff(), ZoneOffset.UTC)
-                : null;
+        Instant kickoffUtc = match.getUtcKickoff();
         return OddsEventMarketsDto.builder()
                 .matchScheduleId(match.getId())
                 .homeTeamId(match.getHomeTeamId())

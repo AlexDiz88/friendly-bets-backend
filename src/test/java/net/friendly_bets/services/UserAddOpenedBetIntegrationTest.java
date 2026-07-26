@@ -17,7 +17,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 
 import static net.friendly_bets.support.TestDataFactory.authUser;
@@ -95,7 +94,7 @@ class UserAddOpenedBetIntegrationTest extends AbstractMongoIntegrationTest {
                 .utcKickoff(kickoff)
                 .homeTeamId(fx.getHomeTeam().getId())
                 .awayTeamId(fx.getAwayTeam().getId())
-                .fetchedAt(LocalDateTime.now())
+                .fetchedAt(Instant.now())
                 .build());
     }
 

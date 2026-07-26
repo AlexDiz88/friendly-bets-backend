@@ -9,7 +9,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 import org.springframework.data.mongodb.core.mapping.MongoId;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.EnumMap;
 import java.util.Map;
 
@@ -41,7 +41,7 @@ public class AppSettings {
         private String buildId;
 
         @Field(name = "updated_at")
-        private LocalDateTime updatedAt;
+        private Instant updatedAt;
     }
 
     @NoArgsConstructor

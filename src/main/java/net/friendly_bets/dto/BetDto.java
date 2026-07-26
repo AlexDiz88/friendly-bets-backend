@@ -9,7 +9,7 @@ import net.friendly_bets.models.Bet;
 import net.friendly_bets.models.BetTitle;
 import net.friendly_bets.models.GameScore;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -35,7 +35,7 @@ public class BetDto {
     private String leagueCode;
 
     @Schema(description = "время создания/добавления ставки", example = "2023-08-15T12:00:00")
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     @Schema(description = "игрок, сделавший ставку", example = "{Player}")
     private UserSimpleDto player;
@@ -59,7 +59,7 @@ public class BetDto {
     private Integer betSize;
 
     @Schema(description = "время добавления результата ставки", example = "2023-08-15T12:00:00")
-    private LocalDateTime betResultAddedAt;
+    private Instant betResultAddedAt;
 
     @Schema(description = "счет матча", example = "{fullTime:'2:1'', firstTime:'1:1'}")
     private GameScore gameScore;
@@ -71,7 +71,7 @@ public class BetDto {
     private Double balanceChange;
 
     @Schema(description = "время изменения/редавтирования/аннулирования ставки", example = "2023-08-15T12:00:00")
-    private LocalDateTime updatedAt;
+    private Instant updatedAt;
 
     @Schema(description = "идентификатор записи календаря", example = "12-байтовый хэш ID")
     private String calendarNodeId;

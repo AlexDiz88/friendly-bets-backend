@@ -6,7 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import net.friendly_bets.models.odds.OddsMarketGroup;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -20,10 +20,10 @@ public class OddsEventMarketsDto {
     private String homeTeamId;
     private String awayTeamId;
     private String status;
-    private LocalDateTime kickoffUtc;
+    private Instant kickoffUtc;
     @Builder.Default
     private List<String> bookmakers = new ArrayList<>();
     @Builder.Default
     private List<OddsMarketGroup> marketGroups = new ArrayList<>();
-    private LocalDateTime fetchedAt;
+    private Instant fetchedAt;
 }

@@ -34,7 +34,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -184,7 +183,7 @@ public class MarathonbetSyncService {
         pipelineLock.lock();
         try {
             List<ExternalApiHttpLogEntry> httpLogs = new ArrayList<>();
-            LocalDateTime tournamentRequestedAt = LocalDateTime.now();
+            Instant tournamentRequestedAt = Instant.now();
             MarathonbetHttpFetchResult tournamentResult = tournamentClient.fetchTournament(tournamentId);
             httpLogs.add(MarathonbetHttpLogSupport.toLogEntry(
                     tournamentResult,
@@ -276,7 +275,7 @@ public class MarathonbetSyncService {
             return toResult(code, season, slotOrders, SlotSyncCounters.empty(), false, null);
         }
 
-        LocalDateTime tournamentRequestedAt = LocalDateTime.now();
+        Instant tournamentRequestedAt = Instant.now();
         MarathonbetHttpFetchResult tournamentResult = tournamentClient.fetchTournament(tournamentId);
         httpLogs.add(MarathonbetHttpLogSupport.toLogEntry(
                 tournamentResult,
@@ -361,7 +360,7 @@ public class MarathonbetSyncService {
     ) {
         String leagueCode = league.getLeagueCode().name();
         Instant now = Instant.now();
-        LocalDateTime fetchedAt = LocalDateTime.now();
+        Instant fetchedAt = Instant.now();
 
         List<MatchSchedule> pending = new ArrayList<>();
         for (int matchday : matchdays) {
@@ -485,7 +484,7 @@ public class MarathonbetSyncService {
             String leagueCode,
             String season,
             int matchday,
-            LocalDateTime fetchedAt,
+            Instant fetchedAt,
             List<ExternalApiHttpLogEntry> httpLogs
     ) {
         MarathonbetEventResolveResult resolveResult = eventMatcher.resolveAndRecordMappingIssue(
@@ -504,7 +503,7 @@ public class MarathonbetSyncService {
         MarathonbetPrematchEvent event = resolveResult.getEvent();
         try {
             sleepBeforeSse();
-            LocalDateTime sseRequestedAt = LocalDateTime.now();
+            Instant sseRequestedAt = Instant.now();
             MarathonbetHttpFetchResult sseResult = scrapeService.fetchEventSnapshotResult(event.getTreeId());
             httpLogs.add(MarathonbetHttpLogSupport.toLogEntry(
                     sseResult,

@@ -6,12 +6,14 @@ import lombok.experimental.FieldDefaults;
 import net.friendly_bets.dto.UpdatedEmailDto;
 import net.friendly_bets.dto.UpdatedPasswordDto;
 import net.friendly_bets.dto.UpdatedThemeSettingsDto;
+import net.friendly_bets.dto.UpdatedTimezoneDto;
 import net.friendly_bets.dto.UpdatedUsernameDto;
 import net.friendly_bets.dto.UserDto;
 import net.friendly_bets.exceptions.BadRequestException;
 import net.friendly_bets.exceptions.ConflictException;
 import net.friendly_bets.models.User;
 import net.friendly_bets.repositories.UsersRepository;
+import net.friendly_bets.utils.UserTimeZones;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -124,6 +126,25 @@ public class UsersService {
 
         user.setThemePreference(themePreference);
         user.setShowThemeToggle(updatedThemeSettingsDto.getShowThemeToggle());
+        usersRepository.save(user);
+
+        return UserDto.from(user);
+    }
+
+    // ------------------------------------------------------------------------------------------------------ //
+
+    @Transactional
+    public UserDto changeTimezone(String currentUserId, UpdatedTimezoneDto updatedTimezoneDto) {
+        User user = getEntityService.getUserOrThrow(currentUserId);
+
+        String trimmed = updatedTimezoneDto.getTimezone() == null
+                ? ""
+                : updatedTimezoneDto.getTimezone().trim();
+        if (!UserTimeZones.isSupported(trimmed)) {
+            throw new BadRequestException("timezoneNotSupported");
+        }
+
+        user.setTimezone(trimmed);
         usersRepository.save(user);
 
         return UserDto.from(user);

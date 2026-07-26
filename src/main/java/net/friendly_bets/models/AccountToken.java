@@ -10,7 +10,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 import org.springframework.data.mongodb.core.mapping.MongoId;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @NoArgsConstructor
 @AllArgsConstructor
@@ -35,11 +35,11 @@ public class AccountToken {
 
     @Indexed(expireAfterSeconds = 0)
     @Field(name = "expires_at")
-    private LocalDateTime expiresAt;
+    private Instant expiresAt;
 
     @Field(name = "created_at")
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     @Field(name = "used_at")
-    private LocalDateTime usedAt;
+    private Instant usedAt;
 }

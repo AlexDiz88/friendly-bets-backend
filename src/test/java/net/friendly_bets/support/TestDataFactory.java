@@ -11,7 +11,7 @@ import net.friendly_bets.services.BetsService;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -40,13 +40,14 @@ public class TestDataFactory {
     public User createUser(User.Role role) {
         String suffix = nextSuffix();
         User user = User.builder()
-                .createdAt(LocalDateTime.now())
+                .createdAt(Instant.now())
                 .email("test-" + suffix + "@friendly-bets.local")
                 .emailIsConfirmed(true)
                 .hashPassword("test-password-hash")
                 .role(role)
                 .username("user_" + suffix)
                 .language("ru")
+                .timezone("Europe/Berlin")
                 .build();
         return usersRepository.save(user);
     }
@@ -64,7 +65,7 @@ public class TestDataFactory {
     public Team createTeam(String title) {
         String suffix = nextSuffix();
         Team team = Team.builder()
-                .createdAt(LocalDateTime.now())
+                .createdAt(Instant.now())
                 .title(title + " " + suffix)
                 .country("Testland")
                 .build();
@@ -83,7 +84,7 @@ public class TestDataFactory {
 
     public League createLeague(League.LeagueCode leagueCode) {
         League league = League.builder()
-                .createdAt(LocalDateTime.now())
+                .createdAt(Instant.now())
                 .leagueCode(leagueCode)
                 .name(leagueCode.name() + " Test")
                 .currentMatchDay("1")
@@ -109,7 +110,7 @@ public class TestDataFactory {
 
     public Season createSeason(String title, int betCountPerMatchDay, Season.Status status) {
         Season season = Season.builder()
-                .createdAt(LocalDateTime.now())
+                .createdAt(Instant.now())
                 .title(title)
                 .betCountPerMatchDay(betCountPerMatchDay)
                 .defaultBetSize(10)
@@ -143,7 +144,7 @@ public class TestDataFactory {
                 .build();
 
         CalendarNode calendarNode = CalendarNode.builder()
-                .createdAt(LocalDateTime.now())
+                .createdAt(Instant.now())
                 .seasonId(seasonId)
                 .startDate(LocalDate.now())
                 .endDate(LocalDate.now().plusDays(7))
@@ -177,7 +178,7 @@ public class TestDataFactory {
         }
 
         CalendarNode calendarNode = CalendarNode.builder()
-                .createdAt(LocalDateTime.now())
+                .createdAt(Instant.now())
                 .seasonId(seasonId)
                 .startDate(LocalDate.now())
                 .endDate(LocalDate.now().plusDays(7))
@@ -247,7 +248,7 @@ public class TestDataFactory {
                 .build();
 
         Bet bet = Bet.builder()
-                .createdAt(LocalDateTime.now())
+                .createdAt(Instant.now())
                 .createdBy(moderator)
                 .user(player)
                 .season(season)
@@ -258,7 +259,7 @@ public class TestDataFactory {
                 .betTitle(createDefaultBetTitle())
                 .betOdds(betOdds)
                 .betSize(betSize)
-                .betResultAddedAt(LocalDateTime.now())
+                .betResultAddedAt(Instant.now())
                 .betResultAddedBy(moderator)
                 .gameScore(gameScore)
                 .betStatus(Bet.BetStatus.WON)

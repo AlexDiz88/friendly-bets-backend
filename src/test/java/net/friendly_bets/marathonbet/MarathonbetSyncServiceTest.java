@@ -27,7 +27,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Instant;
-import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -88,7 +87,7 @@ class MarathonbetSyncServiceTest {
                         .trigger(inv.getArgument(2))
                         .leagueCode(inv.getArgument(3))
                         .season(inv.getArgument(4))
-                        .startedAt(LocalDateTime.now())
+                        .startedAt(Instant.now())
                         .build());
         when(monitoringService.finalizeAndSave(any(), any(), any(), any(), any(), any()))
                 .thenAnswer(inv -> inv.getArgument(0));

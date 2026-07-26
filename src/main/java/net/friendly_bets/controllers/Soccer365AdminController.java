@@ -39,12 +39,13 @@ public class Soccer365AdminController {
     @PostMapping("/sync-schedule")
     @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<Soccer365ScheduleSyncResultDto> syncSchedule(
-            @RequestParam String leagueCode
+            @RequestParam String leagueCode,
+            @RequestParam(required = false) Integer matchday
     ) {
         return ResponseEntity.ok(router.execute(
                 ExternalDataLayer.SCHEDULE,
                 ScheduleProvider.class,
-                p -> p.syncByLeagueCode(leagueCode),
+                p -> p.syncByLeagueCode(leagueCode, matchday),
                 leagueCode
         ));
     }

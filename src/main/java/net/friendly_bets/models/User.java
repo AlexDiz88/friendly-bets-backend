@@ -9,7 +9,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 import org.springframework.data.mongodb.core.mapping.MongoId;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @NoArgsConstructor
 @AllArgsConstructor
@@ -27,7 +27,7 @@ public class User {
     private String id;
 
     @Field(name = "created_at")
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     @Field(name = "email")
     private String email;
@@ -57,4 +57,8 @@ public class User {
     /** Показывать переключатель темы в шапке сайта */
     @Field(name = "show_theme_toggle")
     private Boolean showThemeToggle;
+
+    /** IANA timezone for UI display (default Europe/Berlin) */
+    @Field(name = "timezone")
+    private String timezone;
 }

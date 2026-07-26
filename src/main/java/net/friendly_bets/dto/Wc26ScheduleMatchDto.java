@@ -5,7 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Data
 @Builder
@@ -22,9 +22,9 @@ public class Wc26ScheduleMatchDto {
     private String home;
     private String away;
     private String labelKey;
-    private LocalDateTime kickoffUtc;
+    private Instant kickoffUtc;
     private String scoreView;
     private String status;
     private boolean finalized;
-    private LocalDateTime utcDate;
+    private Instant utcDate;
 }

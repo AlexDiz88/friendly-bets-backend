@@ -11,7 +11,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 import org.springframework.data.mongodb.core.mapping.MongoId;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -42,10 +42,10 @@ public class ExternalApiMonitoringRun {
 
     @Field(name = "started_at")
     @Indexed
-    private LocalDateTime startedAt;
+    private Instant startedAt;
 
     @Field(name = "finished_at")
-    private LocalDateTime finishedAt;
+    private Instant finishedAt;
 
     @Field(name = "duration_ms")
     private Long durationMs;

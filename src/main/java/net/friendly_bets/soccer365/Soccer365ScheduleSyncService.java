@@ -33,7 +33,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
-import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -71,16 +70,16 @@ public class Soccer365ScheduleSyncService implements ScheduleProvider {
     private final OddsMergedOddsService oddsMergedOddsService;
     private final ExternalApiMonitoringService monitoringService;
 
-    public Soccer365ScheduleSyncResultDto syncByLeagueCode(String leagueCodeRaw) {
+    public Soccer365ScheduleSyncResultDto syncByLeagueCode(String leagueCodeRaw, Integer matchday) {
         League.LeagueCode leagueCode = Soccer365TeamNamesService.parseLeagueCode(leagueCodeRaw);
         Season season = runningSeasonLookup.findRunningSeasonOrThrow("noActiveSeasonWasFounded");
         League league = findLeague(season, leagueCode)
                 .orElseThrow(() -> new BadRequestException("leagueNotFoundInSeason"));
-        return syncLeague(season, league, false, ExternalApiMonitoringTrigger.ADMIN);
+        return syncLeague(season, league, false, ExternalApiMonitoringTrigger.ADMIN, matchday);
     }
 
     public Soccer365ScheduleSyncResultDto syncLeague(Season season, League league, boolean respectFarKickoffSkip) {
-        return syncLeague(season, league, respectFarKickoffSkip, ExternalApiMonitoringTrigger.CRON);
+        return syncLeague(season, league, respectFarKickoffSkip, ExternalApiMonitoringTrigger.CRON, null);
     }
 
     public Soccer365ScheduleSyncResultDto syncLeague(
@@ -88,6 +87,16 @@ public class Soccer365ScheduleSyncService implements ScheduleProvider {
             League league,
             boolean respectFarKickoffSkip,
             ExternalApiMonitoringTrigger trigger
+    ) {
+        return syncLeague(season, league, respectFarKickoffSkip, trigger, null);
+    }
+
+    public Soccer365ScheduleSyncResultDto syncLeague(
+            Season season,
+            League league,
+            boolean respectFarKickoffSkip,
+            ExternalApiMonitoringTrigger trigger,
+            Integer explicitMatchday
     ) {
         if (league == null || league.getLeagueCode() == null) {
             throw new BadRequestException("leagueCodeRequired");
@@ -103,7 +112,7 @@ public class Soccer365ScheduleSyncService implements ScheduleProvider {
         );
         List<ExternalApiHttpLogEntry> httpLogs = new ArrayList<>();
         try {
-            return syncLeagueBody(season, league, respectFarKickoffSkip, run, httpLogs, externalSeason);
+            return syncLeagueBody(season, league, respectFarKickoffSkip, run, httpLogs, externalSeason, explicitMatchday);
         } catch (RuntimeException e) {
             monitoringService.finalizeAndSave(
                     run,
@@ -123,52 +132,76 @@ public class Soccer365ScheduleSyncService implements ScheduleProvider {
             boolean respectFarKickoffSkip,
             ExternalApiMonitoringRun run,
             List<ExternalApiHttpLogEntry> httpLogs,
-            String externalSeason
+            String externalSeason,
+            Integer explicitMatchday
     ) {
         League.LeagueCode leagueCode = league.getLeagueCode();
         int competitionId = teamNamesService.requireCompetitionId(leagueCode);
 
-        Optional<Integer> currentOrderOpt = matchdaySlotSupport.resolveSlotOrder(league, league.getCurrentMatchDay());
-        if (currentOrderOpt.isEmpty()) {
-            throw new BadRequestException("currentMatchdayUnresolved");
-        }
-        int currentOrder = currentOrderOpt.get();
+        int currentOrder;
         Integer nextOrder = null;
-        String currentSlotId = null;
+        String currentSlotId;
         String nextSlotId = null;
+        boolean includeNext;
 
+        List<ExpandedMatchdaySlot> formatSlots = List.of();
         if (league.getTournamentFormatId() != null && !league.getTournamentFormatId().isBlank()) {
             TournamentFormat format = getEntityService.getTournamentFormatOrThrow(league.getTournamentFormatId());
-            List<ExpandedMatchdaySlot> slots = tournamentFormatExpander.expand(format);
-            Optional<ExpandedMatchdaySlot> currentSlot = slots.stream()
-                    .filter(s -> s.getOrder() == currentOrder)
-                    .findFirst();
-            currentSlotId = currentSlot.map(ExpandedMatchdaySlot::getId).orElse(String.valueOf(currentOrder));
-            Optional<ExpandedMatchdaySlot> nextSlot = slots.stream()
-                    .filter(s -> s.getOrder() == currentOrder + 1)
-                    .findFirst();
-            if (nextSlot.isPresent()) {
-                nextOrder = nextSlot.get().getOrder();
-                nextSlotId = nextSlot.get().getId();
-            } else {
-                log.info("soccer365 sync {}: next matchday after {} missing — OK", leagueCode, currentOrder);
+            formatSlots = tournamentFormatExpander.expand(format);
+        }
+
+        if (explicitMatchday != null) {
+            if (explicitMatchday < 1) {
+                throw new BadRequestException("invalidMatchday");
             }
+            if (!formatSlots.isEmpty() && formatSlots.stream().noneMatch(s -> s.getOrder() == explicitMatchday)) {
+                throw new BadRequestException("invalidMatchday");
+            }
+            currentOrder = explicitMatchday;
+            includeNext = false;
+            currentSlotId = formatSlots.stream()
+                    .filter(s -> s.getOrder() == currentOrder)
+                    .findFirst()
+                    .map(ExpandedMatchdaySlot::getId)
+                    .orElse(String.valueOf(currentOrder));
         } else {
-            currentSlotId = String.valueOf(currentOrder);
-            nextOrder = currentOrder + 1;
-            nextSlotId = String.valueOf(nextOrder);
+            Optional<Integer> currentOrderOpt = matchdaySlotSupport.resolveSlotOrder(league, league.getCurrentMatchDay());
+            if (currentOrderOpt.isEmpty()) {
+                throw new BadRequestException("currentMatchdayUnresolved");
+            }
+            currentOrder = currentOrderOpt.get();
+            includeNext = true;
+            if (!formatSlots.isEmpty()) {
+                Optional<ExpandedMatchdaySlot> currentSlot = formatSlots.stream()
+                        .filter(s -> s.getOrder() == currentOrder)
+                        .findFirst();
+                currentSlotId = currentSlot.map(ExpandedMatchdaySlot::getId).orElse(String.valueOf(currentOrder));
+                Optional<ExpandedMatchdaySlot> nextSlot = formatSlots.stream()
+                        .filter(s -> s.getOrder() == currentOrder + 1)
+                        .findFirst();
+                if (nextSlot.isPresent()) {
+                    nextOrder = nextSlot.get().getOrder();
+                    nextSlotId = nextSlot.get().getId();
+                } else {
+                    log.info("soccer365 sync {}: next matchday after {} missing — OK", leagueCode, currentOrder);
+                }
+            } else {
+                currentSlotId = String.valueOf(currentOrder);
+                nextOrder = currentOrder + 1;
+                nextSlotId = String.valueOf(nextOrder);
+            }
         }
 
         Set<Integer> window = new LinkedHashSet<>();
         window.add(currentOrder);
-        if (nextOrder != null) {
+        if (includeNext && nextOrder != null) {
             window.add(nextOrder);
         }
 
         run.setMatchday(currentOrder);
         run.setSlotOrders(new ArrayList<>(window));
 
-        LocalDateTime reqAt = LocalDateTime.now();
+        Instant reqAt = Instant.now();
         long t0 = System.currentTimeMillis();
         String html;
         try {
@@ -219,7 +252,7 @@ public class Soccer365ScheduleSyncService implements ScheduleProvider {
                     .build();
         }
 
-        LocalDateTime fetchedAt = LocalDateTime.now();
+        Instant fetchedAt = Instant.now();
         int upserted = 0;
         int skippedUnmapped = 0;
         Set<String> unmappedNames = new LinkedHashSet<>();
@@ -306,7 +339,7 @@ public class Soccer365ScheduleSyncService implements ScheduleProvider {
             String homeTeamId,
             String awayTeamId,
             Soccer365ParsedSchedule.Match match,
-            LocalDateTime fetchedAt
+            Instant fetchedAt
     ) {
         MatchSchedule existing = matchScheduleRepository
                 .findByLeagueIdAndSeasonIdAndMatchdayAndHomeTeamIdAndAwayTeamId(

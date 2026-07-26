@@ -12,7 +12,7 @@ import org.springframework.data.mongodb.core.mapping.Field;
 import org.springframework.data.mongodb.core.mapping.MongoId;
 
 import java.time.Instant;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -104,7 +104,7 @@ public class MatchSchedule {
     private Instant fullDetailsFetchedAt;
 
     @Field(name = "fetched_at")
-    private LocalDateTime fetchedAt;
+    private Instant fetchedAt;
 
     public String externalId(String storageKey) {
         if (externalIds == null || storageKey == null) {
