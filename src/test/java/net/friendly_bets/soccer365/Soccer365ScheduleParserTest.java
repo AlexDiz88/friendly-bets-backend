@@ -6,6 +6,7 @@ import java.time.Instant;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class Soccer365ScheduleParserTest {
@@ -50,6 +51,27 @@ class Soccer365ScheduleParserTest {
         assertEquals("SCHEDULED", match.getStatus());
         assertEquals(2, parsed.getClubFilterNames().size());
         assertTrue(parsed.getClubFilterNames().contains("Арсенал"));
+
+        Soccer365ParsedSchedule.Match withoutJsonLd = parsed.getRounds().get(1).getMatches().get(0);
+        assertNull(withoutJsonLd.getUtcKickoff());
+    }
+
+    @Test
+    void displayKickoffWithoutJsonLd_doesNotGuessTimezone() {
+        String html = """
+                <div class="cmp_stg_ttl">1-й тур</div>
+                <div class="game_block">
+                  <div class="status"><span class="size10">28.08, 20:30</span></div>
+                  <div class="result">
+                    <div class="ht"><div class="name"><span>Бавария</span></div><div class="gls">-</div></div>
+                    <div class="at"><div class="name"><span>Штутгарт</span></div><div class="gls">-</div></div>
+                  </div>
+                </div>
+                """;
+
+        Soccer365ParsedSchedule.Match match = parser.parse(html, 12).getRounds().get(0).getMatches().get(0);
+        assertEquals("Бавария", match.getHomeName());
+        assertNull(match.getUtcKickoff());
     }
 
     @Test

@@ -7,11 +7,7 @@ import org.jsoup.select.Elements;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.time.OffsetDateTime;
-import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -24,11 +20,7 @@ import java.util.regex.Pattern;
 @Component
 public class Soccer365ScheduleParser {
 
-    private static final ZoneId MOSCOW = ZoneId.of("Europe/Moscow");
     private static final Pattern ROUND_TITLE = Pattern.compile("(\\d+)\\s*-\\s*й\\s*тур", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
-    private static final Pattern DISPLAY_KICKOFF = Pattern.compile(
-            "(\\d{1,2})\\.(\\d{1,2})(?:\\.(\\d{2,4}))?\\s*,\\s*(\\d{1,2}):(\\d{2})"
-    );
     private static final Pattern JSON_LD_START = Pattern.compile("\"startDate\"\\s*:\\s*\"([^\"]+)\"");
     private static final Pattern CLUB_FILTER = Pattern.compile(
             "filtersData\\('club','(\\d+)'\\);\"?>([^<]+)</a>",
@@ -165,52 +157,24 @@ public class Soccer365ScheduleParser {
         return null;
     }
 
+    /**
+     * Kickoff only from JSON-LD {@code startDate} with an explicit offset (or Z) → Instant UTC.
+     * Display wall-clock (e.g. {@code 21.08, 21:00}) is never interpreted — no Moscow/Berlin/guess fallback.
+     */
     private Instant resolveUtcKickoff(Element gameBlock) {
         Element script = gameBlock.selectFirst("script[type=application/ld+json]");
-        if (script != null) {
-            Matcher matcher = JSON_LD_START.matcher(script.html());
-            if (matcher.find()) {
-                try {
-                    OffsetDateTime odt = OffsetDateTime.parse(matcher.group(1).trim(), ISO_OFFSET);
-                    return odt.toInstant();
-                } catch (Exception ignored) {
-                    // fall through to display time
-                }
-            }
+        if (script == null) {
+            return null;
         }
-        Element status = gameBlock.selectFirst(".status .size10");
-        if (status != null) {
-            return parseDisplayKickoffAsMoscowUtc(status.text()).orElse(null);
-        }
-        return null;
-    }
-
-    Optional<Instant> parseDisplayKickoffAsMoscowUtc(String raw) {
-        if (raw == null || raw.isBlank()) {
-            return Optional.empty();
-        }
-        Matcher matcher = DISPLAY_KICKOFF.matcher(raw.trim());
+        Matcher matcher = JSON_LD_START.matcher(script.html());
         if (!matcher.find()) {
-            return Optional.empty();
+            return null;
         }
         try {
-            int day = Integer.parseInt(matcher.group(1));
-            int month = Integer.parseInt(matcher.group(2));
-            String yearRaw = matcher.group(3);
-            int year;
-            if (yearRaw == null || yearRaw.isBlank()) {
-                year = LocalDate.now(MOSCOW).getYear();
-            } else if (yearRaw.length() == 2) {
-                year = 2000 + Integer.parseInt(yearRaw);
-            } else {
-                year = Integer.parseInt(yearRaw);
-            }
-            int hour = Integer.parseInt(matcher.group(4));
-            int minute = Integer.parseInt(matcher.group(5));
-            LocalDateTime moscowLocal = LocalDateTime.of(LocalDate.of(year, month, day), LocalTime.of(hour, minute));
-            return Optional.of(moscowLocal.atZone(MOSCOW).toInstant());
+            OffsetDateTime odt = OffsetDateTime.parse(matcher.group(1).trim(), ISO_OFFSET);
+            return odt.toInstant();
         } catch (Exception e) {
-            return Optional.empty();
+            return null;
         }
     }
 
