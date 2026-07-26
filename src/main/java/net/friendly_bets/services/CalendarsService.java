@@ -14,7 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -99,7 +99,7 @@ public class CalendarsService {
         leagueMatchdaysValidation(calendarNodes, newCalendarNode.getLeagueMatchdayNodes());
 
         CalendarNode calendarNode = CalendarNode.builder()
-                .createdAt(LocalDateTime.now())
+                .createdAt(Instant.now())
                 .seasonId(newCalendarNode.getSeasonId())
                 .startDate(newCalendarNode.getStartDate())
                 .endDate(newCalendarNode.getEndDate())

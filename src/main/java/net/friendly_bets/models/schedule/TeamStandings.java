@@ -9,7 +9,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 import org.springframework.data.mongodb.core.mapping.MongoId;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -39,5 +39,5 @@ public class TeamStandings {
     private List<TeamStandingRow> rows = new ArrayList<>();
 
     @Field(name = "updated_at")
-    private LocalDateTime updatedAt;
+    private Instant updatedAt;
 }

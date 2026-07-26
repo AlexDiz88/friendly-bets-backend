@@ -10,7 +10,8 @@ import net.friendly_bets.repositories.AuthRateLimitRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
+import java.time.Duration;
+import java.time.Instant;
 
 @RequiredArgsConstructor
 @Service
@@ -22,7 +23,7 @@ public class AuthRateLimitService {
 
     @Transactional
     public void checkAndIncrement(String key) {
-        LocalDateTime now = LocalDateTime.now();
+        Instant now = Instant.now();
         AuthRateLimit limit = authRateLimitRepository.findById(key).orElse(null);
 
         if (limit == null) {
@@ -34,7 +35,7 @@ public class AuthRateLimitService {
             return;
         }
 
-        if (limit.getWindowStart().plusMinutes(appAuthProperties.getRateLimitWindowMinutes()).isBefore(now)) {
+        if (limit.getWindowStart().plus(Duration.ofMinutes(appAuthProperties.getRateLimitWindowMinutes())).isBefore(now)) {
             limit.setAttempts(1);
             limit.setWindowStart(now);
             authRateLimitRepository.save(limit);

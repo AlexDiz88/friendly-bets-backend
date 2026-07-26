@@ -1,6 +1,7 @@
 package net.friendly_bets.soccer365;
 
 import lombok.RequiredArgsConstructor;
+import net.friendly_bets.gameresults.MatchDataProviders;
 import net.friendly_bets.models.League;
 import net.friendly_bets.models.Season;
 import net.friendly_bets.providers.ExternalDataLayer;
@@ -39,6 +40,10 @@ public class Soccer365ScheduleSyncScheduler {
     @Scheduled(fixedDelayString = "${soccer365.scheduler-tick-ms:300000}")
     public void tick() {
         if (!layerConfigService.isLayerEnabled(ExternalDataLayer.SCHEDULE)) {
+            return;
+        }
+        String primary = layerConfigService.assignment(ExternalDataLayer.SCHEDULE).getPrimaryProvider();
+        if (!MatchDataProviders.SOCCER365.equals(primary)) {
             return;
         }
         Optional<Season> seasonOpt = runningSeasonLookup.findRunningSeason();

@@ -10,7 +10,7 @@ import org.springframework.data.mongodb.core.mapping.Field;
 import org.springframework.data.mongodb.core.mapping.MongoId;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 
 @NoArgsConstructor
@@ -25,7 +25,7 @@ public class CalendarNode {
     private String id;
 
     @Field(name = "created_at")
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     @Field(name = "season_id")
     private String seasonId;

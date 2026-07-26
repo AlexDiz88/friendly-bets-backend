@@ -166,7 +166,17 @@ public class Soccer365ScheduleParser {
         if (script == null) {
             return null;
         }
-        Matcher matcher = JSON_LD_START.matcher(script.html());
+        return parseUtcKickoffFromHtml(script.html());
+    }
+
+    /**
+     * Finds JSON-LD {@code startDate} with offset/Z anywhere in HTML (schedule block or {@code /games/{id}/}).
+     */
+    public Instant parseUtcKickoffFromHtml(String html) {
+        if (html == null || html.isBlank()) {
+            return null;
+        }
+        Matcher matcher = JSON_LD_START.matcher(html);
         if (!matcher.find()) {
             return null;
         }

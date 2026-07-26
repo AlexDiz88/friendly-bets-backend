@@ -9,7 +9,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 import org.springframework.data.mongodb.core.mapping.MongoId;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @NoArgsConstructor
 @AllArgsConstructor
@@ -26,7 +26,7 @@ public class Bet {
     private String id;
 
     @Field(name = "created_at")
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     @DBRef(lazy = true)
     @Field(name = "created_by")
@@ -65,7 +65,7 @@ public class Bet {
     private Integer betSize;
 
     @Field(name = "bet_result_added_at")
-    private LocalDateTime betResultAddedAt;
+    private Instant betResultAddedAt;
 
     @DBRef(lazy = true)
     @Field(name = "bet_result_added_by")
@@ -81,7 +81,7 @@ public class Bet {
     private Double balanceChange;
 
     @Field(name = "updated_at")
-    private LocalDateTime updatedAt;
+    private Instant updatedAt;
 
     @DBRef(lazy = true)
     @Field(name = "updated_by")

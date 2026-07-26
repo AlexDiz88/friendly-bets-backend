@@ -30,6 +30,8 @@ public class Soccer365Properties {
      * skip the tick (rare-schedule mode).
      */
     private int skipWhenKickoffFartherThanDays = 3;
+    /** Kickoff±window when resolving FULL_MATCH card via competition schedule. */
+    private int fullMatchKickoffWindowMinutes = 30;
     private Map<String, Integer> competitionIds = new HashMap<>(Map.of(
             "EPL", 12,
             "BL", 17,

@@ -13,7 +13,6 @@ import net.friendly_bets.services.MatchScheduleDisplayService;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -57,7 +56,7 @@ public class OddsMergedOddsService {
             MatchSchedule match,
             List<MappedOddsQuote> quotes,
             List<String> bookmakers,
-            LocalDateTime fetchedAt,
+            Instant fetchedAt,
             boolean frozen,
             Long marathonbetTreeId
     ) {
@@ -99,7 +98,7 @@ public class OddsMergedOddsService {
         }
         oddsRepository.findByMatchScheduleId(match.getId()).ifPresent(doc -> {
             if (doc.getFrozenAt() == null) {
-                doc.setFrozenAt(LocalDateTime.now());
+                doc.setFrozenAt(Instant.now());
                 oddsRepository.save(doc);
             }
         });
@@ -112,7 +111,7 @@ public class OddsMergedOddsService {
             String matchScheduleId,
             List<String> bookmakers,
             List<OddsMarketGroup> groups,
-            LocalDateTime fetchedAt,
+            Instant fetchedAt,
             boolean frozen,
             Long marathonbetTreeId
     ) {

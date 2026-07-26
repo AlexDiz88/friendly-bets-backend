@@ -5,7 +5,7 @@ import net.friendly_bets.marathonbet.client.MarathonbetRequestType;
 import net.friendly_bets.models.monitoring.ExternalApiHttpLogEntry;
 import net.friendly_bets.services.ExternalApiMonitoringService;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 public final class MarathonbetHttpLogSupport {
 
@@ -16,7 +16,7 @@ public final class MarathonbetHttpLogSupport {
             MarathonbetHttpFetchResult result,
             MarathonbetRequestType type,
             long targetId,
-            LocalDateTime requestedAt
+            Instant requestedAt
     ) {
         return ExternalApiMonitoringService.httpLog(
                 type.name(),

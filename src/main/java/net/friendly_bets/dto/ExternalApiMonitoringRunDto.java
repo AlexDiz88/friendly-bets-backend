@@ -9,7 +9,7 @@ import net.friendly_bets.models.monitoring.ExternalApiMonitoringStatus;
 import net.friendly_bets.models.monitoring.ExternalApiMonitoringTrigger;
 import net.friendly_bets.providers.ExternalDataLayer;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 
 @Value
@@ -20,8 +20,8 @@ public class ExternalApiMonitoringRunDto {
     String provider;
     ExternalApiMonitoringTrigger trigger;
     ExternalApiMonitoringStatus status;
-    LocalDateTime startedAt;
-    LocalDateTime finishedAt;
+    Instant startedAt;
+    Instant finishedAt;
     Long durationMs;
     String leagueCode;
     String season;

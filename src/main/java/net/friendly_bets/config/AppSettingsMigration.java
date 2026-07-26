@@ -14,8 +14,7 @@ import org.springframework.core.annotation.Order;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.stereotype.Component;
 
-import java.time.LocalDateTime;
-import java.time.ZoneId;
+import java.time.Instant;
 import java.util.Date;
 import java.util.EnumMap;
 import java.util.Map;
@@ -89,7 +88,7 @@ public class AppSettingsMigration implements ApplicationRunner {
         }
         return AppSettings.ClientVersionBlock.builder()
                 .buildId(doc.getString("build_id"))
-                .updatedAt(toLocalDateTime(doc.get("updated_at")))
+                .updatedAt(toInstant(doc.get("updated_at")))
                 .build();
     }
 
@@ -122,15 +121,15 @@ public class AppSettingsMigration implements ApplicationRunner {
         return AppSettings.ExternalDataLayersBlock.builder().layers(layers).build();
     }
 
-    private static LocalDateTime toLocalDateTime(Object value) {
+    private static Instant toInstant(Object value) {
         if (value == null) {
             return null;
         }
-        if (value instanceof LocalDateTime localDateTime) {
-            return localDateTime;
+        if (value instanceof Instant instant) {
+            return instant;
         }
         if (value instanceof Date date) {
-            return LocalDateTime.ofInstant(date.toInstant(), ZoneId.systemDefault());
+            return date.toInstant();
         }
         return null;
     }

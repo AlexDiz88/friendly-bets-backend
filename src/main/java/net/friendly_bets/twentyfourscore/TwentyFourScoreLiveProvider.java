@@ -26,7 +26,6 @@ import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -121,7 +120,7 @@ public class TwentyFourScoreLiveProvider implements LiveMatchProvider {
 
         try {
             for (LocalDate date : dates) {
-                LocalDateTime reqAt = LocalDateTime.now();
+                Instant reqAt = Instant.now();
                 long t0 = System.currentTimeMillis();
                 String html;
                 try {
@@ -286,13 +285,7 @@ public class TwentyFourScoreLiveProvider implements LiveMatchProvider {
             }
             schedule.setGameScore(score);
         }
-        if (row.getExternalMatchId() != null) {
-            schedule.putExternalId(
-                    MatchDataProviders.sourcesStorageKey(MatchDataProviders.TWENTYFOUR_SCORE),
-                    row.getExternalMatchId()
-            );
-        }
-        schedule.setFetchedAt(LocalDateTime.now());
+        schedule.setFetchedAt(Instant.now());
     }
 
     private static boolean isFinishedStatus(String status) {

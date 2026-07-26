@@ -18,7 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 import net.friendly_bets.utils.SeasonCalendarUtils;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -60,7 +60,7 @@ public class SeasonsService {
         SeasonCalendarUtils.validateDateRange(newSeason.getStartDate(), newSeason.getEndDate());
 
         Season season = Season.builder()
-                .createdAt(LocalDateTime.now())
+                .createdAt(Instant.now())
                 .title(newSeason.getTitle())
                 .startDate(newSeason.getStartDate())
                 .endDate(newSeason.getEndDate())
@@ -245,7 +245,7 @@ public class SeasonsService {
                 .orElse("1");
 
         League league = League.builder()
-                .createdAt(LocalDateTime.now())
+                .createdAt(Instant.now())
                 .leagueCode(League.LeagueCode.valueOf(newLeague.getLeagueCode()))
                 .name(newLeague.getLeagueCode() + " " + season.getTitle())
                 .currentMatchDay(firstSlotId)

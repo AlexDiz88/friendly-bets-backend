@@ -7,7 +7,7 @@ import lombok.NoArgsConstructor;
 import net.friendly_bets.models.GameScore;
 import org.springframework.data.mongodb.core.mapping.Field;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @NoArgsConstructor
 @AllArgsConstructor
@@ -25,7 +25,7 @@ public class TournamentArchiveMatch {
     private String group;
 
     @Field(name = "kickoff_utc")
-    private LocalDateTime kickoffUtc;
+    private Instant kickoffUtc;
 
     @Field(name = "home_team_id")
     private String homeTeamId;

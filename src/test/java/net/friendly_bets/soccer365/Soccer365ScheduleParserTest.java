@@ -57,6 +57,15 @@ class Soccer365ScheduleParserTest {
     }
 
     @Test
+    void parseUtcKickoffFromHtml_readsOffsetStartDate() {
+        Instant kickoff = parser.parseUtcKickoffFromHtml(
+                "<script type=\"application/ld+json\">"
+                        + "{\"@type\":\"Event\",\"startDate\":\"2026-08-28T22:00:00+03:00\"}</script>"
+        );
+        assertEquals(Instant.parse("2026-08-28T19:00:00Z"), kickoff);
+    }
+
+    @Test
     void displayKickoffWithoutJsonLd_doesNotGuessTimezone() {
         String html = """
                 <div class="cmp_stg_ttl">1-й тур</div>

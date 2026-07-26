@@ -1,6 +1,7 @@
 package net.friendly_bets.services;
 
 import lombok.RequiredArgsConstructor;
+import net.friendly_bets.aiscore.AiscoreTeamNamesService;
 import net.friendly_bets.dto.Soccer365TeamNameChipDto;
 import net.friendly_bets.exceptions.BadRequestException;
 import net.friendly_bets.marathonbet.MarathonbetTeamNamesService;
@@ -18,6 +19,7 @@ public class ExternalTeamNamesService {
     private final Soccer365TeamNamesService soccer365TeamNamesService;
     private final MarathonbetTeamNamesService marathonbetTeamNamesService;
     private final TwentyFourScoreTeamNamesService twentyFourScoreTeamNamesService;
+    private final AiscoreTeamNamesService aiscoreTeamNamesService;
 
     public List<Soccer365TeamNameChipDto> fetchUnmappedTeamNames(String providerRaw, String leagueCode) {
         String provider = normalizeProvider(providerRaw);
@@ -26,6 +28,7 @@ public class ExternalTeamNamesService {
             case TeamTitleUtils.MARATHONBET_PROVIDER -> marathonbetTeamNamesService.fetchUnmappedTeamNames(leagueCode);
             case TeamTitleUtils.TWENTYFOUR_SCORE_PROVIDER ->
                     twentyFourScoreTeamNamesService.fetchUnmappedTeamNames(leagueCode);
+            case TeamTitleUtils.AISCORE_PROVIDER -> aiscoreTeamNamesService.fetchUnmappedTeamNames(leagueCode);
             default -> throw new BadRequestException("externalTeamNamesProviderUnsupported");
         };
     }

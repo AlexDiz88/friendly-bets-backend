@@ -5,7 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 
 @Data
@@ -15,5 +15,5 @@ import java.util.List;
 public class Wc26BracketPageDto {
 
     private List<Wc26BracketMatchDto> matches;
-    private LocalDateTime fetchedAt;
+    private Instant fetchedAt;
 }

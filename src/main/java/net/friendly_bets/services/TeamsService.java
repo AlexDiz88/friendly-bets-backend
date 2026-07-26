@@ -19,7 +19,7 @@ import net.friendly_bets.utils.TeamTitleUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -58,7 +58,7 @@ public class TeamsService {
         List<TeamExternalAlias> aliases = buildAliases(newTeam.getExternalAliases());
 
         Team team = Team.builder()
-                .createdAt(LocalDateTime.now())
+                .createdAt(Instant.now())
                 .title(title)
                 .country(newTeam.getCountry())
                 .displayNames(toDisplayNames(newTeam.getDisplayNames(), title))

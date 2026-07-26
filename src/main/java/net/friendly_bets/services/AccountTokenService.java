@@ -15,7 +15,8 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
-import java.time.LocalDateTime;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Base64;
 import java.util.HexFormat;
 
@@ -34,8 +35,8 @@ public class AccountTokenService {
         accountTokenRepository.deleteByUserIdAndTypeAndUsedAtIsNull(userId, type);
 
         String rawToken = generateRawToken();
-        LocalDateTime now = LocalDateTime.now();
-        LocalDateTime expiresAt = now.plusHours(expiryHours(type));
+        Instant now = Instant.now();
+        Instant expiresAt = now.plus(Duration.ofHours(expiryHours(type)));
 
         AccountToken token = AccountToken.builder()
                 .userId(userId)
@@ -54,11 +55,11 @@ public class AccountTokenService {
                 .findByTokenHashAndTypeAndUsedAtIsNull(hashToken(rawToken), type)
                 .orElseThrow(() -> new BadRequestException("invalidOrExpiredToken"));
 
-        if (token.getExpiresAt().isBefore(LocalDateTime.now())) {
+        if (token.getExpiresAt().isBefore(Instant.now())) {
             throw new BadRequestException("invalidOrExpiredToken");
         }
 
-        token.setUsedAt(LocalDateTime.now());
+        token.setUsedAt(Instant.now());
         accountTokenRepository.save(token);
         return token;
     }

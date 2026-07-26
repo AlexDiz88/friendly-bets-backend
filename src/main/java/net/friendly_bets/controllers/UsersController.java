@@ -5,6 +5,7 @@ import net.friendly_bets.controllers.api.UsersApi;
 import net.friendly_bets.dto.UpdatedEmailDto;
 import net.friendly_bets.dto.UpdatedPasswordDto;
 import net.friendly_bets.dto.UpdatedThemeSettingsDto;
+import net.friendly_bets.dto.UpdatedTimezoneDto;
 import net.friendly_bets.dto.UpdatedUsernameDto;
 import net.friendly_bets.dto.UserDto;
 import net.friendly_bets.security.details.AuthenticatedUser;
@@ -74,5 +75,14 @@ public class UsersController implements UsersApi {
                                                        @RequestBody @Valid UpdatedThemeSettingsDto updatedThemeSettingsDto) {
         String currentUserId = currentUser.getUser().getId();
         return ResponseEntity.ok(usersService.changeThemeSettings(currentUserId, updatedThemeSettingsDto));
+    }
+
+    @Override
+    @PreAuthorize("isAuthenticated()")
+    @PutMapping("/my/profile/timezone")
+    public ResponseEntity<UserDto> changeTimezone(@AuthenticationPrincipal AuthenticatedUser currentUser,
+                                                  @RequestBody @Valid UpdatedTimezoneDto updatedTimezoneDto) {
+        String currentUserId = currentUser.getUser().getId();
+        return ResponseEntity.ok(usersService.changeTimezone(currentUserId, updatedTimezoneDto));
     }
 }

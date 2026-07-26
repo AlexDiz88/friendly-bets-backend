@@ -5,7 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Data
 @Builder
@@ -25,5 +25,5 @@ public class Wc26BracketMatchDto {
     private Integer awayPenaltyScore;
     private String winnerFifaCode;
     private String status;
-    private LocalDateTime utcDate;
+    private Instant utcDate;
 }

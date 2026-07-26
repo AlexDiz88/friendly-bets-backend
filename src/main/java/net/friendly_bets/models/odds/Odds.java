@@ -9,7 +9,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 import org.springframework.data.mongodb.core.mapping.MongoId;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -33,10 +33,10 @@ public class Odds {
     private Long marathonbetTreeId;
 
     @Field(name = "fetched_at")
-    private LocalDateTime fetchedAt;
+    private Instant fetchedAt;
 
     @Field(name = "frozen_at")
-    private LocalDateTime frozenAt;
+    private Instant frozenAt;
 
     @Field(name = "bookmakers")
     @Builder.Default

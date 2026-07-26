@@ -8,7 +8,7 @@ import net.friendly_bets.repositories.AppSettingsRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Service
 @RequiredArgsConstructor
@@ -54,7 +54,7 @@ public class ClientVersionService {
 
         AppSettings.ClientVersionBlock next = AppSettings.ClientVersionBlock.builder()
                 .buildId(buildId)
-                .updatedAt(LocalDateTime.now())
+                .updatedAt(Instant.now())
                 .build();
         settings.setClientVersion(next);
         appSettingsService.save(settings);

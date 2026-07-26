@@ -15,7 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -56,7 +56,7 @@ public class ExternalApiMonitoringService {
                 .manual(resolved == ExternalApiMonitoringTrigger.ADMIN)
                 .leagueCode(leagueCode)
                 .season(season)
-                .startedAt(LocalDateTime.now())
+                .startedAt(Instant.now())
                 .status(ExternalApiMonitoringStatus.SUCCESS)
                 .counters(new ExternalApiMonitoringCounters())
                 .httpLogs(new ArrayList<>())
@@ -85,7 +85,7 @@ public class ExternalApiMonitoringService {
             run.setFailedMatchScheduleIds(new ArrayList<>(new LinkedHashSet<>(failedMatchScheduleIds)));
         }
         run.setErrorSummary(errorSummary);
-        LocalDateTime finishedAt = LocalDateTime.now();
+        Instant finishedAt = Instant.now();
         run.setFinishedAt(finishedAt);
         if (run.getStartedAt() != null) {
             run.setDurationMs(Duration.between(run.getStartedAt(), finishedAt).toMillis());
@@ -96,7 +96,7 @@ public class ExternalApiMonitoringService {
     public List<ExternalApiMonitoringRun> listByLayer(ExternalDataLayer layer, int hours, int limit) {
         int safeLimit = Math.max(1, Math.min(limit, 200));
         int safeHours = Math.max(1, Math.min(hours, 24 * 30));
-        LocalDateTime after = LocalDateTime.now().minusHours(safeHours);
+        Instant after = Instant.now().minus(Duration.ofHours(safeHours));
         return repository.findByLayerAndStartedAtAfterOrderByStartedAtDesc(
                 layer,
                 after,
@@ -138,7 +138,7 @@ public class ExternalApiMonitoringService {
             long durationMs,
             String detail,
             Integer retryAfterSeconds,
-            LocalDateTime requestedAt
+            Instant requestedAt
     ) {
         return ExternalApiHttpLogEntry.builder()
                 .requestType(requestType)
@@ -148,7 +148,7 @@ public class ExternalApiMonitoringService {
                 .durationMs(durationMs)
                 .detail(detail)
                 .retryAfterSeconds(retryAfterSeconds)
-                .requestedAt(requestedAt != null ? requestedAt : LocalDateTime.now())
+                .requestedAt(requestedAt != null ? requestedAt : Instant.now())
                 .build();
     }
 }

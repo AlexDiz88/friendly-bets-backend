@@ -14,7 +14,7 @@ import net.friendly_bets.repositories.LeaguesRepository;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
@@ -125,7 +125,7 @@ public class BetUtils {
             throw new BadRequestException("openedBetCantBeWithEmptyBet");
         }
         return Bet.builder()
-                .createdAt(LocalDateTime.now())
+                .createdAt(Instant.now())
                 .createdBy(moderator)
                 .user(user)
                 .season(season)
@@ -143,7 +143,7 @@ public class BetUtils {
 
     public static Bet createNewEmptyBet(NewEmptyBet newEmptyBet, User moderator, User user, Season season, League league) {
         return Bet.builder()
-                .createdAt(LocalDateTime.now())
+                .createdAt(Instant.now())
                 .createdBy(moderator)
                 .user(user)
                 .season(season)
@@ -155,7 +155,7 @@ public class BetUtils {
                         .isNot(false)
                         .build())
                 .betSize(newEmptyBet.getBetSize())
-                .betResultAddedAt(LocalDateTime.now())
+                .betResultAddedAt(Instant.now())
                 .betStatus(Bet.BetStatus.EMPTY)
                 .balanceChange(-Double.valueOf(newEmptyBet.getBetSize()))
                 .calendarNodeId(newEmptyBet.getCalendarNodeId())
@@ -243,7 +243,7 @@ public class BetUtils {
     public static void processBetResultValues(User moderator, Bet bet, BetResult betResult) {
         Bet.BetStatus betStatus = Bet.BetStatus.valueOf(betResult.getBetStatus());
         updateBalanceChange(bet, betStatus, bet.getBetSize(), bet.getBetOdds());
-        bet.setBetResultAddedAt(LocalDateTime.now());
+        bet.setBetResultAddedAt(Instant.now());
         bet.setBetResultAddedBy(moderator);
         bet.setBetStatus(betStatus);
         bet.setGameScore(betResult.getGameScore());
@@ -280,7 +280,7 @@ public class BetUtils {
         updateBalanceChangeAndGameResultAndBetStatus(betsRepo, bet, editedBet);
         if (WRL_STATUSES.contains(Bet.BetStatus.valueOf(editedBet.getBetStatus()))
                 && !WRL_STATUSES.contains(previousStatus)) {
-            bet.setBetResultAddedAt(LocalDateTime.now());
+            bet.setBetResultAddedAt(Instant.now());
             bet.setBetResultAddedBy(moderator);
         }
         updateBetDetails(bet, moderator, user, editedBet, homeTeam, awayTeam);
@@ -304,7 +304,7 @@ public class BetUtils {
     }
 
     private static void updateBetDetails(Bet bet, User moderator, User user, EditedBetDto editedBet, Team homeTeam, Team awayTeam) {
-        bet.setUpdatedAt(LocalDateTime.now());
+        bet.setUpdatedAt(Instant.now());
         bet.setUpdatedBy(moderator);
         bet.setUser(user);
         bet.setMatchDay(editedBet.getMatchDay());
@@ -317,7 +317,7 @@ public class BetUtils {
     }
 
     public static void updateDeletedBetValues(Bet bet, User moderator) {
-        bet.setUpdatedAt(LocalDateTime.now());
+        bet.setUpdatedAt(Instant.now());
         bet.setUpdatedBy(moderator);
         if (COMPLETED_BET_STATUSES.contains(bet.getBetStatus())) {
             bet.setBalanceChange(0.0);

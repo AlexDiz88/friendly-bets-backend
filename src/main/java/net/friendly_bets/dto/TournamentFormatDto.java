@@ -7,7 +7,7 @@ import lombok.NoArgsConstructor;
 import net.friendly_bets.models.PlayoffRound;
 import net.friendly_bets.models.TournamentFormat;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -20,7 +20,7 @@ public class TournamentFormatDto {
     private String id;
     private String formatCode;
     private String name;
-    private LocalDateTime createdAt;
+    private Instant createdAt;
     private RoundRobinStageDto regularStage;
     private RoundRobinStageDto groupStage;
     private List<PlayoffRoundDto> playoff;

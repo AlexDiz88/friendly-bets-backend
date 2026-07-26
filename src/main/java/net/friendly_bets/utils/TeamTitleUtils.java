@@ -14,6 +14,8 @@ public final class TeamTitleUtils {
     public static final String TWENTYFOUR_SCORE_PROVIDER = "24score.pro";
     /** {@link net.friendly_bets.gameresults.MatchDataProviders#SOCCER365} */
     public static final String SOCCER365_PROVIDER = "soccer365.ru";
+    /** {@link net.friendly_bets.gameresults.MatchDataProviders#AISCORE} */
+    public static final String AISCORE_PROVIDER = "aiscore.com";
 
     private TeamTitleUtils() {
     }

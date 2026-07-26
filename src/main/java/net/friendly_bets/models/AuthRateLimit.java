@@ -8,7 +8,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 import org.springframework.data.mongodb.core.mapping.MongoId;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @NoArgsConstructor
 @AllArgsConstructor
@@ -25,5 +25,5 @@ public class AuthRateLimit {
     private int attempts;
 
     @Field(name = "window_start")
-    private LocalDateTime windowStart;
+    private Instant windowStart;
 }

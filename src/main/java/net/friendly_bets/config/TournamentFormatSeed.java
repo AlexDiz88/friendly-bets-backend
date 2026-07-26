@@ -9,7 +9,7 @@ import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.stereotype.Component;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 
 @Component
@@ -32,7 +32,7 @@ public class TournamentFormatSeed implements ApplicationRunner {
         }
         format.setFormatCode(code);
         format.setName(name);
-        format.setCreatedAt(LocalDateTime.now());
+        format.setCreatedAt(Instant.now());
         tournamentFormatsRepository.save(format);
     }
 

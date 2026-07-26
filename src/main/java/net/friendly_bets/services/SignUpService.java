@@ -12,7 +12,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 import static net.friendly_bets.utils.Constants.LANGUAGE_RU;
 
@@ -31,12 +31,13 @@ public class SignUpService {
             throw new ConflictException("userWithThisEmailAlreadyRegistered");
         }
         User user = User.builder()
-                .createdAt(LocalDateTime.now())
+                .createdAt(Instant.now())
                 .email(newUser.getEmail().toLowerCase())
                 .emailIsConfirmed(false)
                 .hashPassword(passwordEncoder.encode(newUser.getPassword()))
                 .role(User.Role.USER)
                 .language(LANGUAGE_RU)
+                .timezone(net.friendly_bets.utils.UserTimeZones.DEFAULT_TIMEZONE)
                 .build();
 
         usersRepository.save(user);

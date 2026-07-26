@@ -177,7 +177,7 @@ public class ErrorLogService {
                 .leagueCode(match != null ? match.getLeagueCode() : null)
                 .matchday(match != null ? match.getMatchday() : null)
                 .matchScheduleId(match != null ? match.getId() : null)
-                .externalMatchId(match != null ? match.externalId("soccer365") : null)
+                .externalMatchId(null)
                 .build());
     }
 

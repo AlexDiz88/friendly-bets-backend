@@ -5,14 +5,14 @@ import net.friendly_bets.providers.ExternalDataLayer;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.repository.MongoRepository;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 
 public interface ExternalApiMonitoringRepository extends MongoRepository<ExternalApiMonitoringRun, String> {
 
     List<ExternalApiMonitoringRun> findByLayerAndStartedAtAfterOrderByStartedAtDesc(
             ExternalDataLayer layer,
-            LocalDateTime startedAtAfter,
+            Instant startedAtAfter,
             Pageable pageable
     );
 

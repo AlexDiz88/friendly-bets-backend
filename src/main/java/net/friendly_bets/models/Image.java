@@ -5,7 +5,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 import org.springframework.data.mongodb.core.mapping.MongoId;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Document(collection = "images")
 public class Image {
@@ -17,5 +17,5 @@ public class Image {
     private String relatedObjectType; // need??? Тип объекта, с которым связано изображение (например, новость)
     private String filename;
     private String contentType;
-    private LocalDateTime uploadDate;
+    private Instant uploadDate;
 }

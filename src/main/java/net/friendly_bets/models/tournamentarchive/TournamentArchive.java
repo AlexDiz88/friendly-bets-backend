@@ -9,7 +9,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 import org.springframework.data.mongodb.core.mapping.MongoId;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -42,10 +42,10 @@ public class TournamentArchive {
     private String source;
 
     @Field(name = "exported_at")
-    private LocalDateTime exportedAt;
+    private Instant exportedAt;
 
     @Field(name = "imported_at")
-    private LocalDateTime importedAt;
+    private Instant importedAt;
 
     @Field(name = "matches")
     @Builder.Default
