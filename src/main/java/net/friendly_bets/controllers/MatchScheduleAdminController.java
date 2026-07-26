@@ -1,8 +1,10 @@
 package net.friendly_bets.controllers;
 
 import lombok.RequiredArgsConstructor;
+import net.friendly_bets.dto.MarkFinishedFullDetailsResultDto;
 import net.friendly_bets.dto.MatchdaySettleResultDto;
 import net.friendly_bets.dto.SettleMatchdayFromGameResultsDto;
+import net.friendly_bets.services.MatchScheduleMaintenanceService;
 import net.friendly_bets.services.MatchScheduleSettleService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -20,6 +22,7 @@ import javax.validation.Valid;
 public class MatchScheduleAdminController {
 
     private final MatchScheduleSettleService matchScheduleSettleService;
+    private final MatchScheduleMaintenanceService matchScheduleMaintenanceService;
 
     @PostMapping("/matchdays/settle-and-recalculate")
     @PreAuthorize("hasAuthority('ADMIN') || hasAuthority('MODERATOR')")
@@ -30,5 +33,11 @@ public class MatchScheduleAdminController {
         return ResponseEntity.ok(
                 matchScheduleSettleService.settleMatchdayAndRecalculateStats(currentUserId, body)
         );
+    }
+
+    @PostMapping("/scripts/mark-finished-full-details-fetched")
+    @PreAuthorize("hasAuthority('ADMIN')")
+    public ResponseEntity<MarkFinishedFullDetailsResultDto> markFinishedFullDetailsFetched() {
+        return ResponseEntity.ok(matchScheduleMaintenanceService.markFinishedFullDetailsFetched());
     }
 }
