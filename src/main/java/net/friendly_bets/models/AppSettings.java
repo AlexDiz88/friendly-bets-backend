@@ -59,6 +59,10 @@ public class AppSettings {
     @Builder
     @Data
     public static class LayerAssignment {
+        /** Auto-sync for the layer. Null = treat as enabled (legacy docs). */
+        @Field(name = "enabled")
+        private Boolean enabled;
+
         @Field(name = "primary_provider")
         private String primaryProvider;
 

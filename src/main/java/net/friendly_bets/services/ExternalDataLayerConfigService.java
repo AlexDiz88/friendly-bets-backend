@@ -5,6 +5,7 @@ import net.friendly_bets.exceptions.BadRequestException;
 import net.friendly_bets.models.AppSettings;
 import net.friendly_bets.providers.ExternalDataLayer;
 import net.friendly_bets.providers.LayerProviderRegistry;
+import net.friendly_bets.providers.config.ExternalDataProperties;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,12 +20,13 @@ public class ExternalDataLayerConfigService {
 
     private final AppSettingsService appSettingsService;
     private final LayerProviderRegistry registry;
+    private final ExternalDataProperties externalDataProperties;
 
     @Transactional
     public AppSettings.ExternalDataLayersBlock getOrCreateDefaults() {
         AppSettings settings = appSettingsService.getOrCreate();
         if (settings.getExternalDataLayers() == null) {
-            settings.setExternalDataLayers(AppSettingsService.defaultExternalDataLayers());
+            settings.setExternalDataLayers(appSettingsService.defaultExternalDataLayers());
             appSettingsService.save(settings);
         }
         return settings.getExternalDataLayers();
@@ -36,9 +38,18 @@ public class ExternalDataLayerConfigService {
                 ? config.getLayers().get(layer)
                 : null;
         if (assignment == null) {
-            assignment = AppSettingsService.defaultLayerAssignment(layer);
+            assignment = appSettingsService.defaultLayerAssignment(layer);
         }
         return assignment;
+    }
+
+    /** Auto-sync gate for schedulers. Mongo override, else application.properties defaults. */
+    public boolean isLayerEnabled(ExternalDataLayer layer) {
+        AppSettings.LayerAssignment assignment = assignment(layer);
+        if (assignment.getEnabled() != null) {
+            return assignment.getEnabled();
+        }
+        return externalDataProperties.isLayerEnabled(layer);
     }
 
     @Transactional
@@ -51,11 +62,12 @@ public class ExternalDataLayerConfigService {
         for (ExternalDataLayer layer : ExternalDataLayer.values()) {
             AppSettings.LayerAssignment incoming = layers.get(layer);
             if (incoming == null) {
-                next.put(layer, AppSettingsService.defaultLayerAssignment(layer));
+                next.put(layer, appSettingsService.defaultLayerAssignment(layer));
                 continue;
             }
             validateAssignment(layer, incoming);
             next.put(layer, AppSettings.LayerAssignment.builder()
+                    .enabled(incoming.getEnabled() == null || incoming.getEnabled())
                     .primaryProvider(blankToNull(incoming.getPrimaryProvider()))
                     .secondaryProvider(blankToNull(incoming.getSecondaryProvider()))
                     .build());

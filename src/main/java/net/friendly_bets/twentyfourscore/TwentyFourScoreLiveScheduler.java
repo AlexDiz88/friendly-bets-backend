@@ -6,9 +6,9 @@ import net.friendly_bets.models.Season;
 import net.friendly_bets.providers.ExternalDataLayer;
 import net.friendly_bets.providers.LayerProviderRouter;
 import net.friendly_bets.providers.LiveMatchProvider;
+import net.friendly_bets.services.ExternalDataLayerConfigService;
 import net.friendly_bets.services.MatchFinalizeOrchestrator;
 import net.friendly_bets.services.RunningSeasonLookup;
-import net.friendly_bets.twentyfourscore.config.TwentyFourScoreProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -22,14 +22,14 @@ public class TwentyFourScoreLiveScheduler {
 
     private static final Logger log = LoggerFactory.getLogger(TwentyFourScoreLiveScheduler.class);
 
-    private final TwentyFourScoreProperties properties;
     private final RunningSeasonLookup runningSeasonLookup;
     private final LayerProviderRouter router;
     private final MatchFinalizeOrchestrator matchFinalizeOrchestrator;
+    private final ExternalDataLayerConfigService layerConfigService;
 
     @Scheduled(fixedDelayString = "${twentyfourscore.scheduler-tick-ms:300000}")
     public void tick() {
-        if (!properties.isSyncEnabled()) {
+        if (!layerConfigService.isLayerEnabled(ExternalDataLayer.LIVE)) {
             return;
         }
         Optional<Season> seasonOpt = runningSeasonLookup.findRunningSeason();
@@ -57,10 +57,12 @@ public class TwentyFourScoreLiveScheduler {
                             result.leagueCode(), result.updated(), result.finishedDetected(),
                             result.pendingFullMatchIds().size());
                 }
-                try {
-                    matchFinalizeOrchestrator.finalizePendingFullMatches(result.pendingFullMatchIds());
-                } catch (RuntimeException fullEx) {
-                    log.warn("FULL after LIVE failed for {}: {}", league.getLeagueCode(), fullEx.getMessage());
+                if (layerConfigService.isLayerEnabled(ExternalDataLayer.FULL_MATCH)) {
+                    try {
+                        matchFinalizeOrchestrator.finalizePendingFullMatches(result.pendingFullMatchIds());
+                    } catch (RuntimeException fullEx) {
+                        log.warn("FULL after LIVE failed for {}: {}", league.getLeagueCode(), fullEx.getMessage());
+                    }
                 }
             } catch (RuntimeException e) {
                 log.warn("24score LIVE sync failed for {}: {}", league.getLeagueCode(), e.getMessage());

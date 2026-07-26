@@ -35,6 +35,7 @@ public class MatchFinalizeOrchestrator {
     private final StatsService statsService;
     private final MatchResultSyncProperties properties;
     private final UsersRepository usersRepository;
+    private final ExternalDataLayerConfigService layerConfigService;
 
     @Transactional
     public MatchSchedule finalizeFinishedMatch(MatchSchedule match) {
@@ -42,7 +43,8 @@ public class MatchFinalizeOrchestrator {
             return match;
         }
         MatchSchedule current = matchScheduleRepository.findById(match.getId()).orElse(match);
-        if (current.getFullDetailsFetchedAt() == null) {
+        if (current.getFullDetailsFetchedAt() == null
+                && layerConfigService.isLayerEnabled(ExternalDataLayer.FULL_MATCH)) {
             final MatchSchedule toFetch = current;
             current = router.execute(
                     ExternalDataLayer.FULL_MATCH,

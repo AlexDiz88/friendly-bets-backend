@@ -74,7 +74,6 @@ class MarathonbetSyncServiceTest {
 
     @BeforeEach
     void setUp() {
-        when(properties.isSyncEnabled()).thenReturn(true);
         when(properties.getSseDelayMinMs()).thenReturn(0L);
         when(properties.getSseDelayMaxMs()).thenReturn(0L);
         lenient().when(properties.getStageSize()).thenReturn(5);

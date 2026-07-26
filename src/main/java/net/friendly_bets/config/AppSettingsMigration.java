@@ -46,7 +46,7 @@ public class AppSettingsMigration implements ApplicationRunner {
                     .orElseGet(() -> AppSettings.builder()
                             .id(AppSettings.DEFAULT_ID)
                             .clientVersion(AppSettings.ClientVersionBlock.builder().build())
-                            .externalDataLayers(AppSettingsService.defaultExternalDataLayers())
+                            .externalDataLayers(AppSettingsService.staticDefaultExternalDataLayers())
                             .build());
 
             AppSettings.ClientVersionBlock legacyClient = readLegacyClientVersion();
@@ -58,7 +58,7 @@ public class AppSettingsMigration implements ApplicationRunner {
             if (legacyLayers != null) {
                 settings.setExternalDataLayers(legacyLayers);
             } else if (isBlankLayers(settings.getExternalDataLayers())) {
-                settings.setExternalDataLayers(AppSettingsService.defaultExternalDataLayers());
+                settings.setExternalDataLayers(AppSettingsService.staticDefaultExternalDataLayers());
             }
 
             appSettingsRepository.save(settings);
@@ -109,10 +109,12 @@ public class AppSettingsMigration implements ApplicationRunner {
         for (ExternalDataLayer layer : ExternalDataLayer.values()) {
             Document assignment = layersDoc.get(layer.name(), Document.class);
             if (assignment == null) {
-                layers.put(layer, AppSettingsService.defaultLayerAssignment(layer));
+                layers.put(layer, AppSettingsService.staticDefaultLayerAssignment(layer));
                 continue;
             }
+            Boolean enabled = assignment.getBoolean("enabled");
             layers.put(layer, AppSettings.LayerAssignment.builder()
+                    .enabled(enabled == null || enabled)
                     .primaryProvider(assignment.getString("primary_provider"))
                     .secondaryProvider(assignment.getString("secondary_provider"))
                     .build());

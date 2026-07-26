@@ -4,6 +4,8 @@ import lombok.RequiredArgsConstructor;
 import net.friendly_bets.marathonbet.config.MarathonbetProperties;
 import net.friendly_bets.models.League;
 import net.friendly_bets.models.Season;
+import net.friendly_bets.providers.ExternalDataLayer;
+import net.friendly_bets.services.ExternalDataLayerConfigService;
 import net.friendly_bets.services.RunningSeasonLookup;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,13 +34,14 @@ public class MarathonbetLeagueSyncScheduler {
     private final MarathonbetProperties properties;
     private final MarathonbetSyncService marathonbetSyncService;
     private final RunningSeasonLookup runningSeasonLookup;
+    private final ExternalDataLayerConfigService layerConfigService;
 
     /** Keys: {@code yyyy-MM-dd|LEAGUE|hour} already executed. */
     private final Set<String> completedHourRuns = ConcurrentHashMap.newKeySet();
 
     @Scheduled(cron = "0 * * * * *")
     public void checkDueLeagues() {
-        if (!properties.isSyncEnabled()) {
+        if (!layerConfigService.isLayerEnabled(ExternalDataLayer.ODDS)) {
             return;
         }
         ZoneId zone;
