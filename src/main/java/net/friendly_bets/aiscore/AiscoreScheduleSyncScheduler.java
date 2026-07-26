@@ -14,6 +14,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -22,6 +23,7 @@ import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * Runs only when aiscore.com is SCHEDULE primary.
+ * Syncs all leagues of the running season that have a tournament path configured.
  */
 @Component
 @RequiredArgsConstructor
@@ -51,26 +53,12 @@ public class AiscoreScheduleSyncScheduler {
             return;
         }
         Season season = seasonOpt.get();
-        List<String> enabled = properties.getEnabledLeagues();
-        if (enabled == null || enabled.isEmpty()) {
-            return;
-        }
-
+        List<League> leagues = syncableLeagues(season);
         Instant now = Instant.now();
-        for (int i = 0; i < enabled.size(); i++) {
-            String code = enabled.get(i);
-            if (code == null || code.isBlank()) {
-                continue;
-            }
-            String leagueCode = code.trim().toUpperCase();
+        for (int i = 0; i < leagues.size(); i++) {
+            League league = leagues.get(i);
+            String leagueCode = league.getLeagueCode().name();
             if (!isDue(leagueCode, i, now)) {
-                continue;
-            }
-            League league = season.getLeagues().stream()
-                    .filter(l -> l != null && l.getLeagueCode() != null && leagueCode.equals(l.getLeagueCode().name()))
-                    .findFirst()
-                    .orElse(null);
-            if (league == null) {
                 continue;
             }
             try {
@@ -81,6 +69,22 @@ public class AiscoreScheduleSyncScheduler {
                 lastSyncAt.put(leagueCode, Instant.now());
             }
         }
+    }
+
+    private List<League> syncableLeagues(Season season) {
+        List<League> out = new ArrayList<>();
+        Map<String, String> paths = properties.getTournamentPaths();
+        for (League league : season.getLeagues()) {
+            if (league == null || league.getLeagueCode() == null) {
+                continue;
+            }
+            String path = paths != null ? paths.get(league.getLeagueCode().name()) : null;
+            if (path == null || path.isBlank()) {
+                continue;
+            }
+            out.add(league);
+        }
+        return out;
     }
 
     private boolean isDue(String leagueCode, int leagueIndex, Instant now) {
