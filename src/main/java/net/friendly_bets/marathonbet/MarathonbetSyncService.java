@@ -75,9 +75,6 @@ public class MarathonbetSyncService {
     }
 
     public MarathonbetSyncResult syncLeague(String leagueCode, boolean applyStagePause) {
-        if (!properties.isSyncEnabled()) {
-            return MarathonbetSyncResult.builder().build();
-        }
         if (leagueCode == null || leagueCode.isBlank()) {
             return MarathonbetSyncResult.builder().build();
         }
@@ -113,9 +110,6 @@ public class MarathonbetSyncService {
     }
 
     public MarathonbetSyncResult runTick(MarathonbetSlotScope scope) {
-        if (!properties.isSyncEnabled()) {
-            return MarathonbetSyncResult.builder().build();
-        }
         Optional<Season> active = runningSeasonLookup.findRunningSeason();
         if (active.isEmpty() || active.get().getLeagues() == null) {
             return MarathonbetSyncResult.builder().build();
@@ -148,9 +142,6 @@ public class MarathonbetSyncService {
             Integer matchday,
             List<String> matchScheduleIds
     ) {
-        if (!properties.isSyncEnabled()) {
-            throw new BadRequestException("marathonbetSyncDisabled");
-        }
         League league = getEntityService.getLeagueOrThrow(leagueId);
         if (league.getLeagueCode() == null) {
             throw new BadRequestException("marathonbetInvalidTournamentId");

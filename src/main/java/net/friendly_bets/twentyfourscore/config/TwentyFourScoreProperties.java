@@ -10,7 +10,6 @@ import java.util.Map;
 @ConfigurationProperties(prefix = "twentyfourscore")
 public class TwentyFourScoreProperties {
 
-    private boolean syncEnabled = true;
     private String baseUrl = "https://24score.pro";
     private long httpDelayMinMs = 1_000L;
     private long httpDelayMaxMs = 3_000L;

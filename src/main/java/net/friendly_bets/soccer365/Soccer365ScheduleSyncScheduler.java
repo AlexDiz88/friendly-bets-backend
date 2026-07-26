@@ -3,6 +3,8 @@ package net.friendly_bets.soccer365;
 import lombok.RequiredArgsConstructor;
 import net.friendly_bets.models.League;
 import net.friendly_bets.models.Season;
+import net.friendly_bets.providers.ExternalDataLayer;
+import net.friendly_bets.services.ExternalDataLayerConfigService;
 import net.friendly_bets.services.RunningSeasonLookup;
 import net.friendly_bets.soccer365.config.Soccer365Properties;
 import org.slf4j.Logger;
@@ -29,13 +31,14 @@ public class Soccer365ScheduleSyncScheduler {
     private final Soccer365Properties properties;
     private final Soccer365ScheduleSyncService scheduleSyncService;
     private final RunningSeasonLookup runningSeasonLookup;
+    private final ExternalDataLayerConfigService layerConfigService;
 
     private final Map<String, Instant> lastSyncAt = new ConcurrentHashMap<>();
     private final Instant startedAt = Instant.now();
 
     @Scheduled(fixedDelayString = "${soccer365.scheduler-tick-ms:300000}")
     public void tick() {
-        if (!properties.isSyncEnabled()) {
+        if (!layerConfigService.isLayerEnabled(ExternalDataLayer.SCHEDULE)) {
             return;
         }
         Optional<Season> seasonOpt = runningSeasonLookup.findRunningSeason();

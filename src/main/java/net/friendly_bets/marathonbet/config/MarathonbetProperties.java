@@ -13,7 +13,6 @@ import java.util.Map;
 @ConfigurationProperties(prefix = "marathonbet")
 public class MarathonbetProperties {
 
-    private boolean syncEnabled = true;
     /** Legacy standalone scheduler interval (unused when league scheduler is active). */
     private long syncIntervalMs = 43_200_000L;
     /** Random delay (0..N minutes) after mutex is acquired for a due league. */

@@ -12,7 +12,6 @@ import java.util.Map;
 @ConfigurationProperties(prefix = "soccer365")
 public class Soccer365Properties {
 
-    private boolean syncEnabled = false;
     private String baseUrl = "https://soccer365.ru";
     /** Interval between schedule syncs per league (default 8h). */
     private long scheduleSyncIntervalMs = 28_800_000L;

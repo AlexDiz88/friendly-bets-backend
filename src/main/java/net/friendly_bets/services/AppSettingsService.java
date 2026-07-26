@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import net.friendly_bets.gameresults.MatchDataProviders;
 import net.friendly_bets.models.AppSettings;
 import net.friendly_bets.providers.ExternalDataLayer;
+import net.friendly_bets.providers.config.ExternalDataProperties;
 import net.friendly_bets.repositories.AppSettingsRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,6 +17,7 @@ import java.util.Map;
 public class AppSettingsService {
 
     private final AppSettingsRepository appSettingsRepository;
+    private final ExternalDataProperties externalDataProperties;
 
     @Transactional
     public AppSettings getOrCreate() {
@@ -28,24 +30,56 @@ public class AppSettingsService {
         return appSettingsRepository.save(settings);
     }
 
-    public static AppSettings.LayerAssignment defaultLayerAssignment(ExternalDataLayer layer) {
+    public AppSettings.LayerAssignment defaultLayerAssignment(ExternalDataLayer layer) {
         return switch (layer) {
             case SCHEDULE, FULL_MATCH -> AppSettings.LayerAssignment.builder()
+                    .enabled(externalDataProperties.isLayerEnabled(layer))
                     .primaryProvider(MatchDataProviders.SOCCER365)
                     .build();
             case ODDS -> AppSettings.LayerAssignment.builder()
+                    .enabled(externalDataProperties.isLayerEnabled(layer))
                     .primaryProvider(MatchDataProviders.MARATHONBET)
                     .build();
             case LIVE -> AppSettings.LayerAssignment.builder()
+                    .enabled(externalDataProperties.isLayerEnabled(layer))
                     .primaryProvider(MatchDataProviders.TWENTYFOUR_SCORE)
                     .build();
         };
     }
 
-    public static AppSettings.ExternalDataLayersBlock defaultExternalDataLayers() {
+    /**
+     * Static fallback when Spring context is unavailable (legacy migration).
+     * Matches {@code external-data.layers.*.enabled=true} defaults.
+     */
+    public static AppSettings.LayerAssignment staticDefaultLayerAssignment(ExternalDataLayer layer) {
+        return switch (layer) {
+            case SCHEDULE, FULL_MATCH -> AppSettings.LayerAssignment.builder()
+                    .enabled(true)
+                    .primaryProvider(MatchDataProviders.SOCCER365)
+                    .build();
+            case ODDS -> AppSettings.LayerAssignment.builder()
+                    .enabled(true)
+                    .primaryProvider(MatchDataProviders.MARATHONBET)
+                    .build();
+            case LIVE -> AppSettings.LayerAssignment.builder()
+                    .enabled(true)
+                    .primaryProvider(MatchDataProviders.TWENTYFOUR_SCORE)
+                    .build();
+        };
+    }
+
+    public AppSettings.ExternalDataLayersBlock defaultExternalDataLayers() {
         Map<ExternalDataLayer, AppSettings.LayerAssignment> layers = new EnumMap<>(ExternalDataLayer.class);
         for (ExternalDataLayer layer : ExternalDataLayer.values()) {
             layers.put(layer, defaultLayerAssignment(layer));
+        }
+        return AppSettings.ExternalDataLayersBlock.builder().layers(layers).build();
+    }
+
+    public static AppSettings.ExternalDataLayersBlock staticDefaultExternalDataLayers() {
+        Map<ExternalDataLayer, AppSettings.LayerAssignment> layers = new EnumMap<>(ExternalDataLayer.class);
+        for (ExternalDataLayer layer : ExternalDataLayer.values()) {
+            layers.put(layer, staticDefaultLayerAssignment(layer));
         }
         return AppSettings.ExternalDataLayersBlock.builder().layers(layers).build();
     }
