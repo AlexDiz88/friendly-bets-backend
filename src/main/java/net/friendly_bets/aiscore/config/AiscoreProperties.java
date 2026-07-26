@@ -19,6 +19,11 @@ public class AiscoreProperties {
     private long httpDelayMaxMs = 4_500L;
     private int skipWhenKickoffFartherThanDays = 60;
     /**
+     * Optional outbound proxy for Cloudflare-blocked datacenter IPs, e.g.
+     * {@code http://127.0.0.1:8888} (host + port required).
+     */
+    private String httpProxy;
+    /**
      * Path after baseUrl without leading slash, e.g.
      * {@code tournament-english-premier-league/mo07dni2vfxknxy}.
      * Schedule URL = {@code {baseUrl}/{path}/schedule}.
