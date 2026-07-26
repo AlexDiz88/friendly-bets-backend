@@ -6,6 +6,7 @@ public final class MatchDataProviders {
     public static final String MARATHONBET = "marathonbet";
     public static final String TWENTYFOUR_SCORE = "24score.pro";
     public static final String SOCCER365 = "soccer365.ru";
+    public static final String AISCORE = "aiscore.com";
 
     private MatchDataProviders() {
     }
@@ -20,6 +21,9 @@ public final class MatchDataProviders {
         }
         if (SOCCER365.equals(providerId)) {
             return "soccer365";
+        }
+        if (AISCORE.equals(providerId)) {
+            return "aiscore";
         }
         return providerId.replace('-', '_');
     }

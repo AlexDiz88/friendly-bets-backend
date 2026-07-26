@@ -1,13 +1,13 @@
-package net.friendly_bets.soccer365;
+package net.friendly_bets.aiscore;
 
 import lombok.RequiredArgsConstructor;
+import net.friendly_bets.aiscore.config.AiscoreProperties;
 import net.friendly_bets.gameresults.MatchDataProviders;
 import net.friendly_bets.models.League;
 import net.friendly_bets.models.Season;
 import net.friendly_bets.providers.ExternalDataLayer;
 import net.friendly_bets.services.ExternalDataLayerConfigService;
 import net.friendly_bets.services.RunningSeasonLookup;
-import net.friendly_bets.soccer365.config.Soccer365Properties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -21,29 +21,29 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
- * Staggered schedule sync: ~8h per league, league offsets via {@code league-stagger-ms}, jitter ±N min.
+ * Runs only when aiscore.com is SCHEDULE primary.
  */
 @Component
 @RequiredArgsConstructor
-public class Soccer365ScheduleSyncScheduler {
+public class AiscoreScheduleSyncScheduler {
 
-    private static final Logger log = LoggerFactory.getLogger(Soccer365ScheduleSyncScheduler.class);
+    private static final Logger log = LoggerFactory.getLogger(AiscoreScheduleSyncScheduler.class);
 
-    private final Soccer365Properties properties;
-    private final Soccer365ScheduleSyncService scheduleSyncService;
+    private final AiscoreProperties properties;
+    private final AiscoreScheduleSyncService scheduleSyncService;
     private final RunningSeasonLookup runningSeasonLookup;
     private final ExternalDataLayerConfigService layerConfigService;
 
     private final Map<String, Instant> lastSyncAt = new ConcurrentHashMap<>();
     private final Instant startedAt = Instant.now();
 
-    @Scheduled(fixedDelayString = "${soccer365.scheduler-tick-ms:300000}")
+    @Scheduled(fixedDelayString = "${aiscore.scheduler-tick-ms:300000}")
     public void tick() {
         if (!layerConfigService.isLayerEnabled(ExternalDataLayer.SCHEDULE)) {
             return;
         }
         String primary = layerConfigService.assignment(ExternalDataLayer.SCHEDULE).getPrimaryProvider();
-        if (!MatchDataProviders.SOCCER365.equals(primary)) {
+        if (!MatchDataProviders.AISCORE.equals(primary)) {
             return;
         }
         Optional<Season> seasonOpt = runningSeasonLookup.findRunningSeason();
@@ -76,7 +76,7 @@ public class Soccer365ScheduleSyncScheduler {
             try {
                 scheduleSyncService.syncLeague(season, league, true);
             } catch (Exception e) {
-                log.warn("soccer365 schedule sync failed for {}: {}", leagueCode, e.getMessage());
+                log.warn("aiscore schedule sync failed for {}: {}", leagueCode, e.getMessage());
             } finally {
                 lastSyncAt.put(leagueCode, Instant.now());
             }

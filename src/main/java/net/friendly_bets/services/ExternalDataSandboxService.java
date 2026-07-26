@@ -2,6 +2,10 @@ package net.friendly_bets.services;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import lombok.RequiredArgsConstructor;
+import net.friendly_bets.aiscore.AiscoreHttpClient;
+import net.friendly_bets.aiscore.AiscoreParsedSchedule;
+import net.friendly_bets.aiscore.AiscoreScheduleParser;
+import net.friendly_bets.aiscore.config.AiscoreProperties;
 import net.friendly_bets.dto.ExternalDataSandboxFullMatchRequestDto;
 import net.friendly_bets.dto.ExternalDataSandboxLiveRequestDto;
 import net.friendly_bets.dto.ExternalDataSandboxOddsRequestDto;
@@ -43,6 +47,9 @@ public class ExternalDataSandboxService {
     private final Soccer365HttpClient soccer365HttpClient;
     private final Soccer365ScheduleParser soccer365ScheduleParser;
     private final Soccer365GameParser soccer365GameParser;
+    private final AiscoreHttpClient aiscoreHttpClient;
+    private final AiscoreScheduleParser aiscoreScheduleParser;
+    private final AiscoreProperties aiscoreProperties;
     private final MarathonbetTournamentClient marathonbetTournamentClient;
     private final MarathonbetScrapeService marathonbetScrapeService;
     private final TwentyFourScoreHttpClient twentyFourScoreHttpClient;
@@ -50,37 +57,71 @@ public class ExternalDataSandboxService {
 
     public ExternalDataSandboxResultDto runSchedule(ExternalDataSandboxScheduleRequestDto request) {
         String provider = requireProvider(request != null ? request.getProvider() : null, MatchDataProviders.SOCCER365);
-        if (!MatchDataProviders.SOCCER365.equals(provider)) {
-            throw new BadRequestException("sandboxUnsupportedProvider");
-        }
-        if (request == null || request.getCompetitionId() == null || request.getCompetitionId() <= 0) {
-            throw new BadRequestException("sandboxCompetitionIdRequired");
-        }
-        int competitionId = request.getCompetitionId();
-        Integer roundFilter = request.getRound();
+        Integer roundFilter = request != null ? request.getRound() : null;
         if (roundFilter != null && roundFilter <= 0) {
             throw new BadRequestException("sandboxRoundInvalid");
         }
-        Integer limit = request.getLimit();
+        Integer limit = request != null ? request.getLimit() : null;
         if (limit != null && limit <= 0) {
             throw new BadRequestException("sandboxLimitInvalid");
         }
         long started = System.currentTimeMillis();
         try {
-            String html = soccer365HttpClient.fetchScheduleHtml(competitionId);
-            Soccer365ParsedSchedule parsed = soccer365ScheduleParser.parse(html, competitionId);
-            return ExternalDataSandboxResultDto.builder()
-                    .success(true)
-                    .layer(ExternalDataLayer.SCHEDULE.name())
-                    .provider(provider)
-                    .durationMs(System.currentTimeMillis() - started)
-                    .parsed(toScheduleParsed(parsed, roundFilter, limit))
-                    .build();
+            if (MatchDataProviders.SOCCER365.equals(provider)) {
+                if (request == null || request.getCompetitionId() == null || request.getCompetitionId() <= 0) {
+                    throw new BadRequestException("sandboxCompetitionIdRequired");
+                }
+                int competitionId = request.getCompetitionId();
+                String html = soccer365HttpClient.fetchScheduleHtml(competitionId);
+                Soccer365ParsedSchedule parsed = soccer365ScheduleParser.parse(html, competitionId);
+                return ExternalDataSandboxResultDto.builder()
+                        .success(true)
+                        .layer(ExternalDataLayer.SCHEDULE.name())
+                        .provider(provider)
+                        .durationMs(System.currentTimeMillis() - started)
+                        .parsed(toSoccer365ScheduleParsed(parsed, roundFilter, limit))
+                        .build();
+            }
+            if (MatchDataProviders.AISCORE.equals(provider)) {
+                String path = resolveAiscoreTournamentPath(request);
+                String html = aiscoreHttpClient.fetchScheduleHtml(path);
+                AiscoreParsedSchedule parsed = aiscoreScheduleParser.parse(html, path);
+                return ExternalDataSandboxResultDto.builder()
+                        .success(true)
+                        .layer(ExternalDataLayer.SCHEDULE.name())
+                        .provider(provider)
+                        .durationMs(System.currentTimeMillis() - started)
+                        .parsed(toAiscoreScheduleParsed(parsed, roundFilter, limit))
+                        .build();
+            }
+            throw new BadRequestException("sandboxUnsupportedProvider");
         } catch (BadRequestException e) {
             return fail(ExternalDataLayer.SCHEDULE, provider, started, e.getMessage(), null);
+        } catch (IllegalArgumentException e) {
+            return fail(ExternalDataLayer.SCHEDULE, provider, started, "aiscoreNuxtPayloadInvalid", e.getMessage());
         } catch (RuntimeException e) {
-            return fail(ExternalDataLayer.SCHEDULE, provider, started, "soccer365FetchFailed", e.getMessage());
+            String key = MatchDataProviders.AISCORE.equals(provider) ? "aiscoreFetchFailed" : "soccer365FetchFailed";
+            return fail(ExternalDataLayer.SCHEDULE, provider, started, key, e.getMessage());
         }
+    }
+
+    private String resolveAiscoreTournamentPath(ExternalDataSandboxScheduleRequestDto request) {
+        if (request != null && request.getTournamentPath() != null && !request.getTournamentPath().isBlank()) {
+            return request.getTournamentPath().trim();
+        }
+        if (request != null && request.getLeagueCode() != null && !request.getLeagueCode().isBlank()) {
+            String path = aiscoreProperties.getTournamentPaths()
+                    .get(request.getLeagueCode().trim().toUpperCase());
+            if (path == null || path.isBlank()) {
+                throw new BadRequestException("aiscoreTournamentNotConfigured");
+            }
+            return path.trim();
+        }
+        String epl = aiscoreProperties.getTournamentPaths().get("EPL");
+        if (epl == null || epl.isBlank()) {
+            throw new BadRequestException("aiscoreTournamentNotConfigured");
+        }
+        return epl.trim();
     }
 
     public ExternalDataSandboxResultDto runOdds(ExternalDataSandboxOddsRequestDto request) {
@@ -236,7 +277,7 @@ public class ExternalDataSandboxService {
                 .build();
     }
 
-    private static Map<String, Object> toScheduleParsed(
+    private static Map<String, Object> toSoccer365ScheduleParsed(
             Soccer365ParsedSchedule parsed,
             Integer roundFilter,
             Integer limit
@@ -291,6 +332,63 @@ public class ExternalDataSandboxService {
         out.put("roundsCount", rounds.size());
         out.put("matchesCount", matchesReturned);
         out.put("parsedTruncated", truncated);
+        out.put("rounds", rounds);
+        return out;
+    }
+
+    private static Map<String, Object> toAiscoreScheduleParsed(
+            AiscoreParsedSchedule parsed,
+            Integer roundFilter,
+            Integer limit
+    ) {
+        int matchesTotal = 0;
+        for (AiscoreParsedSchedule.Round round : parsed.getRounds()) {
+            matchesTotal += round.getMatches() != null ? round.getMatches().size() : 0;
+        }
+
+        int remaining = limit != null ? limit : Integer.MAX_VALUE;
+        int matchesReturned = 0;
+        List<Map<String, Object>> rounds = new ArrayList<>();
+
+        for (AiscoreParsedSchedule.Round round : parsed.getRounds()) {
+            if (roundFilter != null && round.getNumber() != roundFilter) {
+                continue;
+            }
+            if (remaining <= 0) {
+                break;
+            }
+            List<Map<String, Object>> matches = new ArrayList<>();
+            for (AiscoreParsedSchedule.Match match : round.getMatches()) {
+                if (remaining <= 0) {
+                    break;
+                }
+                Map<String, Object> row = new LinkedHashMap<>();
+                row.put("homeName", match.getHomeName());
+                row.put("awayName", match.getAwayName());
+                row.put("utcKickoff", match.getUtcKickoff() != null ? match.getUtcKickoff().toString() : null);
+                row.put("status", match.getStatus());
+                row.put("aiscoreMatchId", match.getAiscoreMatchId());
+                matches.add(row);
+                remaining--;
+                matchesReturned++;
+            }
+            if (!matches.isEmpty()) {
+                Map<String, Object> roundMap = new LinkedHashMap<>();
+                roundMap.put("number", round.getNumber());
+                roundMap.put("matches", matches);
+                rounds.add(roundMap);
+            }
+        }
+
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("tournamentPath", parsed.getTournamentPath());
+        out.put("roundFilter", roundFilter);
+        out.put("limit", limit);
+        out.put("matchesTotal", matchesTotal);
+        out.put("roundsTotal", parsed.getRounds().size());
+        out.put("roundsCount", rounds.size());
+        out.put("matchesCount", matchesReturned);
+        out.put("parsedTruncated", matchesReturned < matchesTotal);
         out.put("rounds", rounds);
         return out;
     }
