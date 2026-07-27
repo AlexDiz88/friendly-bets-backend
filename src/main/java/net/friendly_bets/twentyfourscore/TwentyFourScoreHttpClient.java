@@ -2,13 +2,16 @@ package net.friendly_bets.twentyfourscore;
 
 import lombok.RequiredArgsConstructor;
 import net.friendly_bets.exceptions.BadRequestException;
+import net.friendly_bets.providers.ExternalDataLayer;
+import net.friendly_bets.scrape.BrowserProfile;
+import net.friendly_bets.scrape.ExternalApiCircuitBreaker;
+import net.friendly_bets.scrape.ScrapeFailureKind;
+import net.friendly_bets.scrape.ScrapeHttpSupport;
 import net.friendly_bets.twentyfourscore.config.TwentyFourScoreProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
-import java.net.CookieManager;
-import java.net.CookiePolicy;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.net.http.HttpClient;
@@ -17,31 +20,31 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.LocalDate;
-import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 @Component
 @RequiredArgsConstructor
 public class TwentyFourScoreHttpClient {
 
     private static final Logger log = LoggerFactory.getLogger(TwentyFourScoreHttpClient.class);
-    private static final String USER_AGENT =
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
 
     private final TwentyFourScoreProperties properties;
     private final TwentyFourScoreStandingsParser standingsParser;
-    private final HttpClient httpClient = HttpClient.newBuilder()
-            .connectTimeout(Duration.ofSeconds(20))
-            .followRedirects(HttpClient.Redirect.NORMAL)
-            .build();
+    private final ExternalApiCircuitBreaker circuitBreaker;
+
+    private final BrowserProfile browserProfile = BrowserProfile.randomDesktopRu();
+    private final HttpClient httpClient = ScrapeHttpSupport.newBrowserClient(Duration.ofSeconds(20));
+    private final AtomicBoolean homepageWarmed = new AtomicBoolean(false);
 
     public String fetchDateFootballHtml(LocalDate date) {
         if (date == null) {
             throw new BadRequestException("twentyFourScoreFetchFailed");
         }
         String base = trimTrailingSlash(properties.getBaseUrl());
+        warmHomepage(base);
         String url = base + "/football/?date=" + date;
-        jitterSleep();
-        return getHtml(httpClient, url, base + "/football/");
+        ScrapeHttpSupport.jitterSleep(properties.getHttpDelayMinMs(), properties.getHttpDelayMaxMs());
+        return getHtml(url, base + "/football/", false);
     }
 
     /**
@@ -56,16 +59,9 @@ public class TwentyFourScoreHttpClient {
         String path = standingsPath.startsWith("/") ? standingsPath : "/" + standingsPath;
         String standingsUrl = base + path;
 
-        CookieManager cookieManager = new CookieManager();
-        cookieManager.setCookiePolicy(CookiePolicy.ACCEPT_ALL);
-        HttpClient cookieClient = HttpClient.newBuilder()
-                .connectTimeout(Duration.ofSeconds(20))
-                .followRedirects(HttpClient.Redirect.NORMAL)
-                .cookieHandler(cookieManager)
-                .build();
-
-        jitterSleep();
-        String shellHtml = getHtml(cookieClient, standingsUrl, base + "/");
+        warmHomepage(base);
+        ScrapeHttpSupport.jitterSleep(properties.getHttpDelayMinMs(), properties.getHttpDelayMaxMs());
+        String shellHtml = getHtml(standingsUrl, base + "/", false);
         String dataKey = standingsParser.extractDataKey(shellHtml);
         if (dataKey == null) {
             throw new BadRequestException("twentyFourScoreFetchFailed");
@@ -73,51 +69,70 @@ public class TwentyFourScoreHttpClient {
 
         String dataUrl = base + "/backend/load_page_data.php?data_key="
                 + URLEncoder.encode(dataKey, StandardCharsets.UTF_8);
-        jitterSleep();
-        String dataHtml = getHtml(cookieClient, dataUrl, standingsUrl);
+        ScrapeHttpSupport.jitterSleep(properties.getHttpDelayMinMs(), properties.getHttpDelayMaxMs());
+        String dataHtml = getHtml(dataUrl, standingsUrl, true);
         if (dataHtml == null || dataHtml.isBlank() || dataHtml.contains("data error")) {
             throw new BadRequestException("twentyFourScoreFetchFailed");
         }
         return dataHtml;
     }
 
-    private String getHtml(HttpClient client, String url, String referer) {
-        try {
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(url))
-                    .timeout(Duration.ofSeconds(40))
-                    .GET()
-                    .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
-                    .header("Accept-Language", "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7")
-                    .header("User-Agent", USER_AGENT)
-                    .header("Referer", referer)
-                    .header("X-Requested-With", "XMLHttpRequest")
-                    .build();
-            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-            if (response.statusCode() >= 400) {
-                log.warn("24score HTTP {} for {}", response.statusCode(), url);
-                throw new BadRequestException("twentyFourScoreFetchFailed");
-            }
-            return response.body() != null ? response.body() : "";
-        } catch (BadRequestException e) {
-            throw e;
-        } catch (Exception e) {
-            log.warn("24score fetch failed for {}: {}", url, e.getMessage());
-            throw new BadRequestException("twentyFourScoreFetchFailed");
-        }
-    }
-
-    void jitterSleep() {
-        long min = Math.max(0L, properties.getHttpDelayMinMs());
-        long max = Math.max(min, properties.getHttpDelayMaxMs());
-        long delay = min == max ? min : ThreadLocalRandom.current().nextLong(min, max + 1);
-        if (delay <= 0) {
+    private void warmHomepage(String base) {
+        if (!homepageWarmed.compareAndSet(false, true)) {
             return;
         }
         try {
-            Thread.sleep(delay);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
+            ScrapeHttpSupport.jitterSleep(properties.getHttpDelayMinMs(), properties.getHttpDelayMaxMs());
+            getHtmlInternal(base + "/", null, false, false);
+        } catch (RuntimeException e) {
+            log.info("24score homepage warm-up failed: {}", e.getMessage());
+        }
+    }
+
+    private String getHtml(String url, String referer, boolean xhr) {
+        return getHtmlInternal(url, referer, xhr, true);
+    }
+
+    private String getHtmlInternal(String url, String referer, boolean xhr, boolean reportCircuit) {
+        try {
+            HttpRequest.Builder builder = HttpRequest.newBuilder()
+                    .uri(URI.create(url))
+                    .timeout(Duration.ofSeconds(40))
+                    .GET();
+            if (xhr) {
+                ScrapeHttpSupport.applyXhrHeaders(builder, browserProfile, referer);
+            } else {
+                ScrapeHttpSupport.applyNavigationHeaders(builder, browserProfile, referer);
+            }
+            HttpResponse<String> response = httpClient.send(builder.build(), HttpResponse.BodyHandlers.ofString());
+            String body = response.body() != null ? response.body() : "";
+            if (ScrapeHttpSupport.looksLikeJsChallenge(body)) {
+                if (reportCircuit) {
+                    circuitBreaker.recordFailure(ExternalDataLayer.LIVE, "24score.pro", ScrapeFailureKind.CHALLENGE, url);
+                }
+                throw new BadRequestException("twentyFourScoreFetchFailed");
+            }
+            if (response.statusCode() >= 400) {
+                ScrapeFailureKind kind = ScrapeHttpSupport.classifyHttpStatus(response.statusCode());
+                log.warn("24score HTTP {} for {}", response.statusCode(), url);
+                if (reportCircuit) {
+                    circuitBreaker.recordFailure(ExternalDataLayer.LIVE, "24score.pro", kind, "HTTP " + response.statusCode());
+                }
+                throw new BadRequestException("twentyFourScoreFetchFailed");
+            }
+            if (reportCircuit) {
+                circuitBreaker.recordSuccess(ExternalDataLayer.LIVE);
+            }
+            return body;
+        } catch (BadRequestException e) {
+            throw e;
+        } catch (Exception e) {
+            ScrapeFailureKind kind = ScrapeHttpSupport.classifyThrowable(e);
+            log.warn("24score fetch failed for {}: {}", url, e.getMessage());
+            if (reportCircuit) {
+                circuitBreaker.recordFailure(ExternalDataLayer.LIVE, "24score.pro", kind, e.getMessage());
+            }
+            throw new BadRequestException("twentyFourScoreFetchFailed");
         }
     }
 

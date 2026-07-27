@@ -275,6 +275,12 @@ public class MarathonbetSyncService {
             return toResult(code, season, slotOrders, SlotSyncCounters.empty(), false, null);
         }
 
+        if (!hasEligibleSseTargets(league, slotOrders, season)) {
+            log.info("marathonbet syncLeague {}: no SSE-eligible matches — skip tournament HTTP", code);
+            finalizeOddsRun(run, httpLogs, true, SlotSyncCounters.empty(), "noSseEligible");
+            return toResult(code, season, slotOrders, SlotSyncCounters.empty(), true, null);
+        }
+
         Instant tournamentRequestedAt = Instant.now();
         MarathonbetHttpFetchResult tournamentResult = tournamentClient.fetchTournament(tournamentId);
         httpLogs.add(MarathonbetHttpLogSupport.toLogEntry(
@@ -518,6 +524,7 @@ public class MarathonbetSyncService {
                         sseResult.getHttpStatus(),
                         sseResult.getOutcome()
                 );
+                sleepRetryAfter(sseResult.getRetryAfterSeconds());
                 return MatchSyncOutcome.matchedFailed();
             }
             MarathonbetExtractedMarkets extracted = MarathonbetMarketExtractor.extractAll(sseResult.getBody());
@@ -636,6 +643,47 @@ public class MarathonbetSyncService {
                 .slotOrders(slotOrders)
                 .errorSummary(errorSummary)
                 .build();
+    }
+
+    private boolean hasEligibleSseTargets(League league, List<Integer> slotOrders, String season) {
+        String leagueCode = league.getLeagueCode().name();
+        Instant now = Instant.now();
+        for (int matchday : slotOrders) {
+            List<MatchSchedule> matches = matchScheduleQueryService.getMatches(
+                    leagueCode,
+                    matchday,
+                    season,
+                    league.getId()
+            );
+            for (MatchSchedule match : matches) {
+                if (MatchScheduleDisplayService.isFinalized(match)) {
+                    continue;
+                }
+                if (!MatchScheduleNotStarted.isNotStarted(match, now)) {
+                    continue;
+                }
+                boolean hasOdds = oddsMergedOddsService.findByMatchScheduleId(match.getId())
+                        .map(odds -> odds.getMarketGroups() != null && !odds.getMarketGroups().isEmpty())
+                        .orElse(false);
+                if (MarathonbetSyncBatchSupport.needsSseRefresh(
+                        match, hasOdds, now, properties.getSseRefreshWithinHours())) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private void sleepRetryAfter(Integer retryAfterSeconds) {
+        if (retryAfterSeconds == null || retryAfterSeconds <= 0) {
+            return;
+        }
+        long delayMs = Math.min(retryAfterSeconds, 120) * 1_000L;
+        try {
+            Thread.sleep(delayMs);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
     }
 
     private void sleepBeforeSse() throws InterruptedException {

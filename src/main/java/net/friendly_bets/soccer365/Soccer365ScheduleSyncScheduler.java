@@ -13,16 +13,20 @@ import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
- * Staggered schedule sync for all leagues of the running season that have a competition id.
+ * Hour-staggered schedule sync for all leagues of the running season that have a competition id.
+ * Each league gets two due hours/day derived from its index; jitter delays the actual run.
  */
 @Component
 @RequiredArgsConstructor
@@ -35,11 +39,11 @@ public class Soccer365ScheduleSyncScheduler {
     private final RunningSeasonLookup runningSeasonLookup;
     private final ExternalDataLayerConfigService layerConfigService;
 
-    private final Map<String, Instant> lastSyncAt = new ConcurrentHashMap<>();
-    private final Instant startedAt = Instant.now();
+    /** Keys: {@code yyyy-MM-dd|LEAGUE|hour} already executed. */
+    private final Set<String> completedHourRuns = ConcurrentHashMap.newKeySet();
 
-    @Scheduled(fixedDelayString = "${soccer365.scheduler-tick-ms:300000}")
-    public void tick() {
+    @Scheduled(cron = "0 * * * * *")
+    public void checkDueLeagues() {
         if (!layerConfigService.isLayerEnabled(ExternalDataLayer.SCHEDULE)) {
             return;
         }
@@ -47,25 +51,42 @@ public class Soccer365ScheduleSyncScheduler {
         if (!MatchDataProviders.SOCCER365.equals(primary)) {
             return;
         }
+        ZoneId zone;
+        try {
+            zone = ZoneId.of(properties.getScheduleZone());
+        } catch (Exception e) {
+            log.warn("soccer365 invalid schedule-zone={}: {}", properties.getScheduleZone(), e.getMessage());
+            return;
+        }
+
+        ZonedDateTime now = ZonedDateTime.now(zone);
+        LocalDate day = now.toLocalDate();
+        int hour = now.getHour();
+        pruneCompletedKeys(day);
+
         Optional<Season> seasonOpt = runningSeasonLookup.findRunningSeason();
         if (seasonOpt.isEmpty() || seasonOpt.get().getLeagues() == null) {
             return;
         }
         Season season = seasonOpt.get();
         List<League> leagues = syncableLeagues(season);
-        Instant now = Instant.now();
         for (int i = 0; i < leagues.size(); i++) {
             League league = leagues.get(i);
             String leagueCode = league.getLeagueCode().name();
-            if (!isDue(leagueCode, i, now)) {
+            if (!isLeagueHourDue(i, hour)) {
+                continue;
+            }
+            String runKey = day + "|" + leagueCode + "|" + hour;
+            if (!completedHourRuns.add(runKey)) {
                 continue;
             }
             try {
+                applyJitter();
+                log.info("soccer365 due league={} hour={} zone={}", leagueCode, hour, zone);
                 scheduleSyncService.syncLeague(season, league, true);
             } catch (Exception e) {
+                completedHourRuns.remove(runKey);
                 log.warn("soccer365 schedule sync failed for {}: {}", leagueCode, e.getMessage());
-            } finally {
-                lastSyncAt.put(leagueCode, Instant.now());
             }
         }
     }
@@ -88,20 +109,35 @@ public class Soccer365ScheduleSyncScheduler {
         return out;
     }
 
-    private boolean isDue(String leagueCode, int leagueIndex, Instant now) {
-        Instant last = lastSyncAt.get(leagueCode);
-        long intervalMs = Math.max(60_000L, properties.getScheduleSyncIntervalMs());
-        long staggerMs = Math.max(0L, properties.getLeagueStaggerMs()) * leagueIndex;
-        int jitterMinutes = Math.max(0, properties.getSyncJitterMinutes());
-        long jitterMs = jitterMinutes <= 0
-                ? 0L
-                : ThreadLocalRandom.current().nextLong(-jitterMinutes * 60_000L, jitterMinutes * 60_000L + 1);
+    /** Two slots/day: base+index*step and +12h. */
+    boolean isLeagueHourDue(int leagueIndex, int hourOfDay) {
+        int step = Math.max(1, properties.getLeagueHourStep());
+        int base = Math.floorMod(properties.getLeagueHourBase(), 24);
+        int first = Math.floorMod(base + leagueIndex * step, 24);
+        int second = Math.floorMod(first + 12, 24);
+        return hourOfDay == first || hourOfDay == second;
+    }
 
-        if (last == null) {
-            Instant firstEligible = startedAt.plusMillis(staggerMs + Math.max(0L, jitterMs));
-            return !now.isBefore(firstEligible);
+    private void applyJitter() {
+        int minutes = Math.max(0, properties.getSyncJitterMinutes());
+        if (minutes <= 0) {
+            return;
         }
-        Instant next = last.plusMillis(intervalMs + jitterMs);
-        return !now.isBefore(next);
+        long delayMs = ThreadLocalRandom.current().nextLong(0, minutes * 60_000L + 1);
+        if (delayMs <= 0) {
+            return;
+        }
+        try {
+            Thread.sleep(delayMs);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    private void pruneCompletedKeys(LocalDate today) {
+        String prefixToday = today + "|";
+        String prefixYesterday = today.minusDays(1) + "|";
+        completedHourRuns.removeIf(key ->
+                !key.startsWith(prefixToday) && !key.startsWith(prefixYesterday));
     }
 }

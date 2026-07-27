@@ -28,14 +28,14 @@ public class MarathonbetProperties {
     /** Max matches per SSE stage (sorted by kickoff). */
     private int stageSize = 5;
     /** Pause between SSE stages (minutes). */
-    private int stagePauseMinutes = 15;
+    private int stagePauseMinutes = 20;
     /** Re-fetch SSE only if odds missing or kickoff within this many hours. */
-    private int sseRefreshWithinHours = 48;
+    private int sseRefreshWithinHours = 36;
     private int eventWindowHours = 6;
     /** Random pause lower bound between per-event SSE fetches (ms). */
-    private long sseDelayMinMs = 1_500L;
+    private long sseDelayMinMs = 2_000L;
     /** Random pause upper bound between per-event SSE fetches (ms). */
-    private long sseDelayMaxMs = 4_500L;
+    private long sseDelayMaxMs = 5_500L;
 
     public List<Integer> scheduleHoursForLeague(String leagueCode) {
         if (leagueCode == null || leagueCode.isBlank() || leagueScheduleHours == null) {
