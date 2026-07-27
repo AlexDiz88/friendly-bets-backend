@@ -88,29 +88,35 @@ public class TwentyFourScoreLiveProvider implements LiveMatchProvider {
         Instant now = Instant.now();
         List<MatchSchedule> leagueSchedules = matchScheduleRepository.findByLeagueIdAndSeasonId(
                 league.getId(), season.getId());
+        int skippedMissingKickoff = (int) leagueSchedules.stream()
+                .filter(s -> TwentyFourScoreLiveSupport.isMissingUtcKickoffSkip(s)
+                        || (TwentyFourScoreLiveSupport.needsFullMatch(s) && s.getUtcKickoff() == null))
+                .count();
         List<MatchSchedule> candidates = leagueSchedules.stream()
                 .filter(s -> TwentyFourScoreLiveSupport.isLiveHttpCandidate(s, now))
                 .toList();
         if (candidates.isEmpty()) {
+            String skipReason = skippedMissingKickoff > 0
+                    ? ExternalApiMonitoringService.reasonMissingUtcKickoff(skippedMissingKickoff)
+                    : "noLiveCandidates";
             monitoringService.finalizeAndSave(
                     run,
                     ExternalApiMonitoringStatus.SKIPPED,
-                    ExternalApiMonitoringCounters.builder().requested(0).updated(0).build(),
+                    ExternalApiMonitoringCounters.builder()
+                            .requested(0)
+                            .updated(0)
+                            .skipped(skippedMissingKickoff)
+                            .build(),
                     httpLogs,
                     List.of(),
-                    "noLiveCandidates"
+                    skipReason
             );
-            return LiveSyncResult.of(leagueCode, 0, 0, "noLiveCandidates");
+            return LiveSyncResult.of(leagueCode, 0, 0, skipReason);
         }
 
         Set<LocalDate> dates = new HashSet<>();
         for (MatchSchedule schedule : candidates) {
-            if (schedule.getUtcKickoff() != null) {
-                dates.add(LocalDate.ofInstant(schedule.getUtcKickoff(), ZoneOffset.UTC));
-            }
-        }
-        if (dates.isEmpty()) {
-            dates.add(LocalDate.now(ZoneOffset.UTC));
+            dates.add(LocalDate.ofInstant(schedule.getUtcKickoff(), ZoneOffset.UTC));
         }
 
         Map<String, Team> teamCache = new HashMap<>();
@@ -185,20 +191,33 @@ public class TwentyFourScoreLiveProvider implements LiveMatchProvider {
         }
 
         LinkedHashSet<String> pendingFullIds = candidates.stream()
-                .filter(s -> TwentyFourScoreLiveSupport.needsFullMatch(s))
+                .filter(TwentyFourScoreLiveSupport::needsFullMatch)
+                .filter(s -> s.getUtcKickoff() != null)
                 .map(MatchSchedule::getId)
                 .filter(id -> id != null && !id.isBlank())
                 .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
         leagueSchedules.stream()
                 .filter(TwentyFourScoreLiveSupport::needsFullMatch)
+                .filter(s -> s.getUtcKickoff() != null)
                 .map(MatchSchedule::getId)
                 .filter(id -> id != null && !id.isBlank())
                 .forEach(pendingFullIds::add);
+
+        int missingKickoffForFull = (int) leagueSchedules.stream()
+                .filter(TwentyFourScoreLiveSupport::needsFullMatch)
+                .filter(s -> s.getUtcKickoff() == null)
+                .count();
+        int totalMissingKickoff = (int) leagueSchedules.stream()
+                .filter(TwentyFourScoreLiveSupport::isMissingUtcKickoffSkip)
+                .count() + missingKickoffForFull;
 
         if (!pendingFullIds.isEmpty()) {
             log.info("24score LIVE {} pending FULL for {} match(es)", league.getLeagueCode(), pendingFullIds.size());
         }
 
+        String warning = totalMissingKickoff > 0
+                ? ExternalApiMonitoringService.reasonMissingUtcKickoff(totalMissingKickoff)
+                : null;
         monitoringService.finalizeAndSave(
                 run,
                 ExternalApiMonitoringStatus.SUCCESS,
@@ -206,13 +225,14 @@ public class TwentyFourScoreLiveProvider implements LiveMatchProvider {
                         .requested(candidates.size())
                         .updated(updated)
                         .finishedDetected(finishedDetected)
+                        .skipped(totalMissingKickoff)
                         .build(),
                 httpLogs,
                 List.of(),
-                null
+                warning
         );
 
-        return new LiveSyncResult(leagueCode, updated, finishedDetected, null, List.copyOf(pendingFullIds));
+        return new LiveSyncResult(leagueCode, updated, finishedDetected, warning, List.copyOf(pendingFullIds));
     }
 
     private Optional<TwentyFourScoreParsedDatePage.MatchRow> findRow(

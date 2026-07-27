@@ -6,6 +6,10 @@ import net.friendly_bets.gameresults.GameScoreValidator;
 import net.friendly_bets.gameresults.config.MatchResultSyncProperties;
 import net.friendly_bets.models.GameResult;
 import net.friendly_bets.models.User;
+import net.friendly_bets.models.monitoring.ExternalApiMonitoringCounters;
+import net.friendly_bets.models.monitoring.ExternalApiMonitoringRun;
+import net.friendly_bets.models.monitoring.ExternalApiMonitoringStatus;
+import net.friendly_bets.models.monitoring.ExternalApiMonitoringTrigger;
 import net.friendly_bets.models.schedule.MatchSchedule;
 import net.friendly_bets.providers.ExternalDataLayer;
 import net.friendly_bets.providers.FullMatchProvider;
@@ -17,6 +21,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
@@ -36,6 +41,7 @@ public class MatchFinalizeOrchestrator {
     private final MatchResultSyncProperties properties;
     private final UsersRepository usersRepository;
     private final ExternalDataLayerConfigService layerConfigService;
+    private final ExternalApiMonitoringService monitoringService;
 
     @Transactional
     public MatchSchedule finalizeFinishedMatch(MatchSchedule match) {
@@ -63,15 +69,58 @@ public class MatchFinalizeOrchestrator {
         if (matchScheduleIds == null || matchScheduleIds.isEmpty()) {
             return;
         }
+        List<MatchSchedule> withKickoff = new ArrayList<>();
+        int missingKickoff = 0;
+        String leagueCode = null;
+        String seasonId = null;
         for (String id : matchScheduleIds) {
             if (id == null || id.isBlank()) {
                 continue;
             }
+            MatchSchedule loaded = matchScheduleRepository.findById(id.trim()).orElse(null);
+            if (loaded == null) {
+                continue;
+            }
+            if (loaded.getUtcKickoff() == null) {
+                missingKickoff++;
+                if (leagueCode == null) {
+                    leagueCode = loaded.getLeagueCode();
+                }
+                if (seasonId == null) {
+                    seasonId = loaded.getSeasonId();
+                }
+                continue;
+            }
+            withKickoff.add(loaded);
+        }
+        if (missingKickoff > 0) {
+            String provider = layerConfigService.assignment(ExternalDataLayer.FULL_MATCH).getPrimaryProvider();
+            ExternalApiMonitoringRun run = monitoringService.begin(
+                    ExternalDataLayer.FULL_MATCH,
+                    provider,
+                    ExternalApiMonitoringTrigger.ORCHESTRATOR,
+                    leagueCode,
+                    seasonId
+            );
+            monitoringService.finalizeAndSave(
+                    run,
+                    ExternalApiMonitoringStatus.SKIPPED,
+                    ExternalApiMonitoringCounters.builder()
+                            .requested(missingKickoff)
+                            .skipped(missingKickoff)
+                            .saved(0)
+                            .build(),
+                    List.of(),
+                    List.of(),
+                    ExternalApiMonitoringService.reasonMissingUtcKickoff(missingKickoff)
+            );
+        }
+        for (MatchSchedule match : withKickoff) {
             try {
-                finalizeFinishedMatch(MatchSchedule.builder().id(id.trim()).build());
+                finalizeFinishedMatch(match);
             } catch (RuntimeException e) {
                 // LayerProviderRouter already wrote error_logs for FULL failure.
-                log.warn("FULL/settle failed for match {}: {}", id, e.getMessage());
+                log.warn("FULL/settle failed for match {}: {}", match.getId(), e.getMessage());
             }
         }
     }

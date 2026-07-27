@@ -74,6 +74,18 @@ public class Soccer365FullMatchProvider implements FullMatchProvider {
             return current;
         }
 
+        if (current.getUtcKickoff() == null) {
+            monitoringService.finalizeAndSave(
+                    run,
+                    ExternalApiMonitoringStatus.SKIPPED,
+                    ExternalApiMonitoringCounters.builder().requested(1).skipped(1).saved(0).build(),
+                    httpLogs,
+                    List.of(),
+                    ExternalApiMonitoringService.reasonMissingUtcKickoff(1)
+            );
+            return current;
+        }
+
         String gameId;
         try {
             gameId = fullMatchResolver.resolveGameId(current);

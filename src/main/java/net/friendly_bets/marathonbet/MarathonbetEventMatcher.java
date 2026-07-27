@@ -39,9 +39,7 @@ public class MarathonbetEventMatcher {
             return MarathonbetEventResolveResult.miss(MarathonbetEventResolveResult.MissKind.MAPPING_FAILURE);
         }
         if (match.getUtcKickoff() == null) {
-            errorLogService.recordEventMappingMissing(
-                    match, "marathonbet", leagueCode, season, matchday, "matchKickoffMissing");
-            return MarathonbetEventResolveResult.miss(MarathonbetEventResolveResult.MissKind.MAPPING_FAILURE);
+            return MarathonbetEventResolveResult.miss(MarathonbetEventResolveResult.MissKind.NO_BOOKIE_EVENT);
         }
 
         List<MarathonbetPrematchEvent> candidates = filterByKickoffWindow(match, tournamentEvents);

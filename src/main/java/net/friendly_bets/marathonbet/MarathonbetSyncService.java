@@ -369,6 +369,7 @@ public class MarathonbetSyncService {
         Instant fetchedAt = Instant.now();
 
         List<MatchSchedule> pending = new ArrayList<>();
+        int skippedMissingKickoff = 0;
         for (int matchday : matchdays) {
             List<MatchSchedule> matches = matchScheduleQueryService.getMatches(
                     leagueCode,
@@ -388,6 +389,10 @@ public class MarathonbetSyncService {
                     continue;
                 }
                 if (MatchScheduleNotStarted.isNotStarted(match, now)) {
+                    if (match.getUtcKickoff() == null) {
+                        skippedMissingKickoff++;
+                        continue;
+                    }
                     pending.add(match);
                 } else {
                     oddsMergedOddsService.freezeIfNeeded(match, now);
@@ -396,6 +401,9 @@ public class MarathonbetSyncService {
         }
 
         if (pending.isEmpty()) {
+            if (skippedMissingKickoff > 0) {
+                return new SlotSyncCounters(0, 0, 0, 0, 0, 0, 0, skippedMissingKickoff, List.of());
+            }
             if (failWhenNoPending) {
                 throw new BadRequestException("oddsSyncNoMatchdayMatches");
             }
@@ -480,6 +488,7 @@ public class MarathonbetSyncService {
                 mappingFailures,
                 skippedFar,
                 skippedNoBookieEvent,
+                skippedMissingKickoff,
                 failedIds
         );
     }
@@ -588,6 +597,7 @@ public class MarathonbetSyncService {
         int mappingFailures = counters.mappingFailures();
         int skippedFar = counters.skippedFar();
         int skippedNoBookie = counters.skippedNoBookieEvent();
+        int skippedMissingKickoff = counters.skippedMissingKickoff();
         List<String> failedIds = counters.failedMatchScheduleIds();
 
         String summary = errorSummary;
@@ -596,21 +606,28 @@ public class MarathonbetSyncService {
                     ? "mappingFailures=" + mappingFailures
                     : summary + "; mappingFailures=" + mappingFailures;
         }
-        // Soft skips stay in counters only (not red errorSummary): skippedFar + noBookieEventYet.
+        if (skippedMissingKickoff > 0) {
+            String missing = ExternalApiMonitoringService.reasonMissingUtcKickoff(skippedMissingKickoff);
+            summary = summary == null ? missing : summary + "; " + missing;
+        }
+        // Soft skips stay in counters (skippedFar + noBookieEventYet); missingUtcKickoff also in errorSummary as warning.
         ExternalApiMonitoringCounters monitoringCounters = ExternalApiMonitoringCounters.builder()
                 .eligible(eligible)
                 .matched(matched)
                 .saved(saved)
                 .sseCalls(sseCalls)
                 .mappingFailures(mappingFailures)
-                .skipped(skippedFar + skippedNoBookie)
+                .skipped(skippedFar + skippedNoBookie + skippedMissingKickoff)
                 .tournamentFetched(tournamentFetched)
                 .build();
         ExternalApiMonitoringStatus status;
-        if (summary != null && !tournamentFetched && eligible == 0 && matched == 0 && saved == 0
-                && !"noSlots".equals(errorSummary)) {
+        if (errorSummary != null && !tournamentFetched && eligible == 0 && matched == 0 && saved == 0
+                && !"noSlots".equals(errorSummary)
+                && !errorSummary.startsWith(ExternalApiMonitoringService.REASON_MISSING_UTC_KICKOFF)) {
             status = ExternalApiMonitoringStatus.FAILED;
-        } else if ("noSlots".equals(errorSummary) || (eligible == 0 && tournamentFetched)) {
+        } else if ("noSlots".equals(errorSummary)
+                || (eligible == 0 && tournamentFetched)
+                || (eligible == 0 && skippedMissingKickoff > 0 && mappingFailures == 0)) {
             status = ExternalApiMonitoringStatus.SKIPPED;
         } else if (mappingFailures > 0 || ExternalApiMonitoringService.countFailed(httpLogs) > 0) {
             status = saved > 0 ? ExternalApiMonitoringStatus.PARTIAL : ExternalApiMonitoringStatus.FAILED;
@@ -657,6 +674,9 @@ public class MarathonbetSyncService {
             );
             for (MatchSchedule match : matches) {
                 if (MatchScheduleDisplayService.isFinalized(match)) {
+                    continue;
+                }
+                if (match.getUtcKickoff() == null) {
                     continue;
                 }
                 if (!MatchScheduleNotStarted.isNotStarted(match, now)) {
@@ -735,10 +755,11 @@ public class MarathonbetSyncService {
             int mappingFailures,
             int skippedFar,
             int skippedNoBookieEvent,
+            int skippedMissingKickoff,
             List<String> failedMatchScheduleIds
     ) {
         static SlotSyncCounters empty() {
-            return new SlotSyncCounters(0, 0, 0, 0, 0, 0, 0, List.of());
+            return new SlotSyncCounters(0, 0, 0, 0, 0, 0, 0, 0, List.of());
         }
     }
 

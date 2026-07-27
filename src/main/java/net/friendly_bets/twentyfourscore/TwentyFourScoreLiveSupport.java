@@ -26,6 +26,10 @@ final class TwentyFourScoreLiveSupport {
         if (schedule.getFinalizedAt() != null || schedule.getFullDetailsFetchedAt() != null) {
             return false;
         }
+        Instant kickoff = schedule.getUtcKickoff();
+        if (kickoff == null) {
+            return false;
+        }
         String status = normalize(schedule.getStatus());
         if (FINISHED.contains(status)) {
             return false;
@@ -33,11 +37,21 @@ final class TwentyFourScoreLiveSupport {
         if (IN_PLAY.contains(status)) {
             return true;
         }
-        Instant kickoff = schedule.getUtcKickoff();
-        if (kickoff == null) {
+        return !kickoff.isAfter(now) && kickoff.isAfter(now.minusSeconds(LIVE_WINDOW_SECONDS));
+    }
+
+    /** Not finished/finalized and missing kickoff — ODDS/LIVE/FULL cannot resolve. */
+    static boolean isMissingUtcKickoffSkip(MatchSchedule schedule) {
+        if (schedule == null) {
             return false;
         }
-        return !kickoff.isAfter(now) && kickoff.isAfter(now.minusSeconds(LIVE_WINDOW_SECONDS));
+        if (schedule.getUtcKickoff() != null) {
+            return false;
+        }
+        if (schedule.getFinalizedAt() != null || schedule.getFullDetailsFetchedAt() != null) {
+            return false;
+        }
+        return !FINISHED.contains(normalize(schedule.getStatus()));
     }
 
     static boolean needsFullMatch(MatchSchedule schedule) {

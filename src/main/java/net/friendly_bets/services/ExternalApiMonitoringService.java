@@ -24,7 +24,14 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ExternalApiMonitoringService {
 
+    /** Soft warning key: matches skipped because {@code match_schedules.utc_kickoff} is null. */
+    public static final String REASON_MISSING_UTC_KICKOFF = "missingUtcKickoff";
+
     private static final ThreadLocal<ExternalApiMonitoringTrigger> TRIGGER_OVERRIDE = new ThreadLocal<>();
+
+    public static String reasonMissingUtcKickoff(int count) {
+        return REASON_MISSING_UTC_KICKOFF + "=" + Math.max(0, count);
+    }
 
     private final ExternalApiMonitoringRepository repository;
 

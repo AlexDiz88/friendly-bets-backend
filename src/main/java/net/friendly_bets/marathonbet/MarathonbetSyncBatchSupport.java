@@ -38,13 +38,13 @@ public final class MarathonbetSyncBatchSupport {
         if (!MatchScheduleNotStarted.isNotStarted(match, now)) {
             return false;
         }
+        if (match.getUtcKickoff() == null) {
+            return false;
+        }
         if (!hasOdds) {
             return true;
         }
         Instant kickoff = match.getUtcKickoff();
-        if (kickoff == null) {
-            return true;
-        }
         if (refreshWithinHours <= 0) {
             return true;
         }
