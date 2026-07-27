@@ -13,7 +13,9 @@ import org.springframework.data.mongodb.core.mapping.MongoId;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @NoArgsConstructor
 @AllArgsConstructor
@@ -83,6 +85,14 @@ public class MatchSchedule {
     @Field(name = "stats")
     private MatchTeamStats stats;
 
+    /**
+     * External ids by provider storage key (see {@code MatchDataProviders.sourcesStorageKey}).
+     * Optional cache for FULL_MATCH / LIVE; missing key → resolve via aliases.
+     */
+    @Field(name = "external_ids")
+    @Builder.Default
+    private Map<String, String> externalIds = new HashMap<>();
+
     @Field(name = "finalized_at")
     private Instant finalizedAt;
 
@@ -94,4 +104,21 @@ public class MatchSchedule {
 
     @Field(name = "fetched_at")
     private Instant fetchedAt;
+
+    public String externalId(String storageKey) {
+        if (externalIds == null || storageKey == null) {
+            return null;
+        }
+        return externalIds.get(storageKey);
+    }
+
+    public void putExternalId(String storageKey, String externalId) {
+        if (storageKey == null || externalId == null || externalId.isBlank()) {
+            return;
+        }
+        if (externalIds == null) {
+            externalIds = new HashMap<>();
+        }
+        externalIds.put(storageKey, externalId);
+    }
 }

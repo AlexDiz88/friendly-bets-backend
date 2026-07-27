@@ -1,9 +1,12 @@
 package net.friendly_bets.marathonbet.client;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import net.friendly_bets.exceptions.BadRequestException;
+import net.friendly_bets.providers.ExternalDataLayer;
+import net.friendly_bets.scrape.ExternalApiCircuitBreaker;
+import net.friendly_bets.scrape.ScrapeFailureKind;
+import net.friendly_bets.scrape.ScrapeHttpSupport;
 import org.springframework.stereotype.Component;
 
 import java.net.URI;
@@ -23,9 +26,8 @@ public class MarathonbetTournamentClient {
     private static final Duration READ_TIMEOUT = Duration.ofSeconds(120);
 
     private final ObjectMapper objectMapper;
-    private final HttpClient httpClient = HttpClient.newBuilder()
-            .connectTimeout(CONNECT_TIMEOUT)
-            .build();
+    private final ExternalApiCircuitBreaker circuitBreaker;
+    private final HttpClient httpClient = ScrapeHttpSupport.newBrowserClient(CONNECT_TIMEOUT);
 
     public MarathonbetHttpFetchResult fetchTournament(long tournamentTreeId) {
         if (tournamentTreeId <= 0) {
@@ -49,6 +51,8 @@ public class MarathonbetTournamentClient {
             long durationMs = elapsedMs(started);
             Integer retryAfter = parseRetryAfter(response);
             if (response.statusCode() >= 400) {
+                ScrapeFailureKind kind = ScrapeHttpSupport.classifyHttpStatus(response.statusCode());
+                circuitBreaker.recordFailure(ExternalDataLayer.ODDS, "marathonbet", kind, "HTTP " + response.statusCode());
                 return MarathonbetHttpFetchResult.builder()
                         .success(false)
                         .httpStatus(response.statusCode())
@@ -58,6 +62,7 @@ public class MarathonbetTournamentClient {
                         .retryAfterSeconds(retryAfter)
                         .build();
             }
+            circuitBreaker.recordSuccess(ExternalDataLayer.ODDS);
             return MarathonbetHttpFetchResult.builder()
                     .success(true)
                     .httpStatus(response.statusCode())
@@ -67,6 +72,7 @@ public class MarathonbetTournamentClient {
                     .retryAfterSeconds(retryAfter)
                     .build();
         } catch (HttpTimeoutException e) {
+            circuitBreaker.recordFailure(ExternalDataLayer.ODDS, "marathonbet", ScrapeFailureKind.TIMEOUT, e.getMessage());
             return MarathonbetHttpFetchResult.builder()
                     .success(false)
                     .outcome(MarathonbetHttpOutcome.TIMEOUT)
@@ -76,6 +82,12 @@ public class MarathonbetTournamentClient {
         } catch (BadRequestException e) {
             throw e;
         } catch (Exception e) {
+            circuitBreaker.recordFailure(
+                    ExternalDataLayer.ODDS,
+                    "marathonbet",
+                    ScrapeHttpSupport.classifyThrowable(e),
+                    e.getMessage()
+            );
             return MarathonbetHttpFetchResult.builder()
                     .success(false)
                     .outcome(MarathonbetHttpOutcome.NETWORK_ERROR)

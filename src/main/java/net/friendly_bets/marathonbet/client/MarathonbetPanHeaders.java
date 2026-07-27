@@ -4,6 +4,10 @@ import java.net.http.HttpRequest;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
+/**
+ * Marathonbet mobile redesign (Pan) API headers — keep as-is; proven on WC run.
+ * UA is sticky per JVM via {@link #stickyUserAgent()}.
+ */
 public final class MarathonbetPanHeaders {
 
     public static final String BASE_URL = "https://new.marathonbet.ru";
@@ -15,6 +19,10 @@ public final class MarathonbetPanHeaders {
             "Mozilla/5.0 (iPhone; CPU iPhone OS 17_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/122.0.6261.89 Mobile/15E148 Safari/604.1"
     );
 
+    private static final String STICKY_UA = MOBILE_CHROME_USER_AGENTS.get(
+            ThreadLocalRandom.current().nextInt(MOBILE_CHROME_USER_AGENTS.size())
+    );
+
     private MarathonbetPanHeaders() {
     }
 
@@ -24,15 +32,13 @@ public final class MarathonbetPanHeaders {
                 .header("X-Pan-Version", "MOBILE-SSR-2.5.4")
                 .header("X-Pan-Target", "BROWSER")
                 .header("X-Country-Code", "RU")
-                .header("User-Agent", pickUserAgent());
+                .header("User-Agent", stickyUserAgent());
         if (referer != null && !referer.isBlank()) {
             builder.header("Referer", referer);
         }
     }
 
-    static String pickUserAgent() {
-        return MOBILE_CHROME_USER_AGENTS.get(
-                ThreadLocalRandom.current().nextInt(MOBILE_CHROME_USER_AGENTS.size())
-        );
+    static String stickyUserAgent() {
+        return STICKY_UA;
     }
 }

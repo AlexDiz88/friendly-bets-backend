@@ -7,6 +7,7 @@ import net.friendly_bets.models.League;
 import net.friendly_bets.models.Team;
 import net.friendly_bets.models.schedule.MatchSchedule;
 import net.friendly_bets.providers.ProviderMatchResolveSupport;
+import net.friendly_bets.repositories.MatchScheduleRepository;
 import net.friendly_bets.services.GetEntityService;
 import net.friendly_bets.services.TeamAliasResolver;
 import net.friendly_bets.soccer365.config.Soccer365Properties;
@@ -17,8 +18,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Resolves soccer365 game page id from competition schedule via kickoff + soccer365 team aliases.
- * Does not read or write {@code match_schedules.external_ids}.
+ * Resolves soccer365 game page id: prefer {@code external_ids.soccer365}, else competition
+ * schedule via kickoff + soccer365 team aliases (and cache the id back).
  */
 @Component
 @RequiredArgsConstructor
@@ -30,10 +31,15 @@ public class Soccer365FullMatchResolver {
     private final Soccer365TeamNamesService teamNamesService;
     private final TeamAliasResolver teamAliasResolver;
     private final GetEntityService getEntityService;
+    private final MatchScheduleRepository matchScheduleRepository;
 
     public String resolveGameId(MatchSchedule match) {
         if (match == null) {
             throw new BadRequestException("matchScheduleNotFound");
+        }
+        String cached = match.externalId(MatchDataProviders.sourcesStorageKey(MatchDataProviders.SOCCER365));
+        if (cached != null && !cached.isBlank()) {
+            return cached.trim();
         }
         if (match.getUtcKickoff() == null) {
             throw new BadRequestException("fullMatchKickoffRequired");
@@ -64,7 +70,7 @@ public class Soccer365FullMatchResolver {
                 );
 
         if (outcome.isUnique() && outcome.match() != null) {
-            return requireGameId(outcome.match());
+            return cacheAndReturn(match, requireGameId(outcome.match()));
         }
         if (outcome.isAmbiguous()) {
             throw new BadRequestException("fullMatchAmbiguous");
@@ -88,7 +94,15 @@ public class Soccer365FullMatchResolver {
         if (bySides.size() > 1) {
             throw new BadRequestException("fullMatchAmbiguous");
         }
-        return requireGameId(bySides.get(0));
+        return cacheAndReturn(match, requireGameId(bySides.get(0)));
+    }
+
+    private String cacheAndReturn(MatchSchedule match, String gameId) {
+        match.putExternalId(MatchDataProviders.sourcesStorageKey(MatchDataProviders.SOCCER365), gameId);
+        if (match.getId() != null) {
+            matchScheduleRepository.save(match);
+        }
+        return gameId;
     }
 
     private static String requireGameId(Soccer365ParsedSchedule.Match match) {

@@ -2,6 +2,8 @@ package net.friendly_bets.services;
 
 import net.friendly_bets.dto.ExternalSiteAccessProbeResultDto;
 import net.friendly_bets.exceptions.BadRequestException;
+import net.friendly_bets.scrape.BrowserProfile;
+import net.friendly_bets.scrape.ScrapeHttpSupport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -12,9 +14,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
-import java.util.List;
 import java.util.Locale;
-import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * Pre-integration smoke check: can this JVM/host fetch a candidate external site
@@ -25,39 +25,28 @@ public class ExternalSiteAccessProbeService {
 
     private static final Logger log = LoggerFactory.getLogger(ExternalSiteAccessProbeService.class);
     private static final int BODY_SNIPPET_LIMIT = 500;
-    private static final List<String> USER_AGENTS = List.of(
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
-            "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-    );
 
-    private final HttpClient httpClient = HttpClient.newBuilder()
-            .version(HttpClient.Version.HTTP_1_1)
-            .connectTimeout(Duration.ofSeconds(15))
-            .followRedirects(HttpClient.Redirect.NORMAL)
-            .build();
+    private final HttpClient httpClient = ScrapeHttpSupport.newBrowserClient(Duration.ofSeconds(15));
+    private final BrowserProfile browserProfile = BrowserProfile.randomDesktopRu();
 
     public ExternalSiteAccessProbeResultDto probe(String urlRaw) {
         URI uri = parseAndValidateUrl(urlRaw);
         String requested = uri.toString();
         long started = System.currentTimeMillis();
         try {
-            HttpRequest request = HttpRequest.newBuilder()
+            HttpRequest.Builder builder = HttpRequest.newBuilder()
                     .uri(uri)
                     .timeout(Duration.ofSeconds(30))
-                    .GET()
-                    .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
-                    .header("Accept-Language", "en-US,en;q=0.9,ru;q=0.8")
-                    .header("User-Agent", USER_AGENTS.get(ThreadLocalRandom.current().nextInt(USER_AGENTS.size())))
-                    .build();
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+                    .GET();
+            ScrapeHttpSupport.applyNavigationHeaders(builder, browserProfile, null);
+            HttpResponse<String> response = httpClient.send(builder.build(), HttpResponse.BodyHandlers.ofString());
             long durationMs = System.currentTimeMillis() - started;
             String body = response.body() != null ? response.body() : "";
             String server = firstHeader(response, "server");
             String cfRay = firstHeader(response, "cf-ray");
             String cfMitigated = firstHeader(response, "cf-mitigated");
             boolean cloudflare = isCloudflare(server, cfRay, cfMitigated, body);
-            boolean jsChallenge = isJsChallenge(body);
+            boolean jsChallenge = ScrapeHttpSupport.looksLikeJsChallenge(body);
             String verdict = resolveVerdict(response.statusCode(), jsChallenge);
             return ExternalSiteAccessProbeResultDto.builder()
                     .verdict(verdict)
@@ -109,19 +98,6 @@ public class ExternalSiteAccessProbeService {
         }
         String lower = body.toLowerCase(Locale.ROOT);
         return lower.contains("cdn-cgi/") || lower.contains("cloudflare");
-    }
-
-    private static boolean isJsChallenge(String body) {
-        if (body == null || body.isBlank()) {
-            return false;
-        }
-        String lower = body.toLowerCase(Locale.ROOT);
-        return lower.contains("just a moment")
-                || lower.contains("cf-challenge")
-                || lower.contains("challenge-platform")
-                || lower.contains("checking your browser")
-                || lower.contains("enable javascript and cookies")
-                || (lower.contains("attention required") && lower.contains("cloudflare"));
     }
 
     private static String firstHeader(HttpResponse<?> response, String name) {
@@ -177,7 +153,6 @@ public class ExternalSiteAccessProbeService {
                     || addr.isSiteLocalAddress()
                     || addr.isMulticastAddress();
         } catch (Exception e) {
-            // DNS may fail later during fetch; host string itself is fine
             return false;
         }
     }

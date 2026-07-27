@@ -207,6 +207,26 @@ public class Soccer365ScheduleSyncService implements ScheduleProvider {
         run.setMatchday(currentOrder);
         run.setSlotOrders(new ArrayList<>(window));
 
+        if (respectFarKickoffSkip && shouldSkipFarKickoffFromDb(season.getId(), league.getId(), currentOrder, window)) {
+            log.info("soccer365 sync {}: DB data present and earliest kickoff farther than {} days — skip without HTTP",
+                    leagueCode, properties.getSkipWhenKickoffFartherThanDays());
+            monitoringService.finalizeAndSave(
+                    run,
+                    ExternalApiMonitoringStatus.SKIPPED,
+                    ExternalApiMonitoringCounters.builder().roundsParsed(0).skipped(1).build(),
+                    httpLogs,
+                    List.of(),
+                    "farKickoffDb"
+            );
+            return Soccer365ScheduleSyncResultDto.builder()
+                    .leagueCode(leagueCode.name())
+                    .seasonId(season.getId())
+                    .currentMatchday(currentOrder)
+                    .nextMatchday(nextOrder)
+                    .roundsParsed(0)
+                    .build();
+        }
+
         Instant reqAt = Instant.now();
         long t0 = System.currentTimeMillis();
         String html;
@@ -237,26 +257,6 @@ public class Soccer365ScheduleSyncService implements ScheduleProvider {
         }
 
         Soccer365ParsedSchedule parsed = scheduleParser.parse(html, competitionId);
-
-        if (respectFarKickoffSkip && shouldSkipFarKickoff(parsed, window)) {
-            log.info("soccer365 sync {}: earliest kickoff farther than {} days — skip tick",
-                    leagueCode, properties.getSkipWhenKickoffFartherThanDays());
-            monitoringService.finalizeAndSave(
-                    run,
-                    ExternalApiMonitoringStatus.SKIPPED,
-                    ExternalApiMonitoringCounters.builder().roundsParsed(0).skipped(1).build(),
-                    httpLogs,
-                    List.of(),
-                    "farKickoff"
-            );
-            return Soccer365ScheduleSyncResultDto.builder()
-                    .leagueCode(leagueCode.name())
-                    .seasonId(season.getId())
-                    .currentMatchday(currentOrder)
-                    .nextMatchday(nextOrder)
-                    .roundsParsed(0)
-                    .build();
-        }
 
         Instant fetchedAt = Instant.now();
         int upserted = 0;
@@ -371,31 +371,52 @@ public class Soccer365ScheduleSyncService implements ScheduleProvider {
         if (match.getStatus() != null) {
             existing.setStatus(match.getStatus());
         }
+        if (match.getSoccer365GameId() != null && !match.getSoccer365GameId().isBlank()) {
+            existing.putExternalId(
+                    MatchDataProviders.sourcesStorageKey(MatchDataProviders.SOCCER365),
+                    match.getSoccer365GameId()
+            );
+        }
         existing.setFetchedAt(fetchedAt);
         matchScheduleRepository.save(existing);
         oddsMergedOddsService.deleteIfFinalized(existing);
     }
 
-    private boolean shouldSkipFarKickoff(Soccer365ParsedSchedule parsed, Set<Integer> window) {
+    /**
+     * Skip HTTP when current matchday already has rows in DB and the earliest kickoff
+     * in the sync window is farther than {@code skipWhenKickoffFartherThanDays}.
+     */
+    private boolean shouldSkipFarKickoffFromDb(
+            String seasonId,
+            String leagueId,
+            int currentOrder,
+            Set<Integer> window
+    ) {
         int days = properties.getSkipWhenKickoffFartherThanDays();
-        if (days <= 0) {
+        if (days <= 0 || window == null || window.isEmpty()) {
             return false;
         }
         Instant earliest = null;
-        for (Soccer365ParsedSchedule.Round round : parsed.getRounds()) {
-            if (!window.contains(round.getNumber())) {
+        boolean currentHasRows = false;
+        for (Integer matchday : window) {
+            List<MatchSchedule> rows = matchScheduleRepository
+                    .findByLeagueIdAndSeasonIdAndMatchdayOrderByUtcKickoffAsc(leagueId, seasonId, matchday);
+            if (matchday != null && matchday == currentOrder && rows != null && !rows.isEmpty()) {
+                currentHasRows = true;
+            }
+            if (rows == null) {
                 continue;
             }
-            for (Soccer365ParsedSchedule.Match match : round.getMatches()) {
-                if (match.getUtcKickoff() == null) {
+            for (MatchSchedule row : rows) {
+                if (row.getUtcKickoff() == null) {
                     continue;
                 }
-                if (earliest == null || match.getUtcKickoff().isBefore(earliest)) {
-                    earliest = match.getUtcKickoff();
+                if (earliest == null || row.getUtcKickoff().isBefore(earliest)) {
+                    earliest = row.getUtcKickoff();
                 }
             }
         }
-        if (earliest == null) {
+        if (!currentHasRows || earliest == null) {
             return false;
         }
         long daysUntil = ChronoUnit.DAYS.between(Instant.now(), earliest);

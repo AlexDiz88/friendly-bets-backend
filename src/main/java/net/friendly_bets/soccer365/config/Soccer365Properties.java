@@ -11,21 +11,24 @@ import java.util.Map;
 public class Soccer365Properties {
 
     private String baseUrl = "https://soccer365.ru";
-    /** Interval between schedule syncs per league (default 8h). */
-    private long scheduleSyncIntervalMs = 28_800_000L;
-    /** How often the scheduler checks due leagues (default 5 min). */
-    private long schedulerTickMs = 300_000L;
-    /** Stagger between leagues on first due window (default 35 min). */
-    private long leagueStaggerMs = 2_100_000L;
-    /** Jitter up to ±N minutes on due check. */
+    /** Zone for per-league schedule hours (same idea as marathonbet). */
+    private String scheduleZone = "Europe/Berlin";
+    /**
+     * Hour step between leagues in the active season (league index × step).
+     * League 0 → hours 1 and 13; league 1 → 3 and 15; …
+     */
+    private int leagueHourStep = 2;
+    /** Base hour of day for the first league's first slot (0–23). */
+    private int leagueHourBase = 1;
+    /** Random delay 0..N minutes after a due hour before syncing. */
     private int syncJitterMinutes = 15;
     /** Random pause lower bound between HTTP requests (ms). */
     private long httpDelayMinMs = 1_500L;
     /** Random pause upper bound between HTTP requests (ms). */
     private long httpDelayMaxMs = 4_500L;
     /**
-     * If the earliest kickoff in the sync window is farther than this many days away,
-     * skip the tick (rare-schedule mode).
+     * If DB already has current-matchday rows and earliest kickoff is farther than this many days,
+     * skip the HTTP request (auto sync only).
      */
     private int skipWhenKickoffFartherThanDays = 3;
     /** Kickoff±window when resolving FULL_MATCH card via competition schedule. */

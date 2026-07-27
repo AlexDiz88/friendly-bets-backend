@@ -11,8 +11,8 @@ import java.util.Map;
 public class TwentyFourScoreProperties {
 
     private String baseUrl = "https://24score.pro";
-    private long httpDelayMinMs = 1_000L;
-    private long httpDelayMaxMs = 3_000L;
+    private long httpDelayMinMs = 1_500L;
+    private long httpDelayMaxMs = 4_000L;
     /** Poll interval while matches are in LIVE window (default 5 min). */
     private long schedulerTickMs = 300_000L;
     /**
