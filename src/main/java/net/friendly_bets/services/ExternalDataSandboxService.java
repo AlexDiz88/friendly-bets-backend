@@ -23,11 +23,16 @@ import net.friendly_bets.soccer365.Soccer365HttpClient;
 import net.friendly_bets.soccer365.Soccer365ParsedFullMatch;
 import net.friendly_bets.soccer365.Soccer365ParsedSchedule;
 import net.friendly_bets.soccer365.Soccer365ScheduleParser;
+import net.friendly_bets.sportsru.SportsRuCalendarPathSupport;
+import net.friendly_bets.sportsru.SportsRuHttpClient;
+import net.friendly_bets.sportsru.SportsRuParsedSchedule;
+import net.friendly_bets.sportsru.SportsRuScheduleParser;
 import net.friendly_bets.twentyfourscore.TwentyFourScoreDatePageParser;
 import net.friendly_bets.twentyfourscore.TwentyFourScoreHttpClient;
 import net.friendly_bets.twentyfourscore.TwentyFourScoreParsedDatePage;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -43,6 +48,8 @@ public class ExternalDataSandboxService {
     private final Soccer365HttpClient soccer365HttpClient;
     private final Soccer365ScheduleParser soccer365ScheduleParser;
     private final Soccer365GameParser soccer365GameParser;
+    private final SportsRuHttpClient sportsRuHttpClient;
+    private final SportsRuScheduleParser sportsRuScheduleParser;
     private final MarathonbetTournamentClient marathonbetTournamentClient;
     private final MarathonbetScrapeService marathonbetScrapeService;
     private final TwentyFourScoreHttpClient twentyFourScoreHttpClient;
@@ -75,11 +82,30 @@ public class ExternalDataSandboxService {
                         .parsed(toSoccer365ScheduleParsed(parsed, roundFilter, limit))
                         .build();
             }
+            if (ExternalProviderIds.SPORTS_RU.equals(provider)) {
+                String calendarPath = request != null ? request.getCalendarPath() : null;
+                String path = SportsRuCalendarPathSupport.resolveCalendarPath(calendarPath);
+                if (path == null) {
+                    throw new BadRequestException("sandboxCalendarPathRequired");
+                }
+                String html = sportsRuHttpClient.fetchCalendarHtml(path);
+                SportsRuParsedSchedule parsed = sportsRuScheduleParser.parseCalendar(html);
+                return ExternalDataSandboxResultDto.builder()
+                        .success(true)
+                        .layer(ExternalDataLayer.SCHEDULE.name())
+                        .provider(provider)
+                        .durationMs(System.currentTimeMillis() - started)
+                        .parsed(toSportsRuScheduleParsed(parsed, path, roundFilter, limit))
+                        .build();
+            }
             throw new BadRequestException("sandboxUnsupportedProvider");
         } catch (BadRequestException e) {
             return fail(ExternalDataLayer.SCHEDULE, provider, started, e.getMessage(), null);
         } catch (RuntimeException e) {
-            return fail(ExternalDataLayer.SCHEDULE, provider, started, "soccer365FetchFailed", e.getMessage());
+            String fetchKey = ExternalProviderIds.SPORTS_RU.equals(provider)
+                    ? "sportsRuFetchFailed"
+                    : "soccer365FetchFailed";
+            return fail(ExternalDataLayer.SCHEDULE, provider, started, fetchKey, e.getMessage());
         }
     }
 
@@ -234,6 +260,76 @@ public class ExternalDataSandboxService {
                 .errorKey(errorKey)
                 .errorDetail(errorDetail)
                 .build();
+    }
+
+    private Map<String, Object> toSportsRuScheduleParsed(
+            SportsRuParsedSchedule parsed,
+            String calendarPath,
+            Integer roundFilter,
+            Integer limit
+    ) {
+        int matchesTotal = 0;
+        for (SportsRuParsedSchedule.Round round : parsed.getRounds()) {
+            matchesTotal += round.getMatches() != null ? round.getMatches().size() : 0;
+        }
+
+        int remaining = limit != null ? limit : Integer.MAX_VALUE;
+        int matchesReturned = 0;
+        List<Map<String, Object>> rounds = new ArrayList<>();
+
+        for (SportsRuParsedSchedule.Round round : parsed.getRounds()) {
+            if (roundFilter != null && round.getNumber() != roundFilter) {
+                continue;
+            }
+            if (remaining <= 0) {
+                break;
+            }
+            List<Map<String, Object>> matches = new ArrayList<>();
+            for (SportsRuParsedSchedule.Match match : round.getMatches()) {
+                if (remaining <= 0) {
+                    break;
+                }
+                Instant utcKickoff = null;
+                if (match.getMatchPath() != null && !match.getMatchPath().isBlank()) {
+                    try {
+                        String matchHtml = sportsRuHttpClient.fetchMatchHtml(match.getMatchPath());
+                        utcKickoff = sportsRuScheduleParser.parseUtcKickoffFromMatchHtml(matchHtml);
+                    } catch (RuntimeException e) {
+                        // Keep row without kickoff; calendar parse itself succeeded.
+                        utcKickoff = null;
+                    }
+                }
+                Map<String, Object> row = new LinkedHashMap<>();
+                row.put("homeName", match.getHomeName());
+                row.put("awayName", match.getAwayName());
+                row.put("utcKickoff", utcKickoff != null ? utcKickoff.toString() : null);
+                row.put("status", match.getStatus());
+                row.put("matchPath", match.getMatchPath());
+                matches.add(row);
+                remaining--;
+                matchesReturned++;
+            }
+            if (!matches.isEmpty()) {
+                Map<String, Object> roundMap = new LinkedHashMap<>();
+                roundMap.put("number", round.getNumber());
+                roundMap.put("matches", matches);
+                rounds.add(roundMap);
+            }
+        }
+
+        boolean truncated = matchesReturned < matchesTotal;
+
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("calendarPath", calendarPath);
+        out.put("roundFilter", roundFilter);
+        out.put("limit", limit);
+        out.put("matchesTotal", matchesTotal);
+        out.put("roundsTotal", parsed.getRounds().size());
+        out.put("roundsCount", rounds.size());
+        out.put("matchesCount", matchesReturned);
+        out.put("parsedTruncated", truncated);
+        out.put("rounds", rounds);
+        return out;
     }
 
     private static Map<String, Object> toSoccer365ScheduleParsed(
