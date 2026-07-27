@@ -6,6 +6,7 @@ import net.friendly_bets.dto.ExternalTeamNameChipDto;
 import net.friendly_bets.exceptions.BadRequestException;
 import net.friendly_bets.marathonbet.MarathonbetTeamNamesService;
 import net.friendly_bets.soccer365.Soccer365TeamNamesService;
+import net.friendly_bets.sportsru.SportsRuTeamNamesService;
 import net.friendly_bets.twentyfourscore.TwentyFourScoreTeamNamesService;
 import org.springframework.stereotype.Service;
 
@@ -18,6 +19,7 @@ public class ExternalTeamNamesService {
     private final Soccer365TeamNamesService soccer365TeamNamesService;
     private final MarathonbetTeamNamesService marathonbetTeamNamesService;
     private final TwentyFourScoreTeamNamesService twentyFourScoreTeamNamesService;
+    private final SportsRuTeamNamesService sportsRuTeamNamesService;
 
     public List<ExternalTeamNameChipDto> fetchUnmappedTeamNames(String providerRaw, String leagueCode) {
         String provider = normalizeProvider(providerRaw);
@@ -26,6 +28,7 @@ public class ExternalTeamNamesService {
             case ExternalProviderIds.MARATHONBET -> marathonbetTeamNamesService.fetchUnmappedTeamNames(leagueCode);
             case ExternalProviderIds.TWENTYFOUR_SCORE ->
                     twentyFourScoreTeamNamesService.fetchUnmappedTeamNames(leagueCode);
+            case ExternalProviderIds.SPORTS_RU -> sportsRuTeamNamesService.fetchUnmappedTeamNames(leagueCode);
             default -> throw new BadRequestException("externalTeamNamesProviderUnsupported");
         };
     }
