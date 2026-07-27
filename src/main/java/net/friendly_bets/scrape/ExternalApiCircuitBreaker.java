@@ -2,8 +2,8 @@ package net.friendly_bets.scrape;
 
 import lombok.RequiredArgsConstructor;
 import net.friendly_bets.providers.ExternalDataLayer;
+import net.friendly_bets.services.AppSettingsService;
 import net.friendly_bets.services.ErrorLogService;
-import net.friendly_bets.services.ExternalDataLayerConfigService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -24,7 +24,7 @@ public class ExternalApiCircuitBreaker {
 
     public static final String CODE_LAYER_CIRCUIT_OPEN = "layerCircuitOpen";
 
-    private final ExternalDataLayerConfigService layerConfigService;
+    private final AppSettingsService appSettingsService;
     private final ErrorLogService errorLogService;
 
     @Value("${external-data.circuit-breaker.failure-threshold:3}")
@@ -60,7 +60,7 @@ public class ExternalApiCircuitBreaker {
         consecutiveFailures.get(layer).set(0);
         String message = "Circuit open after " + count + " consecutive " + kind
                 + (detail != null && !detail.isBlank() ? ": " + detail : "");
-        boolean disabled = layerConfigService.disableLayer(layer, message);
+        boolean disabled = appSettingsService.disableLayer(layer, message);
         errorLogService.record(ErrorLogService.Entry.builder()
                 .severity(ErrorLogService.SEVERITY_ERROR)
                 .layer(layer.name())

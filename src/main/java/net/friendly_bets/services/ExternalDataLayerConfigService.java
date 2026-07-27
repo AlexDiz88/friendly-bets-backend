@@ -52,40 +52,10 @@ public class ExternalDataLayerConfigService {
         return externalDataProperties.isLayerEnabled(layer);
     }
 
-    /**
-     * Persist {@code enabled=false} for a layer (circuit breaker). Returns true when the flag changed.
-     */
+    /** Persist {@code enabled=false} for a layer (circuit breaker). */
     @Transactional
     public boolean disableLayer(ExternalDataLayer layer, String reason) {
-        if (layer == null) {
-            return false;
-        }
-        AppSettings settings = appSettingsService.getOrCreate();
-        AppSettings.ExternalDataLayersBlock block = settings.getExternalDataLayers();
-        if (block == null || block.getLayers() == null) {
-            block = appSettingsService.defaultExternalDataLayers();
-            settings.setExternalDataLayers(block);
-        }
-        Map<ExternalDataLayer, AppSettings.LayerAssignment> layers = new EnumMap<>(ExternalDataLayer.class);
-        if (block.getLayers() != null) {
-            layers.putAll(block.getLayers());
-        }
-        for (ExternalDataLayer l : ExternalDataLayer.values()) {
-            layers.putIfAbsent(l, appSettingsService.defaultLayerAssignment(l));
-        }
-        AppSettings.LayerAssignment current = layers.get(layer);
-        if (current != null && Boolean.FALSE.equals(current.getEnabled())) {
-            return false;
-        }
-        AppSettings.LayerAssignment next = AppSettings.LayerAssignment.builder()
-                .enabled(false)
-                .primaryProvider(current != null ? current.getPrimaryProvider() : null)
-                .secondaryProvider(current != null ? current.getSecondaryProvider() : null)
-                .build();
-        layers.put(layer, next);
-        settings.setExternalDataLayers(AppSettings.ExternalDataLayersBlock.builder().layers(layers).build());
-        appSettingsService.save(settings);
-        return true;
+        return appSettingsService.disableLayer(layer, reason);
     }
 
     @Transactional
