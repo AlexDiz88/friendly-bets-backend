@@ -52,12 +52,6 @@ public class ExternalDataLayerConfigService {
         return externalDataProperties.isLayerEnabled(layer);
     }
 
-    /** Persist {@code enabled=false} for a layer (circuit breaker). */
-    @Transactional
-    public boolean disableLayer(ExternalDataLayer layer, String reason) {
-        return appSettingsService.disableLayer(layer, reason);
-    }
-
     @Transactional
     public AppSettings.ExternalDataLayersBlock update(Map<ExternalDataLayer, AppSettings.LayerAssignment> layers) {
         if (layers == null) {
