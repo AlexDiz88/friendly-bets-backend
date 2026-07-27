@@ -39,15 +39,6 @@ public class LayerProviderRouter {
             String leagueCode
     ) {
         AppSettings.LayerAssignment assignment = configService.assignment(layer);
-        if (!configService.isLayerEnabled(layer)) {
-            errorLogService.recordLayerFailure(
-                    layer, assignment.getPrimaryProvider(), ErrorLogService.ROLE_PRIMARY,
-                    "externalDataLayerDisabled",
-                    "Layer " + layer + " is disabled (enable in admin to resume API calls)",
-                    leagueCode
-            );
-            throw new BadRequestException("externalDataLayerDisabled");
-        }
         String primaryId = assignment.getPrimaryProvider();
         if (primaryId == null || primaryId.isBlank()) {
             errorLogService.recordLayerFailure(
