@@ -3,7 +3,7 @@ package net.friendly_bets.scrape;
 import lombok.RequiredArgsConstructor;
 import net.friendly_bets.providers.ExternalDataLayer;
 import net.friendly_bets.services.ErrorLogService;
-import net.friendly_bets.services.ExternalDataLayerConfigService;
+import net.friendly_bets.services.ExternalDataLayerAutoDisableService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -15,6 +15,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * After consecutive trip-worthy failures, disables the layer in MongoDB until an admin re-enables it.
+ * Depends on {@link ExternalDataLayerAutoDisableService} (not ConfigService) to avoid a bean cycle
+ * through LayerProviderRegistry → providers → HTTP clients.
  */
 @Service
 @RequiredArgsConstructor
@@ -24,7 +26,7 @@ public class ExternalApiCircuitBreaker {
 
     public static final String CODE_LAYER_CIRCUIT_OPEN = "layerCircuitOpen";
 
-    private final ExternalDataLayerConfigService layerConfigService;
+    private final ExternalDataLayerAutoDisableService layerAutoDisableService;
     private final ErrorLogService errorLogService;
 
     @Value("${external-data.circuit-breaker.failure-threshold:3}")
@@ -60,7 +62,7 @@ public class ExternalApiCircuitBreaker {
         consecutiveFailures.get(layer).set(0);
         String message = "Circuit open after " + count + " consecutive " + kind
                 + (detail != null && !detail.isBlank() ? ": " + detail : "");
-        boolean disabled = layerConfigService.disableLayer(layer, message);
+        boolean disabled = layerAutoDisableService.disableLayer(layer, message);
         errorLogService.record(ErrorLogService.Entry.builder()
                 .severity(ErrorLogService.SEVERITY_ERROR)
                 .layer(layer.name())

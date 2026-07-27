@@ -2,7 +2,7 @@ package net.friendly_bets.scrape;
 
 import net.friendly_bets.providers.ExternalDataLayer;
 import net.friendly_bets.services.ErrorLogService;
-import net.friendly_bets.services.ExternalDataLayerConfigService;
+import net.friendly_bets.services.ExternalDataLayerAutoDisableService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -23,7 +23,7 @@ class ExternalApiCircuitBreakerTest {
 
     @BeforeEach
     void setUp() {
-        ExternalDataLayerConfigService config = new ExternalDataLayerConfigService(null, null, null) {
+        ExternalDataLayerAutoDisableService autoDisable = new ExternalDataLayerAutoDisableService(null) {
             @Override
             public boolean disableLayer(ExternalDataLayer layer, String reason) {
                 disableCalls.incrementAndGet();
@@ -36,7 +36,7 @@ class ExternalApiCircuitBreakerTest {
                 logged.add(entry);
             }
         };
-        breaker = new ExternalApiCircuitBreaker(config, errors);
+        breaker = new ExternalApiCircuitBreaker(autoDisable, errors);
         ReflectionTestUtils.setField(breaker, "failureThreshold", 3);
         disableCalls.set(0);
         logged.clear();
