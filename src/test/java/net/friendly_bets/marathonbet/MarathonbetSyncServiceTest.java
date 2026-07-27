@@ -1,8 +1,8 @@
 package net.friendly_bets.marathonbet;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import net.friendly_bets.gameresults.ExternalCompetitionService;
-import net.friendly_bets.gameresults.MatchdaySlotSupport;
+import net.friendly_bets.matchschedule.ExternalCompetitionService;
+import net.friendly_bets.matchschedule.MatchdaySlotSupport;
 import net.friendly_bets.marathonbet.client.MarathonbetHttpFetchResult;
 import net.friendly_bets.marathonbet.client.MarathonbetHttpOutcome;
 import net.friendly_bets.marathonbet.client.MarathonbetTournamentClient;
@@ -11,9 +11,9 @@ import net.friendly_bets.marathonbet.mapping.MarathonbetBetTitleMapper;
 import net.friendly_bets.models.League;
 import net.friendly_bets.models.monitoring.ExternalApiMonitoringRun;
 import net.friendly_bets.models.schedule.MatchSchedule;
-import net.friendly_bets.oddsapi.OddsMergedOddsService;
-import net.friendly_bets.oddsapi.mapping.MappedOddsQuote;
-import net.friendly_bets.oddsapi.mapping.OddsMergeResult;
+import net.friendly_bets.odds.OddsService;
+import net.friendly_bets.odds.mapping.MappedOddsQuote;
+import net.friendly_bets.odds.mapping.OddsMergeResult;
 import net.friendly_bets.services.ErrorLogService;
 import net.friendly_bets.services.ExternalApiMonitoringService;
 import net.friendly_bets.services.GetEntityService;
@@ -50,7 +50,7 @@ class MarathonbetSyncServiceTest {
     @Mock
     MarathonbetBetTitleMapper betTitleMapper;
     @Mock
-    OddsMergedOddsService oddsMergedOddsService;
+    OddsService oddsService;
     @Mock
     MatchScheduleQueryService matchScheduleQueryService;
     @Mock
@@ -134,7 +134,7 @@ class MarathonbetSyncServiceTest {
                         .build());
         when(betTitleMapper.map(any(), eq("Мексика"), eq("ЮАР")))
                 .thenReturn(List.of(MappedOddsQuote.builder().bookmaker("marathonbet").build()));
-        when(oddsMergedOddsService.buildAndPersistFromQuotes(any(), any(), any(), any(), eq(false), eq(25_819_358L)))
+        when(oddsService.buildAndPersistFromQuotes(any(), any(), any(), any(), eq(false), eq(25_819_358L)))
                 .thenReturn(OddsMergeResult.builder().marketGroups(List.of()).build());
 
         MarathonbetSyncResult result = syncService.syncSlot("wc-league", "2026", true, 3, List.of("ms-1"));

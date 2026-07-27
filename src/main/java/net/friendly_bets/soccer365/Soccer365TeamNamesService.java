@@ -1,13 +1,13 @@
 package net.friendly_bets.soccer365;
 
 import lombok.RequiredArgsConstructor;
-import net.friendly_bets.dto.Soccer365TeamNameChipDto;
+import net.friendly_bets.providers.ExternalProviderIds;
+import net.friendly_bets.dto.ExternalTeamNameChipDto;
 import net.friendly_bets.exceptions.BadRequestException;
 import net.friendly_bets.models.League;
 import net.friendly_bets.services.RunningSeasonLookup;
 import net.friendly_bets.services.TeamAliasResolver;
 import net.friendly_bets.soccer365.config.Soccer365Properties;
-import net.friendly_bets.utils.TeamTitleUtils;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -23,7 +23,7 @@ public class Soccer365TeamNamesService {
     private final TeamAliasResolver teamAliasResolver;
     private final RunningSeasonLookup runningSeasonLookup;
 
-    public List<Soccer365TeamNameChipDto> fetchUnmappedTeamNames(String leagueCodeRaw) {
+    public List<ExternalTeamNameChipDto> fetchUnmappedTeamNames(String leagueCodeRaw) {
         League.LeagueCode leagueCode = parseLeagueCode(leagueCodeRaw);
         int competitionId = requireCompetitionId(leagueCode);
         // Ensure a running season exists (admin context); names themselves are site-global for current season page.
@@ -34,13 +34,13 @@ public class Soccer365TeamNamesService {
         if (names.isEmpty()) {
             throw new BadRequestException("soccer365MatchdayOneTeamNamesEmpty");
         }
-        List<Soccer365TeamNameChipDto> unmapped = new ArrayList<>();
+        List<ExternalTeamNameChipDto> unmapped = new ArrayList<>();
         for (String name : names) {
-            boolean mapped = teamAliasResolver.resolveSoccer365ByName(name).isPresent();
+            boolean mapped = teamAliasResolver.resolveByProviderName(ExternalProviderIds.SOCCER365, name).isPresent();
             if (!mapped) {
-                unmapped.add(Soccer365TeamNameChipDto.builder()
+                unmapped.add(ExternalTeamNameChipDto.builder()
                         .externalName(name)
-                        .provider(TeamTitleUtils.SOCCER365_PROVIDER)
+                        .provider(ExternalProviderIds.SOCCER365)
                         .alreadyMapped(false)
                         .build());
             }

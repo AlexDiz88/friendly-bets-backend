@@ -1,7 +1,7 @@
 package net.friendly_bets.services;
 
 import lombok.RequiredArgsConstructor;
-import net.friendly_bets.gameresults.MatchDataProviders;
+import net.friendly_bets.providers.ExternalProviderIds;
 import net.friendly_bets.models.AppSettings;
 import net.friendly_bets.providers.ExternalDataLayer;
 import net.friendly_bets.providers.config.ExternalDataProperties;
@@ -34,15 +34,15 @@ public class AppSettingsService {
         return switch (layer) {
             case SCHEDULE, FULL_MATCH -> AppSettings.LayerAssignment.builder()
                     .enabled(externalDataProperties.isLayerEnabled(layer))
-                    .primaryProvider(MatchDataProviders.SOCCER365)
+                    .primaryProvider(ExternalProviderIds.SOCCER365)
                     .build();
             case ODDS -> AppSettings.LayerAssignment.builder()
                     .enabled(externalDataProperties.isLayerEnabled(layer))
-                    .primaryProvider(MatchDataProviders.MARATHONBET)
+                    .primaryProvider(ExternalProviderIds.MARATHONBET)
                     .build();
             case LIVE -> AppSettings.LayerAssignment.builder()
                     .enabled(externalDataProperties.isLayerEnabled(layer))
-                    .primaryProvider(MatchDataProviders.TWENTYFOUR_SCORE)
+                    .primaryProvider(ExternalProviderIds.TWENTYFOUR_SCORE)
                     .build();
         };
     }
@@ -55,15 +55,15 @@ public class AppSettingsService {
         return switch (layer) {
             case SCHEDULE, FULL_MATCH -> AppSettings.LayerAssignment.builder()
                     .enabled(true)
-                    .primaryProvider(MatchDataProviders.SOCCER365)
+                    .primaryProvider(ExternalProviderIds.SOCCER365)
                     .build();
             case ODDS -> AppSettings.LayerAssignment.builder()
                     .enabled(true)
-                    .primaryProvider(MatchDataProviders.MARATHONBET)
+                    .primaryProvider(ExternalProviderIds.MARATHONBET)
                     .build();
             case LIVE -> AppSettings.LayerAssignment.builder()
                     .enabled(true)
-                    .primaryProvider(MatchDataProviders.TWENTYFOUR_SCORE)
+                    .primaryProvider(ExternalProviderIds.TWENTYFOUR_SCORE)
                     .build();
         };
     }

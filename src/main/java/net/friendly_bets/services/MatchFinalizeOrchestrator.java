@@ -2,8 +2,8 @@ package net.friendly_bets.services;
 
 import lombok.RequiredArgsConstructor;
 import net.friendly_bets.dto.BetsPage;
-import net.friendly_bets.gameresults.GameScoreValidator;
-import net.friendly_bets.gameresults.config.MatchResultSyncProperties;
+import net.friendly_bets.matchschedule.GameScoreValidator;
+import net.friendly_bets.matchschedule.config.MatchResultSyncProperties;
 import net.friendly_bets.models.GameResult;
 import net.friendly_bets.models.User;
 import net.friendly_bets.models.monitoring.ExternalApiMonitoringCounters;

@@ -2,7 +2,7 @@ package net.friendly_bets.services;
 
 import lombok.RequiredArgsConstructor;
 import net.friendly_bets.exceptions.BadRequestException;
-import net.friendly_bets.gameresults.LeagueCodePathSupport;
+import net.friendly_bets.matchschedule.LeagueCodePathSupport;
 import net.friendly_bets.models.Season;
 import net.friendly_bets.models.schedule.MatchSchedule;
 import net.friendly_bets.repositories.MatchScheduleRepository;

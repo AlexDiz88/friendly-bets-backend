@@ -2,7 +2,7 @@ package net.friendly_bets.twentyfourscore;
 
 import lombok.RequiredArgsConstructor;
 import net.friendly_bets.exceptions.BadRequestException;
-import net.friendly_bets.gameresults.MatchDataProviders;
+import net.friendly_bets.providers.ExternalProviderIds;
 import net.friendly_bets.models.GameScore;
 import net.friendly_bets.models.League;
 import net.friendly_bets.models.Season;
@@ -50,7 +50,7 @@ public class TwentyFourScoreLiveProvider implements LiveMatchProvider {
 
     @Override
     public String providerId() {
-        return MatchDataProviders.TWENTYFOUR_SCORE;
+        return ExternalProviderIds.TWENTYFOUR_SCORE;
     }
 
     @Override
@@ -66,7 +66,7 @@ public class TwentyFourScoreLiveProvider implements LiveMatchProvider {
         String leagueCode = league.getLeagueCode().name();
         ExternalApiMonitoringRun run = monitoringService.begin(
                 ExternalDataLayer.LIVE,
-                MatchDataProviders.TWENTYFOUR_SCORE,
+                ExternalProviderIds.TWENTYFOUR_SCORE,
                 ExternalApiMonitoringTrigger.CRON,
                 leagueCode,
                 season.getId()
@@ -246,8 +246,8 @@ public class TwentyFourScoreLiveProvider implements LiveMatchProvider {
             return Optional.empty();
         }
         for (TwentyFourScoreParsedDatePage.MatchRow row : rows) {
-            if (teamAliasResolver.teamMatchesScoreProviderSide(home, MatchDataProviders.TWENTYFOUR_SCORE, row.getHomeName())
-                    && teamAliasResolver.teamMatchesScoreProviderSide(away, MatchDataProviders.TWENTYFOUR_SCORE, row.getAwayName())) {
+            if (teamAliasResolver.teamMatchesProviderSide(home, ExternalProviderIds.TWENTYFOUR_SCORE, row.getHomeName())
+                    && teamAliasResolver.teamMatchesProviderSide(away, ExternalProviderIds.TWENTYFOUR_SCORE, row.getAwayName())) {
                 return Optional.of(row);
             }
         }

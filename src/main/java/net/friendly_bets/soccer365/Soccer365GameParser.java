@@ -1,6 +1,6 @@
 package net.friendly_bets.soccer365;
 
-import net.friendly_bets.gameresults.GameScoreFromGoals;
+import net.friendly_bets.matchschedule.GameScoreFromGoals;
 import net.friendly_bets.models.GameScore;
 import net.friendly_bets.models.schedule.MatchGoalEvent;
 import net.friendly_bets.models.schedule.MatchTeamStats;

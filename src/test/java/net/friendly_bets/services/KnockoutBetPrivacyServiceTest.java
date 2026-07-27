@@ -1,7 +1,7 @@
 package net.friendly_bets.services;
 
 import net.friendly_bets.dto.BetDto;
-import net.friendly_bets.gameresults.MatchdaySlotSupport;
+import net.friendly_bets.matchschedule.MatchdaySlotSupport;
 import net.friendly_bets.models.Bet;
 import net.friendly_bets.models.BetTitle;
 import net.friendly_bets.models.League;
@@ -9,7 +9,7 @@ import net.friendly_bets.models.Season;
 import net.friendly_bets.models.Team;
 import net.friendly_bets.models.User;
 import net.friendly_bets.models.schedule.MatchSchedule;
-import net.friendly_bets.oddsapi.MatchScheduleNotStarted;
+import net.friendly_bets.odds.MatchScheduleNotStarted;
 import net.friendly_bets.repositories.MatchScheduleRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;

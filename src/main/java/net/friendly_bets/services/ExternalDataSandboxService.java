@@ -9,7 +9,7 @@ import net.friendly_bets.dto.ExternalDataSandboxResultDto;
 import net.friendly_bets.dto.ExternalDataSandboxScheduleRequestDto;
 import net.friendly_bets.dto.MarathonbetMarketDto;
 import net.friendly_bets.exceptions.BadRequestException;
-import net.friendly_bets.gameresults.MatchDataProviders;
+import net.friendly_bets.providers.ExternalProviderIds;
 import net.friendly_bets.marathonbet.MarathonbetExtractedMarkets;
 import net.friendly_bets.marathonbet.MarathonbetMarketExtractor;
 import net.friendly_bets.marathonbet.MarathonbetPrematchEvent;
@@ -49,7 +49,7 @@ public class ExternalDataSandboxService {
     private final TwentyFourScoreDatePageParser twentyFourScoreDatePageParser;
 
     public ExternalDataSandboxResultDto runSchedule(ExternalDataSandboxScheduleRequestDto request) {
-        String provider = requireProvider(request != null ? request.getProvider() : null, MatchDataProviders.SOCCER365);
+        String provider = requireProvider(request != null ? request.getProvider() : null, ExternalProviderIds.SOCCER365);
         Integer roundFilter = request != null ? request.getRound() : null;
         if (roundFilter != null && roundFilter <= 0) {
             throw new BadRequestException("sandboxRoundInvalid");
@@ -60,7 +60,7 @@ public class ExternalDataSandboxService {
         }
         long started = System.currentTimeMillis();
         try {
-            if (MatchDataProviders.SOCCER365.equals(provider)) {
+            if (ExternalProviderIds.SOCCER365.equals(provider)) {
                 if (request == null || request.getCompetitionId() == null || request.getCompetitionId() <= 0) {
                     throw new BadRequestException("sandboxCompetitionIdRequired");
                 }
@@ -84,8 +84,8 @@ public class ExternalDataSandboxService {
     }
 
     public ExternalDataSandboxResultDto runOdds(ExternalDataSandboxOddsRequestDto request) {
-        String provider = requireProvider(request != null ? request.getProvider() : null, MatchDataProviders.MARATHONBET);
-        if (!MatchDataProviders.MARATHONBET.equals(provider)) {
+        String provider = requireProvider(request != null ? request.getProvider() : null, ExternalProviderIds.MARATHONBET);
+        if (!ExternalProviderIds.MARATHONBET.equals(provider)) {
             throw new BadRequestException("sandboxUnsupportedProvider");
         }
         if (request == null || request.getTreeId() == null || request.getTreeId() <= 0) {
@@ -134,8 +134,8 @@ public class ExternalDataSandboxService {
     }
 
     public ExternalDataSandboxResultDto runLive(ExternalDataSandboxLiveRequestDto request) {
-        String provider = requireProvider(request != null ? request.getProvider() : null, MatchDataProviders.TWENTYFOUR_SCORE);
-        if (!MatchDataProviders.TWENTYFOUR_SCORE.equals(provider)) {
+        String provider = requireProvider(request != null ? request.getProvider() : null, ExternalProviderIds.TWENTYFOUR_SCORE);
+        if (!ExternalProviderIds.TWENTYFOUR_SCORE.equals(provider)) {
             throw new BadRequestException("sandboxUnsupportedProvider");
         }
         if (request == null || request.getDate() == null || request.getDate().isBlank()) {
@@ -176,8 +176,8 @@ public class ExternalDataSandboxService {
     }
 
     public ExternalDataSandboxResultDto runFullMatch(ExternalDataSandboxFullMatchRequestDto request) {
-        String provider = requireProvider(request != null ? request.getProvider() : null, MatchDataProviders.SOCCER365);
-        if (!MatchDataProviders.SOCCER365.equals(provider)) {
+        String provider = requireProvider(request != null ? request.getProvider() : null, ExternalProviderIds.SOCCER365);
+        if (!ExternalProviderIds.SOCCER365.equals(provider)) {
             throw new BadRequestException("sandboxUnsupportedProvider");
         }
         if (request == null || request.getGameId() == null || request.getGameId().isBlank()) {

@@ -3,8 +3,8 @@ package net.friendly_bets.marathonbet;
 import lombok.RequiredArgsConstructor;
 import net.friendly_bets.dto.ExternalCompetitionInfoDto;
 import net.friendly_bets.exceptions.BadRequestException;
-import net.friendly_bets.gameresults.ExternalCompetitionService;
-import net.friendly_bets.gameresults.MatchdaySlotSupport;
+import net.friendly_bets.matchschedule.ExternalCompetitionService;
+import net.friendly_bets.matchschedule.MatchdaySlotSupport;
 import net.friendly_bets.marathonbet.client.MarathonbetHttpFetchResult;
 import net.friendly_bets.marathonbet.client.MarathonbetRequestType;
 import net.friendly_bets.marathonbet.client.MarathonbetTournamentClient;
@@ -18,10 +18,10 @@ import net.friendly_bets.models.monitoring.ExternalApiMonitoringRun;
 import net.friendly_bets.models.monitoring.ExternalApiMonitoringStatus;
 import net.friendly_bets.models.monitoring.ExternalApiMonitoringTrigger;
 import net.friendly_bets.models.schedule.MatchSchedule;
-import net.friendly_bets.oddsapi.MatchScheduleNotStarted;
-import net.friendly_bets.oddsapi.OddsMergedOddsService;
-import net.friendly_bets.oddsapi.mapping.MappedOddsQuote;
-import net.friendly_bets.oddsapi.mapping.OddsMergeResult;
+import net.friendly_bets.odds.MatchScheduleNotStarted;
+import net.friendly_bets.odds.OddsService;
+import net.friendly_bets.odds.mapping.MappedOddsQuote;
+import net.friendly_bets.odds.mapping.OddsMergeResult;
 import net.friendly_bets.services.GetEntityService;
 import net.friendly_bets.services.ErrorLogService;
 import net.friendly_bets.services.ExternalApiMonitoringService;
@@ -54,7 +54,7 @@ public class MarathonbetSyncService {
     private final MarathonbetScrapeService scrapeService;
     private final MarathonbetEventMatcher eventMatcher;
     private final MarathonbetBetTitleMapper betTitleMapper;
-    private final OddsMergedOddsService oddsMergedOddsService;
+    private final OddsService oddsService;
     private final MatchScheduleQueryService matchScheduleQueryService;
     private final ExternalCompetitionService externalCompetitionService;
     private final MatchdaySlotSupport matchdaySupport;
@@ -385,7 +385,7 @@ public class MarathonbetSyncService {
             }
             for (MatchSchedule match : matches) {
                 if (MatchScheduleDisplayService.isFinalized(match)) {
-                    oddsMergedOddsService.deleteIfFinalized(match);
+                    oddsService.deleteIfFinalized(match);
                     continue;
                 }
                 if (MatchScheduleNotStarted.isNotStarted(match, now)) {
@@ -395,7 +395,7 @@ public class MarathonbetSyncService {
                     }
                     pending.add(match);
                 } else {
-                    oddsMergedOddsService.freezeIfNeeded(match, now);
+                    oddsService.freezeIfNeeded(match, now);
                 }
             }
         }
@@ -417,7 +417,7 @@ public class MarathonbetSyncService {
                 toFetch.add(match);
                 continue;
             }
-            boolean hasOdds = oddsMergedOddsService.findByMatchScheduleId(match.getId())
+            boolean hasOdds = oddsService.findByMatchScheduleId(match.getId())
                     .map(odds -> odds.getMarketGroups() != null && !odds.getMarketGroups().isEmpty())
                     .orElse(false);
             if (ssePolicy == OddsSsePolicy.MISSING_ONLY) {
@@ -545,7 +545,7 @@ public class MarathonbetSyncService {
             if (quotes.isEmpty()) {
                 return MatchSyncOutcome.matchedFailedSse();
             }
-            OddsMergeResult mergeResult = oddsMergedOddsService.buildAndPersistFromQuotes(
+            OddsMergeResult mergeResult = oddsService.buildAndPersistFromQuotes(
                     match,
                     quotes,
                     List.of(MarathonbetBookmaker.KEY),
@@ -682,7 +682,7 @@ public class MarathonbetSyncService {
                 if (!MatchScheduleNotStarted.isNotStarted(match, now)) {
                     continue;
                 }
-                boolean hasOdds = oddsMergedOddsService.findByMatchScheduleId(match.getId())
+                boolean hasOdds = oddsService.findByMatchScheduleId(match.getId())
                         .map(odds -> odds.getMarketGroups() != null && !odds.getMarketGroups().isEmpty())
                         .orElse(false);
                 if (MarathonbetSyncBatchSupport.needsSseRefresh(

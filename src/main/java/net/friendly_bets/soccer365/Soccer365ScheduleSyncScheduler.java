@@ -1,7 +1,7 @@
 package net.friendly_bets.soccer365;
 
 import lombok.RequiredArgsConstructor;
-import net.friendly_bets.gameresults.MatchDataProviders;
+import net.friendly_bets.providers.ExternalProviderIds;
 import net.friendly_bets.models.League;
 import net.friendly_bets.models.Season;
 import net.friendly_bets.providers.ExternalDataLayer;
@@ -48,7 +48,7 @@ public class Soccer365ScheduleSyncScheduler {
             return;
         }
         String primary = layerConfigService.assignment(ExternalDataLayer.SCHEDULE).getPrimaryProvider();
-        if (!MatchDataProviders.SOCCER365.equals(primary)) {
+        if (!ExternalProviderIds.SOCCER365.equals(primary)) {
             return;
         }
         ZoneId zone;

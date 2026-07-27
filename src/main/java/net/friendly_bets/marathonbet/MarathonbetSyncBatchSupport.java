@@ -1,7 +1,7 @@
 package net.friendly_bets.marathonbet;
 
 import net.friendly_bets.models.schedule.MatchSchedule;
-import net.friendly_bets.oddsapi.MatchScheduleNotStarted;
+import net.friendly_bets.odds.MatchScheduleNotStarted;
 import net.friendly_bets.services.MatchScheduleDisplayService;
 
 import java.time.Duration;

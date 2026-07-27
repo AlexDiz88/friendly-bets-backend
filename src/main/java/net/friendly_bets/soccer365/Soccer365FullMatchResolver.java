@@ -2,7 +2,7 @@ package net.friendly_bets.soccer365;
 
 import lombok.RequiredArgsConstructor;
 import net.friendly_bets.exceptions.BadRequestException;
-import net.friendly_bets.gameresults.MatchDataProviders;
+import net.friendly_bets.providers.ExternalProviderIds;
 import net.friendly_bets.models.League;
 import net.friendly_bets.models.Team;
 import net.friendly_bets.models.schedule.MatchSchedule;
@@ -99,10 +99,10 @@ public class Soccer365FullMatchResolver {
     }
 
     private boolean sidesMatch(Team home, Team away, Soccer365ParsedSchedule.Match candidate) {
-        return teamAliasResolver.teamMatchesScoreProviderSide(
-                home, MatchDataProviders.SOCCER365, candidate.getHomeName())
-                && teamAliasResolver.teamMatchesScoreProviderSide(
-                away, MatchDataProviders.SOCCER365, candidate.getAwayName());
+        return teamAliasResolver.teamMatchesProviderSide(
+                home, ExternalProviderIds.SOCCER365, candidate.getHomeName())
+                && teamAliasResolver.teamMatchesProviderSide(
+                away, ExternalProviderIds.SOCCER365, candidate.getAwayName());
     }
 
     private static League.LeagueCode parseLeagueCode(String raw) {
