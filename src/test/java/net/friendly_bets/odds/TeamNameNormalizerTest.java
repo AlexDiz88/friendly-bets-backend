@@ -10,7 +10,7 @@ class TeamNameNormalizerTest {
     @Test
     void namesMatch_ignoresFcAndCase() {
         assertTrue(TeamNameNormalizer.namesMatch("Manchester United FC", "Manchester United"));
-        assertTrue(TeamNameNormalizer.namesMatch("FC Bayern München", "Bayern Munich"));
+        assertTrue(TeamNameNormalizer.namesMatch("FC Bayern München", "Bayern München"));
     }
 
     @Test

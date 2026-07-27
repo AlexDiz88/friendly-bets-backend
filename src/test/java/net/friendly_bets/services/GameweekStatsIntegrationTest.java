@@ -4,6 +4,7 @@ import net.friendly_bets.dto.NewBetDto;
 import net.friendly_bets.exceptions.BadRequestException;
 import net.friendly_bets.models.Bet;
 import net.friendly_bets.models.CalendarNode;
+import net.friendly_bets.models.schedule.MatchSchedule;
 import net.friendly_bets.repositories.BetsRepository;
 import net.friendly_bets.repositories.CalendarsRepository;
 import net.friendly_bets.support.AbstractMongoIntegrationTest;
@@ -114,6 +115,9 @@ class GameweekStatsIntegrationTest extends AbstractMongoIntegrationTest {
                     fixture, fixture.getPlayerOne(), fixture.getHomeTeam(), fixture.getAwayTeam(), ODDS, SIZE);
 
             // Другая пара команд (away vs home), иначе сработает betAlreadyAdded, а не лимит тура
+            MatchSchedule reverseSchedule = testData.ensureMatchSchedule(
+                    fixture.getSeason(), fixture.getLeague(),
+                    fixture.getAwayTeam(), fixture.getHomeTeam(), fixture.getMatchDay());
             NewBetDto secondBet = NewBetDto.builder()
                     .userId(fixture.getPlayerOne().getId())
                     .seasonId(fixture.getSeason().getId())
@@ -121,6 +125,7 @@ class GameweekStatsIntegrationTest extends AbstractMongoIntegrationTest {
                     .matchDay(fixture.getMatchDay())
                     .homeTeamId(fixture.getAwayTeam().getId())
                     .awayTeamId(fixture.getHomeTeam().getId())
+                    .matchScheduleId(reverseSchedule.getId())
                     .betTitle(testData.createDefaultBetTitle())
                     .betOdds(ODDS)
                     .betSize(SIZE)

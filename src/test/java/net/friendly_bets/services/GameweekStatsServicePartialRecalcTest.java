@@ -12,6 +12,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
@@ -43,7 +44,7 @@ class GameweekStatsServicePartialRecalcTest {
         CalendarNode gw3 = node("gw3", LocalDate.of(2025, 8, 15));
 
         when(getEntityService.getListOfCalendarNodesWithBetsBySeasonOrThrow("season-1"))
-                .thenReturn(List.of(gw3, gw1, gw2));
+                .thenReturn(new ArrayList<>(List.of(gw3, gw1, gw2)));
         when(getEntityService.getCalendarNodeOrThrow("gw3")).thenReturn(gw3);
         when(getEntityService.getSeasonOrThrow("season-1")).thenReturn(
                 Season.builder().id("season-1").players(List.of()).build()

@@ -66,7 +66,6 @@ class KnockoutBetPrivacyServiceTest {
     @DisplayName("own bet stays visible before kickoff")
     void ownBetVisibleBeforeKickoff() {
         Bet bet = openedFinalBet("user-a", "home-1", "away-1");
-        stubScheduledMatch(bet, Instant.now().plus(2, ChronoUnit.HOURS), 20);
 
         BetDto dto = service.toDto(bet, "user-a");
 

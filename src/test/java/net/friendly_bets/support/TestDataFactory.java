@@ -5,6 +5,7 @@ import net.friendly_bets.dto.BetDto;
 import net.friendly_bets.dto.NewBetDto;
 import net.friendly_bets.models.*;
 import net.friendly_bets.models.enums.BetTitleCode;
+import net.friendly_bets.models.schedule.MatchSchedule;
 import net.friendly_bets.repositories.*;
 import net.friendly_bets.security.details.AuthenticatedUser;
 import net.friendly_bets.services.BetsService;
@@ -12,6 +13,7 @@ import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -33,6 +35,7 @@ public class TestDataFactory {
     private final SeasonsRepository seasonsRepository;
     private final CalendarsRepository calendarsRepository;
     private final BetsRepository betsRepository;
+    private final MatchScheduleRepository matchScheduleRepository;
     private final BetsService betsService;
 
     // ------------------------------------------------------------------------------------------------------ //
@@ -324,6 +327,9 @@ public class TestDataFactory {
     }
 
     public NewBetDto buildNewOpenedBetDto(TestFixture fixture) {
+        MatchSchedule schedule = ensureMatchSchedule(
+                fixture.getSeason(), fixture.getLeague(),
+                fixture.getHomeTeam(), fixture.getAwayTeam(), fixture.getMatchDay());
         return NewBetDto.builder()
                 .userId(fixture.getPlayer().getId())
                 .seasonId(fixture.getSeason().getId())
@@ -331,6 +337,7 @@ public class TestDataFactory {
                 .matchDay(fixture.getMatchDay())
                 .homeTeamId(fixture.getHomeTeam().getId())
                 .awayTeamId(fixture.getAwayTeam().getId())
+                .matchScheduleId(schedule.getId())
                 .betTitle(createDefaultBetTitle())
                 .betOdds(2.0)
                 .betSize(10)
@@ -427,6 +434,8 @@ public class TestDataFactory {
                                   String matchDay,
                                   BetTitle betTitle,
                                   GameScore gameScore) {
+        MatchSchedule schedule = ensureMatchSchedule(
+                fixture.getSeason(), fixture.getLeague(), homeTeam, awayTeam, matchDay);
         NewBetDto newBetDto = NewBetDto.builder()
                 .userId(player.getId())
                 .seasonId(fixture.getSeason().getId())
@@ -434,6 +443,7 @@ public class TestDataFactory {
                 .matchDay(matchDay)
                 .homeTeamId(homeTeam.getId())
                 .awayTeamId(awayTeam.getId())
+                .matchScheduleId(schedule.getId())
                 .betTitle(betTitle)
                 .betOdds(betOdds)
                 .betSize(betSize)
@@ -455,6 +465,8 @@ public class TestDataFactory {
                             Team awayTeam,
                             double betOdds,
                             int betSize) {
+        MatchSchedule schedule = ensureMatchSchedule(
+                fixture.getSeason(), fixture.getLeague(), homeTeam, awayTeam, fixture.getMatchDay());
         NewBetDto newBetDto = NewBetDto.builder()
                 .userId(player.getId())
                 .seasonId(fixture.getSeason().getId())
@@ -462,6 +474,7 @@ public class TestDataFactory {
                 .matchDay(fixture.getMatchDay())
                 .homeTeamId(homeTeam.getId())
                 .awayTeamId(awayTeam.getId())
+                .matchScheduleId(schedule.getId())
                 .betTitle(createDefaultBetTitle())
                 .betOdds(betOdds)
                 .betSize(betSize)
@@ -470,6 +483,44 @@ public class TestDataFactory {
 
         BetDto opened = betsService.addOpenedBet(authUser(fixture.getModerator()), newBetDto);
         return betsRepository.findById(opened.getId()).orElseThrow();
+    }
+
+    /**
+     * Создаёт (или возвращает существующий) {@link MatchSchedule} для пары команд в слоте тура.
+     * Kickoff в будущем — USER-сценарии тоже могут ставить через сервис.
+     */
+    public MatchSchedule ensureMatchSchedule(Season season,
+                                             League league,
+                                             Team homeTeam,
+                                             Team awayTeam,
+                                             String matchDay) {
+        int matchday = parseMatchdayNumber(matchDay);
+        return matchScheduleRepository
+                .findByLeagueIdAndSeasonIdAndMatchdayAndHomeTeamIdAndAwayTeamId(
+                        league.getId(), season.getId(), matchday, homeTeam.getId(), awayTeam.getId())
+                .orElseGet(() -> matchScheduleRepository.save(MatchSchedule.builder()
+                        .seasonId(season.getId())
+                        .leagueId(league.getId())
+                        .leagueCode(league.getLeagueCode() != null ? league.getLeagueCode().name() : "EPL")
+                        .matchday(matchday)
+                        .slotId(matchDay)
+                        .status("SCHEDULED")
+                        .utcKickoff(Instant.now().plus(3, ChronoUnit.HOURS))
+                        .homeTeamId(homeTeam.getId())
+                        .awayTeamId(awayTeam.getId())
+                        .fetchedAt(Instant.now())
+                        .build()));
+    }
+
+    private static int parseMatchdayNumber(String matchDay) {
+        if (matchDay == null || matchDay.isBlank()) {
+            return 1;
+        }
+        String trimmed = matchDay.trim();
+        if (trimmed.matches("\\d+")) {
+            return Integer.parseInt(trimmed);
+        }
+        return 1;
     }
 
     /**
