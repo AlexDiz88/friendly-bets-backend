@@ -32,9 +32,11 @@ public class UtcTimestampsMigrationService {
     private static final ZoneId BERLIN = ZoneId.of("Europe/Berlin");
 
     private static final Map<String, List<String>> COLLECTION_FIELDS = Map.ofEntries(
-            Map.entry("match_schedules", List.of("fetched_at")),
+            Map.entry("match_schedules", List.of(
+                    "utc_kickoff", "fetched_at", "finalized_at", "full_details_fetched_at")),
             Map.entry("odds", List.of("fetched_at", "frozen_at")),
             Map.entry("external_api_monitoring", List.of("started_at", "finished_at")),
+            Map.entry("error_logs", List.of("created_at")),
             Map.entry("bets", List.of("created_at", "bet_result_added_at", "updated_at")),
             Map.entry("accounts", List.of("created_at")),
             Map.entry("seasons", List.of("created_at")),
