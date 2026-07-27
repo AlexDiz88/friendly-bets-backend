@@ -2,6 +2,8 @@ package net.friendly_bets.controllers;
 
 import lombok.RequiredArgsConstructor;
 import net.friendly_bets.dto.ExternalDataLayerConfigDto;
+import net.friendly_bets.dto.ExternalSiteAccessProbeRequestDto;
+import net.friendly_bets.dto.ExternalSiteAccessProbeResultDto;
 import net.friendly_bets.dto.LiveMatchSyncResultDto;
 import net.friendly_bets.dto.Soccer365ScheduleSyncResultDto;
 import net.friendly_bets.dto.Soccer365TeamNameChipDto;
@@ -17,6 +19,7 @@ import net.friendly_bets.providers.ScheduleProvider;
 import net.friendly_bets.repositories.MatchScheduleRepository;
 import net.friendly_bets.services.ExternalApiMonitoringService;
 import net.friendly_bets.services.ExternalDataLayerConfigService;
+import net.friendly_bets.services.ExternalSiteAccessProbeService;
 import net.friendly_bets.services.ExternalTeamNamesService;
 import net.friendly_bets.services.GetEntityService;
 import net.friendly_bets.services.MatchFinalizeOrchestrator;
@@ -47,6 +50,15 @@ public class ExternalDataAdminController {
     private final MatchScheduleRepository matchScheduleRepository;
     private final MatchFinalizeOrchestrator matchFinalizeOrchestrator;
     private final ExternalTeamNamesService externalTeamNamesService;
+    private final ExternalSiteAccessProbeService siteAccessProbeService;
+
+    @PostMapping("/site-access-probe")
+    @PreAuthorize("hasAuthority('ADMIN')")
+    public ResponseEntity<ExternalSiteAccessProbeResultDto> siteAccessProbe(
+            @RequestBody ExternalSiteAccessProbeRequestDto body
+    ) {
+        return ResponseEntity.ok(siteAccessProbeService.probe(body != null ? body.getUrl() : null));
+    }
 
     @GetMapping("/layers")
     @PreAuthorize("hasAnyAuthority('ADMIN','MODERATOR')")
