@@ -1,6 +1,6 @@
 package net.friendly_bets.providers;
 
-import net.friendly_bets.dto.Soccer365ScheduleSyncResultDto;
+import net.friendly_bets.dto.ScheduleSyncResultDto;
 import net.friendly_bets.models.League;
 import net.friendly_bets.models.Season;
 
@@ -10,10 +10,10 @@ import net.friendly_bets.models.Season;
  */
 public interface ScheduleProvider extends ExternalDataProvider {
 
-    Soccer365ScheduleSyncResultDto syncLeague(Season season, League league, boolean respectFarKickoffSkip);
+    ScheduleSyncResultDto syncLeague(Season season, League league, boolean respectFarKickoffSkip);
 
     /**
      * @param matchday optional slot order; {@code null} → league current + next
      */
-    Soccer365ScheduleSyncResultDto syncByLeagueCode(String leagueCode, Integer matchday);
+    ScheduleSyncResultDto syncByLeagueCode(String leagueCode, Integer matchday);
 }

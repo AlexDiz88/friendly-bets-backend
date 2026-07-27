@@ -4,10 +4,10 @@ import net.friendly_bets.dto.MarathonbetMarketDto;
 import net.friendly_bets.dto.MarathonbetMarketSelectionDto;
 import net.friendly_bets.marathonbet.MarathonbetExtractedMarkets;
 import net.friendly_bets.models.enums.BetTitleCode;
-import net.friendly_bets.oddsapi.OddsMarketCategory;
-import net.friendly_bets.oddsapi.mapping.MappedOddsQuote;
-import net.friendly_bets.oddsapi.mapping.OddsMerger;
-import net.friendly_bets.oddsapi.mapping.OddsMergeResult;
+import net.friendly_bets.odds.OddsMarketCategory;
+import net.friendly_bets.odds.mapping.MappedOddsQuote;
+import net.friendly_bets.odds.mapping.OddsMerger;
+import net.friendly_bets.odds.mapping.OddsMergeResult;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;

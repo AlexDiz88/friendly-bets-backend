@@ -1,7 +1,7 @@
 package net.friendly_bets.marathonbet;
 
 import net.friendly_bets.models.schedule.MatchSchedule;
-import net.friendly_bets.oddsapi.MatchScheduleNotStarted;
+import net.friendly_bets.odds.MatchScheduleNotStarted;
 import net.friendly_bets.services.MatchScheduleDisplayService;
 
 import java.time.Duration;
@@ -38,13 +38,13 @@ public final class MarathonbetSyncBatchSupport {
         if (!MatchScheduleNotStarted.isNotStarted(match, now)) {
             return false;
         }
+        if (match.getUtcKickoff() == null) {
+            return false;
+        }
         if (!hasOdds) {
             return true;
         }
         Instant kickoff = match.getUtcKickoff();
-        if (kickoff == null) {
-            return true;
-        }
         if (refreshWithinHours <= 0) {
             return true;
         }

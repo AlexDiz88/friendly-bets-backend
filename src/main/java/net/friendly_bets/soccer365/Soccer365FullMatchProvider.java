@@ -2,7 +2,7 @@ package net.friendly_bets.soccer365;
 
 import lombok.RequiredArgsConstructor;
 import net.friendly_bets.exceptions.BadRequestException;
-import net.friendly_bets.gameresults.MatchDataProviders;
+import net.friendly_bets.providers.ExternalProviderIds;
 import net.friendly_bets.models.monitoring.ExternalApiHttpLogEntry;
 import net.friendly_bets.models.monitoring.ExternalApiMonitoringCounters;
 import net.friendly_bets.models.monitoring.ExternalApiMonitoringRun;
@@ -36,7 +36,7 @@ public class Soccer365FullMatchProvider implements FullMatchProvider {
 
     @Override
     public String providerId() {
-        return MatchDataProviders.SOCCER365;
+        return ExternalProviderIds.SOCCER365;
     }
 
     @Override
@@ -54,7 +54,7 @@ public class Soccer365FullMatchProvider implements FullMatchProvider {
 
         ExternalApiMonitoringRun run = monitoringService.begin(
                 ExternalDataLayer.FULL_MATCH,
-                MatchDataProviders.SOCCER365,
+                ExternalProviderIds.SOCCER365,
                 ExternalApiMonitoringTrigger.ORCHESTRATOR,
                 current.getLeagueCode(),
                 current.getSeasonId()
@@ -74,6 +74,18 @@ public class Soccer365FullMatchProvider implements FullMatchProvider {
             return current;
         }
 
+        if (current.getUtcKickoff() == null) {
+            monitoringService.finalizeAndSave(
+                    run,
+                    ExternalApiMonitoringStatus.SKIPPED,
+                    ExternalApiMonitoringCounters.builder().requested(1).skipped(1).saved(0).build(),
+                    httpLogs,
+                    List.of(),
+                    ExternalApiMonitoringService.reasonMissingUtcKickoff(1)
+            );
+            return current;
+        }
+
         String gameId;
         try {
             gameId = fullMatchResolver.resolveGameId(current);
@@ -86,7 +98,7 @@ public class Soccer365FullMatchProvider implements FullMatchProvider {
                     List.of(current.getId()),
                     e.getMessage()
             );
-            errorLogService.recordFullMatchFailure(current, MatchDataProviders.SOCCER365, e.getMessage());
+            errorLogService.recordFullMatchFailure(current, ExternalProviderIds.SOCCER365, e.getMessage());
             throw e;
         }
 
@@ -124,7 +136,7 @@ public class Soccer365FullMatchProvider implements FullMatchProvider {
                     List.of(current.getId()),
                     e.getMessage()
             );
-            errorLogService.recordFullMatchFailure(current, MatchDataProviders.SOCCER365, e.getMessage());
+            errorLogService.recordFullMatchFailure(current, ExternalProviderIds.SOCCER365, e.getMessage());
             throw e;
         }
 
@@ -139,7 +151,7 @@ public class Soccer365FullMatchProvider implements FullMatchProvider {
                     List.of(current.getId()),
                     "soccer365FullMatchParseFailed"
             );
-            errorLogService.recordFullMatchFailure(current, MatchDataProviders.SOCCER365, "soccer365FullMatchParseFailed");
+            errorLogService.recordFullMatchFailure(current, ExternalProviderIds.SOCCER365, "soccer365FullMatchParseFailed");
             throw new BadRequestException("soccer365FullMatchParseFailed");
         }
 
@@ -152,7 +164,7 @@ public class Soccer365FullMatchProvider implements FullMatchProvider {
         current.setLiveMinuteLabel(null);
         current.setFullDetailsFetchedAt(now);
         current.setFinalizedAt(now);
-        current.setFinalizedByProvider(MatchDataProviders.SOCCER365);
+        current.setFinalizedByProvider(ExternalProviderIds.SOCCER365);
         current.setFetchedAt(Instant.now());
         MatchSchedule saved = matchScheduleRepository.save(current);
 

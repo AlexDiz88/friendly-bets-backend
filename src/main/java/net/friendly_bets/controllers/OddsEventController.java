@@ -2,7 +2,7 @@ package net.friendly_bets.controllers;
 
 import lombok.RequiredArgsConstructor;
 import net.friendly_bets.dto.OddsEventMarketsDto;
-import net.friendly_bets.oddsapi.OddsPresentationService;
+import net.friendly_bets.odds.OddsPresentationService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;

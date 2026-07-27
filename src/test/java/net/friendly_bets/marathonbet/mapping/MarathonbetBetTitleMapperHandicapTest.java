@@ -4,8 +4,8 @@ import net.friendly_bets.dto.MarathonbetMarketDto;
 import net.friendly_bets.dto.MarathonbetMarketSelectionDto;
 import net.friendly_bets.marathonbet.MarathonbetExtractedMarkets;
 import net.friendly_bets.models.enums.BetTitleCode;
-import net.friendly_bets.oddsapi.OddsMarketCategory;
-import net.friendly_bets.oddsapi.mapping.MappedOddsQuote;
+import net.friendly_bets.odds.OddsMarketCategory;
+import net.friendly_bets.odds.mapping.MappedOddsQuote;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
@@ -48,7 +48,7 @@ class MarathonbetBetTitleMapperHandicapTest {
     void skipsDrawSelectionFromThreeWayHandicap() {
         MarathonbetMarketDto market = MarathonbetMarketDto.builder()
                 .model("MTCH_HB")
-                .name("Победа с учетом форы (3 исхода)")
+                .name("Победа с учетом форы")
                 .selections(List.of(
                         selection("Ничья (-2)", "4.20"),
                         selection("ЮАР (+2)", "1.57")
@@ -63,6 +63,26 @@ class MarathonbetBetTitleMapperHandicapTest {
 
         assertEquals(1, quotes.size());
         assertEquals(BetTitleCode.HANDICAP_AWAY_PLUS_2_0.getCode(), quotes.get(0).getBetTitle().getCode());
+    }
+
+    @Test
+    void ignoresEntireThreeOutcomeHandicapMarketByNameSuffix() {
+        MarathonbetMarketDto market = MarathonbetMarketDto.builder()
+                .model("MTCH_HB")
+                .name("Победа с учетом форы (3 исхода)")
+                .selections(List.of(
+                        selection("Ничья (-2)", "4.20"),
+                        selection("ЮАР (+2)", "1.57")
+                ))
+                .build();
+
+        List<MappedOddsQuote> quotes = mapper.map(
+                MarathonbetExtractedMarkets.builder().handicapMarkets(List.of(market)).build(),
+                "Мексика",
+                "ЮАР"
+        );
+
+        assertEquals(0, quotes.size());
     }
 
     @Test

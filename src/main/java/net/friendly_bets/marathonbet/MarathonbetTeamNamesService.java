@@ -1,7 +1,8 @@
 package net.friendly_bets.marathonbet;
 
 import lombok.RequiredArgsConstructor;
-import net.friendly_bets.dto.Soccer365TeamNameChipDto;
+import net.friendly_bets.providers.ExternalProviderIds;
+import net.friendly_bets.dto.ExternalTeamNameChipDto;
 import net.friendly_bets.exceptions.BadRequestException;
 import net.friendly_bets.marathonbet.client.MarathonbetHttpFetchResult;
 import net.friendly_bets.marathonbet.client.MarathonbetTournamentClient;
@@ -10,7 +11,6 @@ import net.friendly_bets.models.League;
 import net.friendly_bets.services.RunningSeasonLookup;
 import net.friendly_bets.services.TeamAliasResolver;
 import net.friendly_bets.soccer365.Soccer365TeamNamesService;
-import net.friendly_bets.utils.TeamTitleUtils;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -27,7 +27,7 @@ public class MarathonbetTeamNamesService {
     private final TeamAliasResolver teamAliasResolver;
     private final RunningSeasonLookup runningSeasonLookup;
 
-    public List<Soccer365TeamNameChipDto> fetchUnmappedTeamNames(String leagueCodeRaw) {
+    public List<ExternalTeamNameChipDto> fetchUnmappedTeamNames(String leagueCodeRaw) {
         League.LeagueCode leagueCode = Soccer365TeamNamesService.parseLeagueCode(leagueCodeRaw);
         runningSeasonLookup.findRunningSeasonOrThrow("noActiveSeasonWasFounded");
 
@@ -52,12 +52,12 @@ public class MarathonbetTeamNamesService {
             throw new BadRequestException("marathonbetTeamNamesEmpty");
         }
 
-        List<Soccer365TeamNameChipDto> unmapped = new ArrayList<>();
+        List<ExternalTeamNameChipDto> unmapped = new ArrayList<>();
         for (String name : uniqueNames) {
-            if (teamAliasResolver.resolveMarathonbetByName(name).isEmpty()) {
-                unmapped.add(Soccer365TeamNameChipDto.builder()
+            if (teamAliasResolver.resolveByProviderName(ExternalProviderIds.MARATHONBET, name).isEmpty()) {
+                unmapped.add(ExternalTeamNameChipDto.builder()
                         .externalName(name)
-                        .provider(TeamTitleUtils.MARATHONBET_PROVIDER)
+                        .provider(ExternalProviderIds.MARATHONBET)
                         .alreadyMapped(false)
                         .build());
             }

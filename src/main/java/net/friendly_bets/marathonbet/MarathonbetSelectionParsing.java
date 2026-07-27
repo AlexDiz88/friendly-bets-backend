@@ -1,6 +1,6 @@
 package net.friendly_bets.marathonbet;
 
-import net.friendly_bets.oddsapi.OddsCorrectScoreUtils;
+import net.friendly_bets.odds.OddsCorrectScoreUtils;
 
 import java.util.Locale;
 import java.util.regex.Matcher;

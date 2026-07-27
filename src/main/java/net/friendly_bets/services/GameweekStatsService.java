@@ -78,7 +78,8 @@ public class GameweekStatsService {
     }
 
     private List<CalendarNode> sortedCalendarNodesWithBets(String seasonId) {
-        List<CalendarNode> calendarNodeList = getEntityService.getListOfCalendarNodesWithBetsBySeasonOrThrow(seasonId);
+        List<CalendarNode> calendarNodeList = new ArrayList<>(
+                getEntityService.getListOfCalendarNodesWithBetsBySeasonOrThrow(seasonId));
         calendarNodeList.sort(Comparator.comparing(CalendarNode::getStartDate));
         return calendarNodeList;
     }

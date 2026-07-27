@@ -1,6 +1,7 @@
 package net.friendly_bets.marathonbet;
 
 import net.friendly_bets.marathonbet.config.MarathonbetProperties;
+import net.friendly_bets.providers.ExternalProviderIds;
 import net.friendly_bets.models.schedule.MatchSchedule;
 import net.friendly_bets.repositories.OddsRepository;
 import net.friendly_bets.services.ErrorLogService;
@@ -20,6 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -83,7 +85,7 @@ class MarathonbetEventMatcherTest {
                 .awayTeam("Ковентри Сити")
                 .displayTimeMillis(kickoff.toEpochMilli())
                 .build();
-        when(teamAliasResolver.resolveMarathonbetByName(anyString())).thenReturn(Optional.empty());
+        when(teamAliasResolver.resolveByProviderName(eq(ExternalProviderIds.MARATHONBET), anyString())).thenReturn(Optional.empty());
 
         MarathonbetEventResolveResult result = matcher.resolveAndRecordMappingIssue(
                 match, List.of(event), "EPL", "2026", 1);

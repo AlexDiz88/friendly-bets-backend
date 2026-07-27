@@ -6,7 +6,7 @@ import net.friendly_bets.dto.NewBetDto;
 import net.friendly_bets.dto.NewEmptyBet;
 import net.friendly_bets.exceptions.BadRequestException;
 import net.friendly_bets.exceptions.ConflictException;
-import net.friendly_bets.gameresults.GameScoreConsistencyValidator;
+import net.friendly_bets.matchschedule.GameScoreConsistencyValidator;
 import net.friendly_bets.models.*;
 import net.friendly_bets.models.enums.BetTitleCode;
 import net.friendly_bets.repositories.BetsRepository;

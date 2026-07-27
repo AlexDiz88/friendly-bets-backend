@@ -15,6 +15,16 @@ class TwentyFourScoreLiveSupportTest {
     private static final Instant NOW = Instant.parse("2026-07-27T12:00:00Z");
 
     @Test
+    void httpCandidate_requiresUtcKickoffEvenWhenInPlay() {
+        assertFalse(TwentyFourScoreLiveSupport.isLiveHttpCandidate(
+                MatchSchedule.builder().status("LIVE").build(), NOW));
+        assertFalse(TwentyFourScoreLiveSupport.isMissingUtcKickoffSkip(
+                MatchSchedule.builder().status("FINISHED").build()));
+        assertTrue(TwentyFourScoreLiveSupport.isMissingUtcKickoffSkip(
+                MatchSchedule.builder().status("SCHEDULED").build()));
+    }
+
+    @Test
     void httpCandidate_atKickoffAndInPlay_notBeforeOrAfterFinished() {
         assertFalse(TwentyFourScoreLiveSupport.isLiveHttpCandidate(
                 MatchSchedule.builder().utcKickoff(NOW.plusSeconds(60)).status("SCHEDULED").build(), NOW));

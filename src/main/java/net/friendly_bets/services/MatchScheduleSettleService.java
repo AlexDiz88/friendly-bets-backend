@@ -6,7 +6,7 @@ import net.friendly_bets.dto.BetsPage;
 import net.friendly_bets.dto.MatchdaySettleResultDto;
 import net.friendly_bets.dto.SettleMatchdayFromGameResultsDto;
 import net.friendly_bets.exceptions.BadRequestException;
-import net.friendly_bets.gameresults.GameScoreValidator;
+import net.friendly_bets.matchschedule.GameScoreValidator;
 import net.friendly_bets.models.GameResult;
 import net.friendly_bets.models.Season;
 import net.friendly_bets.models.schedule.MatchSchedule;

@@ -1,6 +1,7 @@
 package net.friendly_bets.marathonbet;
 
 import lombok.RequiredArgsConstructor;
+import net.friendly_bets.providers.ExternalProviderIds;
 import net.friendly_bets.marathonbet.config.MarathonbetProperties;
 import net.friendly_bets.models.Team;
 import net.friendly_bets.models.odds.Odds;
@@ -39,9 +40,7 @@ public class MarathonbetEventMatcher {
             return MarathonbetEventResolveResult.miss(MarathonbetEventResolveResult.MissKind.MAPPING_FAILURE);
         }
         if (match.getUtcKickoff() == null) {
-            errorLogService.recordEventMappingMissing(
-                    match, "marathonbet", leagueCode, season, matchday, "matchKickoffMissing");
-            return MarathonbetEventResolveResult.miss(MarathonbetEventResolveResult.MissKind.MAPPING_FAILURE);
+            return MarathonbetEventResolveResult.miss(MarathonbetEventResolveResult.MissKind.NO_BOOKIE_EVENT);
         }
 
         List<MarathonbetPrematchEvent> candidates = filterByKickoffWindow(match, tournamentEvents);
@@ -199,7 +198,7 @@ public class MarathonbetEventMatcher {
         if (teamId == null || teamId.isBlank() || marathonName == null || marathonName.isBlank()) {
             return false;
         }
-        Optional<Team> byAlias = teamAliasResolver.resolveMarathonbetByName(marathonName);
+        Optional<Team> byAlias = teamAliasResolver.resolveByProviderName(ExternalProviderIds.MARATHONBET, marathonName);
         return byAlias.isPresent() && teamId.equals(byAlias.get().getId());
     }
 }

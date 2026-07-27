@@ -1,10 +1,10 @@
 package net.friendly_bets.soccer365;
 
 import lombok.RequiredArgsConstructor;
-import net.friendly_bets.dto.Soccer365ScheduleSyncResultDto;
+import net.friendly_bets.dto.ScheduleSyncResultDto;
 import net.friendly_bets.exceptions.BadRequestException;
-import net.friendly_bets.gameresults.MatchDataProviders;
-import net.friendly_bets.gameresults.MatchdaySlotSupport;
+import net.friendly_bets.providers.ExternalProviderIds;
+import net.friendly_bets.matchschedule.MatchdaySlotSupport;
 import net.friendly_bets.models.ExpandedMatchdaySlot;
 import net.friendly_bets.models.League;
 import net.friendly_bets.models.Season;
@@ -16,7 +16,7 @@ import net.friendly_bets.models.monitoring.ExternalApiMonitoringCounters;
 import net.friendly_bets.models.monitoring.ExternalApiMonitoringRun;
 import net.friendly_bets.models.monitoring.ExternalApiMonitoringStatus;
 import net.friendly_bets.models.monitoring.ExternalApiMonitoringTrigger;
-import net.friendly_bets.oddsapi.OddsMergedOddsService;
+import net.friendly_bets.odds.OddsService;
 import net.friendly_bets.repositories.MatchScheduleRepository;
 import net.friendly_bets.services.GetEntityService;
 import net.friendly_bets.services.ErrorLogService;
@@ -50,7 +50,7 @@ public class Soccer365ScheduleSyncService implements ScheduleProvider {
 
     @Override
     public String providerId() {
-        return MatchDataProviders.SOCCER365;
+        return ExternalProviderIds.SOCCER365;
     }
 
     @Override
@@ -69,11 +69,11 @@ public class Soccer365ScheduleSyncService implements ScheduleProvider {
     private final TeamAliasResolver teamAliasResolver;
     private final MatchScheduleRepository matchScheduleRepository;
     private final ErrorLogService errorLogService;
-    private final OddsMergedOddsService oddsMergedOddsService;
+    private final OddsService oddsService;
     private final ExternalApiMonitoringService monitoringService;
     private final ApplicationEventPublisher eventPublisher;
 
-    public Soccer365ScheduleSyncResultDto syncByLeagueCode(String leagueCodeRaw, Integer matchday) {
+    public ScheduleSyncResultDto syncByLeagueCode(String leagueCodeRaw, Integer matchday) {
         League.LeagueCode leagueCode = Soccer365TeamNamesService.parseLeagueCode(leagueCodeRaw);
         Season season = runningSeasonLookup.findRunningSeasonOrThrow("noActiveSeasonWasFounded");
         League league = findLeague(season, leagueCode)
@@ -81,11 +81,11 @@ public class Soccer365ScheduleSyncService implements ScheduleProvider {
         return syncLeague(season, league, false, ExternalApiMonitoringTrigger.ADMIN, matchday);
     }
 
-    public Soccer365ScheduleSyncResultDto syncLeague(Season season, League league, boolean respectFarKickoffSkip) {
+    public ScheduleSyncResultDto syncLeague(Season season, League league, boolean respectFarKickoffSkip) {
         return syncLeague(season, league, respectFarKickoffSkip, ExternalApiMonitoringTrigger.CRON, null);
     }
 
-    public Soccer365ScheduleSyncResultDto syncLeague(
+    public ScheduleSyncResultDto syncLeague(
             Season season,
             League league,
             boolean respectFarKickoffSkip,
@@ -94,7 +94,7 @@ public class Soccer365ScheduleSyncService implements ScheduleProvider {
         return syncLeague(season, league, respectFarKickoffSkip, trigger, null);
     }
 
-    public Soccer365ScheduleSyncResultDto syncLeague(
+    public ScheduleSyncResultDto syncLeague(
             Season season,
             League league,
             boolean respectFarKickoffSkip,
@@ -108,14 +108,14 @@ public class Soccer365ScheduleSyncService implements ScheduleProvider {
         String externalSeason = matchdaySlotSupport.resolveExternalSeasonYear(season, leagueCode);
         ExternalApiMonitoringRun run = monitoringService.begin(
                 ExternalDataLayer.SCHEDULE,
-                MatchDataProviders.SOCCER365,
+                ExternalProviderIds.SOCCER365,
                 trigger,
                 leagueCode.name(),
                 externalSeason
         );
         List<ExternalApiHttpLogEntry> httpLogs = new ArrayList<>();
         try {
-            Soccer365ScheduleSyncResultDto result = syncLeagueBody(
+            ScheduleSyncResultDto result = syncLeagueBody(
                     season, league, respectFarKickoffSkip, run, httpLogs, externalSeason, explicitMatchday);
             eventPublisher.publishEvent(new MatchSchedulesUpdatedEvent());
             return result;
@@ -132,7 +132,7 @@ public class Soccer365ScheduleSyncService implements ScheduleProvider {
         }
     }
 
-    private Soccer365ScheduleSyncResultDto syncLeagueBody(
+    private ScheduleSyncResultDto syncLeagueBody(
             Season season,
             League league,
             boolean respectFarKickoffSkip,
@@ -218,7 +218,7 @@ public class Soccer365ScheduleSyncService implements ScheduleProvider {
                     List.of(),
                     "farKickoffDb"
             );
-            return Soccer365ScheduleSyncResultDto.builder()
+            return ScheduleSyncResultDto.builder()
                     .leagueCode(leagueCode.name())
                     .seasonId(season.getId())
                     .currentMatchday(currentOrder)
@@ -273,8 +273,8 @@ public class Soccer365ScheduleSyncService implements ScheduleProvider {
                     ? currentSlotId
                     : (nextSlotId != null ? nextSlotId : String.valueOf(round.getNumber()));
             for (Soccer365ParsedSchedule.Match match : round.getMatches()) {
-                Optional<Team> home = teamAliasResolver.resolveSoccer365ByName(match.getHomeName());
-                Optional<Team> away = teamAliasResolver.resolveSoccer365ByName(match.getAwayName());
+                Optional<Team> home = teamAliasResolver.resolveByProviderName(ExternalProviderIds.SOCCER365, match.getHomeName());
+                Optional<Team> away = teamAliasResolver.resolveByProviderName(ExternalProviderIds.SOCCER365, match.getAwayName());
                 if (home.isEmpty() || away.isEmpty()) {
                     skippedUnmapped++;
                     if (home.isEmpty()) {
@@ -284,7 +284,7 @@ public class Soccer365ScheduleSyncService implements ScheduleProvider {
                         unmappedNames.add(match.getAwayName());
                     }
                     errorLogService.recordTeamMappingMissing(
-                            MatchDataProviders.SOCCER365,
+                            ExternalProviderIds.SOCCER365,
                             leagueCode.name(),
                             externalSeason,
                             round.getNumber(),
@@ -325,7 +325,7 @@ public class Soccer365ScheduleSyncService implements ScheduleProvider {
                 skippedUnmapped > 0 ? "skippedUnmapped=" + skippedUnmapped : null
         );
 
-        return Soccer365ScheduleSyncResultDto.builder()
+        return ScheduleSyncResultDto.builder()
                 .leagueCode(leagueCode.name())
                 .seasonId(season.getId())
                 .currentMatchday(currentOrder)
@@ -371,15 +371,9 @@ public class Soccer365ScheduleSyncService implements ScheduleProvider {
         if (match.getStatus() != null) {
             existing.setStatus(match.getStatus());
         }
-        if (match.getSoccer365GameId() != null && !match.getSoccer365GameId().isBlank()) {
-            existing.putExternalId(
-                    MatchDataProviders.sourcesStorageKey(MatchDataProviders.SOCCER365),
-                    match.getSoccer365GameId()
-            );
-        }
         existing.setFetchedAt(fetchedAt);
         matchScheduleRepository.save(existing);
-        oddsMergedOddsService.deleteIfFinalized(existing);
+        oddsService.deleteIfFinalized(existing);
     }
 
     /**

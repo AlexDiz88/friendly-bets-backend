@@ -5,8 +5,8 @@ import net.friendly_bets.dto.ExternalDataLayerConfigDto;
 import net.friendly_bets.dto.ExternalSiteAccessProbeRequestDto;
 import net.friendly_bets.dto.ExternalSiteAccessProbeResultDto;
 import net.friendly_bets.dto.LiveMatchSyncResultDto;
-import net.friendly_bets.dto.Soccer365ScheduleSyncResultDto;
-import net.friendly_bets.dto.Soccer365TeamNameChipDto;
+import net.friendly_bets.dto.ScheduleSyncResultDto;
+import net.friendly_bets.dto.ExternalTeamNameChipDto;
 import net.friendly_bets.models.League;
 import net.friendly_bets.models.Season;
 import net.friendly_bets.models.schedule.MatchSchedule;
@@ -80,7 +80,7 @@ public class ExternalDataAdminController {
 
     @PostMapping("/team-names")
     @PreAuthorize("hasAuthority('ADMIN')")
-    public ResponseEntity<List<Soccer365TeamNameChipDto>> fetchTeamNames(
+    public ResponseEntity<List<ExternalTeamNameChipDto>> fetchTeamNames(
             @RequestParam String provider,
             @RequestParam String leagueCode
     ) {
@@ -89,11 +89,11 @@ public class ExternalDataAdminController {
 
     @PostMapping("/schedule/sync")
     @PreAuthorize("hasAuthority('ADMIN')")
-    public ResponseEntity<Soccer365ScheduleSyncResultDto> syncSchedule(
+    public ResponseEntity<ScheduleSyncResultDto> syncSchedule(
             @RequestParam String leagueCode,
             @RequestParam(required = false) Integer matchday
     ) {
-        Soccer365ScheduleSyncResultDto result = router.execute(
+        ScheduleSyncResultDto result = router.execute(
                 ExternalDataLayer.SCHEDULE,
                 ScheduleProvider.class,
                 p -> p.syncByLeagueCode(leagueCode, matchday),

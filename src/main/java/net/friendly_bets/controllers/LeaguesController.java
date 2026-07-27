@@ -6,7 +6,7 @@ import net.friendly_bets.dto.SetLeagueCurrentMatchdayDto;
 import net.friendly_bets.dto.ExternalCompetitionInfoDto;
 import net.friendly_bets.dto.LeagueDto;
 import net.friendly_bets.dto.LeaguesWithoutFormatPage;
-import net.friendly_bets.gameresults.ExternalCompetitionService;
+import net.friendly_bets.matchschedule.ExternalCompetitionService;
 import net.friendly_bets.services.LeaguesService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;

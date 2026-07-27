@@ -3,8 +3,8 @@ package net.friendly_bets.marathonbet;
 import lombok.RequiredArgsConstructor;
 import net.friendly_bets.dto.ExternalCompetitionInfoDto;
 import net.friendly_bets.exceptions.BadRequestException;
-import net.friendly_bets.gameresults.ExternalCompetitionService;
-import net.friendly_bets.gameresults.MatchdaySlotSupport;
+import net.friendly_bets.matchschedule.ExternalCompetitionService;
+import net.friendly_bets.matchschedule.MatchdaySlotSupport;
 import net.friendly_bets.marathonbet.client.MarathonbetHttpFetchResult;
 import net.friendly_bets.marathonbet.client.MarathonbetRequestType;
 import net.friendly_bets.marathonbet.client.MarathonbetTournamentClient;
@@ -18,10 +18,10 @@ import net.friendly_bets.models.monitoring.ExternalApiMonitoringRun;
 import net.friendly_bets.models.monitoring.ExternalApiMonitoringStatus;
 import net.friendly_bets.models.monitoring.ExternalApiMonitoringTrigger;
 import net.friendly_bets.models.schedule.MatchSchedule;
-import net.friendly_bets.oddsapi.MatchScheduleNotStarted;
-import net.friendly_bets.oddsapi.OddsMergedOddsService;
-import net.friendly_bets.oddsapi.mapping.MappedOddsQuote;
-import net.friendly_bets.oddsapi.mapping.OddsMergeResult;
+import net.friendly_bets.odds.MatchScheduleNotStarted;
+import net.friendly_bets.odds.OddsService;
+import net.friendly_bets.odds.mapping.MappedOddsQuote;
+import net.friendly_bets.odds.mapping.OddsMergeResult;
 import net.friendly_bets.services.GetEntityService;
 import net.friendly_bets.services.ErrorLogService;
 import net.friendly_bets.services.ExternalApiMonitoringService;
@@ -54,7 +54,7 @@ public class MarathonbetSyncService {
     private final MarathonbetScrapeService scrapeService;
     private final MarathonbetEventMatcher eventMatcher;
     private final MarathonbetBetTitleMapper betTitleMapper;
-    private final OddsMergedOddsService oddsMergedOddsService;
+    private final OddsService oddsService;
     private final MatchScheduleQueryService matchScheduleQueryService;
     private final ExternalCompetitionService externalCompetitionService;
     private final MatchdaySlotSupport matchdaySupport;
@@ -369,6 +369,7 @@ public class MarathonbetSyncService {
         Instant fetchedAt = Instant.now();
 
         List<MatchSchedule> pending = new ArrayList<>();
+        int skippedMissingKickoff = 0;
         for (int matchday : matchdays) {
             List<MatchSchedule> matches = matchScheduleQueryService.getMatches(
                     leagueCode,
@@ -384,18 +385,25 @@ public class MarathonbetSyncService {
             }
             for (MatchSchedule match : matches) {
                 if (MatchScheduleDisplayService.isFinalized(match)) {
-                    oddsMergedOddsService.deleteIfFinalized(match);
+                    oddsService.deleteIfFinalized(match);
                     continue;
                 }
                 if (MatchScheduleNotStarted.isNotStarted(match, now)) {
+                    if (match.getUtcKickoff() == null) {
+                        skippedMissingKickoff++;
+                        continue;
+                    }
                     pending.add(match);
                 } else {
-                    oddsMergedOddsService.freezeIfNeeded(match, now);
+                    oddsService.freezeIfNeeded(match, now);
                 }
             }
         }
 
         if (pending.isEmpty()) {
+            if (skippedMissingKickoff > 0) {
+                return new SlotSyncCounters(0, 0, 0, 0, 0, 0, 0, skippedMissingKickoff, List.of());
+            }
             if (failWhenNoPending) {
                 throw new BadRequestException("oddsSyncNoMatchdayMatches");
             }
@@ -409,7 +417,7 @@ public class MarathonbetSyncService {
                 toFetch.add(match);
                 continue;
             }
-            boolean hasOdds = oddsMergedOddsService.findByMatchScheduleId(match.getId())
+            boolean hasOdds = oddsService.findByMatchScheduleId(match.getId())
                     .map(odds -> odds.getMarketGroups() != null && !odds.getMarketGroups().isEmpty())
                     .orElse(false);
             if (ssePolicy == OddsSsePolicy.MISSING_ONLY) {
@@ -480,6 +488,7 @@ public class MarathonbetSyncService {
                 mappingFailures,
                 skippedFar,
                 skippedNoBookieEvent,
+                skippedMissingKickoff,
                 failedIds
         );
     }
@@ -536,7 +545,7 @@ public class MarathonbetSyncService {
             if (quotes.isEmpty()) {
                 return MatchSyncOutcome.matchedFailedSse();
             }
-            OddsMergeResult mergeResult = oddsMergedOddsService.buildAndPersistFromQuotes(
+            OddsMergeResult mergeResult = oddsService.buildAndPersistFromQuotes(
                     match,
                     quotes,
                     List.of(MarathonbetBookmaker.KEY),
@@ -588,6 +597,7 @@ public class MarathonbetSyncService {
         int mappingFailures = counters.mappingFailures();
         int skippedFar = counters.skippedFar();
         int skippedNoBookie = counters.skippedNoBookieEvent();
+        int skippedMissingKickoff = counters.skippedMissingKickoff();
         List<String> failedIds = counters.failedMatchScheduleIds();
 
         String summary = errorSummary;
@@ -596,21 +606,28 @@ public class MarathonbetSyncService {
                     ? "mappingFailures=" + mappingFailures
                     : summary + "; mappingFailures=" + mappingFailures;
         }
-        // Soft skips stay in counters only (not red errorSummary): skippedFar + noBookieEventYet.
+        if (skippedMissingKickoff > 0) {
+            String missing = ExternalApiMonitoringService.reasonMissingUtcKickoff(skippedMissingKickoff);
+            summary = summary == null ? missing : summary + "; " + missing;
+        }
+        // Soft skips stay in counters (skippedFar + noBookieEventYet); missingUtcKickoff also in errorSummary as warning.
         ExternalApiMonitoringCounters monitoringCounters = ExternalApiMonitoringCounters.builder()
                 .eligible(eligible)
                 .matched(matched)
                 .saved(saved)
                 .sseCalls(sseCalls)
                 .mappingFailures(mappingFailures)
-                .skipped(skippedFar + skippedNoBookie)
+                .skipped(skippedFar + skippedNoBookie + skippedMissingKickoff)
                 .tournamentFetched(tournamentFetched)
                 .build();
         ExternalApiMonitoringStatus status;
-        if (summary != null && !tournamentFetched && eligible == 0 && matched == 0 && saved == 0
-                && !"noSlots".equals(errorSummary)) {
+        if (errorSummary != null && !tournamentFetched && eligible == 0 && matched == 0 && saved == 0
+                && !"noSlots".equals(errorSummary)
+                && !errorSummary.startsWith(ExternalApiMonitoringService.REASON_MISSING_UTC_KICKOFF)) {
             status = ExternalApiMonitoringStatus.FAILED;
-        } else if ("noSlots".equals(errorSummary) || (eligible == 0 && tournamentFetched)) {
+        } else if ("noSlots".equals(errorSummary)
+                || (eligible == 0 && tournamentFetched)
+                || (eligible == 0 && skippedMissingKickoff > 0 && mappingFailures == 0)) {
             status = ExternalApiMonitoringStatus.SKIPPED;
         } else if (mappingFailures > 0 || ExternalApiMonitoringService.countFailed(httpLogs) > 0) {
             status = saved > 0 ? ExternalApiMonitoringStatus.PARTIAL : ExternalApiMonitoringStatus.FAILED;
@@ -659,10 +676,13 @@ public class MarathonbetSyncService {
                 if (MatchScheduleDisplayService.isFinalized(match)) {
                     continue;
                 }
+                if (match.getUtcKickoff() == null) {
+                    continue;
+                }
                 if (!MatchScheduleNotStarted.isNotStarted(match, now)) {
                     continue;
                 }
-                boolean hasOdds = oddsMergedOddsService.findByMatchScheduleId(match.getId())
+                boolean hasOdds = oddsService.findByMatchScheduleId(match.getId())
                         .map(odds -> odds.getMarketGroups() != null && !odds.getMarketGroups().isEmpty())
                         .orElse(false);
                 if (MarathonbetSyncBatchSupport.needsSseRefresh(
@@ -735,10 +755,11 @@ public class MarathonbetSyncService {
             int mappingFailures,
             int skippedFar,
             int skippedNoBookieEvent,
+            int skippedMissingKickoff,
             List<String> failedMatchScheduleIds
     ) {
         static SlotSyncCounters empty() {
-            return new SlotSyncCounters(0, 0, 0, 0, 0, 0, 0, List.of());
+            return new SlotSyncCounters(0, 0, 0, 0, 0, 0, 0, 0, List.of());
         }
     }
 

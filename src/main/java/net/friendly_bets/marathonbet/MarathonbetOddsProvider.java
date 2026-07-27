@@ -1,7 +1,7 @@
 package net.friendly_bets.marathonbet;
 
 import lombok.RequiredArgsConstructor;
-import net.friendly_bets.gameresults.MatchDataProviders;
+import net.friendly_bets.providers.ExternalProviderIds;
 import net.friendly_bets.models.League;
 import net.friendly_bets.models.Season;
 import net.friendly_bets.providers.ExternalDataLayer;
@@ -23,7 +23,7 @@ public class MarathonbetOddsProvider implements OddsProvider {
 
     @Override
     public String providerId() {
-        return MatchDataProviders.MARATHONBET;
+        return ExternalProviderIds.MARATHONBET;
     }
 
     @Override
