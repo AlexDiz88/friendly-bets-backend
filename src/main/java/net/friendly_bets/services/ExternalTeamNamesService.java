@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import net.friendly_bets.providers.ExternalProviderIds;
 import net.friendly_bets.dto.ExternalTeamNameChipDto;
 import net.friendly_bets.exceptions.BadRequestException;
+import net.friendly_bets.football24.Football24TeamNamesService;
 import net.friendly_bets.marathonbet.MarathonbetTeamNamesService;
 import net.friendly_bets.soccer365.Soccer365TeamNamesService;
 import net.friendly_bets.sportsru.SportsRuTeamNamesService;
@@ -20,6 +21,7 @@ public class ExternalTeamNamesService {
     private final MarathonbetTeamNamesService marathonbetTeamNamesService;
     private final TwentyFourScoreTeamNamesService twentyFourScoreTeamNamesService;
     private final SportsRuTeamNamesService sportsRuTeamNamesService;
+    private final Football24TeamNamesService football24TeamNamesService;
 
     public List<ExternalTeamNameChipDto> fetchUnmappedTeamNames(String providerRaw, String leagueCode) {
         String provider = normalizeProvider(providerRaw);
@@ -29,6 +31,7 @@ public class ExternalTeamNamesService {
             case ExternalProviderIds.TWENTYFOUR_SCORE ->
                     twentyFourScoreTeamNamesService.fetchUnmappedTeamNames(leagueCode);
             case ExternalProviderIds.SPORTS_RU -> sportsRuTeamNamesService.fetchUnmappedTeamNames(leagueCode);
+            case ExternalProviderIds.FOOTBALL24 -> football24TeamNamesService.fetchUnmappedTeamNames(leagueCode);
             default -> throw new BadRequestException("externalTeamNamesProviderUnsupported");
         };
     }
