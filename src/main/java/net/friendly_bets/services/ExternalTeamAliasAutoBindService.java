@@ -91,9 +91,10 @@ public class ExternalTeamAliasAutoBindService {
                     alreadyMapped++;
                     continue;
                 }
-                mismatch++;
+                // Team already mapped for this provider (e.g. RU alias vs EN label from the same API).
+                // Keep existing alias; log drift for ops; do not show a chip or toast "mismatch".
                 recordMismatch(provider, leagueCode.name(), candidate, existing.getExternalName(), externalName);
-                unmapped.add(chip(provider, externalName));
+                alreadyMapped++;
                 continue;
             }
 

@@ -1,16 +1,15 @@
-package net.friendly_bets.marathonbet;
+package net.friendly_bets.melbet;
 
 import lombok.RequiredArgsConstructor;
-import net.friendly_bets.providers.ExternalProviderIds;
-import net.friendly_bets.marathonbet.config.MarathonbetProperties;
+import net.friendly_bets.melbet.config.MelbetProperties;
 import net.friendly_bets.models.League;
 import net.friendly_bets.models.Season;
 import net.friendly_bets.providers.ExternalDataLayer;
+import net.friendly_bets.providers.ExternalProviderIds;
 import net.friendly_bets.services.ExternalDataLayerConfigService;
 import net.friendly_bets.services.RunningSeasonLookup;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -23,21 +22,19 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Due-check every minute (Europe/Berlin by config): sync each league only in its schedule hours.
+ * Due-check every minute: sync each league in its schedule hours when Melbet is ODDS primary.
  */
 @Component
-@ConditionalOnProperty(name = "marathonbet.standalone-scheduler", havingValue = "false", matchIfMissing = true)
 @RequiredArgsConstructor
-public class MarathonbetLeagueSyncScheduler {
+public class MelbetLeagueSyncScheduler {
 
-    private static final Logger log = LoggerFactory.getLogger(MarathonbetLeagueSyncScheduler.class);
+    private static final Logger log = LoggerFactory.getLogger(MelbetLeagueSyncScheduler.class);
 
-    private final MarathonbetProperties properties;
-    private final MarathonbetSyncService marathonbetSyncService;
+    private final MelbetProperties properties;
+    private final MelbetSyncService melbetSyncService;
     private final RunningSeasonLookup runningSeasonLookup;
     private final ExternalDataLayerConfigService layerConfigService;
 
-    /** Keys: {@code yyyy-MM-dd|LEAGUE|hour} already executed. */
     private final Set<String> completedHourRuns = ConcurrentHashMap.newKeySet();
 
     @Scheduled(cron = "0 * * * * *")
@@ -46,14 +43,14 @@ public class MarathonbetLeagueSyncScheduler {
             return;
         }
         String primary = layerConfigService.assignment(ExternalDataLayer.ODDS).getPrimaryProvider();
-        if (!ExternalProviderIds.MARATHONBET.equals(primary)) {
+        if (!ExternalProviderIds.MELBET.equals(primary)) {
             return;
         }
         ZoneId zone;
         try {
             zone = ZoneId.of(properties.getScheduleZone());
         } catch (Exception e) {
-            log.warn("marathonbet invalid schedule-zone={}: {}", properties.getScheduleZone(), e.getMessage());
+            log.warn("melbet invalid schedule-zone={}: {}", properties.getScheduleZone(), e.getMessage());
             return;
         }
 
@@ -75,7 +72,7 @@ public class MarathonbetLeagueSyncScheduler {
         }
 
         for (String leagueCode : seasonLeagueCodes) {
-            if (properties.tournamentTreeIdForLeague(leagueCode) == null) {
+            if (properties.tournamentIdForLeague(leagueCode) == null) {
                 continue;
             }
             if (!properties.isLeagueHourDue(leagueCode, hour)) {
@@ -86,19 +83,16 @@ public class MarathonbetLeagueSyncScheduler {
                 continue;
             }
             try {
-                log.info("marathonbet due league={} hour={} zone={}", leagueCode, hour, zone);
-                marathonbetSyncService.syncLeague(leagueCode);
+                melbetSyncService.syncLeague(leagueCode, true);
             } catch (Exception e) {
+                log.warn("melbet scheduled sync failed league={}: {}", leagueCode, e.getMessage());
                 completedHourRuns.remove(runKey);
-                log.warn("marathonbet league={} sync failed: {}", leagueCode, e.getMessage());
             }
         }
     }
 
     private void pruneCompletedKeys(LocalDate today) {
-        String prefixToday = today + "|";
-        String prefixYesterday = today.minusDays(1) + "|";
-        completedHourRuns.removeIf(key ->
-                !key.startsWith(prefixToday) && !key.startsWith(prefixYesterday));
+        String prefix = today.toString() + "|";
+        completedHourRuns.removeIf(key -> !key.startsWith(prefix));
     }
 }

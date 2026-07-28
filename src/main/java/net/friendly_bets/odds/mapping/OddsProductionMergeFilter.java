@@ -1,11 +1,12 @@
 package net.friendly_bets.odds.mapping;
 
 import net.friendly_bets.marathonbet.MarathonbetBookmaker;
+import net.friendly_bets.melbet.MelbetBookmaker;
 import net.friendly_bets.odds.OddsMarketCategory;
 
 /**
  * Какие OK-котировки попадают в prod-merge ({@link OddsMerger}).
- * Форы — только Marathonbet (европейская «Победа с учётом форы»); odds-api Spread/Asian не используются.
+ * Форы — только Marathonbet / Melbet (европейская фора); odds-api Spread/Asian не используются.
  */
 public final class OddsProductionMergeFilter {
 
@@ -20,6 +21,8 @@ public final class OddsProductionMergeFilter {
                 && quote.getCategory() != OddsMarketCategory.PERIOD_HANDICAP) {
             return true;
         }
-        return MarathonbetBookmaker.KEY.equalsIgnoreCase(quote.getBookmaker());
+        String bookmaker = quote.getBookmaker();
+        return MarathonbetBookmaker.KEY.equalsIgnoreCase(bookmaker)
+                || MelbetBookmaker.KEY.equalsIgnoreCase(bookmaker);
     }
 }

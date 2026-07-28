@@ -111,13 +111,18 @@ public class ExternalDataAdminController {
                         && l.getLeagueCode().name().equalsIgnoreCase(leagueCode.trim()))
                 .findFirst()
                 .orElseThrow(() -> new net.friendly_bets.exceptions.BadRequestException("leagueNotFoundInSeason"));
-        OddsProvider.OddsSyncResult result = router.execute(
-                ExternalDataLayer.ODDS,
-                OddsProvider.class,
-                p -> p.syncLeagueSlot(season, league, league.getCurrentMatchDay(), List.of()),
-                leagueCode
-        );
-        return ResponseEntity.ok(result);
+        ExternalApiMonitoringService.setTriggerOverride(ExternalApiMonitoringTrigger.ADMIN);
+        try {
+            OddsProvider.OddsSyncResult result = router.execute(
+                    ExternalDataLayer.ODDS,
+                    OddsProvider.class,
+                    p -> p.syncLeagueSlot(season, league, league.getCurrentMatchDay(), List.of()),
+                    leagueCode
+            );
+            return ResponseEntity.ok(result);
+        } finally {
+            ExternalApiMonitoringService.clearTriggerOverride();
+        }
     }
 
     @PostMapping("/live/sync")
