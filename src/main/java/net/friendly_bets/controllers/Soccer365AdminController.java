@@ -31,8 +31,8 @@ public class Soccer365AdminController {
     public ResponseEntity<List<ExternalTeamNameChipDto>> fetchTeamNames(
             @RequestParam String leagueCode
     ) {
-        return ResponseEntity.ok(externalTeamNamesService.fetchUnmappedTeamNames(
-                ExternalProviderIds.SOCCER365, leagueCode));
+        return ResponseEntity.ok(externalTeamNamesService.fetchAndAutoBindTeamNames(
+                ExternalProviderIds.SOCCER365, leagueCode).getUnmapped());
     }
 
     /** @deprecated prefer {@code POST /api/admin/external-data/schedule/sync} */

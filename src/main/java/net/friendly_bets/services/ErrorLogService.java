@@ -37,6 +37,7 @@ public class ErrorLogService {
     public static final String ROLE_SECONDARY = "SECONDARY";
 
     public static final String CODE_TEAM_MAPPING_MISSING = "teamMappingMissing";
+    public static final String CODE_TEAM_ALIAS_MISMATCH = "teamAliasMismatch";
     public static final String CODE_EVENT_MAPPING_MISSING = "eventMappingMissing";
     public static final String CODE_PROVIDER_FETCH_FAILED = "providerFetchFailed";
     public static final String CODE_PRIMARY_UNAVAILABLE = "primaryProviderUnavailable";
