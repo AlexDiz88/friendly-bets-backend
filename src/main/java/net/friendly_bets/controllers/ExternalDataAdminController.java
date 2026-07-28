@@ -6,7 +6,7 @@ import net.friendly_bets.dto.ExternalSiteAccessProbeRequestDto;
 import net.friendly_bets.dto.ExternalSiteAccessProbeResultDto;
 import net.friendly_bets.dto.LiveMatchSyncResultDto;
 import net.friendly_bets.dto.ScheduleSyncResultDto;
-import net.friendly_bets.dto.ExternalTeamNameChipDto;
+import net.friendly_bets.dto.ExternalTeamNamesLoadResultDto;
 import net.friendly_bets.models.League;
 import net.friendly_bets.models.Season;
 import net.friendly_bets.models.schedule.MatchSchedule;
@@ -80,11 +80,11 @@ public class ExternalDataAdminController {
 
     @PostMapping("/team-names")
     @PreAuthorize("hasAuthority('ADMIN')")
-    public ResponseEntity<List<ExternalTeamNameChipDto>> fetchTeamNames(
+    public ResponseEntity<ExternalTeamNamesLoadResultDto> fetchTeamNames(
             @RequestParam String provider,
             @RequestParam String leagueCode
     ) {
-        return ResponseEntity.ok(externalTeamNamesService.fetchUnmappedTeamNames(provider, leagueCode));
+        return ResponseEntity.ok(externalTeamNamesService.fetchAndAutoBindTeamNames(provider, leagueCode));
     }
 
     @PostMapping("/schedule/sync")
