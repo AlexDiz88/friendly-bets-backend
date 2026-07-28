@@ -44,9 +44,41 @@ public class MelbetPayloadDecryptor {
             ensureWorkDir();
             String node = resolveNodeExecutable();
             resolvedNode.set(node);
-            log.info("melbet decrypt ready; nodeExecutable={}", node);
+            String version = probeNodeVersion(node);
+            if (version != null) {
+                log.info("melbet decrypt ready; nodeExecutable={} ({})", node, version);
+            } else {
+                log.warn(
+                        "melbet decrypt NOT usable: cannot run '{}' (install Node in the runtime image). "
+                                + "Melbet ODDS / team-names will fail until node is on PATH.",
+                        node);
+            }
         } catch (Exception e) {
             log.warn("melbet decrypt resources not prepared at startup: {}", e.getMessage());
+        }
+    }
+
+    /** Returns trimmed {@code node -v} output, or null if the binary cannot be executed. */
+    private static String probeNodeVersion(String nodeExecutable) {
+        if (nodeExecutable == null || nodeExecutable.isBlank()) {
+            return null;
+        }
+        try {
+            Process process = new ProcessBuilder(nodeExecutable, "-v")
+                    .redirectErrorStream(true)
+                    .start();
+            boolean finished = process.waitFor(10, TimeUnit.SECONDS);
+            if (!finished) {
+                process.destroyForcibly();
+                return null;
+            }
+            String out = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8).trim();
+            if (process.exitValue() != 0 || out.isBlank()) {
+                return null;
+            }
+            return out;
+        } catch (Exception e) {
+            return null;
         }
     }
 

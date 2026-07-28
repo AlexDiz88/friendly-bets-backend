@@ -7,7 +7,12 @@ COPY src src
 RUN mvn -DskipTests=true clean package
 RUN mkdir -p target/dependency && (cd target/dependency; jar -xf ../*.jar)
 
+# Runtime: JRE + Node (Melbet Digitain WASM decrypt via decrypt-cli.cjs)
 FROM eclipse-temurin:17-jre-alpine
+RUN apk add --no-cache nodejs \
+	&& node -v \
+	&& test -x "$(command -v node)"
+
 ARG DEPENDENCY=/workspace/app/target/dependency
 COPY --from=build ${DEPENDENCY}/BOOT-INF/lib /app/lib
 COPY --from=build ${DEPENDENCY}/META-INF /app/META-INF
