@@ -32,6 +32,10 @@ public class Odds {
     @Field(name = "marathonbet_tree_id")
     private Long marathonbetTreeId;
 
+    /** Cached Melbet Digitain event Id after successful match. */
+    @Field(name = "melbet_event_id")
+    private Long melbetEventId;
+
     @Field(name = "fetched_at")
     private Instant fetchedAt;
 

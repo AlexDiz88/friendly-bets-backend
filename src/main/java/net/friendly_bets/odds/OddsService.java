@@ -50,7 +50,7 @@ public class OddsService {
     }
 
     /**
-     * Persist odds from pre-mapped quotes (e.g. Marathonbet scrape).
+     * Persist odds from pre-mapped quotes (e.g. Marathonbet / Melbet scrape).
      */
     public OddsMergeResult buildAndPersistFromQuotes(
             MatchSchedule match,
@@ -59,6 +59,18 @@ public class OddsService {
             Instant fetchedAt,
             boolean frozen,
             Long marathonbetTreeId
+    ) {
+        return buildAndPersistFromQuotes(match, quotes, bookmakers, fetchedAt, frozen, marathonbetTreeId, null);
+    }
+
+    public OddsMergeResult buildAndPersistFromQuotes(
+            MatchSchedule match,
+            List<MappedOddsQuote> quotes,
+            List<String> bookmakers,
+            Instant fetchedAt,
+            boolean frozen,
+            Long marathonbetTreeId,
+            Long melbetEventId
     ) {
         List<MappedOddsQuote> prodMergeInput = new ArrayList<>();
         if (quotes != null) {
@@ -88,7 +100,8 @@ public class OddsService {
             return mergeResult;
         }
 
-        persistOddsDocument(match.getId(), bookmakers, groups, fetchedAt, frozen, marathonbetTreeId);
+        persistOddsDocument(
+                match.getId(), bookmakers, groups, fetchedAt, frozen, marathonbetTreeId, melbetEventId);
         return mergeResult;
     }
 
@@ -113,7 +126,8 @@ public class OddsService {
             List<OddsMarketGroup> groups,
             Instant fetchedAt,
             boolean frozen,
-            Long marathonbetTreeId
+            Long marathonbetTreeId,
+            Long melbetEventId
     ) {
         Odds entity = oddsRepository.findByMatchScheduleId(matchScheduleId)
                 .orElse(Odds.builder()
@@ -124,6 +138,9 @@ public class OddsService {
         entity.setMarketGroups(new ArrayList<>(groups));
         if (marathonbetTreeId != null && marathonbetTreeId > 0) {
             entity.setMarathonbetTreeId(marathonbetTreeId);
+        }
+        if (melbetEventId != null && melbetEventId > 0) {
+            entity.setMelbetEventId(melbetEventId);
         }
         if (frozen) {
             entity.setFrozenAt(fetchedAt);

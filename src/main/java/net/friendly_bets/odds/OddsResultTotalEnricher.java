@@ -1,6 +1,7 @@
 package net.friendly_bets.odds;
 
 import net.friendly_bets.marathonbet.MarathonbetBookmaker;
+import net.friendly_bets.melbet.MelbetBookmaker;
 import net.friendly_bets.models.odds.OddsLineRow;
 import net.friendly_bets.models.odds.OddsMarketGroup;
 
@@ -8,7 +9,7 @@ import java.util.Comparator;
 import java.util.List;
 
 /**
- * Подготовка групп «Результат + Тотал» из скрапа Marathonbet (без расчёта кэфов).
+ * Подготовка групп «Результат + Тотал» из скрапа ODDS-провайдеров (без расчёта кэфов).
  */
 public final class OddsResultTotalEnricher {
 
@@ -22,7 +23,7 @@ public final class OddsResultTotalEnricher {
         if (groups == null) {
             return;
         }
-        if (hasMarathonbetResultTotal(groups)) {
+        if (hasScrapedResultTotal(groups)) {
             OddsResultTotalSubgroupSplitter.splitIntoSubgroups(groups);
             OddsSelectionKey.enrichGroups(groups);
             return;
@@ -31,7 +32,7 @@ public final class OddsResultTotalEnricher {
         OddsSelectionKey.enrichGroups(groups);
     }
 
-    private static boolean hasMarathonbetResultTotal(List<OddsMarketGroup> groups) {
+    private static boolean hasScrapedResultTotal(List<OddsMarketGroup> groups) {
         if (groups == null) {
             return false;
         }
@@ -42,12 +43,13 @@ public final class OddsResultTotalEnricher {
             if (group.getRows() != null && isResultTotalCategoryName(group.getCategory())) {
                 for (OddsLineRow row : group.getRows()) {
                     if (row.getBookmakerOdds() != null
-                            && row.getBookmakerOdds().containsKey(MarathonbetBookmaker.KEY)) {
+                            && (row.getBookmakerOdds().containsKey(MarathonbetBookmaker.KEY)
+                            || row.getBookmakerOdds().containsKey(MelbetBookmaker.KEY))) {
                         return true;
                     }
                 }
             }
-            if (group.getSubgroups() != null && hasMarathonbetResultTotal(group.getSubgroups())) {
+            if (group.getSubgroups() != null && hasScrapedResultTotal(group.getSubgroups())) {
                 return true;
             }
         }

@@ -17,6 +17,12 @@ import net.friendly_bets.marathonbet.MarathonbetScrapeService;
 import net.friendly_bets.marathonbet.MarathonbetTournamentParser;
 import net.friendly_bets.marathonbet.client.MarathonbetHttpFetchResult;
 import net.friendly_bets.marathonbet.client.MarathonbetTournamentClient;
+import net.friendly_bets.melbet.MelbetAllowedMarkets;
+import net.friendly_bets.melbet.MelbetMarketBucket;
+import net.friendly_bets.melbet.MelbetPrematchEvent;
+import net.friendly_bets.melbet.MelbetTournamentParser;
+import net.friendly_bets.melbet.client.MelbetHttpClient;
+import net.friendly_bets.melbet.client.MelbetHttpFetchResult;
 import net.friendly_bets.providers.ExternalDataLayer;
 import net.friendly_bets.football24.Football24HttpClient;
 import net.friendly_bets.football24.Football24ParsedSchedule;
@@ -60,6 +66,7 @@ public class ExternalDataSandboxService {
     private final Football24ScheduleParser football24ScheduleParser;
     private final MarathonbetTournamentClient marathonbetTournamentClient;
     private final MarathonbetScrapeService marathonbetScrapeService;
+    private final MelbetHttpClient melbetHttpClient;
     private final TwentyFourScoreHttpClient twentyFourScoreHttpClient;
     private final TwentyFourScoreDatePageParser twentyFourScoreDatePageParser;
 
@@ -143,7 +150,7 @@ public class ExternalDataSandboxService {
 
     public ExternalDataSandboxResultDto runOdds(ExternalDataSandboxOddsRequestDto request) {
         String provider = requireProvider(request != null ? request.getProvider() : null, ExternalProviderIds.MARATHONBET);
-        if (!ExternalProviderIds.MARATHONBET.equals(provider)) {
+        if (!ExternalProviderIds.MARATHONBET.equals(provider) && !ExternalProviderIds.MELBET.equals(provider)) {
             throw new BadRequestException("sandboxUnsupportedProvider");
         }
         if (request == null || request.getTreeId() == null || request.getTreeId() <= 0) {
@@ -156,6 +163,9 @@ public class ExternalDataSandboxService {
         long treeId = request.getTreeId();
         long started = System.currentTimeMillis();
         try {
+            if (ExternalProviderIds.MELBET.equals(provider)) {
+                return runMelbetOdds(mode, treeId, started);
+            }
             if ("tournament".equals(mode)) {
                 MarathonbetHttpFetchResult fetch = marathonbetTournamentClient.fetchTournament(treeId);
                 if (!fetch.isSuccess()) {
@@ -187,8 +197,37 @@ public class ExternalDataSandboxService {
         } catch (BadRequestException e) {
             return fail(ExternalDataLayer.ODDS, provider, started, e.getMessage(), null);
         } catch (RuntimeException e) {
-            return fail(ExternalDataLayer.ODDS, provider, started, "marathonbetFetchFailed", e.getMessage());
+            String fetchKey = ExternalProviderIds.MELBET.equals(provider) ? "melbetFetchFailed" : "marathonbetFetchFailed";
+            return fail(ExternalDataLayer.ODDS, provider, started, fetchKey, e.getMessage());
         }
+    }
+
+    private ExternalDataSandboxResultDto runMelbetOdds(String mode, long id, long started) {
+        if ("tournament".equals(mode)) {
+            MelbetHttpFetchResult fetch = melbetHttpClient.fetchTournamentEvents(id);
+            if (!fetch.isSuccess()) {
+                return fail(ExternalDataLayer.ODDS, ExternalProviderIds.MELBET, started, fetch.toErrorKey(), fetch.getErrorDetail());
+            }
+            List<MelbetPrematchEvent> events = MelbetTournamentParser.parsePrematchEvents(fetch.getBody());
+            return ExternalDataSandboxResultDto.builder()
+                    .success(true)
+                    .layer(ExternalDataLayer.ODDS.name())
+                    .provider(ExternalProviderIds.MELBET)
+                    .durationMs(System.currentTimeMillis() - started)
+                    .parsed(toMelbetOddsTournamentParsed(id, events))
+                    .build();
+        }
+        MelbetHttpFetchResult fetch = melbetHttpClient.fetchEvent(id);
+        if (!fetch.isSuccess()) {
+            return fail(ExternalDataLayer.ODDS, ExternalProviderIds.MELBET, started, fetch.toErrorKey(), fetch.getErrorDetail());
+        }
+        return ExternalDataSandboxResultDto.builder()
+                .success(true)
+                .layer(ExternalDataLayer.ODDS.name())
+                .provider(ExternalProviderIds.MELBET)
+                .durationMs(System.currentTimeMillis() - started)
+                .parsed(toMelbetOddsEventParsed(id, fetch.getBody()))
+                .build();
     }
 
     public ExternalDataSandboxResultDto runLive(ExternalDataSandboxLiveRequestDto request) {
@@ -501,6 +540,62 @@ public class ExternalDataSandboxService {
         out.put("tournamentTreeId", treeId);
         out.put("eventsCount", rows.size());
         out.put("events", rows);
+        return out;
+    }
+
+    private static Map<String, Object> toMelbetOddsTournamentParsed(long tournamentId, List<MelbetPrematchEvent> events) {
+        List<Map<String, Object>> rows = new ArrayList<>();
+        for (MelbetPrematchEvent event : events) {
+            Map<String, Object> row = new LinkedHashMap<>();
+            // UI copies treeId into Event mode — Melbet uses Digitain eventId.
+            row.put("treeId", event.getEventId());
+            row.put("eventId", event.getEventId());
+            row.put("name", event.getName());
+            row.put("homeTeam", event.getHomeTeamEn() != null ? event.getHomeTeamEn() : event.getHomeTeam());
+            row.put("awayTeam", event.getAwayTeamEn() != null ? event.getAwayTeamEn() : event.getAwayTeam());
+            row.put("displayTimeMillis", event.kickoffEpochMillis());
+            rows.add(row);
+        }
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("mode", "tournament");
+        out.put("tournamentTreeId", tournamentId);
+        out.put("eventsCount", rows.size());
+        out.put("events", rows);
+        return out;
+    }
+
+    private static Map<String, Object> toMelbetOddsEventParsed(long eventId, JsonNode body) {
+        Map<String, Integer> bucketCounts = new LinkedHashMap<>();
+        for (MelbetMarketBucket bucket : MelbetMarketBucket.values()) {
+            bucketCounts.put(bucket.name(), 0);
+        }
+        int marketsTotal = 0;
+        if (body != null) {
+            Iterable<JsonNode> parts = body.isArray() ? body : List.of(body);
+            for (JsonNode part : parts) {
+                JsonNode stakeTypes = part != null ? part.get("StakeTypes") : null;
+                if (stakeTypes == null || !stakeTypes.isArray()) {
+                    continue;
+                }
+                for (JsonNode st : stakeTypes) {
+                    if (st == null || !st.hasNonNull("Id")) {
+                        continue;
+                    }
+                    var bucket = MelbetAllowedMarkets.bucketFor(st.get("Id").asInt());
+                    if (bucket.isEmpty()) {
+                        continue;
+                    }
+                    marketsTotal++;
+                    String key = bucket.get().name();
+                    bucketCounts.put(key, bucketCounts.getOrDefault(key, 0) + 1);
+                }
+            }
+        }
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("mode", "event");
+        out.put("eventTreeId", eventId);
+        out.put("marketsTotal", marketsTotal);
+        out.put("marketBucketCounts", bucketCounts);
         return out;
     }
 
