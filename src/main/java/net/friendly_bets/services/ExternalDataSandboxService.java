@@ -69,6 +69,7 @@ public class ExternalDataSandboxService {
     private final MelbetHttpClient melbetHttpClient;
     private final TwentyFourScoreHttpClient twentyFourScoreHttpClient;
     private final TwentyFourScoreDatePageParser twentyFourScoreDatePageParser;
+    private final TeamAliasResolver teamAliasResolver;
 
     public ExternalDataSandboxResultDto runSchedule(ExternalDataSandboxScheduleRequestDto request) {
         String provider = requireProvider(request != null ? request.getProvider() : null, ExternalProviderIds.SOCCER365);
@@ -263,7 +264,7 @@ public class ExternalDataSandboxService {
                     .layer(ExternalDataLayer.LIVE.name())
                     .provider(provider)
                     .durationMs(System.currentTimeMillis() - started)
-                    .parsed(toLiveParsed(date.toString(), titleContains, all.size(), filtered))
+                    .parsed(toLiveParsed(date.toString(), titleContains, all.size(), filtered, provider))
                     .build();
         } catch (BadRequestException e) {
             return fail(ExternalDataLayer.LIVE, provider, started, e.getMessage(), null);
@@ -637,11 +638,12 @@ public class ExternalDataSandboxService {
         return list != null ? list.size() : 0;
     }
 
-    private static Map<String, Object> toLiveParsed(
+    private Map<String, Object> toLiveParsed(
             String date,
             String titleContains,
             int competitionsTotal,
-            List<TwentyFourScoreParsedDatePage.CompetitionBlock> filtered
+            List<TwentyFourScoreParsedDatePage.CompetitionBlock> filtered,
+            String provider
     ) {
         int matchesCount = 0;
         List<Map<String, Object>> competitions = new ArrayList<>();
@@ -653,6 +655,8 @@ public class ExternalDataSandboxService {
                 row.put("externalMatchId", match.getExternalMatchId());
                 row.put("homeName", match.getHomeName());
                 row.put("awayName", match.getAwayName());
+                row.put("homeTeam", resolveSandboxTeam(provider, match.getHomeName()));
+                row.put("awayTeam", resolveSandboxTeam(provider, match.getAwayName()));
                 row.put("scoreText", match.getScoreText());
                 row.put("fullTimeScore", match.getFullTimeScore());
                 row.put("firstTimeScore", match.getFirstTimeScore());
@@ -673,5 +677,20 @@ public class ExternalDataSandboxService {
         out.put("matchesCount", matchesCount);
         out.put("competitions", competitions);
         return out;
+    }
+
+    /**
+     * Best-effort alias resolve for sandbox card preview. Missing alias → null (UI keeps default logo).
+     */
+    private Map<String, Object> resolveSandboxTeam(String provider, String externalName) {
+        return teamAliasResolver.resolveByProviderName(provider, externalName)
+                .map(team -> {
+                    Map<String, Object> dto = new LinkedHashMap<>();
+                    dto.put("id", team.getId());
+                    dto.put("title", team.getTitle());
+                    dto.put("logoKey", team.getLogo());
+                    return dto;
+                })
+                .orElse(null);
     }
 }
