@@ -27,12 +27,12 @@ public final class LiveMinuteLabelResolver {
     /** ~60 min wall clock: first-half stoppage vs second half (e.g. 48'). */
     static final long SECOND_HALF_START_ELAPSED_MIN = 60L;
     /**
-     * Regulation ends ~118 min after kickoff (45 + FH stoppage + HT + 45 + SH stoppage).
-     * Below this, minute 91–99 is still {@code 90+}, not extra time.
+     * Earliest realistic extra-time start from kickoff (wall clock):
+     * ~3 delay + 45 FH + 5 FH stoppage + 15 HT + 45 SH + 7 SH stoppage + 5 pre-OT break.
      */
-    static final long REGULATION_END_ELAPSED_MIN = 118L;
-    /** OT 1st half (~15' + stoppage) ends ~18 min after regulation. */
-    static final long OT_SECOND_HALF_START_ELAPSED_MIN = 141L;
+    static final long REGULATION_END_ELAPSED_MIN = 125L;
+    /** OT 2nd half: regulation end + 15' OT1 + ~3 stoppage + 5' OT halftime. */
+    static final long OT_SECOND_HALF_START_ELAPSED_MIN = 148L;
 
     private static final Pattern MINUTE_PATTERN = Pattern.compile("(\\d{1,3})(?:\\+(\\d{1,2}))?\\s*'?");
 
@@ -54,7 +54,7 @@ public final class LiveMinuteLabelResolver {
         String trimmed = rawMinuteLabel.trim();
         Matcher matcher = MINUTE_PATTERN.matcher(trimmed);
         if (!matcher.find()) {
-            return trimmed.endsWith("'") ? trimmed : trimmed + "'";
+            return stripTrailingApostrophe(trimmed);
         }
         int baseMinute = Integer.parseInt(matcher.group(1));
         String addedPart = matcher.group(2);
@@ -116,17 +116,17 @@ public final class LiveMinuteLabelResolver {
             if (elapsedMin < OT_SECOND_HALF_START_ELAPSED_MIN) {
                 return OT_FIRST_HALF_STOPPAGE_LABEL;
             }
-            return apiMinute + "'";
+            return String.valueOf(apiMinute);
         }
 
         if (apiMinute > FIRST_HALF_MIN * 2) {
             if (!extraTimeAllowed || elapsedMin < REGULATION_END_ELAPSED_MIN) {
                 return SECOND_HALF_STOPPAGE_LABEL;
             }
-            return apiMinute + "'";
+            return String.valueOf(apiMinute);
         }
 
-        return apiMinute + "'";
+        return String.valueOf(apiMinute);
     }
 
     static String stoppageLabelForBaseMinute(int baseMinute) {
@@ -150,6 +150,13 @@ public final class LiveMinuteLabelResolver {
             return apiMinute <= FIRST_HALF_MIN + 5;
         }
         return elapsedMin < SECOND_HALF_START_ELAPSED_MIN;
+    }
+
+    private static String stripTrailingApostrophe(String value) {
+        if (value != null && value.endsWith("'")) {
+            return value.substring(0, value.length() - 1);
+        }
+        return value;
     }
 
     private static long elapsedMinutes(Instant utcKickoff, Instant now) {

@@ -103,7 +103,7 @@ public class TwentyFourScoreDatePageParser {
         String liveMinute = null;
         Matcher liveMatcher = LIVE_MIN.matcher(scoreText);
         if (liveMatcher.find()) {
-            liveMinute = liveMatcher.group(1) + "'";
+            liveMinute = liveMatcher.group(1);
         }
 
         String status = resolveStatus(scoreText, fullTime, liveMinute);
