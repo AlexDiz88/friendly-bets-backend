@@ -42,6 +42,8 @@ public class ExternalMatchDto {
     private boolean finalized;
     /** Live minute label from LIVE provider (e.g. 72'). */
     private String liveMinuteLabel;
+    /** Canonical betting slot id (playoff stage detection). */
+    private String slotId;
     /** Id матча в wc26_schedule (1–104), если известен. */
     private Integer wc26ScheduleId;
 }
