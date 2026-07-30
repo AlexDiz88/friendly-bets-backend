@@ -1,4 +1,4 @@
-package net.friendly_bets.twentyfourscore;
+package net.friendly_bets.providers.live;
 
 import net.friendly_bets.models.schedule.MatchSchedule;
 import org.junit.jupiter.api.Test;
@@ -10,31 +10,31 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-class TwentyFourScoreLiveSupportTest {
+class LiveMatchSupportTest {
 
     private static final Instant NOW = Instant.parse("2026-07-27T12:00:00Z");
 
     @Test
     void httpCandidate_requiresUtcKickoffEvenWhenInPlay() {
-        assertFalse(TwentyFourScoreLiveSupport.isLiveHttpCandidate(
+        assertFalse(LiveMatchSupport.isLiveHttpCandidate(
                 MatchSchedule.builder().status("LIVE").build(), NOW));
-        assertFalse(TwentyFourScoreLiveSupport.isMissingUtcKickoffSkip(
+        assertFalse(LiveMatchSupport.isMissingUtcKickoffSkip(
                 MatchSchedule.builder().status("FINISHED").build()));
-        assertTrue(TwentyFourScoreLiveSupport.isMissingUtcKickoffSkip(
+        assertTrue(LiveMatchSupport.isMissingUtcKickoffSkip(
                 MatchSchedule.builder().status("SCHEDULED").build()));
     }
 
     @Test
     void httpCandidate_atKickoffAndInPlay_notBeforeOrAfterFinished() {
-        assertFalse(TwentyFourScoreLiveSupport.isLiveHttpCandidate(
+        assertFalse(LiveMatchSupport.isLiveHttpCandidate(
                 MatchSchedule.builder().utcKickoff(NOW.plusSeconds(60)).status("SCHEDULED").build(), NOW));
-        assertTrue(TwentyFourScoreLiveSupport.isLiveHttpCandidate(
+        assertTrue(LiveMatchSupport.isLiveHttpCandidate(
                 MatchSchedule.builder().utcKickoff(NOW).status("SCHEDULED").build(), NOW));
-        assertTrue(TwentyFourScoreLiveSupport.isLiveHttpCandidate(
+        assertTrue(LiveMatchSupport.isLiveHttpCandidate(
                 MatchSchedule.builder().utcKickoff(NOW.minusSeconds(600)).status("LIVE").build(), NOW));
-        assertFalse(TwentyFourScoreLiveSupport.isLiveHttpCandidate(
+        assertFalse(LiveMatchSupport.isLiveHttpCandidate(
                 MatchSchedule.builder().utcKickoff(NOW.minusSeconds(600)).status("FINISHED").build(), NOW));
-        assertFalse(TwentyFourScoreLiveSupport.isLiveHttpCandidate(
+        assertFalse(LiveMatchSupport.isLiveHttpCandidate(
                 MatchSchedule.builder()
                         .utcKickoff(NOW.minusSeconds(600))
                         .status("LIVE")
@@ -44,31 +44,42 @@ class TwentyFourScoreLiveSupportTest {
     }
 
     @Test
+    void httpCandidate_keepsPollingExtraTimeAndStopsOnCanceled() {
+        Instant oldKickoff = NOW.minusSeconds(LiveMatchSupport.LIVE_WINDOW_SECONDS + 1);
+        assertTrue(LiveMatchSupport.isLiveHttpCandidate(
+                MatchSchedule.builder().utcKickoff(oldKickoff).status("EXTRA_TIME").build(), NOW));
+        assertFalse(LiveMatchSupport.isLiveHttpCandidate(
+                MatchSchedule.builder().utcKickoff(NOW.minusSeconds(600)).status("CANCELED").build(), NOW));
+    }
+
+    @Test
     void httpCandidate_stopsAfterLiveWindowUnlessStillInPlay() {
-        Instant oldKickoff = NOW.minusSeconds(TwentyFourScoreLiveSupport.LIVE_WINDOW_SECONDS + 1);
-        assertFalse(TwentyFourScoreLiveSupport.isLiveHttpCandidate(
+        Instant oldKickoff = NOW.minusSeconds(LiveMatchSupport.LIVE_WINDOW_SECONDS + 1);
+        assertFalse(LiveMatchSupport.isLiveHttpCandidate(
                 MatchSchedule.builder().utcKickoff(oldKickoff).status("SCHEDULED").build(), NOW));
-        assertTrue(TwentyFourScoreLiveSupport.isLiveHttpCandidate(
+        assertTrue(LiveMatchSupport.isLiveHttpCandidate(
                 MatchSchedule.builder().utcKickoff(oldKickoff).status("LIVE").build(), NOW));
     }
 
     @Test
     void needsFull_onlyFinishedWithoutFullDetails() {
-        assertTrue(TwentyFourScoreLiveSupport.needsFullMatch(
+        assertTrue(LiveMatchSupport.needsFullMatch(
                 MatchSchedule.builder().status("FINISHED").build()));
-        assertFalse(TwentyFourScoreLiveSupport.needsFullMatch(
+        assertFalse(LiveMatchSupport.needsFullMatch(
                 MatchSchedule.builder().status("FINISHED").fullDetailsFetchedAt(NOW).build()));
-        assertFalse(TwentyFourScoreLiveSupport.needsFullMatch(
+        assertFalse(LiveMatchSupport.needsFullMatch(
                 MatchSchedule.builder().status("LIVE").build()));
+        assertFalse(LiveMatchSupport.needsFullMatch(
+                MatchSchedule.builder().status("CANCELED").build()));
     }
 
     @Test
     void upcomingKickoff_onlyFutureNotStarted() {
-        assertEquals(NOW.plusSeconds(120), TwentyFourScoreLiveSupport.upcomingKickoffOrNull(
+        assertEquals(NOW.plusSeconds(120), LiveMatchSupport.upcomingKickoffOrNull(
                 MatchSchedule.builder().utcKickoff(NOW.plusSeconds(120)).status("SCHEDULED").build(), NOW));
-        assertNull(TwentyFourScoreLiveSupport.upcomingKickoffOrNull(
+        assertNull(LiveMatchSupport.upcomingKickoffOrNull(
                 MatchSchedule.builder().utcKickoff(NOW).status("SCHEDULED").build(), NOW));
-        assertNull(TwentyFourScoreLiveSupport.upcomingKickoffOrNull(
+        assertNull(LiveMatchSupport.upcomingKickoffOrNull(
                 MatchSchedule.builder().utcKickoff(NOW.plusSeconds(120)).status("LIVE").build(), NOW));
     }
 }

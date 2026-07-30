@@ -13,7 +13,7 @@ public class TwentyFourScoreProperties {
     private String baseUrl = "https://24score.pro";
     private long httpDelayMinMs = 1_500L;
     private long httpDelayMaxMs = 4_000L;
-    /** Poll interval while matches are in LIVE window (default 5 min). */
+    /** Poll interval while matches are in LIVE window (legacy; prefer external-data.layers.LIVE.scheduler-tick-ms). */
     private long schedulerTickMs = 300_000L;
     /**
      * Standings page path per league code; use {@code {season}} for {@code 2026-2027}-style segment.

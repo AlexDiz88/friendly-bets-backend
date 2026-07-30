@@ -1,4 +1,4 @@
-package net.friendly_bets.twentyfourscore;
+package net.friendly_bets.providers.live;
 
 import net.friendly_bets.models.Season;
 import net.friendly_bets.models.schedule.MatchSchedule;
@@ -10,10 +10,10 @@ import net.friendly_bets.repositories.MatchScheduleRepository;
 import net.friendly_bets.services.ExternalDataLayerConfigService;
 import net.friendly_bets.services.MatchFinalizeOrchestrator;
 import net.friendly_bets.services.RunningSeasonLookup;
-import net.friendly_bets.twentyfourscore.config.TwentyFourScoreProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
@@ -22,47 +22,47 @@ import org.springframework.stereotype.Component;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
-import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * Date-driven LIVE polling: one HTTP request per UTC kickoff date while any match is tracked.
- * First tick at {@code utc_kickoff}, then every poll interval until all tracked matches finish.
+ * Layer-level LIVE wake: first tick at {@code utc_kickoff}, then every poll interval
+ * while any match is tracked. Calls {@link LayerProviderRouter} (primary → secondary) —
+ * not a specific physical API.
  */
 @Component
-public class TwentyFourScoreLiveScheduler {
+public class LiveMatchWakeScheduler {
 
-    private static final Logger log = LoggerFactory.getLogger(TwentyFourScoreLiveScheduler.class);
+    private static final Logger log = LoggerFactory.getLogger(LiveMatchWakeScheduler.class);
 
     private final RunningSeasonLookup runningSeasonLookup;
     private final LayerProviderRouter router;
     private final MatchFinalizeOrchestrator matchFinalizeOrchestrator;
     private final ExternalDataLayerConfigService layerConfigService;
     private final MatchScheduleRepository matchScheduleRepository;
-    private final TwentyFourScoreProperties properties;
     private final ThreadPoolTaskScheduler taskScheduler;
+    private final long schedulerTickMs;
 
     private final AtomicBoolean running = new AtomicBoolean(false);
     private volatile ScheduledFuture<?> nextFuture;
 
-    public TwentyFourScoreLiveScheduler(
+    public LiveMatchWakeScheduler(
             RunningSeasonLookup runningSeasonLookup,
             LayerProviderRouter router,
             MatchFinalizeOrchestrator matchFinalizeOrchestrator,
             ExternalDataLayerConfigService layerConfigService,
             MatchScheduleRepository matchScheduleRepository,
-            TwentyFourScoreProperties properties,
-            @Qualifier("twentyFourScoreLiveTaskScheduler") ThreadPoolTaskScheduler taskScheduler
+            @Qualifier("liveMatchWakeTaskScheduler") ThreadPoolTaskScheduler taskScheduler,
+            @Value("${external-data.layers.LIVE.scheduler-tick-ms:300000}") long schedulerTickMs
     ) {
         this.runningSeasonLookup = runningSeasonLookup;
         this.router = router;
         this.matchFinalizeOrchestrator = matchFinalizeOrchestrator;
         this.layerConfigService = layerConfigService;
         this.matchScheduleRepository = matchScheduleRepository;
-        this.properties = properties;
         this.taskScheduler = taskScheduler;
+        this.schedulerTickMs = Math.max(1_000L, schedulerTickMs);
     }
 
     @EventListener(ApplicationReadyEvent.class)
@@ -75,7 +75,6 @@ public class TwentyFourScoreLiveScheduler {
         rescheduleFromKickoffs(false);
     }
 
-    /** Recalculate next wake from DB kickoffs (poke after SCHEDULE / startup). */
     public void rescheduleFromKickoffs(boolean afterPoll) {
         scheduleNext(computeNextWake(Instant.now(), afterPoll));
     }
@@ -87,14 +86,14 @@ public class TwentyFourScoreLiveScheduler {
         try {
             tick();
         } catch (RuntimeException e) {
-            log.warn("24score LIVE tick failed: {}", e.getMessage());
+            log.warn("LIVE wake tick failed: {}", e.getMessage());
         } finally {
             running.set(false);
             try {
                 scheduleNext(computeNextWake(Instant.now(), true));
             } catch (RuntimeException e) {
-                log.warn("24score LIVE reschedule failed: {}", e.getMessage());
-                scheduleNext(Optional.of(Instant.now().plusMillis(Math.max(1_000L, properties.getSchedulerTickMs()))));
+                log.warn("LIVE wake reschedule failed: {}", e.getMessage());
+                scheduleNext(Optional.of(Instant.now().plusMillis(schedulerTickMs)));
             }
         }
     }
@@ -112,7 +111,7 @@ public class TwentyFourScoreLiveScheduler {
         LinkedHashSet<String> pendingFull = collectPendingFullMatchIds(season.getId());
 
         boolean hasTracked = matchScheduleRepository.findBySeasonId(season.getId()).stream()
-                .anyMatch(s -> TwentyFourScoreLiveSupport.isLiveHttpCandidate(s, now));
+                .anyMatch(s -> LiveMatchSupport.isLiveHttpCandidate(s, now));
         if (!hasTracked && pendingFull.isEmpty()) {
             return;
         }
@@ -126,7 +125,7 @@ public class TwentyFourScoreLiveScheduler {
             );
             if (result.updated() > 0 || result.finishedDetected() > 0
                     || !result.pendingFullMatchIds().isEmpty()) {
-                log.info("24score LIVE tracked={} http={} updated={} finished={} dates={} pendingFull={}",
+                log.info("LIVE tracked={} http={} updated={} finished={} dates={} pendingFull={}",
                         result.trackedCount(),
                         result.httpRequests(),
                         result.updated(),
@@ -136,7 +135,7 @@ public class TwentyFourScoreLiveScheduler {
             }
             pendingFull.addAll(result.pendingFullMatchIds());
         } catch (RuntimeException e) {
-            log.warn("24score LIVE sync failed: {}", e.getMessage());
+            log.warn("LIVE sync failed: {}", e.getMessage());
         }
 
         if (layerConfigService.isLayerEnabled(ExternalDataLayer.FULL_MATCH) && !pendingFull.isEmpty()) {
@@ -151,16 +150,13 @@ public class TwentyFourScoreLiveScheduler {
     private LinkedHashSet<String> collectPendingFullMatchIds(String seasonId) {
         LinkedHashSet<String> pendingFull = new LinkedHashSet<>();
         for (MatchSchedule schedule : matchScheduleRepository.findBySeasonId(seasonId)) {
-            if (TwentyFourScoreLiveSupport.needsFullMatch(schedule) && schedule.getId() != null) {
+            if (LiveMatchSupport.needsFullMatch(schedule) && schedule.getId() != null) {
                 pendingFull.add(schedule.getId());
             }
         }
         return pendingFull;
     }
 
-    /**
-     * @param afterPoll if true, active matches wait for the poll interval instead of firing immediately
-     */
     Optional<Instant> computeNextWake(Instant now, boolean afterPoll) {
         if (!layerConfigService.isLayerEnabled(ExternalDataLayer.LIVE)) {
             return Optional.empty();
@@ -174,11 +170,11 @@ public class TwentyFourScoreLiveScheduler {
         Instant nearestKickoff = null;
 
         for (MatchSchedule schedule : matchScheduleRepository.findBySeasonId(seasonId)) {
-            if (TwentyFourScoreLiveSupport.isLiveHttpCandidate(schedule, now)
-                    || TwentyFourScoreLiveSupport.needsFullMatch(schedule)) {
+            if (LiveMatchSupport.isLiveHttpCandidate(schedule, now)
+                    || LiveMatchSupport.needsFullMatch(schedule)) {
                 hasActiveOrPendingFull = true;
             }
-            Instant kickoff = TwentyFourScoreLiveSupport.upcomingKickoffOrNull(schedule, now);
+            Instant kickoff = LiveMatchSupport.upcomingKickoffOrNull(schedule, now);
             if (kickoff != null && (nearestKickoff == null || kickoff.isBefore(nearestKickoff))) {
                 nearestKickoff = kickoff;
             }
@@ -186,7 +182,7 @@ public class TwentyFourScoreLiveScheduler {
 
         if (hasActiveOrPendingFull) {
             if (afterPoll) {
-                Instant afterInterval = now.plusMillis(Math.max(1_000L, properties.getSchedulerTickMs()));
+                Instant afterInterval = now.plusMillis(schedulerTickMs);
                 if (nearestKickoff != null && nearestKickoff.isBefore(afterInterval)) {
                     return Optional.of(nearestKickoff);
                 }
@@ -206,11 +202,11 @@ public class TwentyFourScoreLiveScheduler {
             nextFuture = null;
         }
         if (when.isEmpty()) {
-            log.debug("24score LIVE dormant (no upcoming kickoff / active matches)");
+            log.debug("LIVE wake dormant (no upcoming kickoff / active matches)");
             return;
         }
         Instant fireAt = when.get().isBefore(Instant.now()) ? Instant.now() : when.get();
         nextFuture = taskScheduler.schedule(this::safeTick, fireAt);
-        log.debug("24score LIVE next wake at {}", fireAt);
+        log.debug("LIVE wake next at {}", fireAt);
     }
 }

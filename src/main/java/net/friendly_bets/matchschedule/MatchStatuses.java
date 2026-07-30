@@ -4,11 +4,11 @@ import java.util.Set;
 
 public final class MatchStatuses {
 
-    /** Матч завершён без дальнейших переходов (FINISHED, AWARDED, CANCELLED). */
+    /** Матч завершён без дальнейших переходов (FINISHED, AWARDED, CANCELED). */
     public static final Set<String> TERMINAL = Set.of(
             "FINISHED",
             "AWARDED",
-            "CANCELLED"
+            "CANCELED"
     );
 
     /** Идёт игра (в т.ч. перерыв, доп. время, пенальти). */
@@ -28,6 +28,7 @@ public final class MatchStatuses {
         }
         return switch (status) {
             case "PAUSE", "HALFTIME" -> "PAUSED";
+            case "CANCELLED" -> "CANCELED";
             default -> status;
         };
     }
