@@ -93,5 +93,20 @@ class TwentyFourScoreDatePageParserTest {
         TwentyFourScoreParsedDatePage.MatchRow ht = parser.parse(htHtml).getCompetitions().get(0).getMatches().get(0);
         assertNull(ht.getLiveMinuteLabel());
         assertEquals("PAUSED", ht.getStatus());
+
+        String ht24scoreHtml = """
+                <table class="daymatches fbl"><tbody>
+                <tr><th class="champheader"><div class="champheader_title"><a>Test</a></div></th></tr>
+                <tr>
+                 <td class="team"><span class="tm1">ЙИППО</span></td>
+                 <td class="team"><span class="tm2">ЯПС</span></td>
+                 <td class="score"><b>0:0</b> (0:0) HT</td>
+                </tr>
+                </tbody></table>
+                """;
+        TwentyFourScoreParsedDatePage.MatchRow htEn = parser.parse(ht24scoreHtml).getCompetitions().get(0).getMatches().get(0);
+        assertNull(htEn.getLiveMinuteLabel());
+        assertEquals("PAUSED", htEn.getStatus());
+        assertEquals("0:0", htEn.getFullTimeScore());
     }
 }
