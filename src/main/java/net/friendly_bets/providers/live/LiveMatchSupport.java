@@ -1,4 +1,4 @@
-package net.friendly_bets.twentyfourscore;
+package net.friendly_bets.providers.live;
 
 import net.friendly_bets.models.schedule.MatchSchedule;
 
@@ -7,19 +7,30 @@ import java.util.Locale;
 import java.util.Set;
 
 /**
- * LIVE polling windows for 24score: HTTP only from kickoff until finished;
- * FINISHED without FULL is handled separately (no LIVE HTTP).
+ * Shared LIVE-layer polling windows and status helpers.
+ * Used by every {@link net.friendly_bets.providers.LiveMatchProvider} and the layer wake scheduler —
+ * providers must not redefine candidate/finished rules.
  */
-final class TwentyFourScoreLiveSupport {
+public final class LiveMatchSupport {
 
-    static final long LIVE_WINDOW_SECONDS = 4 * 3600L;
-    private static final Set<String> FINISHED = Set.of("FINISHED", "AWARDED", "COMPLETED", "FT", "AET", "PEN");
-    private static final Set<String> IN_PLAY = Set.of("LIVE", "IN_PLAY", "PAUSED", "HALFTIME");
+    public static final long LIVE_WINDOW_SECONDS = 4 * 3600L;
 
-    private TwentyFourScoreLiveSupport() {
+    private static final Set<String> FINISHED = Set.of(
+            "FINISHED", "AWARDED", "COMPLETED", "FT", "AET", "PEN"
+    );
+    private static final Set<String> CANCELED = Set.of("CANCELED", "CANCELLED");
+    private static final Set<String> IN_PLAY = Set.of(
+            "LIVE", "IN_PLAY", "PAUSED", "HALFTIME", "EXTRA_TIME", "PENALTY_SHOOTOUT"
+    );
+
+    private LiveMatchSupport() {
     }
 
-    static boolean isLiveHttpCandidate(MatchSchedule schedule, Instant now) {
+    /**
+     * HTTP candidate: not finalized/FULL; if still in play → true;
+     * else kickoff in {@code [now - LIVE_WINDOW, now]}.
+     */
+    public static boolean isLiveHttpCandidate(MatchSchedule schedule, Instant now) {
         if (schedule == null || now == null) {
             return false;
         }
@@ -31,7 +42,7 @@ final class TwentyFourScoreLiveSupport {
             return false;
         }
         String status = normalize(schedule.getStatus());
-        if (FINISHED.contains(status)) {
+        if (FINISHED.contains(status) || CANCELED.contains(status)) {
             return false;
         }
         if (IN_PLAY.contains(status)) {
@@ -40,8 +51,8 @@ final class TwentyFourScoreLiveSupport {
         return !kickoff.isAfter(now) && kickoff.isAfter(now.minusSeconds(LIVE_WINDOW_SECONDS));
     }
 
-    /** Not finished/finalized and missing kickoff — ODDS/LIVE/FULL cannot resolve. */
-    static boolean isMissingUtcKickoffSkip(MatchSchedule schedule) {
+    /** Not finished/canceled/finalized and missing kickoff — LIVE cannot resolve. */
+    public static boolean isMissingUtcKickoffSkip(MatchSchedule schedule) {
         if (schedule == null) {
             return false;
         }
@@ -51,10 +62,11 @@ final class TwentyFourScoreLiveSupport {
         if (schedule.getFinalizedAt() != null || schedule.getFullDetailsFetchedAt() != null) {
             return false;
         }
-        return !FINISHED.contains(normalize(schedule.getStatus()));
+        String status = normalize(schedule.getStatus());
+        return !FINISHED.contains(status) && !CANCELED.contains(status);
     }
 
-    static boolean needsFullMatch(MatchSchedule schedule) {
+    public static boolean needsFullMatch(MatchSchedule schedule) {
         if (schedule == null) {
             return false;
         }
@@ -67,7 +79,7 @@ final class TwentyFourScoreLiveSupport {
     /**
      * Future kickoff we should wake on (not yet started, not already finalized/FULL).
      */
-    static Instant upcomingKickoffOrNull(MatchSchedule schedule, Instant now) {
+    public static Instant upcomingKickoffOrNull(MatchSchedule schedule, Instant now) {
         if (schedule == null || now == null) {
             return null;
         }
@@ -75,7 +87,7 @@ final class TwentyFourScoreLiveSupport {
             return null;
         }
         String status = normalize(schedule.getStatus());
-        if (FINISHED.contains(status) || IN_PLAY.contains(status)) {
+        if (FINISHED.contains(status) || CANCELED.contains(status) || IN_PLAY.contains(status)) {
             return null;
         }
         Instant kickoff = schedule.getUtcKickoff();
@@ -85,8 +97,17 @@ final class TwentyFourScoreLiveSupport {
         return kickoff;
     }
 
-    static boolean isFinishedStatus(String status) {
+    public static boolean isFinishedStatus(String status) {
         return FINISHED.contains(normalize(status));
+    }
+
+    public static boolean isCanceledStatus(String status) {
+        return CANCELED.contains(normalize(status));
+    }
+
+    public static boolean isTerminalNoPoll(String status) {
+        String n = normalize(status);
+        return FINISHED.contains(n) || CANCELED.contains(n);
     }
 
     private static String normalize(String status) {

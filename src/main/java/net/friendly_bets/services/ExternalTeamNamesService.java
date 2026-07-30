@@ -1,6 +1,7 @@
 package net.friendly_bets.services;
 
 import lombok.RequiredArgsConstructor;
+import net.friendly_bets.championat.ChampionatTeamNamesService;
 import net.friendly_bets.dto.ExternalTeamNameChipDto;
 import net.friendly_bets.dto.ExternalTeamNamesLoadResultDto;
 import net.friendly_bets.exceptions.BadRequestException;
@@ -25,6 +26,7 @@ public class ExternalTeamNamesService {
     private final TwentyFourScoreTeamNamesService twentyFourScoreTeamNamesService;
     private final SportsRuTeamNamesService sportsRuTeamNamesService;
     private final Football24TeamNamesService football24TeamNamesService;
+    private final ChampionatTeamNamesService championatTeamNamesService;
     private final ExternalTeamAliasAutoBindService autoBindService;
 
     public ExternalTeamNamesLoadResultDto fetchAndAutoBindTeamNames(String providerRaw, String leagueCode) {
@@ -37,6 +39,7 @@ public class ExternalTeamNamesService {
                     twentyFourScoreTeamNamesService.fetchTeamNames(leagueCode);
             case ExternalProviderIds.SPORTS_RU -> sportsRuTeamNamesService.fetchTeamNames(leagueCode);
             case ExternalProviderIds.FOOTBALL24 -> football24TeamNamesService.fetchTeamNames(leagueCode);
+            case ExternalProviderIds.CHAMPIONAT -> championatTeamNamesService.fetchTeamNames(leagueCode);
             default -> throw new BadRequestException("externalTeamNamesProviderUnsupported");
         };
         return autoBindService.bindAndCollectUnmapped(provider, leagueCode, names);

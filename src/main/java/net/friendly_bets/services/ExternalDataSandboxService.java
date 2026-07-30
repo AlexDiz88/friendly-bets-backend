@@ -2,6 +2,9 @@ package net.friendly_bets.services;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import lombok.RequiredArgsConstructor;
+import net.friendly_bets.championat.ChampionatDateJsonParser;
+import net.friendly_bets.championat.ChampionatHttpClient;
+import net.friendly_bets.championat.ChampionatParsedDatePage;
 import net.friendly_bets.dto.ExternalDataSandboxFullMatchRequestDto;
 import net.friendly_bets.dto.ExternalDataSandboxLiveRequestDto;
 import net.friendly_bets.dto.ExternalDataSandboxOddsRequestDto;
@@ -24,6 +27,7 @@ import net.friendly_bets.melbet.MelbetTournamentParser;
 import net.friendly_bets.melbet.client.MelbetHttpClient;
 import net.friendly_bets.melbet.client.MelbetHttpFetchResult;
 import net.friendly_bets.providers.ExternalDataLayer;
+import net.friendly_bets.providers.live.LiveMatchSnapshot;
 import net.friendly_bets.football24.Football24HttpClient;
 import net.friendly_bets.football24.Football24ParsedSchedule;
 import net.friendly_bets.football24.Football24ScheduleParser;
@@ -69,6 +73,8 @@ public class ExternalDataSandboxService {
     private final MelbetHttpClient melbetHttpClient;
     private final TwentyFourScoreHttpClient twentyFourScoreHttpClient;
     private final TwentyFourScoreDatePageParser twentyFourScoreDatePageParser;
+    private final ChampionatHttpClient championatHttpClient;
+    private final ChampionatDateJsonParser championatDateJsonParser;
     private final TeamAliasResolver teamAliasResolver;
 
     public ExternalDataSandboxResultDto runSchedule(ExternalDataSandboxScheduleRequestDto request) {
@@ -233,7 +239,8 @@ public class ExternalDataSandboxService {
 
     public ExternalDataSandboxResultDto runLive(ExternalDataSandboxLiveRequestDto request) {
         String provider = requireProvider(request != null ? request.getProvider() : null, ExternalProviderIds.TWENTYFOUR_SCORE);
-        if (!ExternalProviderIds.TWENTYFOUR_SCORE.equals(provider)) {
+        if (!ExternalProviderIds.TWENTYFOUR_SCORE.equals(provider)
+                && !ExternalProviderIds.CHAMPIONAT.equals(provider)) {
             throw new BadRequestException("sandboxUnsupportedProvider");
         }
         if (request == null || request.getDate() == null || request.getDate().isBlank()) {
@@ -248,6 +255,26 @@ public class ExternalDataSandboxService {
         String titleContains = request.getTitleContains() != null ? request.getTitleContains().trim() : "";
         long started = System.currentTimeMillis();
         try {
+            if (ExternalProviderIds.CHAMPIONAT.equals(provider)) {
+                String json = championatHttpClient.fetchDateFootballJson(date);
+                ChampionatParsedDatePage page = championatDateJsonParser.parse(json);
+                List<ChampionatParsedDatePage.CompetitionBlock> all = page.getCompetitions() != null
+                        ? page.getCompetitions()
+                        : List.of();
+                List<ChampionatParsedDatePage.CompetitionBlock> filtered = titleContains.isEmpty()
+                        ? all
+                        : all.stream()
+                        .filter(c -> c.getTitle() != null
+                                && c.getTitle().toLowerCase(Locale.ROOT).contains(titleContains.toLowerCase(Locale.ROOT)))
+                        .collect(Collectors.toList());
+                return ExternalDataSandboxResultDto.builder()
+                        .success(true)
+                        .layer(ExternalDataLayer.LIVE.name())
+                        .provider(provider)
+                        .durationMs(System.currentTimeMillis() - started)
+                        .parsed(toChampionatLiveParsed(date.toString(), titleContains, all.size(), filtered, provider))
+                        .build();
+            }
             String html = twentyFourScoreHttpClient.fetchDateFootballHtml(date);
             TwentyFourScoreParsedDatePage page = twentyFourScoreDatePageParser.parse(html);
             List<TwentyFourScoreParsedDatePage.CompetitionBlock> all = page.getCompetitions() != null
@@ -269,7 +296,10 @@ public class ExternalDataSandboxService {
         } catch (BadRequestException e) {
             return fail(ExternalDataLayer.LIVE, provider, started, e.getMessage(), null);
         } catch (RuntimeException e) {
-            return fail(ExternalDataLayer.LIVE, provider, started, "twentyFourScoreFetchFailed", e.getMessage());
+            String fetchKey = ExternalProviderIds.CHAMPIONAT.equals(provider)
+                    ? "championatFetchFailed"
+                    : "twentyFourScoreFetchFailed";
+            return fail(ExternalDataLayer.LIVE, provider, started, fetchKey, e.getMessage());
         }
     }
 
@@ -651,24 +681,97 @@ public class ExternalDataSandboxService {
             List<Map<String, Object>> matches = new ArrayList<>();
             for (TwentyFourScoreParsedDatePage.MatchRow match : block.getMatches()) {
                 matchesCount++;
-                Map<String, Object> row = new LinkedHashMap<>();
-                row.put("externalMatchId", match.getExternalMatchId());
-                row.put("homeName", match.getHomeName());
-                row.put("awayName", match.getAwayName());
-                row.put("homeTeam", resolveSandboxTeam(provider, match.getHomeName()));
-                row.put("awayTeam", resolveSandboxTeam(provider, match.getAwayName()));
-                row.put("scoreText", match.getScoreText());
-                row.put("fullTimeScore", match.getFullTimeScore());
-                row.put("firstTimeScore", match.getFirstTimeScore());
-                row.put("liveMinuteLabel", match.getLiveMinuteLabel());
-                row.put("status", match.getStatus());
-                matches.add(row);
+                matches.add(liveMatchRow(
+                        provider,
+                        match.getExternalMatchId(),
+                        match.getHomeName(),
+                        match.getAwayName(),
+                        match.getScoreText(),
+                        match.getFullTimeScore(),
+                        match.getFirstTimeScore(),
+                        null,
+                        match.getLiveMinuteLabel(),
+                        match.getStatus()
+                ));
             }
             Map<String, Object> comp = new LinkedHashMap<>();
             comp.put("title", block.getTitle());
             comp.put("matches", matches);
             competitions.add(comp);
         }
+        return liveParsedEnvelope(date, titleContains, competitionsTotal, matchesCount, competitions);
+    }
+
+    private Map<String, Object> toChampionatLiveParsed(
+            String date,
+            String titleContains,
+            int competitionsTotal,
+            List<ChampionatParsedDatePage.CompetitionBlock> filtered,
+            String provider
+    ) {
+        int matchesCount = 0;
+        List<Map<String, Object>> competitions = new ArrayList<>();
+        for (ChampionatParsedDatePage.CompetitionBlock block : filtered) {
+            List<Map<String, Object>> matches = new ArrayList<>();
+            for (ChampionatParsedDatePage.MatchRow match : block.getMatches()) {
+                matchesCount++;
+                LiveMatchSnapshot snapshot = match.getSnapshot();
+                matches.add(liveMatchRow(
+                        provider,
+                        match.getExternalMatchId(),
+                        match.getHomeName(),
+                        match.getAwayName(),
+                        match.getScoreText(),
+                        snapshot != null ? snapshot.fullTimeScore() : null,
+                        snapshot != null ? snapshot.firstTimeScore() : null,
+                        snapshot != null ? snapshot.penaltyScore() : null,
+                        snapshot != null ? snapshot.rawMinuteLabel() : null,
+                        snapshot != null ? snapshot.status() : null
+                ));
+            }
+            Map<String, Object> comp = new LinkedHashMap<>();
+            comp.put("title", block.getTitle());
+            comp.put("tournamentId", block.getTournamentId());
+            comp.put("matches", matches);
+            competitions.add(comp);
+        }
+        return liveParsedEnvelope(date, titleContains, competitionsTotal, matchesCount, competitions);
+    }
+
+    private Map<String, Object> liveMatchRow(
+            String provider,
+            String externalMatchId,
+            String homeName,
+            String awayName,
+            String scoreText,
+            String fullTimeScore,
+            String firstTimeScore,
+            String penaltyScore,
+            String liveMinuteLabel,
+            String status
+    ) {
+        Map<String, Object> row = new LinkedHashMap<>();
+        row.put("externalMatchId", externalMatchId);
+        row.put("homeName", homeName);
+        row.put("awayName", awayName);
+        row.put("homeTeam", resolveSandboxTeam(provider, homeName));
+        row.put("awayTeam", resolveSandboxTeam(provider, awayName));
+        row.put("scoreText", scoreText);
+        row.put("fullTimeScore", fullTimeScore);
+        row.put("firstTimeScore", firstTimeScore);
+        row.put("penaltyScore", penaltyScore);
+        row.put("liveMinuteLabel", liveMinuteLabel);
+        row.put("status", status);
+        return row;
+    }
+
+    private static Map<String, Object> liveParsedEnvelope(
+            String date,
+            String titleContains,
+            int competitionsTotal,
+            int matchesCount,
+            List<Map<String, Object>> competitions
+    ) {
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("date", date);
         out.put("titleContains", titleContains.isEmpty() ? null : titleContains);
