@@ -2,19 +2,19 @@ package net.friendly_bets.twentyfourscore;
 
 import lombok.RequiredArgsConstructor;
 import net.friendly_bets.exceptions.BadRequestException;
-import net.friendly_bets.providers.ExternalProviderIds;
 import net.friendly_bets.models.GameScore;
 import net.friendly_bets.models.League;
 import net.friendly_bets.models.Season;
 import net.friendly_bets.models.Team;
-import net.friendly_bets.models.schedule.MatchSchedule;
 import net.friendly_bets.models.monitoring.ExternalApiHttpLogEntry;
 import net.friendly_bets.models.monitoring.ExternalApiMonitoringCounters;
 import net.friendly_bets.models.monitoring.ExternalApiMonitoringRun;
 import net.friendly_bets.models.monitoring.ExternalApiMonitoringStatus;
 import net.friendly_bets.models.monitoring.ExternalApiMonitoringTrigger;
+import net.friendly_bets.models.schedule.MatchSchedule;
 import net.friendly_bets.providers.ExternalDataLayer;
 import net.friendly_bets.providers.ExternalDataProvider;
+import net.friendly_bets.providers.ExternalProviderIds;
 import net.friendly_bets.providers.LiveMatchProvider;
 import net.friendly_bets.repositories.MatchScheduleRepository;
 import net.friendly_bets.repositories.TeamsRepository;
@@ -28,19 +28,23 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeSet;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class TwentyFourScoreLiveProvider implements LiveMatchProvider {
 
     private static final Logger log = LoggerFactory.getLogger(TwentyFourScoreLiveProvider.class);
+
     private final TwentyFourScoreHttpClient httpClient;
     private final TwentyFourScoreDatePageParser datePageParser;
     private final MatchScheduleRepository matchScheduleRepository;
@@ -59,43 +63,33 @@ public class TwentyFourScoreLiveProvider implements LiveMatchProvider {
     }
 
     @Override
-    public LiveSyncResult syncLeagueLive(Season season, League league) {
-        if (season == null || league == null || league.getLeagueCode() == null || league.getId() == null) {
-            throw new BadRequestException("leagueCodeRequired");
+    public LiveSyncResult syncLive(Season season) {
+        if (season == null || season.getId() == null || season.getId().isBlank()) {
+            throw new BadRequestException("seasonRequired");
         }
-        String leagueCode = league.getLeagueCode().name();
+
         ExternalApiMonitoringRun run = monitoringService.begin(
                 ExternalDataLayer.LIVE,
                 ExternalProviderIds.TWENTYFOUR_SCORE,
                 ExternalApiMonitoringTrigger.CRON,
-                leagueCode,
+                "ALL",
                 season.getId()
         );
         List<ExternalApiHttpLogEntry> httpLogs = new ArrayList<>();
 
-        if (!TwentyFourScoreLeagueTitles.supported().contains(league.getLeagueCode())) {
-            monitoringService.finalizeAndSave(
-                    run,
-                    ExternalApiMonitoringStatus.SKIPPED,
-                    ExternalApiMonitoringCounters.builder().requested(0).updated(0).build(),
-                    httpLogs,
-                    List.of(),
-                    "leagueNotSupported"
-            );
-            return LiveSyncResult.of(leagueCode, 0, 0, "leagueNotSupported");
-        }
-
         Instant now = Instant.now();
-        List<MatchSchedule> leagueSchedules = matchScheduleRepository.findByLeagueIdAndSeasonId(
-                league.getId(), season.getId());
-        int skippedMissingKickoff = (int) leagueSchedules.stream()
-                .filter(s -> TwentyFourScoreLiveSupport.isMissingUtcKickoffSkip(s)
-                        || (TwentyFourScoreLiveSupport.needsFullMatch(s) && s.getUtcKickoff() == null))
+        List<MatchSchedule> allSchedules = matchScheduleRepository.findBySeasonId(season.getId());
+        int skippedMissingKickoff = (int) allSchedules.stream()
+                .filter(TwentyFourScoreLiveSupport::isMissingUtcKickoffSkip)
                 .count();
-        List<MatchSchedule> candidates = leagueSchedules.stream()
+
+        List<MatchSchedule> tracked = allSchedules.stream()
+                .filter(s -> LiveMinuteLabelResolver.isSupportedLeagueCode(s.getLeagueCode()))
                 .filter(s -> TwentyFourScoreLiveSupport.isLiveHttpCandidate(s, now))
+                .sorted(Comparator.comparing(MatchSchedule::getUtcKickoff, Comparator.nullsLast(Comparator.naturalOrder())))
                 .toList();
-        if (candidates.isEmpty()) {
+
+        if (tracked.isEmpty()) {
             String skipReason = skippedMissingKickoff > 0
                     ? ExternalApiMonitoringService.reasonMissingUtcKickoff(skippedMissingKickoff)
                     : "noLiveCandidates";
@@ -111,15 +105,15 @@ public class TwentyFourScoreLiveProvider implements LiveMatchProvider {
                     List.of(),
                     skipReason
             );
-            return LiveSyncResult.of(leagueCode, 0, 0, skipReason);
+            return LiveSyncResult.skipped(skipReason);
         }
 
-        Set<LocalDate> dates = new HashSet<>();
-        for (MatchSchedule schedule : candidates) {
-            dates.add(LocalDate.ofInstant(schedule.getUtcKickoff(), ZoneOffset.UTC));
-        }
+        Set<LocalDate> dates = tracked.stream()
+                .map(s -> LocalDate.ofInstant(s.getUtcKickoff(), ZoneOffset.UTC))
+                .collect(Collectors.toCollection(TreeSet::new));
 
         Map<String, Team> teamCache = new HashMap<>();
+        int httpRequests = 0;
         int updated = 0;
         int finishedDetected = 0;
 
@@ -130,6 +124,7 @@ public class TwentyFourScoreLiveProvider implements LiveMatchProvider {
                 String html;
                 try {
                     html = httpClient.fetchDateFootballHtml(date);
+                    httpRequests++;
                     httpLogs.add(ExternalApiMonitoringService.httpLog(
                             "DATE_PAGE",
                             date.toString(),
@@ -153,20 +148,24 @@ public class TwentyFourScoreLiveProvider implements LiveMatchProvider {
                     ));
                     throw e;
                 }
+
                 TwentyFourScoreParsedDatePage page = datePageParser.parse(html);
-                List<TwentyFourScoreParsedDatePage.MatchRow> rows = new ArrayList<>();
-                for (TwentyFourScoreParsedDatePage.CompetitionBlock block : page.getCompetitions()) {
-                    if (TwentyFourScoreLeagueTitles.matches(league.getLeagueCode(), block.getTitle())) {
-                        rows.addAll(block.getMatches());
+                List<MatchSchedule> dateTracked = tracked.stream()
+                        .filter(s -> LocalDate.ofInstant(s.getUtcKickoff(), ZoneOffset.UTC).equals(date))
+                        .toList();
+
+                for (MatchSchedule schedule : dateTracked) {
+                    League.LeagueCode leagueCode = parseLeagueCode(schedule.getLeagueCode());
+                    if (leagueCode == null) {
+                        continue;
                     }
-                }
-                for (MatchSchedule schedule : candidates) {
-                    Optional<TwentyFourScoreParsedDatePage.MatchRow> row = findRow(schedule, rows, teamCache);
+                    List<TwentyFourScoreParsedDatePage.MatchRow> leagueRows = collectLeagueRows(page, leagueCode);
+                    Optional<TwentyFourScoreParsedDatePage.MatchRow> row = findRow(schedule, leagueRows, teamCache);
                     if (row.isEmpty()) {
                         continue;
                     }
                     boolean wasFinished = TwentyFourScoreLiveSupport.isFinishedStatus(schedule.getStatus());
-                    applyLiveRow(schedule, row.get());
+                    applyLiveRow(schedule, row.get(), now);
                     matchScheduleRepository.save(schedule);
                     updated++;
                     if (!wasFinished && TwentyFourScoreLiveSupport.isFinishedStatus(schedule.getStatus())) {
@@ -179,7 +178,7 @@ public class TwentyFourScoreLiveProvider implements LiveMatchProvider {
                     run,
                     ExternalApiMonitoringStatus.FAILED,
                     ExternalApiMonitoringCounters.builder()
-                            .requested(candidates.size())
+                            .requested(tracked.size())
                             .updated(updated)
                             .finishedDetected(finishedDetected)
                             .build(),
@@ -190,49 +189,68 @@ public class TwentyFourScoreLiveProvider implements LiveMatchProvider {
             throw e;
         }
 
-        LinkedHashSet<String> pendingFullIds = candidates.stream()
+        LinkedHashSet<String> pendingFullIds = allSchedules.stream()
                 .filter(TwentyFourScoreLiveSupport::needsFullMatch)
                 .filter(s -> s.getUtcKickoff() != null)
                 .map(MatchSchedule::getId)
                 .filter(id -> id != null && !id.isBlank())
-                .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
-        leagueSchedules.stream()
-                .filter(TwentyFourScoreLiveSupport::needsFullMatch)
-                .filter(s -> s.getUtcKickoff() != null)
-                .map(MatchSchedule::getId)
-                .filter(id -> id != null && !id.isBlank())
-                .forEach(pendingFullIds::add);
-
-        int missingKickoffForFull = (int) leagueSchedules.stream()
-                .filter(TwentyFourScoreLiveSupport::needsFullMatch)
-                .filter(s -> s.getUtcKickoff() == null)
-                .count();
-        int totalMissingKickoff = (int) leagueSchedules.stream()
-                .filter(TwentyFourScoreLiveSupport::isMissingUtcKickoffSkip)
-                .count() + missingKickoffForFull;
+                .collect(Collectors.toCollection(LinkedHashSet::new));
 
         if (!pendingFullIds.isEmpty()) {
-            log.info("24score LIVE {} pending FULL for {} match(es)", league.getLeagueCode(), pendingFullIds.size());
+            log.info("24score LIVE pending FULL for {} match(es), httpRequests={}", pendingFullIds.size(), httpRequests);
         }
 
-        String warning = totalMissingKickoff > 0
-                ? ExternalApiMonitoringService.reasonMissingUtcKickoff(totalMissingKickoff)
+        String warning = skippedMissingKickoff > 0
+                ? ExternalApiMonitoringService.reasonMissingUtcKickoff(skippedMissingKickoff)
                 : null;
         monitoringService.finalizeAndSave(
                 run,
                 ExternalApiMonitoringStatus.SUCCESS,
                 ExternalApiMonitoringCounters.builder()
-                        .requested(candidates.size())
+                        .requested(tracked.size())
                         .updated(updated)
                         .finishedDetected(finishedDetected)
-                        .skipped(totalMissingKickoff)
+                        .skipped(skippedMissingKickoff)
                         .build(),
                 httpLogs,
                 List.of(),
                 warning
         );
 
-        return new LiveSyncResult(leagueCode, updated, finishedDetected, warning, List.copyOf(pendingFullIds));
+        List<String> datesSynced = dates.stream().map(LocalDate::toString).toList();
+        return new LiveSyncResult(
+                httpRequests,
+                tracked.size(),
+                updated,
+                finishedDetected,
+                warning,
+                datesSynced,
+                List.copyOf(pendingFullIds)
+        );
+    }
+
+    private static League.LeagueCode parseLeagueCode(String leagueCode) {
+        if (leagueCode == null || leagueCode.isBlank()) {
+            return null;
+        }
+        try {
+            return League.LeagueCode.valueOf(leagueCode.trim().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+    }
+
+    private static List<TwentyFourScoreParsedDatePage.MatchRow> collectLeagueRows(
+            TwentyFourScoreParsedDatePage page,
+            League.LeagueCode leagueCode
+    ) {
+        List<TwentyFourScoreParsedDatePage.MatchRow> rows = new ArrayList<>();
+        for (TwentyFourScoreParsedDatePage.CompetitionBlock block : page.getCompetitions()) {
+            if (TwentyFourScoreLeagueTitles.matches(leagueCode, block.getTitle())) {
+                rows.addAll(block.getMatches());
+            }
+        }
+        return rows;
     }
 
     private Optional<TwentyFourScoreParsedDatePage.MatchRow> findRow(
@@ -261,17 +279,18 @@ public class TwentyFourScoreLiveProvider implements LiveMatchProvider {
         return cache.computeIfAbsent(teamId, id -> teamsRepository.findById(id).orElse(null));
     }
 
-    private void applyLiveRow(MatchSchedule schedule, TwentyFourScoreParsedDatePage.MatchRow row) {
+    private void applyLiveRow(MatchSchedule schedule, TwentyFourScoreParsedDatePage.MatchRow row, Instant now) {
         schedule.setStatus(row.getStatus());
-        schedule.setLiveMinuteLabel(row.getLiveMinuteLabel());
-        if (row.getLiveMinuteLabel() != null) {
-            String digits = row.getLiveMinuteLabel().replaceAll("\\D+", "");
-            if (!digits.isBlank()) {
-                try {
-                    schedule.setLiveMinute(Integer.parseInt(digits));
-                } catch (NumberFormatException ignored) {
-                    // keep previous
-                }
+        if (row.getLiveMinuteLabel() != null && !row.getLiveMinuteLabel().isBlank()) {
+            String resolvedLabel = LiveMinuteLabelResolver.resolve(
+                    row.getLiveMinuteLabel(),
+                    schedule.getUtcKickoff(),
+                    now
+            );
+            schedule.setLiveMinuteLabel(resolvedLabel);
+            Integer minute = LiveMinuteLabelResolver.parseMinuteInteger(row.getLiveMinuteLabel());
+            if (minute != null) {
+                schedule.setLiveMinute(minute);
             }
         } else if (TwentyFourScoreLiveSupport.isFinishedStatus(row.getStatus())) {
             schedule.setLiveMinute(null);

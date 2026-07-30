@@ -1,6 +1,5 @@
 package net.friendly_bets.twentyfourscore;
 
-import net.friendly_bets.models.League;
 import net.friendly_bets.models.Season;
 import net.friendly_bets.models.schedule.MatchSchedule;
 import net.friendly_bets.providers.ExternalDataLayer;
@@ -29,9 +28,8 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * Kickoff-driven LIVE polling: first HTTP at {@code utc_kickoff}, then every poll interval
- * while matches are in play; stop per match when finished. No monitoring when idle.
- * Reschedule after SCHEDULE via {@link MatchSchedulesUpdatedEvent}.
+ * Date-driven LIVE polling: one HTTP request per UTC kickoff date while any match is tracked.
+ * First tick at {@code utc_kickoff}, then every poll interval until all tracked matches finish.
  */
 @Component
 public class TwentyFourScoreLiveScheduler {
@@ -106,49 +104,39 @@ public class TwentyFourScoreLiveScheduler {
             return;
         }
         Optional<Season> seasonOpt = runningSeasonLookup.findRunningSeason();
-        if (seasonOpt.isEmpty() || seasonOpt.get().getLeagues() == null) {
+        if (seasonOpt.isEmpty()) {
             return;
         }
         Season season = seasonOpt.get();
         Instant now = Instant.now();
-        LinkedHashSet<String> pendingFull = new LinkedHashSet<>();
+        LinkedHashSet<String> pendingFull = collectPendingFullMatchIds(season.getId());
 
-        for (League league : season.getLeagues()) {
-            if (league == null || league.getLeagueCode() == null || league.getId() == null) {
-                continue;
+        boolean hasTracked = matchScheduleRepository.findBySeasonId(season.getId()).stream()
+                .anyMatch(s -> TwentyFourScoreLiveSupport.isLiveHttpCandidate(s, now));
+        if (!hasTracked && pendingFull.isEmpty()) {
+            return;
+        }
+
+        try {
+            LiveMatchProvider.LiveSyncResult result = router.execute(
+                    ExternalDataLayer.LIVE,
+                    LiveMatchProvider.class,
+                    p -> p.syncLive(season),
+                    "ALL"
+            );
+            if (result.updated() > 0 || result.finishedDetected() > 0
+                    || !result.pendingFullMatchIds().isEmpty()) {
+                log.info("24score LIVE tracked={} http={} updated={} finished={} dates={} pendingFull={}",
+                        result.trackedCount(),
+                        result.httpRequests(),
+                        result.updated(),
+                        result.finishedDetected(),
+                        result.datesSynced(),
+                        result.pendingFullMatchIds().size());
             }
-            if (!TwentyFourScoreLeagueTitles.supported().contains(league.getLeagueCode())) {
-                continue;
-            }
-            List<MatchSchedule> schedules = matchScheduleRepository.findByLeagueIdAndSeasonId(
-                    league.getId(), season.getId());
-            boolean hasHttp = schedules.stream()
-                    .anyMatch(s -> TwentyFourScoreLiveSupport.isLiveHttpCandidate(s, now));
-            for (MatchSchedule schedule : schedules) {
-                if (TwentyFourScoreLiveSupport.needsFullMatch(schedule) && schedule.getId() != null) {
-                    pendingFull.add(schedule.getId());
-                }
-            }
-            if (!hasHttp) {
-                continue;
-            }
-            try {
-                LiveMatchProvider.LiveSyncResult result = router.execute(
-                        ExternalDataLayer.LIVE,
-                        LiveMatchProvider.class,
-                        p -> p.syncLeagueLive(season, league),
-                        league.getLeagueCode().name()
-                );
-                if (result.updated() > 0 || result.finishedDetected() > 0
-                        || !result.pendingFullMatchIds().isEmpty()) {
-                    log.info("24score LIVE {} updated={} finished={} pendingFull={}",
-                            result.leagueCode(), result.updated(), result.finishedDetected(),
-                            result.pendingFullMatchIds().size());
-                }
-                pendingFull.addAll(result.pendingFullMatchIds());
-            } catch (RuntimeException e) {
-                log.warn("24score LIVE sync failed for {}: {}", league.getLeagueCode(), e.getMessage());
-            }
+            pendingFull.addAll(result.pendingFullMatchIds());
+        } catch (RuntimeException e) {
+            log.warn("24score LIVE sync failed: {}", e.getMessage());
         }
 
         if (layerConfigService.isLayerEnabled(ExternalDataLayer.FULL_MATCH) && !pendingFull.isEmpty()) {
@@ -160,6 +148,16 @@ public class TwentyFourScoreLiveScheduler {
         }
     }
 
+    private LinkedHashSet<String> collectPendingFullMatchIds(String seasonId) {
+        LinkedHashSet<String> pendingFull = new LinkedHashSet<>();
+        for (MatchSchedule schedule : matchScheduleRepository.findBySeasonId(seasonId)) {
+            if (TwentyFourScoreLiveSupport.needsFullMatch(schedule) && schedule.getId() != null) {
+                pendingFull.add(schedule.getId());
+            }
+        }
+        return pendingFull;
+    }
+
     /**
      * @param afterPoll if true, active matches wait for the poll interval instead of firing immediately
      */
@@ -168,30 +166,21 @@ public class TwentyFourScoreLiveScheduler {
             return Optional.empty();
         }
         Optional<Season> seasonOpt = runningSeasonLookup.findRunningSeason();
-        if (seasonOpt.isEmpty() || seasonOpt.get().getLeagues() == null) {
+        if (seasonOpt.isEmpty()) {
             return Optional.empty();
         }
-        Season season = seasonOpt.get();
+        String seasonId = seasonOpt.get().getId();
         boolean hasActiveOrPendingFull = false;
         Instant nearestKickoff = null;
 
-        for (League league : season.getLeagues()) {
-            if (league == null || league.getLeagueCode() == null || league.getId() == null) {
-                continue;
+        for (MatchSchedule schedule : matchScheduleRepository.findBySeasonId(seasonId)) {
+            if (TwentyFourScoreLiveSupport.isLiveHttpCandidate(schedule, now)
+                    || TwentyFourScoreLiveSupport.needsFullMatch(schedule)) {
+                hasActiveOrPendingFull = true;
             }
-            if (!TwentyFourScoreLeagueTitles.supported().contains(league.getLeagueCode())) {
-                continue;
-            }
-            for (MatchSchedule schedule : matchScheduleRepository.findByLeagueIdAndSeasonId(
-                    league.getId(), season.getId())) {
-                if (TwentyFourScoreLiveSupport.isLiveHttpCandidate(schedule, now)
-                        || TwentyFourScoreLiveSupport.needsFullMatch(schedule)) {
-                    hasActiveOrPendingFull = true;
-                }
-                Instant kickoff = TwentyFourScoreLiveSupport.upcomingKickoffOrNull(schedule, now);
-                if (kickoff != null && (nearestKickoff == null || kickoff.isBefore(nearestKickoff))) {
-                    nearestKickoff = kickoff;
-                }
+            Instant kickoff = TwentyFourScoreLiveSupport.upcomingKickoffOrNull(schedule, now);
+            if (kickoff != null && (nearestKickoff == null || kickoff.isBefore(nearestKickoff))) {
+                nearestKickoff = kickoff;
             }
         }
 
