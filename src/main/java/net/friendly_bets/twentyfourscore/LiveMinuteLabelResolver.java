@@ -10,12 +10,13 @@ import java.util.regex.Pattern;
 
 /**
  * Resolves display labels for live match minutes from provider data and kickoff time.
- * When the API returns a minute above 45 without stoppage notation (e.g. {@code 48'}),
- * kickoff elapsed time distinguishes first-half stoppage ({@code 45+'}) from second half ({@code 48'}).
+ * Stoppage is always shown as {@code 45+} or {@code 90+}, regardless of raw API format.
  */
 public final class LiveMinuteLabelResolver {
 
     static final int FIRST_HALF_MIN = 45;
+    public static final String FIRST_HALF_STOPPAGE_LABEL = "45+";
+    public static final String SECOND_HALF_STOPPAGE_LABEL = "90+";
     /** Second half typically starts ~60 min after UTC kickoff (45' + stoppage + short break). */
     static final long SECOND_HALF_START_ELAPSED_MIN = 60L;
     private static final Pattern MINUTE_PATTERN = Pattern.compile("(\\d{1,3})(?:\\+(\\d{1,2}))?\\s*'?");
@@ -39,8 +40,8 @@ public final class LiveMinuteLabelResolver {
         }
         int baseMinute = Integer.parseInt(matcher.group(1));
         String addedPart = matcher.group(2);
-        if (addedPart != null) {
-            return baseMinute + "+" + addedPart + "'";
+        if (addedPart != null || trimmed.contains("+")) {
+            return stoppageLabelForBaseMinute(baseMinute);
         }
         return resolvePlainMinute(baseMinute, utcKickoff, now);
     }
@@ -69,12 +70,19 @@ public final class LiveMinuteLabelResolver {
             return null;
         }
         if (apiMinute > FIRST_HALF_MIN && isLikelyFirstHalfStoppage(apiMinute, utcKickoff, now)) {
-            return "45+'";
+            return FIRST_HALF_STOPPAGE_LABEL;
         }
         if (apiMinute > FIRST_HALF_MIN * 2) {
-            return "90+'";
+            return SECOND_HALF_STOPPAGE_LABEL;
         }
         return apiMinute + "'";
+    }
+
+    static String stoppageLabelForBaseMinute(int baseMinute) {
+        if (baseMinute <= FIRST_HALF_MIN) {
+            return FIRST_HALF_STOPPAGE_LABEL;
+        }
+        return SECOND_HALF_STOPPAGE_LABEL;
     }
 
     static boolean isLikelyFirstHalfStoppage(int apiMinute, Instant utcKickoff, Instant now) {

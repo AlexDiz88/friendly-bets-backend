@@ -22,7 +22,7 @@ class LiveMinuteLabelResolverTest {
     @Test
     void resolve_highMinuteBeforeSecondHalfStart_shows45Plus() {
         Instant now = KICKOFF.plusSeconds(50 * 60);
-        assertEquals("45+'", LiveMinuteLabelResolver.resolve("48'", KICKOFF, now));
+        assertEquals("45+", LiveMinuteLabelResolver.resolve("48'", KICKOFF, now));
     }
 
     @Test
@@ -32,16 +32,17 @@ class LiveMinuteLabelResolverTest {
     }
 
     @Test
-    void resolve_preservesExplicitStoppageFromProvider() {
+    void resolve_unifiesExplicitStoppageFromProvider() {
         Instant now = KICKOFF.plusSeconds(50 * 60);
-        assertEquals("45+3'", LiveMinuteLabelResolver.resolve("45+3'", KICKOFF, now));
-        assertEquals("90+6'", LiveMinuteLabelResolver.resolve("90+6'", KICKOFF, now));
+        assertEquals("45+", LiveMinuteLabelResolver.resolve("45+3'", KICKOFF, now));
+        assertEquals("90+", LiveMinuteLabelResolver.resolve("90+6'", KICKOFF, now));
+        assertEquals("45+", LiveMinuteLabelResolver.resolve("45+", KICKOFF, now));
     }
 
     @Test
     void resolve_minuteAbove90_shows90Plus() {
         Instant now = KICKOFF.plusSeconds(120 * 60);
-        assertEquals("90+'", LiveMinuteLabelResolver.resolve("93'", KICKOFF, now));
+        assertEquals("90+", LiveMinuteLabelResolver.resolve("93'", KICKOFF, now));
     }
 
     @Test
@@ -61,5 +62,13 @@ class LiveMinuteLabelResolverTest {
     void isSupportedLeagueCode() {
         assertTrue(LiveMinuteLabelResolver.isSupportedLeagueCode("EPL"));
         assertFalse(LiveMinuteLabelResolver.isSupportedLeagueCode("UNKNOWN"));
+    }
+
+    @Test
+    void stoppageLabelForBaseMinute() {
+        assertEquals("45+", LiveMinuteLabelResolver.stoppageLabelForBaseMinute(45));
+        assertEquals("45+", LiveMinuteLabelResolver.stoppageLabelForBaseMinute(30));
+        assertEquals("90+", LiveMinuteLabelResolver.stoppageLabelForBaseMinute(90));
+        assertEquals("90+", LiveMinuteLabelResolver.stoppageLabelForBaseMinute(120));
     }
 }
