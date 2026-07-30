@@ -47,6 +47,7 @@ public class MatchScheduleDisplayService {
                 .finalizedSource(schedule.getFinalizedByProvider())
                 .finalized(finalized)
                 .liveMinuteLabel(schedule.getLiveMinuteLabel())
+                .slotId(schedule.getSlotId())
                 .adminCorrected(false)
                 .build();
 

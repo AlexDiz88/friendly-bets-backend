@@ -285,7 +285,10 @@ public class TwentyFourScoreLiveProvider implements LiveMatchProvider {
             String resolvedLabel = LiveMinuteLabelResolver.resolve(
                     row.getLiveMinuteLabel(),
                     schedule.getUtcKickoff(),
-                    now
+                    now,
+                    schedule.getLeagueCode(),
+                    schedule.getSlotId(),
+                    row.getStatus()
             );
             schedule.setLiveMinuteLabel(resolvedLabel);
             Integer minute = LiveMinuteLabelResolver.parseMinuteInteger(row.getLiveMinuteLabel());
