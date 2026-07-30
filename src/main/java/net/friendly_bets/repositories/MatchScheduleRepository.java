@@ -36,4 +36,6 @@ public interface MatchScheduleRepository extends MongoRepository<MatchSchedule, 
     );
 
     List<MatchSchedule> findByLeagueIdAndSeasonId(String leagueId, String seasonId);
+
+    List<MatchSchedule> findBySeasonId(String seasonId);
 }

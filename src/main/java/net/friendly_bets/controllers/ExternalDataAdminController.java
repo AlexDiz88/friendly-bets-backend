@@ -127,20 +127,15 @@ public class ExternalDataAdminController {
 
     @PostMapping("/live/sync")
     @PreAuthorize("hasAuthority('ADMIN')")
-    public ResponseEntity<LiveMatchSyncResultDto> syncLive(@RequestParam String leagueCode) {
+    public ResponseEntity<LiveMatchSyncResultDto> syncLive() {
         Season season = runningSeasonLookup.findRunningSeasonOrThrow("noActiveSeasonWasFounded");
-        League league = season.getLeagues().stream()
-                .filter(l -> l != null && l.getLeagueCode() != null
-                        && l.getLeagueCode().name().equalsIgnoreCase(leagueCode.trim()))
-                .findFirst()
-                .orElseThrow(() -> new net.friendly_bets.exceptions.BadRequestException("leagueNotFoundInSeason"));
         ExternalApiMonitoringService.setTriggerOverride(ExternalApiMonitoringTrigger.ADMIN);
         try {
             LiveMatchProvider.LiveSyncResult result = router.execute(
                     ExternalDataLayer.LIVE,
                     LiveMatchProvider.class,
-                    p -> p.syncLeagueLive(season, league),
-                    league.getLeagueCode().name()
+                    p -> p.syncLive(season),
+                    "ALL"
             );
             try {
                 ExternalApiMonitoringService.setTriggerOverride(ExternalApiMonitoringTrigger.ADMIN);

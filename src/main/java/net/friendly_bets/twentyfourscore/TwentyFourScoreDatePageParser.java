@@ -103,7 +103,7 @@ public class TwentyFourScoreDatePageParser {
         String liveMinute = null;
         Matcher liveMatcher = LIVE_MIN.matcher(scoreText);
         if (liveMatcher.find()) {
-            liveMinute = liveMatcher.group(1) + "'";
+            liveMinute = liveMatcher.group(1);
         }
 
         String status = resolveStatus(scoreText, fullTime, liveMinute);
@@ -124,7 +124,7 @@ public class TwentyFourScoreDatePageParser {
         if (liveMinute != null) {
             return "LIVE";
         }
-        if (lower.contains("перер") || lower.contains("half")) {
+        if (isBreakPeriod(lower)) {
             return "PAUSED";
         }
         if (fullTime != null) {
@@ -134,6 +134,16 @@ public class TwentyFourScoreDatePageParser {
             return "SCHEDULED";
         }
         return "SCHEDULED";
+    }
+
+    /** Halftime / break markers on 24score date page (e.g. {@code HT}, {@code Перерыв}). */
+    private static boolean isBreakPeriod(String lower) {
+        if (lower == null || lower.isBlank()) {
+            return false;
+        }
+        return lower.contains("перер")
+                || lower.contains("half")
+                || lower.matches(".*\\bht\\b.*");
     }
 
     private static String textOrEmpty(Element el) {

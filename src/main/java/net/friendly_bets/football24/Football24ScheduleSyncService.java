@@ -5,6 +5,7 @@ import net.friendly_bets.dto.ScheduleSyncResultDto;
 import net.friendly_bets.exceptions.BadRequestException;
 import net.friendly_bets.football24.config.Football24Properties;
 import net.friendly_bets.matchschedule.MatchdaySlotSupport;
+import net.friendly_bets.matchschedule.ScheduleFarKickoffSkipSupport;
 import net.friendly_bets.models.ExpandedMatchdaySlot;
 import net.friendly_bets.models.League;
 import net.friendly_bets.models.Season;
@@ -35,7 +36,6 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -73,6 +73,7 @@ public class Football24ScheduleSyncService implements ScheduleProvider {
     private final OddsService oddsService;
     private final ExternalApiMonitoringService monitoringService;
     private final ApplicationEventPublisher eventPublisher;
+    private final ScheduleFarKickoffSkipSupport farKickoffSkipSupport;
 
     public ScheduleSyncResultDto syncByLeagueCode(String leagueCodeRaw, Integer matchday) {
         League.LeagueCode leagueCode = Football24TeamNamesService.parseLeagueCode(leagueCodeRaw);
@@ -199,7 +200,8 @@ public class Football24ScheduleSyncService implements ScheduleProvider {
         run.setMatchday(currentOrder);
         run.setSlotOrders(new ArrayList<>(window));
 
-        if (respectFarKickoffSkip && shouldSkipFarKickoffFromDb(season.getId(), league.getId(), currentOrder, window)) {
+        if (respectFarKickoffSkip && farKickoffSkipSupport.shouldSkip(
+                season.getId(), league.getId(), currentOrder, window, properties.getSkipWhenKickoffFartherThanDays())) {
             log.info("football24 sync {}: DB data present and earliest kickoff farther than {} days — skip without HTTP",
                     leagueCode, properties.getSkipWhenKickoffFartherThanDays());
             monitoringService.finalizeAndSave(
@@ -411,43 +413,6 @@ public class Football24ScheduleSyncService implements ScheduleProvider {
         existing.setFetchedAt(fetchedAt);
         matchScheduleRepository.save(existing);
         oddsService.deleteIfFinalized(existing);
-    }
-
-    private boolean shouldSkipFarKickoffFromDb(
-            String seasonId,
-            String leagueId,
-            int currentOrder,
-            Set<Integer> window
-    ) {
-        int days = properties.getSkipWhenKickoffFartherThanDays();
-        if (days <= 0 || window == null || window.isEmpty()) {
-            return false;
-        }
-        Instant earliest = null;
-        boolean currentHasRows = false;
-        for (Integer matchday : window) {
-            List<MatchSchedule> rows = matchScheduleRepository
-                    .findByLeagueIdAndSeasonIdAndMatchdayOrderByUtcKickoffAsc(leagueId, seasonId, matchday);
-            if (matchday != null && matchday == currentOrder && rows != null && !rows.isEmpty()) {
-                currentHasRows = true;
-            }
-            if (rows == null) {
-                continue;
-            }
-            for (MatchSchedule row : rows) {
-                if (row.getUtcKickoff() == null) {
-                    continue;
-                }
-                if (earliest == null || row.getUtcKickoff().isBefore(earliest)) {
-                    earliest = row.getUtcKickoff();
-                }
-            }
-        }
-        if (!currentHasRows || earliest == null) {
-            return false;
-        }
-        long daysUntil = ChronoUnit.DAYS.between(Instant.now(), earliest);
-        return daysUntil > days;
     }
 
     private Optional<League> findLeague(Season season, League.LeagueCode leagueCode) {
