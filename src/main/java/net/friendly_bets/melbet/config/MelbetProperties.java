@@ -27,7 +27,7 @@ public class MelbetProperties {
     private int stageSize = 5;
     private int stagePauseMinutes = 20;
     private int refreshWithinHours = 36;
-    private int eventWindowHours = 6;
+    private int eventWindowHours = 12;
     private long eventDelayMinMs = 2_000L;
     private long eventDelayMaxMs = 5_500L;
 

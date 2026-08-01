@@ -12,6 +12,9 @@ import java.util.function.Predicate;
 
 /**
  * Shared FULL/ODDS-style resolve: kickoff window + predicate, ambiguous → empty with size &gt; 1 signal.
+ * <p>
+ * ODDS may also use {@link #resolveUniquePreferringKickoffWindow} when bookie provisional kickoff
+ * diverges from {@code match_schedules.utc_kickoff} beyond the window.
  */
 public final class ProviderMatchResolveSupport {
 
@@ -55,19 +58,80 @@ public final class ProviderMatchResolveSupport {
                 inWindow.add(candidate);
             }
         }
-        if (inWindow.isEmpty()) {
+        return disambiguateByKickoff(center, inWindow, candidateKickoff);
+    }
+
+    /**
+     * ODDS resolve: (1) kickoff window + sides; (2) if none — sides across the full listing,
+     * unique or closest-kickoff disambiguation. Schedule kickoff is never written by ODDS.
+     */
+    public static <T> ResolveOutcome<T> resolveUniquePreferringKickoffWindow(
+            MatchSchedule schedule,
+            List<T> candidates,
+            Duration kickoffWindow,
+            Function<T, Instant> candidateKickoff,
+            Predicate<T> sidesMatch
+    ) {
+        ResolveOutcome<T> inWindow = resolveUnique(
+                schedule, candidates, kickoffWindow, candidateKickoff, sidesMatch);
+        if (!inWindow.isMissing()) {
+            return inWindow;
+        }
+        if (schedule == null || schedule.getUtcKickoff() == null || candidates == null || candidates.isEmpty()) {
             return new ResolveOutcome<>(null, 0);
         }
-        if (inWindow.size() == 1) {
-            return new ResolveOutcome<>(inWindow.get(0), 1);
+        List<T> bySides = new ArrayList<>();
+        for (T candidate : candidates) {
+            if (sidesMatch.test(candidate)) {
+                bySides.add(candidate);
+            }
         }
-        T closest = pickClosest(center, inWindow, candidateKickoff);
+        return disambiguateByKickoff(schedule.getUtcKickoff(), bySides, candidateKickoff);
+    }
+
+    /** Whether any candidate kickoff falls within the window (ignores sides). */
+    public static <T> boolean anyKickoffInWindow(
+            MatchSchedule schedule,
+            List<T> candidates,
+            Duration kickoffWindow,
+            Function<T, Instant> candidateKickoff
+    ) {
+        if (schedule == null || schedule.getUtcKickoff() == null || candidates == null || candidates.isEmpty()) {
+            return false;
+        }
+        Instant center = schedule.getUtcKickoff();
+        long windowSeconds = Math.max(0L, kickoffWindow.getSeconds());
+        for (T candidate : candidates) {
+            Instant kickoff = candidateKickoff.apply(candidate);
+            if (kickoff == null) {
+                continue;
+            }
+            long delta = Math.abs(Duration.between(center, kickoff).getSeconds());
+            if (delta <= windowSeconds) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static <T> ResolveOutcome<T> disambiguateByKickoff(
+            Instant center,
+            List<T> matched,
+            Function<T, Instant> candidateKickoff
+    ) {
+        if (matched.isEmpty()) {
+            return new ResolveOutcome<>(null, 0);
+        }
+        if (matched.size() == 1) {
+            return new ResolveOutcome<>(matched.get(0), 1);
+        }
+        T closest = pickClosest(center, matched, candidateKickoff);
         if (closest == null) {
-            return new ResolveOutcome<>(null, inWindow.size());
+            return new ResolveOutcome<>(null, matched.size());
         }
-        // Still ambiguous if another candidate is within 1h of the same center delta band.
-        long bestDelta = Math.abs(Duration.between(center, Objects.requireNonNull(candidateKickoff.apply(closest))).getSeconds());
-        for (T other : inWindow) {
+        long bestDelta = Math.abs(Duration.between(
+                center, Objects.requireNonNull(candidateKickoff.apply(closest))).getSeconds());
+        for (T other : matched) {
             if (other == closest) {
                 continue;
             }
@@ -77,7 +141,7 @@ public final class ProviderMatchResolveSupport {
             }
             long delta = Math.abs(Duration.between(center, otherKickoff).getSeconds());
             if (Math.abs(delta - bestDelta) < 3_600L) {
-                return new ResolveOutcome<>(null, inWindow.size());
+                return new ResolveOutcome<>(null, matched.size());
             }
         }
         return new ResolveOutcome<>(closest, 1);

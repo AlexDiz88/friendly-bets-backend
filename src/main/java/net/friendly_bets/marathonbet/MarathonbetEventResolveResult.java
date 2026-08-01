@@ -12,9 +12,12 @@ import lombok.Getter;
 public final class MarathonbetEventResolveResult {
 
     public enum MissKind {
-        /** No prematch event in kickoff window — bookie likely has not listed the fixture yet. */
+        /**
+         * No uniquely matchable bookie event (not listed, or kickoff/aliases leave nothing usable).
+         * Soft skip — cron will retry.
+         */
         NO_BOOKIE_EVENT,
-        /** Events exist in window but sides/aliases/ambiguity prevent a unique match. */
+        /** Sides/aliases/ambiguity prevent a unique match while candidates exist. */
         MAPPING_FAILURE
     }
 
