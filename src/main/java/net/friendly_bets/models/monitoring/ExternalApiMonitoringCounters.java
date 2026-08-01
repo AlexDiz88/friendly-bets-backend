@@ -33,6 +33,18 @@ public class ExternalApiMonitoringCounters {
     @Field(name = "skipped")
     private Integer skipped;
 
+    /** ODDS: odds already present and kickoff outside refresh window. */
+    @Field(name = "skipped_far")
+    private Integer skippedFar;
+
+    /** ODDS: no uniquely matchable bookie event in tournament listing. */
+    @Field(name = "skipped_no_bookie_event")
+    private Integer skippedNoBookieEvent;
+
+    /** ODDS: match_schedules.utc_kickoff is null. */
+    @Field(name = "skipped_missing_kickoff")
+    private Integer skippedMissingKickoff;
+
     @Field(name = "mapping_failures")
     private Integer mappingFailures;
 

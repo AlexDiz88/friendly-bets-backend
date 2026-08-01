@@ -6,11 +6,14 @@ import net.friendly_bets.models.Team;
 import net.friendly_bets.models.odds.Odds;
 import net.friendly_bets.models.schedule.MatchSchedule;
 import net.friendly_bets.providers.ExternalProviderIds;
+import net.friendly_bets.providers.ProviderMatchResolveSupport;
 import net.friendly_bets.repositories.OddsRepository;
 import net.friendly_bets.services.ErrorLogService;
 import net.friendly_bets.services.TeamAliasResolver;
 import org.springframework.stereotype.Component;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -42,29 +45,20 @@ public class MelbetEventMatcher {
             return MelbetEventResolveResult.miss(MelbetEventResolveResult.MissKind.NO_BOOKIE_EVENT);
         }
 
-        List<MelbetPrematchEvent> candidates = filterByKickoffWindow(match, tournamentEvents);
-        if (candidates.isEmpty()) {
+        Duration window = Duration.ofHours(Math.max(0, properties.getEventWindowHours()));
+        boolean anyInWindow = ProviderMatchResolveSupport.anyKickoffInWindow(
+                match, tournamentEvents, window, MelbetEventMatcher::eventKickoff);
+        List<MelbetPrematchEvent> bySides = sidesMatches(match, tournamentEvents);
+        if (bySides.isEmpty() && !anyInWindow) {
             return MelbetEventResolveResult.miss(MelbetEventResolveResult.MissKind.NO_BOOKIE_EVENT);
         }
-
-        List<MelbetPrematchEvent> matched = new ArrayList<>();
-        for (MelbetPrematchEvent event : candidates) {
-            if (sidesMatch(match, event)) {
-                matched.add(event);
-            }
-        }
-        if (matched.size() > 1) {
-            Optional<MelbetPrematchEvent> disambiguated = pickClosestKickoff(match, matched);
-            if (disambiguated.isPresent()) {
-                return MelbetEventResolveResult.matched(disambiguated.get());
-            }
+        if (bySides.size() > 1) {
             errorLogService.recordEventMappingMissing(
                     match, ExternalProviderIds.MELBET, leagueCode, season, matchday, "ambiguousMelbetEventMatch");
-            return MelbetEventResolveResult.miss(MelbetEventResolveResult.MissKind.MAPPING_FAILURE);
+        } else {
+            errorLogService.recordEventMappingMissing(
+                    match, ExternalProviderIds.MELBET, leagueCode, season, matchday, null);
         }
-
-        errorLogService.recordEventMappingMissing(
-                match, ExternalProviderIds.MELBET, leagueCode, season, matchday, null);
         return MelbetEventResolveResult.miss(MelbetEventResolveResult.MissKind.MAPPING_FAILURE);
     }
 
@@ -76,7 +70,7 @@ public class MelbetEventMatcher {
             return Optional.empty();
         }
         Long cachedEventId = resolveCachedEventId(match.getId());
-        if (cachedEventId != null && cachedEventId > 0) {
+        if (cachedEventId != null && cachedEventId > 0 && tournamentEvents != null) {
             Optional<MelbetPrematchEvent> byId = tournamentEvents.stream()
                     .filter(e -> e.getEventId() == cachedEventId)
                     .findFirst();
@@ -85,18 +79,17 @@ public class MelbetEventMatcher {
             }
         }
 
-        List<MelbetPrematchEvent> candidates = filterByKickoffWindow(match, tournamentEvents);
-        List<MelbetPrematchEvent> matched = new ArrayList<>();
-        for (MelbetPrematchEvent event : candidates) {
-            if (sidesMatch(match, event)) {
-                matched.add(event);
-            }
-        }
-        if (matched.size() == 1) {
-            return Optional.of(matched.get(0));
-        }
-        if (matched.size() > 1) {
-            return pickClosestKickoff(match, matched);
+        Duration window = Duration.ofHours(Math.max(0, properties.getEventWindowHours()));
+        ProviderMatchResolveSupport.ResolveOutcome<MelbetPrematchEvent> outcome =
+                ProviderMatchResolveSupport.resolveUniquePreferringKickoffWindow(
+                        match,
+                        tournamentEvents != null ? tournamentEvents : List.of(),
+                        window,
+                        MelbetEventMatcher::eventKickoff,
+                        event -> sidesMatch(match, event)
+                );
+        if (outcome.isUnique()) {
+            return Optional.of(outcome.match());
         }
         return Optional.empty();
     }
@@ -110,57 +103,21 @@ public class MelbetEventMatcher {
                 .orElse(null);
     }
 
-    private List<MelbetPrematchEvent> filterByKickoffWindow(
-            MatchSchedule match,
-            List<MelbetPrematchEvent> events
-    ) {
-        if (match.getUtcKickoff() == null || events == null) {
+    private List<MelbetPrematchEvent> sidesMatches(MatchSchedule match, List<MelbetPrematchEvent> events) {
+        if (events == null || events.isEmpty()) {
             return List.of();
         }
-        long center = match.getUtcKickoff().toEpochMilli();
-        long windowMs = properties.getEventWindowHours() * 3_600_000L;
-        List<MelbetPrematchEvent> filtered = new ArrayList<>();
+        List<MelbetPrematchEvent> matched = new ArrayList<>();
         for (MelbetPrematchEvent event : events) {
-            Long eventKickoff = event.kickoffEpochMillis();
-            if (eventKickoff != null && Math.abs(eventKickoff - center) <= windowMs) {
-                filtered.add(event);
+            if (sidesMatch(match, event)) {
+                matched.add(event);
             }
         }
-        return filtered;
+        return matched;
     }
 
-    private Optional<MelbetPrematchEvent> pickClosestKickoff(
-            MatchSchedule match,
-            List<MelbetPrematchEvent> matched
-    ) {
-        if (match.getUtcKickoff() == null) {
-            return Optional.empty();
-        }
-        long center = match.getUtcKickoff().toEpochMilli();
-        MelbetPrematchEvent best = null;
-        long bestDelta = Long.MAX_VALUE;
-        long secondBestDelta = Long.MAX_VALUE;
-        for (MelbetPrematchEvent event : matched) {
-            Long eventKickoff = event.kickoffEpochMillis();
-            if (eventKickoff == null) {
-                continue;
-            }
-            long delta = Math.abs(eventKickoff - center);
-            if (delta < bestDelta) {
-                secondBestDelta = bestDelta;
-                bestDelta = delta;
-                best = event;
-            } else if (delta < secondBestDelta) {
-                secondBestDelta = delta;
-            }
-        }
-        if (best == null) {
-            return Optional.empty();
-        }
-        if (secondBestDelta == Long.MAX_VALUE || bestDelta + 3_600_000 <= secondBestDelta) {
-            return Optional.of(best);
-        }
-        return Optional.empty();
+    private static Instant eventKickoff(MelbetPrematchEvent event) {
+        return event != null ? event.getKickoff() : null;
     }
 
     private boolean sidesMatch(MatchSchedule match, MelbetPrematchEvent event) {
@@ -174,10 +131,7 @@ public class MelbetEventMatcher {
         }
         String primary = home ? event.getHomeTeam() : event.getAwayTeam();
         String english = home ? event.getHomeTeamEn() : event.getAwayTeamEn();
-        if (matchesAlias(teamId, primary) || matchesAlias(teamId, english)) {
-            return true;
-        }
-        return false;
+        return matchesAlias(teamId, primary) || matchesAlias(teamId, english);
     }
 
     private boolean matchesAlias(String teamId, String providerName) {

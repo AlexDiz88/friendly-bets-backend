@@ -1,8 +1,9 @@
 package net.friendly_bets.marathonbet;
 
 import net.friendly_bets.marathonbet.config.MarathonbetProperties;
-import net.friendly_bets.providers.ExternalProviderIds;
+import net.friendly_bets.models.Team;
 import net.friendly_bets.models.schedule.MatchSchedule;
+import net.friendly_bets.providers.ExternalProviderIds;
 import net.friendly_bets.repositories.OddsRepository;
 import net.friendly_bets.services.ErrorLogService;
 import net.friendly_bets.services.TeamAliasResolver;
@@ -19,6 +20,7 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -43,7 +45,7 @@ class MarathonbetEventMatcherTest {
     @BeforeEach
     void setUp() {
         matcher = new MarathonbetEventMatcher(teamAliasResolver, errorLogService, oddsRepository, properties);
-        when(properties.getEventWindowHours()).thenReturn(6);
+        when(properties.getEventWindowHours()).thenReturn(12);
         when(oddsRepository.findByMatchScheduleId(anyString())).thenReturn(Optional.empty());
     }
 
@@ -85,7 +87,8 @@ class MarathonbetEventMatcherTest {
                 .awayTeam("Ковентри Сити")
                 .displayTimeMillis(kickoff.toEpochMilli())
                 .build();
-        when(teamAliasResolver.resolveByProviderName(eq(ExternalProviderIds.MARATHONBET), anyString())).thenReturn(Optional.empty());
+        when(teamAliasResolver.resolveByProviderName(eq(ExternalProviderIds.MARATHONBET), anyString()))
+                .thenReturn(Optional.empty());
 
         MarathonbetEventResolveResult result = matcher.resolveAndRecordMappingIssue(
                 match, List.of(event), "EPL", "2026", 1);
@@ -95,5 +98,72 @@ class MarathonbetEventMatcherTest {
         assertEquals(MarathonbetEventResolveResult.MissKind.MAPPING_FAILURE, result.getMissKind());
         verify(errorLogService).recordEventMappingMissing(
                 match, "marathonbet", "EPL", "2026", 1, null);
+    }
+
+    @Test
+    void resolve_whenKickoffOutsideWindowButAliasesUnique_matchesViaAliasPhase() {
+        Instant scheduleKickoff = Instant.parse("2026-08-30T13:30:00Z");
+        Instant bookieKickoff = Instant.parse("2026-08-29T13:30:00Z");
+        MatchSchedule match = MatchSchedule.builder()
+                .id("ms-freiburg")
+                .homeTeamId("freiburg-id")
+                .awayTeamId("werder-id")
+                .utcKickoff(scheduleKickoff)
+                .build();
+        MarathonbetPrematchEvent event = MarathonbetPrematchEvent.builder()
+                .treeId(29619708L)
+                .homeTeam("Фрайбург")
+                .awayTeam("Вердер Бремен")
+                .displayTimeMillis(bookieKickoff.toEpochMilli())
+                .build();
+        MarathonbetPrematchEvent other = MarathonbetPrematchEvent.builder()
+                .treeId(29619713L)
+                .homeTeam("Аугсбург")
+                .awayTeam("Шальке 04")
+                .displayTimeMillis(bookieKickoff.toEpochMilli())
+                .build();
+
+		Team freiburg = Team.builder().id("freiburg-id").build();
+        Team werder = Team.builder().id("werder-id").build();
+        when(teamAliasResolver.resolveByProviderName(eq(ExternalProviderIds.MARATHONBET), anyString()))
+                .thenReturn(Optional.empty());
+        when(teamAliasResolver.resolveByProviderName(ExternalProviderIds.MARATHONBET, "Фрайбург"))
+                .thenReturn(Optional.of(freiburg));
+        when(teamAliasResolver.resolveByProviderName(ExternalProviderIds.MARATHONBET, "Вердер Бремен"))
+                .thenReturn(Optional.of(werder));
+
+        Optional<MarathonbetPrematchEvent> resolved = matcher.resolve(match, List.of(event, other));
+
+        assertTrue(resolved.isPresent());
+        assertEquals(29619708L, resolved.get().getTreeId());
+    }
+
+    @Test
+    void resolve_whenKickoffWithin12hWindow_matchesWithoutAliasPhase() {
+        Instant scheduleKickoff = Instant.parse("2026-08-29T18:00:00Z");
+        Instant bookieKickoff = Instant.parse("2026-08-29T13:30:00Z");
+        MatchSchedule match = MatchSchedule.builder()
+                .id("ms-1")
+                .homeTeamId("home-id")
+                .awayTeamId("away-id")
+                .utcKickoff(scheduleKickoff)
+                .build();
+        MarathonbetPrematchEvent event = MarathonbetPrematchEvent.builder()
+                .treeId(10L)
+                .homeTeam("Home")
+                .awayTeam("Away")
+                .displayTimeMillis(bookieKickoff.toEpochMilli())
+                .build();
+        Team home = Team.builder().id("home-id").build();
+        Team away = Team.builder().id("away-id").build();
+        when(teamAliasResolver.resolveByProviderName(ExternalProviderIds.MARATHONBET, "Home"))
+                .thenReturn(Optional.of(home));
+        when(teamAliasResolver.resolveByProviderName(ExternalProviderIds.MARATHONBET, "Away"))
+                .thenReturn(Optional.of(away));
+
+        Optional<MarathonbetPrematchEvent> resolved = matcher.resolve(match, List.of(event));
+
+        assertTrue(resolved.isPresent());
+        assertEquals(10L, resolved.get().getTreeId());
     }
 }

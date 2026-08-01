@@ -459,6 +459,9 @@ public class MelbetSyncService {
                 .sseCalls(counters.eventCalls())
                 .mappingFailures(counters.mappingFailures())
                 .skipped(counters.skippedFar() + counters.skippedNoBookieEvent())
+                .skippedFar(counters.skippedFar())
+                .skippedNoBookieEvent(counters.skippedNoBookieEvent())
+                .skippedMissingKickoff(0)
                 .tournamentFetched(tournamentFetched)
                 .build();
         ExternalApiMonitoringStatus status;

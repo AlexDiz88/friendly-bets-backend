@@ -610,7 +610,7 @@ public class MarathonbetSyncService {
             String missing = ExternalApiMonitoringService.reasonMissingUtcKickoff(skippedMissingKickoff);
             summary = summary == null ? missing : summary + "; " + missing;
         }
-        // Soft skips stay in counters (skippedFar + noBookieEventYet); missingUtcKickoff also in errorSummary as warning.
+        // Soft skips: far / noBookie / missingKickoff (also warning in errorSummary).
         ExternalApiMonitoringCounters monitoringCounters = ExternalApiMonitoringCounters.builder()
                 .eligible(eligible)
                 .matched(matched)
@@ -618,6 +618,9 @@ public class MarathonbetSyncService {
                 .sseCalls(sseCalls)
                 .mappingFailures(mappingFailures)
                 .skipped(skippedFar + skippedNoBookie + skippedMissingKickoff)
+                .skippedFar(skippedFar)
+                .skippedNoBookieEvent(skippedNoBookie)
+                .skippedMissingKickoff(skippedMissingKickoff)
                 .tournamentFetched(tournamentFetched)
                 .build();
         ExternalApiMonitoringStatus status;

@@ -69,4 +69,38 @@ class ProviderMatchResolveSupportTest {
         assertTrue(outcome.isAmbiguous());
         assertNull(outcome.match());
     }
+
+    @Test
+    void preferringWindow_fallsBackToUniqueAliasOutsideWindow() {
+        Instant scheduleKickoff = Instant.parse("2026-08-30T13:30:00Z");
+        Instant bookieKickoff = Instant.parse("2026-08-29T13:30:00Z");
+        MatchSchedule schedule = MatchSchedule.builder().utcKickoff(scheduleKickoff).build();
+        List<Cand> candidates = List.of(
+                new Cand("freiburg", bookieKickoff, true),
+                new Cand("other", bookieKickoff, false)
+        );
+        var inWindowOnly = ProviderMatchResolveSupport.resolveUnique(
+                schedule, candidates, Duration.ofHours(12), Cand::kickoff, Cand::sidesOk);
+        assertTrue(inWindowOnly.isMissing());
+
+        var withFallback = ProviderMatchResolveSupport.resolveUniquePreferringKickoffWindow(
+                schedule, candidates, Duration.ofHours(12), Cand::kickoff, Cand::sidesOk);
+        assertTrue(withFallback.isUnique());
+        assertEquals("freiburg", withFallback.match().id());
+    }
+
+    @Test
+    void preferringWindow_ambiguousWhenTwoAliasMatchesOutsideWindow() {
+        Instant scheduleKickoff = Instant.parse("2026-08-30T13:30:00Z");
+        Instant bookieKickoff = Instant.parse("2026-08-29T13:30:00Z");
+        MatchSchedule schedule = MatchSchedule.builder().utcKickoff(scheduleKickoff).build();
+        List<Cand> candidates = List.of(
+                new Cand("a", bookieKickoff, true),
+                new Cand("b", bookieKickoff.plusSeconds(60), true)
+        );
+        var outcome = ProviderMatchResolveSupport.resolveUniquePreferringKickoffWindow(
+                schedule, candidates, Duration.ofHours(12), Cand::kickoff, Cand::sidesOk);
+        assertTrue(outcome.isAmbiguous());
+        assertNull(outcome.match());
+    }
 }
