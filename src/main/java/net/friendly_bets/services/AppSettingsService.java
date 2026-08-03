@@ -90,6 +90,29 @@ public class AppSettingsService {
                 .build();
     }
 
+    /**
+     * ODDS refresh / near-kickoff window. No dependency on {@code LayerProviderRegistry}
+     * (avoids cycle: providers → planner → config → registry → providers).
+     */
+    @Transactional
+    public int oddsRefreshWithinHours() {
+        AppSettings settings = getOrCreate();
+        AppSettings.ExternalDataLayersBlock block = settings.getExternalDataLayers();
+        if (block == null) {
+            block = defaultExternalDataLayers();
+            settings.setExternalDataLayers(block);
+            save(settings);
+        } else if (block.getOddsRefreshWithinHours() == null || block.getOddsRefreshWithinHours() <= 0) {
+            block.setOddsRefreshWithinHours(externalDataProperties.oddsRefreshWithinHours());
+            save(settings);
+        }
+        Integer hours = settings.getExternalDataLayers().getOddsRefreshWithinHours();
+        if (hours != null && hours > 0) {
+            return hours;
+        }
+        return externalDataProperties.oddsRefreshWithinHours();
+    }
+
     private AppSettings createDefaults() {
         return appSettingsRepository.save(AppSettings.builder()
                 .id(AppSettings.DEFAULT_ID)

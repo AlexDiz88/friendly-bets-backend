@@ -6,7 +6,7 @@ import net.friendly_bets.models.League;
 import net.friendly_bets.models.schedule.MatchSchedule;
 import net.friendly_bets.odds.MatchScheduleNotStarted;
 import net.friendly_bets.odds.OddsService;
-import net.friendly_bets.services.ExternalDataLayerConfigService;
+import net.friendly_bets.services.AppSettingsService;
 import net.friendly_bets.services.MatchScheduleDisplayService;
 import net.friendly_bets.services.MatchScheduleQueryService;
 import org.slf4j.Logger;
@@ -30,13 +30,13 @@ public class OddsCronSlotPlanner {
 
     private final MatchScheduleQueryService matchScheduleQueryService;
     private final OddsService oddsService;
-    private final ExternalDataLayerConfigService layerConfigService;
+    private final AppSettingsService appSettingsService;
 
     public OddsCronSlotPlan plan(League league, String season, ExternalCompetitionInfoDto info, Instant now) {
         if (league == null || league.getLeagueCode() == null || info == null || now == null) {
             return OddsCronSlotPlan.skip("invalidInput");
         }
-        int refreshWithinHours = layerConfigService.oddsRefreshWithinHours();
+        int refreshWithinHours = appSettingsService.oddsRefreshWithinHours();
         List<Integer> window = OddsSlotWindow.resolveSlotOrders(info, OddsSlotScope.BOTH);
         if (window.isEmpty()) {
             return OddsCronSlotPlan.skip("noSlots");

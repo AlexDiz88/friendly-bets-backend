@@ -32,7 +32,7 @@ import net.friendly_bets.providers.odds.OddsSlotScope;
 import net.friendly_bets.providers.odds.OddsSlotWindow;
 import net.friendly_bets.services.ErrorLogService;
 import net.friendly_bets.services.ExternalApiMonitoringService;
-import net.friendly_bets.services.ExternalDataLayerConfigService;
+import net.friendly_bets.services.AppSettingsService;
 import net.friendly_bets.services.GetEntityService;
 import net.friendly_bets.services.MatchScheduleDisplayService;
 import net.friendly_bets.services.MatchScheduleQueryService;
@@ -70,7 +70,7 @@ public class MelbetSyncService {
     private final ErrorLogService errorLogService;
     private final ExternalApiMonitoringService monitoringService;
     private final OddsCronSlotPlanner oddsCronSlotPlanner;
-    private final ExternalDataLayerConfigService layerConfigService;
+    private final AppSettingsService appSettingsService;
 
     private final ReentrantLock pipelineLock = new ReentrantLock();
 
@@ -324,7 +324,7 @@ public class MelbetSyncService {
 
         List<MatchSchedule> toFetch = new ArrayList<>();
         int skippedFar = 0;
-        int refreshWithinHours = layerConfigService.oddsRefreshWithinHours();
+        int refreshWithinHours = appSettingsService.oddsRefreshWithinHours();
         for (MatchSchedule match : pending) {
             if (policy == OddsFetchPolicy.FORCE) {
                 toFetch.add(match);

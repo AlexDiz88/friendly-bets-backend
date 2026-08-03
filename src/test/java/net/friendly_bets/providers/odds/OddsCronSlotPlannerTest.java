@@ -7,7 +7,7 @@ import net.friendly_bets.models.odds.Odds;
 import net.friendly_bets.models.odds.OddsMarketGroup;
 import net.friendly_bets.models.schedule.MatchSchedule;
 import net.friendly_bets.odds.OddsService;
-import net.friendly_bets.services.ExternalDataLayerConfigService;
+import net.friendly_bets.services.AppSettingsService;
 import net.friendly_bets.services.MatchScheduleQueryService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -36,7 +36,7 @@ class OddsCronSlotPlannerTest {
     @Mock
     OddsService oddsService;
     @Mock
-    ExternalDataLayerConfigService layerConfigService;
+    AppSettingsService appSettingsService;
 
     @InjectMocks
     OddsCronSlotPlanner planner;
@@ -49,7 +49,7 @@ class OddsCronSlotPlannerTest {
 
     @BeforeEach
     void setUp() {
-        when(layerConfigService.oddsRefreshWithinHours()).thenReturn(36);
+        when(appSettingsService.oddsRefreshWithinHours()).thenReturn(36);
     }
 
     @Test

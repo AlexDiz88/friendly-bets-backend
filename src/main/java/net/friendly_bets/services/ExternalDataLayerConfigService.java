@@ -66,12 +66,7 @@ public class ExternalDataLayerConfigService {
 
     /** ODDS cron refresh / near-kickoff window (hours). Mongo, else properties default. */
     public int oddsRefreshWithinHours() {
-        AppSettings.ExternalDataLayersBlock block = getOrCreateDefaults();
-        Integer hours = block.getOddsRefreshWithinHours();
-        if (hours != null && hours > 0) {
-            return hours;
-        }
-        return externalDataProperties.oddsRefreshWithinHours();
+        return appSettingsService.oddsRefreshWithinHours();
     }
 
     @Transactional

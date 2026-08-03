@@ -68,7 +68,7 @@ class MarathonbetSyncServiceTest {
     @Mock
     net.friendly_bets.providers.odds.OddsCronSlotPlanner oddsCronSlotPlanner;
     @Mock
-    net.friendly_bets.services.ExternalDataLayerConfigService layerConfigService;
+    net.friendly_bets.services.AppSettingsService appSettingsService;
 
     @InjectMocks
     MarathonbetSyncService syncService;

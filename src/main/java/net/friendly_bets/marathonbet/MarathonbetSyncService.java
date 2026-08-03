@@ -25,7 +25,7 @@ import net.friendly_bets.odds.mapping.OddsMergeResult;
 import net.friendly_bets.services.GetEntityService;
 import net.friendly_bets.services.ErrorLogService;
 import net.friendly_bets.services.ExternalApiMonitoringService;
-import net.friendly_bets.services.ExternalDataLayerConfigService;
+import net.friendly_bets.services.AppSettingsService;
 import net.friendly_bets.services.MatchScheduleDisplayService;
 import net.friendly_bets.services.MatchScheduleQueryService;
 import net.friendly_bets.services.RunningSeasonLookup;
@@ -70,7 +70,7 @@ public class MarathonbetSyncService {
     private final ErrorLogService errorLogService;
     private final ExternalApiMonitoringService monitoringService;
     private final OddsCronSlotPlanner oddsCronSlotPlanner;
-    private final ExternalDataLayerConfigService layerConfigService;
+    private final AppSettingsService appSettingsService;
 
     /** Ensures only one league runs listing+SSE at a time. */
     private final ReentrantLock pipelineLock = new ReentrantLock();
@@ -417,7 +417,7 @@ public class MarathonbetSyncService {
 
         List<MatchSchedule> toFetch = new ArrayList<>();
         int skippedFar = 0;
-        int refreshWithinHours = layerConfigService.oddsRefreshWithinHours();
+        int refreshWithinHours = appSettingsService.oddsRefreshWithinHours();
         for (MatchSchedule match : pending) {
             if (ssePolicy == OddsFetchPolicy.FORCE) {
                 toFetch.add(match);
