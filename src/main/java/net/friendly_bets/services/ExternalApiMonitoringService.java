@@ -19,6 +19,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -27,10 +28,35 @@ public class ExternalApiMonitoringService {
     /** Soft warning key: matches skipped because {@code match_schedules.utc_kickoff} is null. */
     public static final String REASON_MISSING_UTC_KICKOFF = "missingUtcKickoff";
 
+    /**
+     * ODDS cron planner soft skips (no bookmaker HTTP). Must stay SKIPPED, not FAILED,
+     * even when {@code tournamentFetched=false}.
+     */
+    public static final Set<String> ODDS_CRON_SOFT_SKIP_REASONS = Set.of(
+            "noSlots",
+            "noSseEligible",
+            "noCurrentMatches",
+            "farBothComplete",
+            "farCurrentCompleteNoNext",
+            "currentExhaustedNoNext",
+            "currentExhaustedNextComplete",
+            "invalidInput"
+    );
+
     private static final ThreadLocal<ExternalApiMonitoringTrigger> TRIGGER_OVERRIDE = new ThreadLocal<>();
 
     public static String reasonMissingUtcKickoff(int count) {
         return REASON_MISSING_UTC_KICKOFF + "=" + Math.max(0, count);
+    }
+
+    public static boolean isOddsCronSoftSkip(String errorSummary) {
+        if (errorSummary == null || errorSummary.isBlank()) {
+            return false;
+        }
+        String first = errorSummary.split(";", 2)[0].trim();
+        int eq = first.indexOf('=');
+        String key = eq > 0 ? first.substring(0, eq) : first;
+        return ODDS_CRON_SOFT_SKIP_REASONS.contains(key);
     }
 
     private final ExternalApiMonitoringRepository repository;
