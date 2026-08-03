@@ -20,6 +20,6 @@ public class FullMatchDetails {
     @Builder.Default
     List<MatchGoalEvent> goals = new ArrayList<>();
     MatchTeamStats stats;
-    /** Optional provider status label; persisted status is always FINISHED after success. */
+    /** Optional provider status label; must map to finished via FullMatchStatusSupport before persist. */
     String statusText;
 }

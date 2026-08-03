@@ -44,6 +44,7 @@ public class ErrorLogService {
     public static final String CODE_SECONDARY_UNAVAILABLE = "secondaryProviderUnavailable";
     public static final String CODE_LAYER_FAILED = "layerProviderFailed";
     public static final String CODE_FULL_MATCH_FAILED = "fullMatchFailed";
+    public static final String CODE_FULL_MATCH_NOT_READY = "fullMatchNotReady";
 
     private final ErrorLogRepository errorLogRepository;
 
@@ -179,6 +180,23 @@ public class ErrorLogService {
                 .matchday(match != null ? match.getMatchday() : null)
                 .matchScheduleId(match != null ? match.getId() : null)
                 .externalMatchId(null)
+                .build());
+    }
+
+    public void recordFullMatchNotReady(MatchSchedule match, String provider, String providerStatus) {
+        record(Entry.builder()
+                .severity(SEVERITY_WARN)
+                .layer(ExternalDataLayer.FULL_MATCH.name())
+                .provider(provider)
+                .code(CODE_FULL_MATCH_NOT_READY)
+                .message(providerStatus != null && !providerStatus.isBlank()
+                        ? providerStatus.trim()
+                        : CODE_FULL_MATCH_NOT_READY)
+                .leagueCode(match != null ? match.getLeagueCode() : null)
+                .season(match != null ? match.getSeasonId() : null)
+                .matchday(match != null ? match.getMatchday() : null)
+                .matchScheduleId(match != null ? match.getId() : null)
+                .dedupeByMatch(true)
                 .build());
     }
 

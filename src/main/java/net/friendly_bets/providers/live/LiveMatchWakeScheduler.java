@@ -2,7 +2,9 @@ package net.friendly_bets.providers.live;
 
 import net.friendly_bets.models.Season;
 import net.friendly_bets.models.schedule.MatchSchedule;
+import net.friendly_bets.matchschedule.config.MatchResultSyncProperties;
 import net.friendly_bets.providers.ExternalDataLayer;
+import net.friendly_bets.providers.FullMatchAttemptSupport;
 import net.friendly_bets.providers.LayerProviderRouter;
 import net.friendly_bets.providers.LiveMatchProvider;
 import net.friendly_bets.providers.MatchSchedulesUpdatedEvent;
@@ -41,6 +43,7 @@ public class LiveMatchWakeScheduler {
     private final MatchFinalizeOrchestrator matchFinalizeOrchestrator;
     private final ExternalDataLayerConfigService layerConfigService;
     private final MatchScheduleRepository matchScheduleRepository;
+    private final MatchResultSyncProperties matchResultSyncProperties;
     private final ThreadPoolTaskScheduler taskScheduler;
     private final long schedulerTickMs;
 
@@ -53,6 +56,7 @@ public class LiveMatchWakeScheduler {
             MatchFinalizeOrchestrator matchFinalizeOrchestrator,
             ExternalDataLayerConfigService layerConfigService,
             MatchScheduleRepository matchScheduleRepository,
+            MatchResultSyncProperties matchResultSyncProperties,
             @Qualifier("liveMatchWakeTaskScheduler") ThreadPoolTaskScheduler taskScheduler,
             @Value("${external-data.layers.LIVE.scheduler-tick-ms:300000}") long schedulerTickMs
     ) {
@@ -61,6 +65,7 @@ public class LiveMatchWakeScheduler {
         this.matchFinalizeOrchestrator = matchFinalizeOrchestrator;
         this.layerConfigService = layerConfigService;
         this.matchScheduleRepository = matchScheduleRepository;
+        this.matchResultSyncProperties = matchResultSyncProperties;
         this.taskScheduler = taskScheduler;
         this.schedulerTickMs = Math.max(1_000L, schedulerTickMs);
     }
@@ -167,7 +172,7 @@ public class LiveMatchWakeScheduler {
         }
         String seasonId = seasonOpt.get().getId();
         boolean hasActiveOrPendingFull = false;
-        Instant nearestKickoff = null;
+        Instant nearestWake = null;
 
         for (MatchSchedule schedule : matchScheduleRepository.findBySeasonId(seasonId)) {
             if (LiveMatchSupport.isLiveHttpCandidate(schedule, now)
@@ -175,23 +180,29 @@ public class LiveMatchWakeScheduler {
                 hasActiveOrPendingFull = true;
             }
             Instant kickoff = LiveMatchSupport.upcomingKickoffOrNull(schedule, now);
-            if (kickoff != null && (nearestKickoff == null || kickoff.isBefore(nearestKickoff))) {
-                nearestKickoff = kickoff;
+            if (kickoff != null && (nearestWake == null || kickoff.isBefore(nearestWake))) {
+                nearestWake = kickoff;
+            }
+            if (LiveMatchSupport.needsFullMatch(schedule)) {
+                Instant fullDue = FullMatchAttemptSupport.resolveDueAt(schedule, matchResultSyncProperties);
+                if (fullDue != null && (nearestWake == null || fullDue.isBefore(nearestWake))) {
+                    nearestWake = fullDue;
+                }
             }
         }
 
         if (hasActiveOrPendingFull) {
             if (afterPoll) {
                 Instant afterInterval = now.plusMillis(schedulerTickMs);
-                if (nearestKickoff != null && nearestKickoff.isBefore(afterInterval)) {
-                    return Optional.of(nearestKickoff);
+                if (nearestWake != null && nearestWake.isBefore(afterInterval)) {
+                    return Optional.of(nearestWake.isBefore(now) ? now : nearestWake);
                 }
                 return Optional.of(afterInterval);
             }
             return Optional.of(now);
         }
-        if (nearestKickoff != null) {
-            return Optional.of(nearestKickoff);
+        if (nearestWake != null) {
+            return Optional.of(nearestWake.isBefore(now) ? now : nearestWake);
         }
         return Optional.empty();
     }
