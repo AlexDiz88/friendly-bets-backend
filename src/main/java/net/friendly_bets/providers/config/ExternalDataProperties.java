@@ -15,11 +15,19 @@ import java.util.Map;
 public class ExternalDataProperties {
 
     private Map<ExternalDataLayer, LayerFlags> layers = defaultLayers();
+    /** Default for {@code app_settings.external_data_layers.odds_refresh_within_hours}. */
+    private OddsDefaults odds = new OddsDefaults();
 
     @Data
     public static class LayerFlags {
         /** Auto-sync for the layer (schedulers). Default true. */
         private boolean enabled = true;
+    }
+
+    @Data
+    public static class OddsDefaults {
+        /** Hours before kickoff for ODDS force-refresh / existing-odds refresh window. */
+        private int refreshWithinHours = 36;
     }
 
     public boolean isLayerEnabled(ExternalDataLayer layer) {
@@ -31,6 +39,13 @@ public class ExternalDataProperties {
             return true;
         }
         return flags.isEnabled();
+    }
+
+    public int oddsRefreshWithinHours() {
+        if (odds == null || odds.getRefreshWithinHours() <= 0) {
+            return 36;
+        }
+        return odds.getRefreshWithinHours();
     }
 
     private static Map<ExternalDataLayer, LayerFlags> defaultLayers() {

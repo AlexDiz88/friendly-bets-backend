@@ -73,7 +73,10 @@ public class ExternalDataAdminController {
     @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<ExternalDataLayerConfigDto> patchLayers(@RequestBody ExternalDataLayerConfigDto body) {
         return ResponseEntity.ok(ExternalDataLayerConfigDto.from(
-                configService.update(body != null ? body.toEntityLayers() : null),
+                configService.update(
+                        body != null ? body.toEntityLayers() : null,
+                        body != null ? body.getOddsRefreshWithinHours() : null
+                ),
                 configService.capabilitiesCatalog()
         ));
     }

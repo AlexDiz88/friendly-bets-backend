@@ -18,6 +18,9 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class ExternalDataLayerConfigService {
 
+    public static final int ODDS_REFRESH_WITHIN_HOURS_MIN = 1;
+    public static final int ODDS_REFRESH_WITHIN_HOURS_MAX = 168;
+
     private final AppSettingsService appSettingsService;
     private final LayerProviderRegistry registry;
     private final ExternalDataProperties externalDataProperties;
@@ -25,8 +28,17 @@ public class ExternalDataLayerConfigService {
     @Transactional
     public AppSettings.ExternalDataLayersBlock getOrCreateDefaults() {
         AppSettings settings = appSettingsService.getOrCreate();
+        boolean dirty = false;
         if (settings.getExternalDataLayers() == null) {
             settings.setExternalDataLayers(appSettingsService.defaultExternalDataLayers());
+            dirty = true;
+        } else if (settings.getExternalDataLayers().getOddsRefreshWithinHours() == null
+                || settings.getExternalDataLayers().getOddsRefreshWithinHours() <= 0) {
+            settings.getExternalDataLayers().setOddsRefreshWithinHours(
+                    externalDataProperties.oddsRefreshWithinHours());
+            dirty = true;
+        }
+        if (dirty) {
             appSettingsService.save(settings);
         }
         return settings.getExternalDataLayers();
@@ -52,8 +64,21 @@ public class ExternalDataLayerConfigService {
         return externalDataProperties.isLayerEnabled(layer);
     }
 
+    /** ODDS cron refresh / near-kickoff window (hours). Mongo, else properties default. */
+    public int oddsRefreshWithinHours() {
+        AppSettings.ExternalDataLayersBlock block = getOrCreateDefaults();
+        Integer hours = block.getOddsRefreshWithinHours();
+        if (hours != null && hours > 0) {
+            return hours;
+        }
+        return externalDataProperties.oddsRefreshWithinHours();
+    }
+
     @Transactional
-    public AppSettings.ExternalDataLayersBlock update(Map<ExternalDataLayer, AppSettings.LayerAssignment> layers) {
+    public AppSettings.ExternalDataLayersBlock update(
+            Map<ExternalDataLayer, AppSettings.LayerAssignment> layers,
+            Integer oddsRefreshWithinHours
+    ) {
         if (layers == null) {
             throw new BadRequestException("externalDataLayerConfigRequired");
         }
@@ -72,8 +97,15 @@ public class ExternalDataLayerConfigService {
                     .secondaryProvider(blankToNull(incoming.getSecondaryProvider()))
                     .build());
         }
+
+        Integer resolvedHours = resolveOddsRefreshWithinHours(
+                oddsRefreshWithinHours,
+                settings.getExternalDataLayers()
+        );
+
         AppSettings.ExternalDataLayersBlock block = AppSettings.ExternalDataLayersBlock.builder()
                 .layers(next)
+                .oddsRefreshWithinHours(resolvedHours)
                 .build();
         settings.setExternalDataLayers(block);
         appSettingsService.save(settings);
@@ -86,6 +118,24 @@ public class ExternalDataLayerConfigService {
             catalog.put(layer.name(), registry.providerIdsFor(layer));
         }
         return catalog;
+    }
+
+    private Integer resolveOddsRefreshWithinHours(
+            Integer incoming,
+            AppSettings.ExternalDataLayersBlock existing
+    ) {
+        if (incoming != null) {
+            if (incoming < ODDS_REFRESH_WITHIN_HOURS_MIN || incoming > ODDS_REFRESH_WITHIN_HOURS_MAX) {
+                throw new BadRequestException("oddsRefreshWithinHoursInvalid");
+            }
+            return incoming;
+        }
+        if (existing != null
+                && existing.getOddsRefreshWithinHours() != null
+                && existing.getOddsRefreshWithinHours() > 0) {
+            return existing.getOddsRefreshWithinHours();
+        }
+        return externalDataProperties.oddsRefreshWithinHours();
     }
 
     private void validateAssignment(ExternalDataLayer layer, AppSettings.LayerAssignment assignment) {

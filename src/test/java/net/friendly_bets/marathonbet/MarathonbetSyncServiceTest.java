@@ -65,6 +65,10 @@ class MarathonbetSyncServiceTest {
     ErrorLogService errorLogService;
     @Mock
     ExternalApiMonitoringService monitoringService;
+    @Mock
+    net.friendly_bets.providers.odds.OddsCronSlotPlanner oddsCronSlotPlanner;
+    @Mock
+    net.friendly_bets.services.ExternalDataLayerConfigService layerConfigService;
 
     @InjectMocks
     MarathonbetSyncService syncService;
@@ -77,7 +81,6 @@ class MarathonbetSyncServiceTest {
         when(properties.getSseDelayMaxMs()).thenReturn(0L);
         lenient().when(properties.getStageSize()).thenReturn(5);
         lenient().when(properties.getStagePauseMinutes()).thenReturn(0);
-        lenient().when(properties.getSseRefreshWithinHours()).thenReturn(48);
         lenient().when(properties.getTournamentTreeIds()).thenReturn(java.util.Map.of("WC", 2_253_726L));
         when(properties.tournamentTreeIdForLeague("WC")).thenReturn(2_253_726L);
         when(monitoringService.begin(any(), any(), any(), any(), any())).thenAnswer(inv ->

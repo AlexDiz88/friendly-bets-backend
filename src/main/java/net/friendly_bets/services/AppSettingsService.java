@@ -73,7 +73,10 @@ public class AppSettingsService {
         for (ExternalDataLayer layer : ExternalDataLayer.values()) {
             layers.put(layer, defaultLayerAssignment(layer));
         }
-        return AppSettings.ExternalDataLayersBlock.builder().layers(layers).build();
+        return AppSettings.ExternalDataLayersBlock.builder()
+                .layers(layers)
+                .oddsRefreshWithinHours(externalDataProperties.oddsRefreshWithinHours())
+                .build();
     }
 
     public static AppSettings.ExternalDataLayersBlock staticDefaultExternalDataLayers() {
@@ -81,7 +84,10 @@ public class AppSettingsService {
         for (ExternalDataLayer layer : ExternalDataLayer.values()) {
             layers.put(layer, staticDefaultLayerAssignment(layer));
         }
-        return AppSettings.ExternalDataLayersBlock.builder().layers(layers).build();
+        return AppSettings.ExternalDataLayersBlock.builder()
+                .layers(layers)
+                .oddsRefreshWithinHours(36)
+                .build();
     }
 
     private AppSettings createDefaults() {
