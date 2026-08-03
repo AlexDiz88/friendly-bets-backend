@@ -2,6 +2,7 @@ package net.friendly_bets.soccer365;
 
 import lombok.RequiredArgsConstructor;
 import net.friendly_bets.exceptions.BadRequestException;
+import net.friendly_bets.exceptions.FullMatchNotReadyException;
 import net.friendly_bets.providers.ExternalProviderIds;
 import net.friendly_bets.models.monitoring.ExternalApiHttpLogEntry;
 import net.friendly_bets.models.monitoring.ExternalApiMonitoringCounters;
@@ -13,6 +14,7 @@ import net.friendly_bets.providers.ExternalDataLayer;
 import net.friendly_bets.providers.ExternalDataProvider;
 import net.friendly_bets.providers.FullMatchDetails;
 import net.friendly_bets.providers.FullMatchProvider;
+import net.friendly_bets.providers.FullMatchStatusSupport;
 import net.friendly_bets.repositories.MatchScheduleRepository;
 import net.friendly_bets.services.ErrorLogService;
 import net.friendly_bets.services.ExternalApiMonitoringService;
@@ -142,6 +144,17 @@ public class Soccer365FullMatchProvider implements FullMatchProvider {
 
         Soccer365ParsedFullMatch parsed = gameParser.parse(html);
         FullMatchDetails details = toDetails(parsed);
+        if (!FullMatchStatusSupport.isProviderFinished(details.getStatusText())) {
+            monitoringService.finalizeAndSave(
+                    run,
+                    ExternalApiMonitoringStatus.SKIPPED,
+                    ExternalApiMonitoringCounters.builder().requested(1).skipped(1).saved(0).build(),
+                    httpLogs,
+                    List.of(),
+                    "fullMatchNotReady"
+            );
+            throw new FullMatchNotReadyException(details.getStatusText());
+        }
         if (details.getGameScore() == null || details.getGameScore().getFullTime() == null) {
             monitoringService.finalizeAndSave(
                     run,
@@ -165,6 +178,8 @@ public class Soccer365FullMatchProvider implements FullMatchProvider {
         current.setFullDetailsFetchedAt(now);
         current.setFinalizedAt(now);
         current.setFinalizedByProvider(ExternalProviderIds.SOCCER365);
+        current.setFullMatchNextAttemptAt(null);
+        current.setFullMatchNotReadyCount(null);
         current.setFetchedAt(Instant.now());
         MatchSchedule saved = matchScheduleRepository.save(current);
 

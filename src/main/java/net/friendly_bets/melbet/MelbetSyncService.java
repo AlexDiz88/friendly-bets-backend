@@ -24,11 +24,15 @@ import net.friendly_bets.exceptions.BadRequestException;
 import net.friendly_bets.providers.ExternalDataLayer;
 import net.friendly_bets.providers.ExternalProviderIds;
 import net.friendly_bets.marathonbet.MarathonbetSyncBatchSupport;
-import net.friendly_bets.marathonbet.MarathonbetSyncSlotWindow;
-import net.friendly_bets.marathonbet.MarathonbetSlotScope;
-import net.friendly_bets.marathonbet.OddsSsePolicy;
+import net.friendly_bets.providers.odds.OddsCronSlotPlan;
+import net.friendly_bets.providers.odds.OddsCronSlotPlanner;
+import net.friendly_bets.providers.odds.OddsFetchPolicy;
+import net.friendly_bets.providers.odds.OddsRefreshSupport;
+import net.friendly_bets.providers.odds.OddsSlotScope;
+import net.friendly_bets.providers.odds.OddsSlotWindow;
 import net.friendly_bets.services.ErrorLogService;
 import net.friendly_bets.services.ExternalApiMonitoringService;
+import net.friendly_bets.services.AppSettingsService;
 import net.friendly_bets.services.GetEntityService;
 import net.friendly_bets.services.MatchScheduleDisplayService;
 import net.friendly_bets.services.MatchScheduleQueryService;
@@ -65,6 +69,8 @@ public class MelbetSyncService {
     private final GetEntityService getEntityService;
     private final ErrorLogService errorLogService;
     private final ExternalApiMonitoringService monitoringService;
+    private final OddsCronSlotPlanner oddsCronSlotPlanner;
+    private final AppSettingsService appSettingsService;
 
     private final ReentrantLock pipelineLock = new ReentrantLock();
 
@@ -95,7 +101,7 @@ public class MelbetSyncService {
         String resolvedSeason = resolveSeason(season, league);
         List<Integer> slotOrders;
         List<String> idFilter;
-        OddsSsePolicy policy;
+        OddsFetchPolicy policy;
         if (force) {
             if (matchday == null || matchday < 1) {
                 throw new BadRequestException("matchdayRequired");
@@ -105,18 +111,18 @@ public class MelbetSyncService {
             }
             slotOrders = List.of(matchday);
             idFilter = matchScheduleIds;
-            policy = OddsSsePolicy.FORCE;
+            policy = OddsFetchPolicy.FORCE;
         } else {
             ExternalCompetitionInfoDto info = externalCompetitionService.getCompetitionInfoForLeague(
                     league.getId(), resolvedSeason);
-            List<Integer> currentOnly = MarathonbetSyncSlotWindow.resolveSlotOrders(
-                    info, MarathonbetSlotScope.CURRENT);
+            List<Integer> currentOnly = OddsSlotWindow.resolveSlotOrders(
+                    info, OddsSlotScope.CURRENT);
             if (currentOnly.isEmpty()) {
                 throw new BadRequestException("currentMatchdayUnresolved");
             }
             slotOrders = currentOnly;
             idFilter = null;
-            policy = OddsSsePolicy.MISSING_ONLY;
+            policy = OddsFetchPolicy.MISSING_ONLY;
         }
 
         pipelineLock.lock();
@@ -133,7 +139,7 @@ public class MelbetSyncService {
                         code,
                         resolvedSeason
                 );
-                failedRun.setSlotScope(MarathonbetSlotScope.CURRENT.name());
+                failedRun.setSlotScope(OddsSlotScope.CURRENT.name());
                 failedRun.setSlotOrders(slotOrders);
                 finalizeRun(failedRun, httpLogs, false, SlotCounters.empty(), listResult.toErrorKey());
                 throw new BadRequestException(listResult.toErrorKey());
@@ -147,7 +153,7 @@ public class MelbetSyncService {
                     code,
                     resolvedSeason
             );
-            run.setSlotScope(MarathonbetSlotScope.CURRENT.name());
+            run.setSlotScope(OddsSlotScope.CURRENT.name());
             run.setSlotOrders(slotOrders);
 
             SlotCounters counters = syncMatches(
@@ -202,7 +208,8 @@ public class MelbetSyncService {
         String season = matchdaySupport.resolveExternalSeasonYear(seasonEntity, league.getLeagueCode());
         ExternalCompetitionInfoDto info = externalCompetitionService.getCompetitionInfoForLeague(
                 league.getId(), season);
-        List<Integer> slotOrders = MarathonbetSyncSlotWindow.resolveSlotOrders(info, MarathonbetSlotScope.BOTH);
+        OddsCronSlotPlan plan = oddsCronSlotPlanner.plan(league, season, info, Instant.now());
+        List<Integer> slotOrders = plan.slotOrders();
 
         List<ExternalApiHttpLogEntry> httpLogs = new ArrayList<>();
         ExternalApiMonitoringRun run = monitoringService.begin(
@@ -212,12 +219,14 @@ public class MelbetSyncService {
                 code,
                 season
         );
-        run.setSlotScope(MarathonbetSlotScope.BOTH.name());
+        run.setSlotScope(plan.scope() != null ? plan.scope().name() : "SKIP");
         run.setSlotOrders(slotOrders);
 
-        if (slotOrders.isEmpty()) {
-            finalizeRun(run, httpLogs, false, SlotCounters.empty(), "noSlots");
-            return toResult(code, season, slotOrders, SlotCounters.empty(), false, null);
+        if (plan.skip() || slotOrders.isEmpty() || plan.fetchPolicy() == null) {
+            String reason = plan.reason() != null ? plan.reason() : "noSseEligible";
+            log.info("melbet syncLeague {}: ODDS cron skip reason={} — no tournament HTTP", code, reason);
+            finalizeRun(run, httpLogs, true, SlotCounters.empty(), reason);
+            return toResult(code, season, slotOrders, SlotCounters.empty(), true, null);
         }
 
         Instant listRequestedAt = Instant.now();
@@ -246,7 +255,7 @@ public class MelbetSyncService {
                 prematch,
                 null,
                 false,
-                OddsSsePolicy.REFRESH_WINDOW,
+                plan.fetchPolicy(),
                 applyStagePause,
                 httpLogs
         );
@@ -273,7 +282,7 @@ public class MelbetSyncService {
             List<MelbetPrematchEvent> prematch,
             List<String> matchScheduleIds,
             boolean failWhenNoPending,
-            OddsSsePolicy policy,
+            OddsFetchPolicy policy,
             boolean applyStagePause,
             List<ExternalApiHttpLogEntry> httpLogs
     ) {
@@ -315,25 +324,25 @@ public class MelbetSyncService {
 
         List<MatchSchedule> toFetch = new ArrayList<>();
         int skippedFar = 0;
+        int refreshWithinHours = appSettingsService.oddsRefreshWithinHours();
         for (MatchSchedule match : pending) {
-            if (policy == OddsSsePolicy.FORCE) {
+            if (policy == OddsFetchPolicy.FORCE) {
                 toFetch.add(match);
                 continue;
             }
             boolean hasOdds = oddsService.findByMatchScheduleId(match.getId())
                     .map(odds -> odds.getMarketGroups() != null && !odds.getMarketGroups().isEmpty())
                     .orElse(false);
-            if (policy == OddsSsePolicy.MISSING_ONLY && hasOdds) {
+            if (policy == OddsFetchPolicy.MISSING_ONLY && hasOdds) {
                 skippedFar++;
                 continue;
             }
-            if (policy == OddsSsePolicy.REFRESH_WINDOW
-                    && !MarathonbetSyncBatchSupport.needsSseRefresh(
-                    match, hasOdds, now, properties.getRefreshWithinHours())) {
+            if (policy == OddsFetchPolicy.REFRESH_WINDOW
+                    && !OddsRefreshSupport.needsRefresh(match, hasOdds, now, refreshWithinHours)) {
                 skippedFar++;
                 continue;
             }
-            if (policy == OddsSsePolicy.REFRESH_WINDOW || policy == OddsSsePolicy.MISSING_ONLY) {
+            if (policy == OddsFetchPolicy.REFRESH_WINDOW || policy == OddsFetchPolicy.MISSING_ONLY) {
                 toFetch.add(match);
             }
         }

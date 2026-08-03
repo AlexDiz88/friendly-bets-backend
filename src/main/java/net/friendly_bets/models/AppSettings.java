@@ -52,6 +52,13 @@ public class AppSettings {
         @Field(name = "layers")
         @Builder.Default
         private Map<ExternalDataLayer, LayerAssignment> layers = new EnumMap<>(ExternalDataLayer.class);
+
+        /**
+         * ODDS cron: hours before earliest current kickoff when force-refresh starts;
+         * also the existing-odds refresh window. Null → property default.
+         */
+        @Field(name = "odds_refresh_within_hours")
+        private Integer oddsRefreshWithinHours;
     }
 
     @NoArgsConstructor

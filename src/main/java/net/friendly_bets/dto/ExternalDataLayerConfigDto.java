@@ -19,6 +19,8 @@ public class ExternalDataLayerConfigDto {
 
     private Map<ExternalDataLayer, LayerAssignmentDto> layers;
     private Map<String, List<String>> capabilities;
+    /** ODDS layer: hours before kickoff for force-refresh / existing-odds window. */
+    private Integer oddsRefreshWithinHours;
 
     @Data
     @Builder
@@ -54,13 +56,18 @@ public class ExternalDataLayerConfigDto {
             Map<String, List<String>> capabilities
     ) {
         Map<ExternalDataLayer, LayerAssignmentDto> layers = new EnumMap<>(ExternalDataLayer.class);
-        if (config != null && config.getLayers() != null) {
-            config.getLayers().forEach((layer, assignment) ->
-                    layers.put(layer, LayerAssignmentDto.from(assignment)));
+        Integer oddsHours = null;
+        if (config != null) {
+            oddsHours = config.getOddsRefreshWithinHours();
+            if (config.getLayers() != null) {
+                config.getLayers().forEach((layer, assignment) ->
+                        layers.put(layer, LayerAssignmentDto.from(assignment)));
+            }
         }
         return ExternalDataLayerConfigDto.builder()
                 .layers(layers)
                 .capabilities(capabilities)
+                .oddsRefreshWithinHours(oddsHours)
                 .build();
     }
 

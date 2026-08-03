@@ -1,4 +1,4 @@
-package net.friendly_bets.marathonbet;
+package net.friendly_bets.providers.odds;
 
 import net.friendly_bets.dto.ExternalCompetitionInfoDto;
 import net.friendly_bets.dto.ExternalMatchdaySlotDto;
@@ -7,20 +7,20 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Слоты для синхронизации Marathonbet: текущий и/или следующий тур.
+ * Current and/or next matchday slots for ODDS sync.
  */
-public final class MarathonbetSyncSlotWindow {
+public final class OddsSlotWindow {
 
     private static final int ADDITIONAL_SLOTS = 1;
 
-    private MarathonbetSyncSlotWindow() {
+    private OddsSlotWindow() {
     }
 
     public static List<Integer> resolveSlotOrders(ExternalCompetitionInfoDto info) {
-        return resolveSlotOrders(info, MarathonbetSlotScope.BOTH);
+        return resolveSlotOrders(info, OddsSlotScope.BOTH);
     }
 
-    public static List<Integer> resolveSlotOrders(ExternalCompetitionInfoDto info, MarathonbetSlotScope scope) {
+    public static List<Integer> resolveSlotOrders(ExternalCompetitionInfoDto info, OddsSlotScope scope) {
         List<Integer> window = resolveCurrentAndNext(info);
         return switch (scope) {
             case CURRENT -> window.isEmpty() ? List.of() : List.of(window.get(0));

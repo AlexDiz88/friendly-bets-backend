@@ -16,4 +16,11 @@ public class MatchResultSyncProperties {
      * Id пользователя-модератора для аудита auto-settle. Пусто — первый ADMIN в БД.
      */
     private String systemModeratorId = "";
+
+    /** Пауза после LIVE→FINISHED перед первым вызовом FULL (дать источнику дописать карточку). */
+    private long fullMatchInitialDelayMs = 300_000L;
+    /** Пауза после первого FULL not-ready (статус ещё не FINISHED). */
+    private long fullMatchRetryDelayMs = 300_000L;
+    /** Пауза после повторного not-ready (и далее): раз в час. */
+    private long fullMatchHourlyDelayMs = 3_600_000L;
 }

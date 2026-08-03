@@ -2,6 +2,7 @@ package net.friendly_bets.services;
 
 import lombok.RequiredArgsConstructor;
 import net.friendly_bets.dto.BetsPage;
+import net.friendly_bets.exceptions.FullMatchNotReadyException;
 import net.friendly_bets.matchschedule.GameScoreValidator;
 import net.friendly_bets.matchschedule.config.MatchResultSyncProperties;
 import net.friendly_bets.models.GameResult;
@@ -12,6 +13,7 @@ import net.friendly_bets.models.monitoring.ExternalApiMonitoringStatus;
 import net.friendly_bets.models.monitoring.ExternalApiMonitoringTrigger;
 import net.friendly_bets.models.schedule.MatchSchedule;
 import net.friendly_bets.providers.ExternalDataLayer;
+import net.friendly_bets.providers.FullMatchAttemptSupport;
 import net.friendly_bets.providers.FullMatchProvider;
 import net.friendly_bets.providers.LayerProviderRouter;
 import net.friendly_bets.repositories.MatchScheduleRepository;
@@ -21,12 +23,14 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
 /**
- * After LIVE detects finished: FULL_MATCH (primary→secondary) then optional bet settle.
+ * After LIVE detects finished: wait initial delay, FULL_MATCH (primary→secondary),
+ * require provider FINISHED status, then optional bet settle. Not-ready → defer 5min / hourly.
  */
 @Service
 @RequiredArgsConstructor
@@ -42,6 +46,7 @@ public class MatchFinalizeOrchestrator {
     private final UsersRepository usersRepository;
     private final ExternalDataLayerConfigService layerConfigService;
     private final ExternalApiMonitoringService monitoringService;
+    private final ErrorLogService errorLogService;
 
     @Transactional
     public MatchSchedule finalizeFinishedMatch(MatchSchedule match) {
@@ -49,14 +54,26 @@ public class MatchFinalizeOrchestrator {
             return match;
         }
         MatchSchedule current = matchScheduleRepository.findById(match.getId()).orElse(match);
+        Instant now = Instant.now();
         if (current.getFullDetailsFetchedAt() == null
                 && layerConfigService.isLayerEnabled(ExternalDataLayer.FULL_MATCH)) {
+            if (!FullMatchAttemptSupport.isAttemptDue(current, now, properties)) {
+                return current;
+            }
             final MatchSchedule toFetch = current;
-            current = router.execute(
-                    ExternalDataLayer.FULL_MATCH,
-                    FullMatchProvider.class,
-                    p -> p.fetchAndPersistFullDetails(toFetch)
-            );
+            try {
+                current = router.execute(
+                        ExternalDataLayer.FULL_MATCH,
+                        FullMatchProvider.class,
+                        p -> p.fetchAndPersistFullDetails(toFetch)
+                );
+                if (current.getFullDetailsFetchedAt() != null) {
+                    FullMatchAttemptSupport.clearAttemptState(current);
+                    current = matchScheduleRepository.save(current);
+                }
+            } catch (FullMatchNotReadyException e) {
+                return handleNotReady(current, e, now);
+            }
         }
         if (properties.isAutoSettleEnabled() && MatchScheduleSettleService.isFinalizedForSettle(current)) {
             settleMatch(current);
@@ -69,8 +86,10 @@ public class MatchFinalizeOrchestrator {
         if (matchScheduleIds == null || matchScheduleIds.isEmpty()) {
             return;
         }
-        List<MatchSchedule> withKickoff = new ArrayList<>();
+        Instant now = Instant.now();
+        List<MatchSchedule> due = new ArrayList<>();
         int missingKickoff = 0;
+        int deferred = 0;
         String leagueCode = null;
         String seasonId = null;
         for (String id : matchScheduleIds) {
@@ -91,7 +110,11 @@ public class MatchFinalizeOrchestrator {
                 }
                 continue;
             }
-            withKickoff.add(loaded);
+            if (!FullMatchAttemptSupport.isAttemptDue(loaded, now, properties)) {
+                deferred++;
+                continue;
+            }
+            due.add(loaded);
         }
         if (missingKickoff > 0) {
             String provider = layerConfigService.assignment(ExternalDataLayer.FULL_MATCH).getPrimaryProvider();
@@ -115,14 +138,37 @@ public class MatchFinalizeOrchestrator {
                     ExternalApiMonitoringService.reasonMissingUtcKickoff(missingKickoff)
             );
         }
-        for (MatchSchedule match : withKickoff) {
+        if (deferred > 0) {
+            log.debug("FULL deferred (initial/retry delay): {} match(es)", deferred);
+        }
+        for (MatchSchedule match : due) {
             try {
                 finalizeFinishedMatch(match);
+            } catch (FullMatchNotReadyException e) {
+                // Already handled inside finalizeFinishedMatch when thrown from router path;
+                // keep catch for safety if called differently.
+                log.debug("FULL not ready for match {}: {}", match.getId(), e.getProviderStatus());
             } catch (RuntimeException e) {
                 // LayerProviderRouter already wrote error_logs for FULL failure.
                 log.warn("FULL/settle failed for match {}: {}", match.getId(), e.getMessage());
             }
         }
+    }
+
+    private MatchSchedule handleNotReady(MatchSchedule current, FullMatchNotReadyException e, Instant now) {
+        Instant nextAt = FullMatchAttemptSupport.nextAttemptAfterNotReady(current, now, properties);
+        boolean logError = FullMatchAttemptSupport.shouldLogNotReady(current);
+        int nextCount = (current.getFullMatchNotReadyCount() != null ? current.getFullMatchNotReadyCount() : 0) + 1;
+        current.setFullMatchNotReadyCount(nextCount);
+        current.setFullMatchNextAttemptAt(nextAt);
+        MatchSchedule saved = matchScheduleRepository.save(current);
+        if (logError) {
+            String provider = layerConfigService.assignment(ExternalDataLayer.FULL_MATCH).getPrimaryProvider();
+            errorLogService.recordFullMatchNotReady(saved, provider, e.getProviderStatus());
+        }
+        log.info("FULL not ready for match {} (status={}, attempt={}, next={})",
+                saved.getId(), e.getProviderStatus(), nextCount, nextAt);
+        return saved;
     }
 
     private void settleMatch(MatchSchedule schedule) {

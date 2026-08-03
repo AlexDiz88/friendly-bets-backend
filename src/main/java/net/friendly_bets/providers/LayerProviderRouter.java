@@ -2,6 +2,7 @@ package net.friendly_bets.providers;
 
 import lombok.RequiredArgsConstructor;
 import net.friendly_bets.exceptions.BadRequestException;
+import net.friendly_bets.exceptions.FullMatchNotReadyException;
 import net.friendly_bets.models.AppSettings;
 import net.friendly_bets.services.ErrorLogService;
 import net.friendly_bets.services.ExternalDataLayerConfigService;
@@ -70,6 +71,9 @@ public class LayerProviderRouter {
         }
         try {
             return operation.apply(primary);
+        } catch (FullMatchNotReadyException notReady) {
+            // Deferral signal — not a provider outage; do not failover or treat as layer failure.
+            throw notReady;
         } catch (RuntimeException primaryError) {
             String secondaryId = assignment.getSecondaryProvider();
             if (secondaryId == null || secondaryId.isBlank() || secondaryId.equals(primaryId)) {

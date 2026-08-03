@@ -25,10 +25,17 @@ import net.friendly_bets.odds.mapping.OddsMergeResult;
 import net.friendly_bets.services.GetEntityService;
 import net.friendly_bets.services.ErrorLogService;
 import net.friendly_bets.services.ExternalApiMonitoringService;
+import net.friendly_bets.services.AppSettingsService;
 import net.friendly_bets.services.MatchScheduleDisplayService;
 import net.friendly_bets.services.MatchScheduleQueryService;
 import net.friendly_bets.services.RunningSeasonLookup;
 import net.friendly_bets.providers.ExternalDataLayer;
+import net.friendly_bets.providers.odds.OddsCronSlotPlan;
+import net.friendly_bets.providers.odds.OddsCronSlotPlanner;
+import net.friendly_bets.providers.odds.OddsFetchPolicy;
+import net.friendly_bets.providers.odds.OddsRefreshSupport;
+import net.friendly_bets.providers.odds.OddsSlotScope;
+import net.friendly_bets.providers.odds.OddsSlotWindow;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -62,12 +69,14 @@ public class MarathonbetSyncService {
     private final GetEntityService getEntityService;
     private final ErrorLogService errorLogService;
     private final ExternalApiMonitoringService monitoringService;
+    private final OddsCronSlotPlanner oddsCronSlotPlanner;
+    private final AppSettingsService appSettingsService;
 
     /** Ensures only one league runs listing+SSE at a time. */
     private final ReentrantLock pipelineLock = new ReentrantLock();
 
     /**
-     * Scheduled per-league sync (current + next slots), with stage batching and refresh policy.
+     * Scheduled per-league sync (ODDS cron slot plan), with stage batching and refresh policy.
      */
     public MarathonbetSyncResult syncLeague(String leagueCode) {
         return syncLeague(leagueCode, true);
@@ -105,10 +114,10 @@ public class MarathonbetSyncService {
 
     /** Legacy entry: sync every configured league in the active season (sequential, mutex held per league). */
     public MarathonbetSyncResult runTick() {
-        return runTick(MarathonbetSlotScope.BOTH);
+        return runTick(OddsSlotScope.BOTH);
     }
 
-    public MarathonbetSyncResult runTick(MarathonbetSlotScope scope) {
+    public MarathonbetSyncResult runTick(OddsSlotScope scope) {
         Optional<Season> active = runningSeasonLookup.findRunningSeason();
         if (active.isEmpty() || active.get().getLeagues() == null) {
             return MarathonbetSyncResult.builder().build();
@@ -154,7 +163,7 @@ public class MarathonbetSyncService {
         String resolvedSeason = resolveSeason(season, league);
         List<Integer> slotOrders;
         List<String> idFilter;
-        OddsSsePolicy ssePolicy;
+        OddsFetchPolicy ssePolicy;
         if (force) {
             if (matchday == null || matchday < 1) {
                 throw new BadRequestException("matchdayRequired");
@@ -164,20 +173,20 @@ public class MarathonbetSyncService {
             }
             slotOrders = List.of(matchday);
             idFilter = matchScheduleIds;
-            ssePolicy = OddsSsePolicy.FORCE;
+            ssePolicy = OddsFetchPolicy.FORCE;
         } else {
             ExternalCompetitionInfoDto info = externalCompetitionService.getCompetitionInfoForLeague(
                     league.getId(),
                     resolvedSeason
             );
-            List<Integer> currentOnly = MarathonbetSyncSlotWindow.resolveSlotOrders(
-                    info, MarathonbetSlotScope.CURRENT);
+            List<Integer> currentOnly = OddsSlotWindow.resolveSlotOrders(
+                    info, OddsSlotScope.CURRENT);
             if (currentOnly.isEmpty()) {
                 throw new BadRequestException("currentMatchdayUnresolved");
             }
             slotOrders = currentOnly;
             idFilter = null;
-            ssePolicy = OddsSsePolicy.MISSING_ONLY;
+            ssePolicy = OddsFetchPolicy.MISSING_ONLY;
         }
 
         pipelineLock.lock();
@@ -199,7 +208,7 @@ public class MarathonbetSyncService {
                         code,
                         resolvedSeason
                 );
-                failedRun.setSlotScope(MarathonbetSlotScope.CURRENT.name());
+                failedRun.setSlotScope(OddsSlotScope.CURRENT.name());
                 failedRun.setSlotOrders(slotOrders);
                 finalizeOddsRun(
                         failedRun,
@@ -220,7 +229,7 @@ public class MarathonbetSyncService {
                     code,
                     resolvedSeason
             );
-            run.setSlotScope(MarathonbetSlotScope.CURRENT.name());
+            run.setSlotScope(OddsSlotScope.CURRENT.name());
             run.setSlotOrders(slotOrders);
 
             SlotSyncCounters counters = syncMatches(
@@ -256,7 +265,8 @@ public class MarathonbetSyncService {
                 league.getId(),
                 season
         );
-        List<Integer> slotOrders = MarathonbetSyncSlotWindow.resolveSlotOrders(info, MarathonbetSlotScope.BOTH);
+        OddsCronSlotPlan plan = oddsCronSlotPlanner.plan(league, season, info, Instant.now());
+        List<Integer> slotOrders = plan.slotOrders();
 
         List<ExternalApiHttpLogEntry> httpLogs = new ArrayList<>();
         ExternalApiMonitoringRun run = monitoringService.begin(
@@ -266,18 +276,13 @@ public class MarathonbetSyncService {
                 code,
                 season
         );
-        run.setSlotScope(MarathonbetSlotScope.BOTH.name());
+        run.setSlotScope(plan.scope() != null ? plan.scope().name() : "SKIP");
         run.setSlotOrders(slotOrders);
 
-        if (slotOrders.isEmpty()) {
-            log.debug("marathonbet syncLeague skipped: no slots for {}", code);
-            finalizeOddsRun(run, httpLogs, false, SlotSyncCounters.empty(), "noSlots");
-            return toResult(code, season, slotOrders, SlotSyncCounters.empty(), false, null);
-        }
-
-        if (!hasEligibleSseTargets(league, slotOrders, season)) {
-            log.info("marathonbet syncLeague {}: no SSE-eligible matches — skip tournament HTTP", code);
-            finalizeOddsRun(run, httpLogs, true, SlotSyncCounters.empty(), "noSseEligible");
+        if (plan.skip() || slotOrders.isEmpty() || plan.fetchPolicy() == null) {
+            String reason = plan.reason() != null ? plan.reason() : "noSseEligible";
+            log.info("marathonbet syncLeague {}: ODDS cron skip reason={} — no tournament HTTP", code, reason);
+            finalizeOddsRun(run, httpLogs, true, SlotSyncCounters.empty(), reason);
             return toResult(code, season, slotOrders, SlotSyncCounters.empty(), true, null);
         }
 
@@ -330,7 +335,7 @@ public class MarathonbetSyncService {
                 prematch,
                 null,
                 failWhenNoPending,
-                OddsSsePolicy.REFRESH_WINDOW,
+                plan.fetchPolicy(),
                 applyStagePause,
                 httpLogs
         );
@@ -360,7 +365,7 @@ public class MarathonbetSyncService {
             List<MarathonbetPrematchEvent> prematch,
             List<String> matchScheduleIds,
             boolean failWhenNoPending,
-            OddsSsePolicy ssePolicy,
+            OddsFetchPolicy ssePolicy,
             boolean applyStagePause,
             List<ExternalApiHttpLogEntry> httpLogs
     ) {
@@ -412,15 +417,16 @@ public class MarathonbetSyncService {
 
         List<MatchSchedule> toFetch = new ArrayList<>();
         int skippedFar = 0;
+        int refreshWithinHours = appSettingsService.oddsRefreshWithinHours();
         for (MatchSchedule match : pending) {
-            if (ssePolicy == OddsSsePolicy.FORCE) {
+            if (ssePolicy == OddsFetchPolicy.FORCE) {
                 toFetch.add(match);
                 continue;
             }
             boolean hasOdds = oddsService.findByMatchScheduleId(match.getId())
                     .map(odds -> odds.getMarketGroups() != null && !odds.getMarketGroups().isEmpty())
                     .orElse(false);
-            if (ssePolicy == OddsSsePolicy.MISSING_ONLY) {
+            if (ssePolicy == OddsFetchPolicy.MISSING_ONLY) {
                 if (hasOdds) {
                     skippedFar++;
                     continue;
@@ -429,8 +435,7 @@ public class MarathonbetSyncService {
                 continue;
             }
             // REFRESH_WINDOW (cron)
-            if (!MarathonbetSyncBatchSupport.needsSseRefresh(
-                    match, hasOdds, now, properties.getSseRefreshWithinHours())) {
+            if (!OddsRefreshSupport.needsRefresh(match, hasOdds, now, refreshWithinHours)) {
                 skippedFar++;
                 continue;
             }
@@ -663,38 +668,6 @@ public class MarathonbetSyncService {
                 .slotOrders(slotOrders)
                 .errorSummary(errorSummary)
                 .build();
-    }
-
-    private boolean hasEligibleSseTargets(League league, List<Integer> slotOrders, String season) {
-        String leagueCode = league.getLeagueCode().name();
-        Instant now = Instant.now();
-        for (int matchday : slotOrders) {
-            List<MatchSchedule> matches = matchScheduleQueryService.getMatches(
-                    leagueCode,
-                    matchday,
-                    season,
-                    league.getId()
-            );
-            for (MatchSchedule match : matches) {
-                if (MatchScheduleDisplayService.isFinalized(match)) {
-                    continue;
-                }
-                if (match.getUtcKickoff() == null) {
-                    continue;
-                }
-                if (!MatchScheduleNotStarted.isNotStarted(match, now)) {
-                    continue;
-                }
-                boolean hasOdds = oddsService.findByMatchScheduleId(match.getId())
-                        .map(odds -> odds.getMarketGroups() != null && !odds.getMarketGroups().isEmpty())
-                        .orElse(false);
-                if (MarathonbetSyncBatchSupport.needsSseRefresh(
-                        match, hasOdds, now, properties.getSseRefreshWithinHours())) {
-                    return true;
-                }
-            }
-        }
-        return false;
     }
 
     private void sleepRetryAfter(Integer retryAfterSeconds) {

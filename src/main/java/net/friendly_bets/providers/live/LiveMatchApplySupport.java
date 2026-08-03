@@ -20,6 +20,10 @@ public final class LiveMatchApplySupport {
             return;
         }
         schedule.setStatus(snapshot.status());
+        if (LiveMatchSupport.isFinishedStatus(snapshot.status())
+                && schedule.getLiveFinishedDetectedAt() == null) {
+            schedule.setLiveFinishedDetectedAt(now != null ? now : Instant.now());
+        }
         if (snapshot.rawMinuteLabel() != null) {
             String resolvedLabel = LiveMinuteLabelResolver.resolve(
                     snapshot.rawMinuteLabel(),

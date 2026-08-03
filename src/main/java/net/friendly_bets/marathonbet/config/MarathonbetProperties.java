@@ -29,8 +29,6 @@ public class MarathonbetProperties {
     private int stageSize = 5;
     /** Pause between SSE stages (minutes). */
     private int stagePauseMinutes = 20;
-    /** Re-fetch SSE only if odds missing or kickoff within this many hours. */
-    private int sseRefreshWithinHours = 36;
     private int eventWindowHours = 12;
     /** Random pause lower bound between per-event SSE fetches (ms). */
     private long sseDelayMinMs = 2_000L;

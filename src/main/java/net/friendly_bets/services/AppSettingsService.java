@@ -73,7 +73,10 @@ public class AppSettingsService {
         for (ExternalDataLayer layer : ExternalDataLayer.values()) {
             layers.put(layer, defaultLayerAssignment(layer));
         }
-        return AppSettings.ExternalDataLayersBlock.builder().layers(layers).build();
+        return AppSettings.ExternalDataLayersBlock.builder()
+                .layers(layers)
+                .oddsRefreshWithinHours(externalDataProperties.oddsRefreshWithinHours())
+                .build();
     }
 
     public static AppSettings.ExternalDataLayersBlock staticDefaultExternalDataLayers() {
@@ -81,7 +84,33 @@ public class AppSettingsService {
         for (ExternalDataLayer layer : ExternalDataLayer.values()) {
             layers.put(layer, staticDefaultLayerAssignment(layer));
         }
-        return AppSettings.ExternalDataLayersBlock.builder().layers(layers).build();
+        return AppSettings.ExternalDataLayersBlock.builder()
+                .layers(layers)
+                .oddsRefreshWithinHours(36)
+                .build();
+    }
+
+    /**
+     * ODDS refresh / near-kickoff window. No dependency on {@code LayerProviderRegistry}
+     * (avoids cycle: providers → planner → config → registry → providers).
+     */
+    @Transactional
+    public int oddsRefreshWithinHours() {
+        AppSettings settings = getOrCreate();
+        AppSettings.ExternalDataLayersBlock block = settings.getExternalDataLayers();
+        if (block == null) {
+            block = defaultExternalDataLayers();
+            settings.setExternalDataLayers(block);
+            save(settings);
+        } else if (block.getOddsRefreshWithinHours() == null || block.getOddsRefreshWithinHours() <= 0) {
+            block.setOddsRefreshWithinHours(externalDataProperties.oddsRefreshWithinHours());
+            save(settings);
+        }
+        Integer hours = settings.getExternalDataLayers().getOddsRefreshWithinHours();
+        if (hours != null && hours > 0) {
+            return hours;
+        }
+        return externalDataProperties.oddsRefreshWithinHours();
     }
 
     private AppSettings createDefaults() {

@@ -51,7 +51,10 @@ public class ExternalDataLayerAutoDisableService {
                 .secondaryProvider(current != null ? current.getSecondaryProvider() : null)
                 .build();
         layers.put(layer, next);
-        settings.setExternalDataLayers(AppSettings.ExternalDataLayersBlock.builder().layers(layers).build());
+        settings.setExternalDataLayers(AppSettings.ExternalDataLayersBlock.builder()
+                .layers(layers)
+                .oddsRefreshWithinHours(block.getOddsRefreshWithinHours())
+                .build());
         appSettingsService.save(settings);
         return true;
     }

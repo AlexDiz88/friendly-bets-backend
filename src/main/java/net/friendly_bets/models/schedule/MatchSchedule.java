@@ -92,6 +92,21 @@ public class MatchSchedule {
     @Field(name = "full_details_fetched_at")
     private Instant fullDetailsFetchedAt;
 
+    /**
+     * First time LIVE reported FINISHED for this schedule (UTC).
+     * FULL_MATCH waits {@code match-result-sync.full-match-initial-delay-ms} after this.
+     */
+    @Field(name = "live_finished_detected_at")
+    private Instant liveFinishedDetectedAt;
+
+    /** Earliest Instant when orchestrator may call FULL again (deferral after not-ready). */
+    @Field(name = "full_match_next_attempt_at")
+    private Instant fullMatchNextAttemptAt;
+
+    /** Consecutive FULL responses where provider status was still unfinished. */
+    @Field(name = "full_match_not_ready_count")
+    private Integer fullMatchNotReadyCount;
+
     @Field(name = "fetched_at")
     private Instant fetchedAt;
 }
