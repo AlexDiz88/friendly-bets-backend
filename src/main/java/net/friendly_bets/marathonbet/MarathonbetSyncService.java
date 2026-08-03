@@ -282,7 +282,7 @@ public class MarathonbetSyncService {
         if (plan.skip() || slotOrders.isEmpty() || plan.fetchPolicy() == null) {
             String reason = plan.reason() != null ? plan.reason() : "noSseEligible";
             log.info("marathonbet syncLeague {}: ODDS cron skip reason={} — no tournament HTTP", code, reason);
-            finalizeOddsRun(run, httpLogs, true, SlotSyncCounters.empty(), reason);
+            finalizeOddsRun(run, httpLogs, false, SlotSyncCounters.empty(), reason);
             return toResult(code, season, slotOrders, SlotSyncCounters.empty(), true, null);
         }
 
@@ -630,10 +630,10 @@ public class MarathonbetSyncService {
                 .build();
         ExternalApiMonitoringStatus status;
         if (errorSummary != null && !tournamentFetched && eligible == 0 && matched == 0 && saved == 0
-                && !"noSlots".equals(errorSummary)
+                && !ExternalApiMonitoringService.isOddsCronSoftSkip(errorSummary)
                 && !errorSummary.startsWith(ExternalApiMonitoringService.REASON_MISSING_UTC_KICKOFF)) {
             status = ExternalApiMonitoringStatus.FAILED;
-        } else if ("noSlots".equals(errorSummary)
+        } else if (ExternalApiMonitoringService.isOddsCronSoftSkip(errorSummary)
                 || (eligible == 0 && tournamentFetched)
                 || (eligible == 0 && skippedMissingKickoff > 0 && mappingFailures == 0)) {
             status = ExternalApiMonitoringStatus.SKIPPED;

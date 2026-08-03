@@ -225,7 +225,7 @@ public class MelbetSyncService {
         if (plan.skip() || slotOrders.isEmpty() || plan.fetchPolicy() == null) {
             String reason = plan.reason() != null ? plan.reason() : "noSseEligible";
             log.info("melbet syncLeague {}: ODDS cron skip reason={} — no tournament HTTP", code, reason);
-            finalizeRun(run, httpLogs, true, SlotCounters.empty(), reason);
+            finalizeRun(run, httpLogs, false, SlotCounters.empty(), reason);
             return toResult(code, season, slotOrders, SlotCounters.empty(), true, null);
         }
 
@@ -474,9 +474,12 @@ public class MelbetSyncService {
                 .tournamentFetched(tournamentFetched)
                 .build();
         ExternalApiMonitoringStatus status;
-        if (errorSummary != null && !tournamentFetched) {
+        if (errorSummary != null && !tournamentFetched
+                && !ExternalApiMonitoringService.isOddsCronSoftSkip(errorSummary)) {
             status = ExternalApiMonitoringStatus.FAILED;
-        } else if ("noSlots".equals(errorSummary) || counters.matchesEligible() == 0) {
+        } else if (ExternalApiMonitoringService.isOddsCronSoftSkip(errorSummary)
+                || "noSlots".equals(errorSummary)
+                || counters.matchesEligible() == 0) {
             status = ExternalApiMonitoringStatus.SKIPPED;
         } else if (counters.mappingFailures() > 0 || ExternalApiMonitoringService.countFailed(httpLogs) > 0) {
             status = counters.mergedSaved() > 0
