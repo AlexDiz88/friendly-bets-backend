@@ -19,6 +19,14 @@ public interface ErrorLogRepository extends MongoRepository<ErrorLog, String> {
             String message
     );
 
+    Optional<ErrorLog> findFirstByProviderAndCodeAndLayerAndLeagueCodeAndMessage(
+            String provider,
+            String code,
+            String layer,
+            String leagueCode,
+            String message
+    );
+
     List<ErrorLog> findByCodeAndHomeTeam(String code, String homeTeam);
 
     List<ErrorLog> findByCodeAndAwayTeam(String code, String awayTeam);
