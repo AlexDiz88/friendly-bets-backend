@@ -6,6 +6,7 @@ import lombok.Value;
 import net.friendly_bets.dto.ErrorLogDto;
 import net.friendly_bets.exceptions.NotFoundException;
 import net.friendly_bets.models.ErrorLog;
+import net.friendly_bets.models.monitoring.ExternalApiHttpLogEntry;
 import net.friendly_bets.models.schedule.MatchSchedule;
 import net.friendly_bets.providers.ExternalDataLayer;
 import net.friendly_bets.repositories.ErrorLogRepository;
@@ -105,6 +106,83 @@ public class ErrorLogService {
         } catch (Exception e) {
             log.warn("Failed to persist error_log: {}", e.getMessage());
         }
+    }
+
+    /**
+     * Logs failed outbound HTTP from a monitoring run when callers did not already record
+     * {@link #CODE_PROVIDER_FETCH_FAILED} with the same provider, layer, league and message.
+     */
+    public void recordHttpRequestFailuresIfNeeded(
+            ExternalDataLayer layer,
+            String provider,
+            String leagueCode,
+            String season,
+            List<ExternalApiHttpLogEntry> httpLogs,
+            String errorSummary
+    ) {
+        int failed = countFailedHttpLogs(httpLogs);
+        if (failed <= 0) {
+            return;
+        }
+        String message = buildHttpFailureMessage(httpLogs, errorSummary);
+        if (message == null || message.isBlank()) {
+            return;
+        }
+        String providerNorm = blankToNull(provider);
+        String layerName = layer != null ? layer.name() : null;
+        String leagueNorm = blankToNull(leagueCode);
+        if (providerNorm != null
+                && errorLogRepository.findFirstByProviderAndCodeAndLayerAndLeagueCodeAndMessage(
+                providerNorm,
+                CODE_PROVIDER_FETCH_FAILED,
+                layerName,
+                leagueNorm,
+                message.trim()).isPresent()) {
+            return;
+        }
+        record(Entry.builder()
+                .severity(SEVERITY_ERROR)
+                .layer(layerName)
+                .provider(provider)
+                .code(CODE_PROVIDER_FETCH_FAILED)
+                .message(message.trim())
+                .leagueCode(leagueCode)
+                .season(blankToNull(season))
+                .build());
+    }
+
+    private static String buildHttpFailureMessage(List<ExternalApiHttpLogEntry> httpLogs, String errorSummary) {
+        if (errorSummary != null && !errorSummary.isBlank()) {
+            return errorSummary.trim();
+        }
+        int total = httpLogs != null ? httpLogs.size() : 0;
+        int failed = countFailedHttpLogs(httpLogs);
+        int success = Math.max(0, total - failed);
+        StringBuilder sb = new StringBuilder();
+        sb.append("httpSuccess=").append(success).append("/").append(total);
+        if (httpLogs != null) {
+            for (ExternalApiHttpLogEntry entry : httpLogs) {
+                if (entry.getOutcome() == null || "SUCCESS".equals(entry.getOutcome())) {
+                    continue;
+                }
+                sb.append("; ");
+                sb.append(entry.getRequestType() != null ? entry.getRequestType() : "?");
+                sb.append(":").append(entry.getOutcome());
+                if (entry.getDetail() != null && !entry.getDetail().isBlank()) {
+                    sb.append(" — ").append(entry.getDetail().trim());
+                }
+            }
+        }
+        return sb.toString();
+    }
+
+    private static int countFailedHttpLogs(List<ExternalApiHttpLogEntry> logs) {
+        if (logs == null || logs.isEmpty()) {
+            return 0;
+        }
+        return (int) logs.stream()
+                .filter(e -> e.getOutcome() != null && !"SUCCESS".equals(e.getOutcome()))
+                .count();
     }
 
     public void recordLayerFailure(
