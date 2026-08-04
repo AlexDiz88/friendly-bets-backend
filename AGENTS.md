@@ -1,13 +1,17 @@
 # AGENTS.md
 
-## Git workflow (Cursor Cloud — environment `friendly-bets-FULLSTACK`)
+## Git workflow — environment `friendly-bets-FULLSTACK` (телефон / Cloud Agent)
 
-- **Environment:** `friendly-bets-FULLSTACK` (Friendly Bets fullstack: backend + frontend).
-- **Default branch:** `dev`. Always work on `origin/dev` unless the user explicitly asks otherwise.
-- **Before starting work:** `git checkout dev && git pull origin dev`.
-- **Commits:** commit and push directly to `dev` (`git push origin dev`). Do not accumulate work only on feature branches.
-- **Do not** create feature branches (`cursor/...`) or open PRs into `main` by default in this environment.
-- **PRs:** if a PR is needed, target `dev` as the base branch, not `main`.
+**Это главное правило для этого окружения. Не игнорировать.**
+
+- **Окружение:** `friendly-bets-FULLSTACK` (Friendly Bets: backend + frontend). Запросы с телефона через это окружение всегда следуют этим правилам.
+- **Единственная рабочая ветка:** `dev` на remote (`origin/dev`). Вся работа — только в `dev`.
+- **Перед началом:** `git checkout dev && git pull origin dev`.
+- **Коммиты и пуш:** сразу в `dev` — `git commit` и `git push origin dev`.
+- **НЕ создавать** feature-ветки (`cursor/...`, `feature/...` и любые другие).
+- **НЕ открывать** pull request'ы. Изменения попадают в репозиторий только через прямой push в `origin/dev`.
+- **НЕ пушить** в `main` и не мержить в `main` из этого окружения.
+- Исключение только если пользователь **явно** попросил другую ветку или PR — в обычной работе с телефона через `friendly-bets-FULLSTACK` это не применяется.
 
 ## Cursor Cloud specific instructions
 
