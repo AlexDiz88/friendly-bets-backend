@@ -25,7 +25,8 @@ public final class FullMatchStatusSupport {
         if (LiveMatchSupport.isFinishedStatus(trimmed)) {
             return true;
         }
-        String lower = trimmed.toLowerCase(Locale.ROOT);
+        // ё→е so "завершён" matches "завершен"
+        String lower = trimmed.toLowerCase(Locale.ROOT).replace('ё', 'е');
         if (lower.startsWith("завершен") || lower.startsWith("finished") || lower.startsWith("ended")) {
             return true;
         }

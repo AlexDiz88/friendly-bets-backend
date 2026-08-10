@@ -36,6 +36,30 @@ public class MatchTeamStats {
     @Field(name = "yellow_cards_away")
     private Integer yellowCardsAway;
 
+    @Field(name = "red_cards_home")
+    private Integer redCardsHome;
+
+    @Field(name = "red_cards_away")
+    private Integer redCardsAway;
+
+    @Field(name = "corners_home")
+    private Integer cornersHome;
+
+    @Field(name = "corners_away")
+    private Integer cornersAway;
+
+    @Field(name = "offsides_home")
+    private Integer offsidesHome;
+
+    @Field(name = "offsides_away")
+    private Integer offsidesAway;
+
+    @Field(name = "saves_home")
+    private Integer savesHome;
+
+    @Field(name = "saves_away")
+    private Integer savesAway;
+
     @Field(name = "xg_home")
     private Double xgHome;
 

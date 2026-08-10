@@ -1,9 +1,8 @@
-package net.friendly_bets.soccer365;
+package net.friendly_bets.ruscore;
 
 import lombok.RequiredArgsConstructor;
 import net.friendly_bets.exceptions.BadRequestException;
 import net.friendly_bets.exceptions.FullMatchNotReadyException;
-import net.friendly_bets.providers.ExternalProviderIds;
 import net.friendly_bets.models.monitoring.ExternalApiHttpLogEntry;
 import net.friendly_bets.models.monitoring.ExternalApiMonitoringCounters;
 import net.friendly_bets.models.monitoring.ExternalApiMonitoringRun;
@@ -12,6 +11,7 @@ import net.friendly_bets.models.monitoring.ExternalApiMonitoringTrigger;
 import net.friendly_bets.models.schedule.MatchSchedule;
 import net.friendly_bets.providers.ExternalDataLayer;
 import net.friendly_bets.providers.ExternalDataProvider;
+import net.friendly_bets.providers.ExternalProviderIds;
 import net.friendly_bets.providers.FullMatchDetails;
 import net.friendly_bets.providers.FullMatchPersistSupport;
 import net.friendly_bets.providers.FullMatchProvider;
@@ -28,18 +28,18 @@ import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
-public class Soccer365FullMatchProvider implements FullMatchProvider {
+public class RuscoreFullMatchProvider implements FullMatchProvider {
 
-    private final Soccer365FullMatchResolver fullMatchResolver;
-    private final Soccer365HttpClient httpClient;
-    private final Soccer365GameParser gameParser;
+    private final RuscoreFullMatchResolver fullMatchResolver;
+    private final RuscoreHttpClient httpClient;
+    private final RuscoreGameSummaryParser gameSummaryParser;
     private final MatchScheduleRepository matchScheduleRepository;
     private final ExternalApiMonitoringService monitoringService;
     private final ErrorLogService errorLogService;
 
     @Override
     public String providerId() {
-        return ExternalProviderIds.SOCCER365;
+        return ExternalProviderIds.RUSCORE;
     }
 
     @Override
@@ -57,7 +57,7 @@ public class Soccer365FullMatchProvider implements FullMatchProvider {
 
         ExternalApiMonitoringRun run = monitoringService.begin(
                 ExternalDataLayer.FULL_MATCH,
-                ExternalProviderIds.SOCCER365,
+                ExternalProviderIds.RUSCORE,
                 ExternalApiMonitoringTrigger.ORCHESTRATOR,
                 current.getLeagueCode(),
                 current.getSeasonId()
@@ -89,9 +89,9 @@ public class Soccer365FullMatchProvider implements FullMatchProvider {
             return current;
         }
 
-        String gameId;
+        RuscoreParsedDayPage.Match resolved;
         try {
-            gameId = fullMatchResolver.resolveGameId(current);
+            resolved = fullMatchResolver.resolveMatch(current);
         } catch (BadRequestException e) {
             monitoringService.finalizeAndSave(
                     run,
@@ -101,7 +101,7 @@ public class Soccer365FullMatchProvider implements FullMatchProvider {
                     List.of(current.getId()),
                     e.getMessage()
             );
-            errorLogService.recordFullMatchFailure(current, ExternalProviderIds.SOCCER365, e.getMessage());
+            errorLogService.recordFullMatchFailure(current, ExternalProviderIds.RUSCORE, e.getMessage());
             throw e;
         }
 
@@ -109,10 +109,10 @@ public class Soccer365FullMatchProvider implements FullMatchProvider {
         long t0 = System.currentTimeMillis();
         String html;
         try {
-            html = httpClient.fetchGameHtml(gameId);
+            html = httpClient.fetchGameSummaryHtml(resolved.getSlug(), resolved.getEventId());
             httpLogs.add(ExternalApiMonitoringService.httpLog(
-                    "GAME_PAGE",
-                    gameId,
+                    "GAME_SUMMARY",
+                    resolved.getEventId(),
                     200,
                     "SUCCESS",
                     System.currentTimeMillis() - t0,
@@ -122,8 +122,8 @@ public class Soccer365FullMatchProvider implements FullMatchProvider {
             ));
         } catch (RuntimeException e) {
             httpLogs.add(ExternalApiMonitoringService.httpLog(
-                    "GAME_PAGE",
-                    gameId,
+                    "GAME_SUMMARY",
+                    resolved.getEventId(),
                     null,
                     "HTTP_ERROR",
                     System.currentTimeMillis() - t0,
@@ -139,11 +139,11 @@ public class Soccer365FullMatchProvider implements FullMatchProvider {
                     List.of(current.getId()),
                     e.getMessage()
             );
-            errorLogService.recordFullMatchFailure(current, ExternalProviderIds.SOCCER365, e.getMessage());
+            errorLogService.recordFullMatchFailure(current, ExternalProviderIds.RUSCORE, e.getMessage());
             throw e;
         }
 
-        Soccer365ParsedFullMatch parsed = gameParser.parse(html);
+        RuscoreParsedFullMatch parsed = gameSummaryParser.parse(html, resolved.getEventId(), resolved.getSlug());
         FullMatchDetails details = toDetails(parsed);
         if (!FullMatchStatusSupport.isProviderFinished(details.getStatusText())) {
             monitoringService.finalizeAndSave(
@@ -163,14 +163,14 @@ public class Soccer365FullMatchProvider implements FullMatchProvider {
                     ExternalApiMonitoringCounters.builder().requested(1).build(),
                     httpLogs,
                     List.of(current.getId()),
-                    "soccer365FullMatchParseFailed"
+                    "ruscoreFullMatchParseFailed"
             );
-            errorLogService.recordFullMatchFailure(current, ExternalProviderIds.SOCCER365, "soccer365FullMatchParseFailed");
-            throw new BadRequestException("soccer365FullMatchParseFailed");
+            errorLogService.recordFullMatchFailure(current, ExternalProviderIds.RUSCORE, "ruscoreFullMatchParseFailed");
+            throw new BadRequestException("ruscoreFullMatchParseFailed");
         }
 
         Instant now = Instant.now();
-        FullMatchPersistSupport.apply(current, details, ExternalProviderIds.SOCCER365, now);
+        FullMatchPersistSupport.apply(current, details, ExternalProviderIds.RUSCORE, now);
         MatchSchedule saved = matchScheduleRepository.save(current);
 
         monitoringService.finalizeAndSave(
@@ -184,12 +184,14 @@ public class Soccer365FullMatchProvider implements FullMatchProvider {
         return saved;
     }
 
-    private static FullMatchDetails toDetails(Soccer365ParsedFullMatch parsed) {
+    private static FullMatchDetails toDetails(RuscoreParsedFullMatch parsed) {
         return FullMatchDetails.builder()
                 .gameScore(parsed.getGameScore())
                 .goals(parsed.getGoals() != null ? parsed.getGoals() : List.of())
                 .stats(parsed.getStats())
                 .statusText(parsed.getStatusText())
+                .addedTimeFirstHalf(parsed.getAddedTimeFirstHalf())
+                .addedTimeSecondHalf(parsed.getAddedTimeSecondHalf())
                 .build();
     }
 }

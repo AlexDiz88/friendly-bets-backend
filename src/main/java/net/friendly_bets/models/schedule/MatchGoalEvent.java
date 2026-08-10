@@ -41,4 +41,12 @@ public class MatchGoalEvent {
     /** Missed penalty (in-match or shootout); does not count toward score. */
     @Field(name = "is_missed")
     private Boolean missed;
+
+    /** Straight red or second yellow shown as a red-card event (not a goal). */
+    @Field(name = "is_red_card")
+    private Boolean redCard;
+
+    /** Second yellow that produced a red; implies {@link #redCard}. */
+    @Field(name = "is_second_yellow")
+    private Boolean secondYellow;
 }

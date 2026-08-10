@@ -1,4 +1,4 @@
-package net.friendly_bets.providers;
+package net.friendly_bets.ruscore;
 
 import lombok.Builder;
 import lombok.Value;
@@ -9,21 +9,20 @@ import net.friendly_bets.models.schedule.MatchTeamStats;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Provider-agnostic FULL_MATCH payload mapped onto {@code match_schedules}.
- */
 @Value
 @Builder
-public class FullMatchDetails {
+public class RuscoreParsedFullMatch {
 
+    String eventId;
+    String slug;
+    String statusText;
+    String homeTeamName;
+    String awayTeamName;
+    String competitionName;
     GameScore gameScore;
     @Builder.Default
     List<MatchGoalEvent> goals = new ArrayList<>();
     MatchTeamStats stats;
-    /** Optional provider status label; must map to finished via FullMatchStatusSupport before persist. */
-    String statusText;
-    /** Announced added time after first half (minutes); null if source omits. */
     Integer addedTimeFirstHalf;
-    /** Announced added time after second half (minutes); null if source omits. */
     Integer addedTimeSecondHalf;
 }
