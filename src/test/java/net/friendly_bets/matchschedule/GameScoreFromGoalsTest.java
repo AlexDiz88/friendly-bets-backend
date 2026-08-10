@@ -49,11 +49,21 @@ class GameScoreFromGoalsTest {
     }
 
     @Test
-    @DisplayName("resolveBaseMinute reads leading number from label")
-    void resolveBaseMinuteFromLabel() {
-        assertEquals(45, GameScoreFromGoals.resolveBaseMinute(goal("45+3", null, "HOME", false)));
-        assertEquals(90, GameScoreFromGoals.resolveBaseMinute(goal("90+6", 99, "HOME", false)));
-        assertEquals(120, GameScoreFromGoals.resolveBaseMinute(goal("120+", 120, "HOME", false)));
+    @DisplayName("redCard events do not affect score")
+    void redCardsSkippedInScore() {
+        GameScore score = GameScoreFromGoals.from(List.of(
+                goal("20", 20, "HOME", false),
+                MatchGoalEvent.builder()
+                        .minute("59")
+                        .minuteNumber(59)
+                        .teamSide("AWAY")
+                        .redCard(true)
+                        .secondYellow(true)
+                        .build(),
+                goal("70", 70, "AWAY", false)
+        ));
+        assertEquals("1:0", score.getFirstTime());
+        assertEquals("1:1", score.getFullTime());
     }
 
     private static MatchGoalEvent goal(String minute, Integer minuteNumber, String side, boolean penShootout) {

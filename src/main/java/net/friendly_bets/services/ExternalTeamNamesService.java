@@ -9,6 +9,7 @@ import net.friendly_bets.football24.Football24TeamNamesService;
 import net.friendly_bets.marathonbet.MarathonbetTeamNamesService;
 import net.friendly_bets.melbet.MelbetTeamNamesService;
 import net.friendly_bets.providers.ExternalProviderIds;
+import net.friendly_bets.ruscore.RuscoreTeamNamesService;
 import net.friendly_bets.soccer365.Soccer365TeamNamesService;
 import net.friendly_bets.sportsru.SportsRuTeamNamesService;
 import net.friendly_bets.twentyfourscore.TwentyFourScoreTeamNamesService;
@@ -27,6 +28,7 @@ public class ExternalTeamNamesService {
     private final SportsRuTeamNamesService sportsRuTeamNamesService;
     private final Football24TeamNamesService football24TeamNamesService;
     private final ChampionatTeamNamesService championatTeamNamesService;
+    private final RuscoreTeamNamesService ruscoreTeamNamesService;
     private final ExternalTeamAliasAutoBindService autoBindService;
 
     public ExternalTeamNamesLoadResultDto fetchAndAutoBindTeamNames(String providerRaw, String leagueCode) {
@@ -40,6 +42,7 @@ public class ExternalTeamNamesService {
             case ExternalProviderIds.SPORTS_RU -> sportsRuTeamNamesService.fetchTeamNames(leagueCode);
             case ExternalProviderIds.FOOTBALL24 -> football24TeamNamesService.fetchTeamNames(leagueCode);
             case ExternalProviderIds.CHAMPIONAT -> championatTeamNamesService.fetchTeamNames(leagueCode);
+            case ExternalProviderIds.RUSCORE -> ruscoreTeamNamesService.fetchTeamNames(leagueCode);
             default -> throw new BadRequestException("externalTeamNamesProviderUnsupported");
         };
         return autoBindService.bindAndCollectUnmapped(provider, leagueCode, names);

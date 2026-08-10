@@ -43,6 +43,9 @@ public final class GameScoreFromGoals {
                 if (Boolean.TRUE.equals(goal.getMissed())) {
                     continue;
                 }
+                if (Boolean.TRUE.equals(goal.getRedCard())) {
+                    continue;
+                }
                 if (Boolean.TRUE.equals(goal.getPenaltyShootout())) {
                     anyPen = true;
                     if (home) {

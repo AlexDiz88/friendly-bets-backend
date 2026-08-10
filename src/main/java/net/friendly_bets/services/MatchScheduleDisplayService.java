@@ -49,6 +49,9 @@ public class MatchScheduleDisplayService {
                 .liveMinuteLabel(schedule.getLiveMinuteLabel())
                 .slotId(schedule.getSlotId())
                 .adminCorrected(false)
+                .goals(schedule.getGoals())
+                .addedTimeFirstHalf(schedule.getAddedTimeFirstHalf())
+                .addedTimeSecondHalf(schedule.getAddedTimeSecondHalf())
                 .build();
 
         applyTeamDisplay(dto, true, findTeam(schedule.getHomeTeamId()), schedule.getLeagueCode());

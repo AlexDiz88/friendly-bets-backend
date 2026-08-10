@@ -40,6 +40,12 @@ import net.friendly_bets.sportsru.SportsRuCalendarPathSupport;
 import net.friendly_bets.sportsru.SportsRuHttpClient;
 import net.friendly_bets.sportsru.SportsRuParsedSchedule;
 import net.friendly_bets.sportsru.SportsRuScheduleParser;
+import net.friendly_bets.ruscore.RuscoreDayPageParser;
+import net.friendly_bets.ruscore.RuscoreGameSummaryParser;
+import net.friendly_bets.ruscore.RuscoreHttpClient;
+import net.friendly_bets.ruscore.RuscoreParsedDayPage;
+import net.friendly_bets.ruscore.RuscoreParsedFullMatch;
+import net.friendly_bets.models.schedule.MatchGoalEvent;
 import net.friendly_bets.twentyfourscore.TwentyFourScoreDatePageParser;
 import net.friendly_bets.twentyfourscore.TwentyFourScoreHttpClient;
 import net.friendly_bets.twentyfourscore.TwentyFourScoreParsedDatePage;
@@ -75,6 +81,9 @@ public class ExternalDataSandboxService {
     private final TwentyFourScoreDatePageParser twentyFourScoreDatePageParser;
     private final ChampionatHttpClient championatHttpClient;
     private final ChampionatDateJsonParser championatDateJsonParser;
+    private final RuscoreHttpClient ruscoreHttpClient;
+    private final RuscoreDayPageParser ruscoreDayPageParser;
+    private final RuscoreGameSummaryParser ruscoreGameSummaryParser;
     private final TeamAliasResolver teamAliasResolver;
 
     public ExternalDataSandboxResultDto runSchedule(ExternalDataSandboxScheduleRequestDto request) {
@@ -305,15 +314,18 @@ public class ExternalDataSandboxService {
 
     public ExternalDataSandboxResultDto runFullMatch(ExternalDataSandboxFullMatchRequestDto request) {
         String provider = requireProvider(request != null ? request.getProvider() : null, ExternalProviderIds.SOCCER365);
-        if (!ExternalProviderIds.SOCCER365.equals(provider)) {
+        if (!ExternalProviderIds.SOCCER365.equals(provider) && !ExternalProviderIds.RUSCORE.equals(provider)) {
             throw new BadRequestException("sandboxUnsupportedProvider");
         }
-        if (request == null || request.getGameId() == null || request.getGameId().isBlank()) {
-            throw new BadRequestException("sandboxGameIdRequired");
-        }
-        String gameId = request.getGameId().trim();
         long started = System.currentTimeMillis();
         try {
+            if (ExternalProviderIds.RUSCORE.equals(provider)) {
+                return runRuscoreFullMatch(request, started);
+            }
+            if (request == null || request.getGameId() == null || request.getGameId().isBlank()) {
+                throw new BadRequestException("sandboxGameIdRequired");
+            }
+            String gameId = request.getGameId().trim();
             String html = soccer365HttpClient.fetchGameHtml(gameId);
             Soccer365ParsedFullMatch parsed = soccer365GameParser.parse(html);
             Map<String, Object> summary = new LinkedHashMap<>();
@@ -321,9 +333,11 @@ public class ExternalDataSandboxService {
             summary.put("statusText", parsed.getStatusText());
             summary.put("homeTeamName", parsed.getHomeTeamName());
             summary.put("awayTeamName", parsed.getAwayTeamName());
+            summary.put("homeTeam", resolveSandboxTeam(provider, parsed.getHomeTeamName()));
+            summary.put("awayTeam", resolveSandboxTeam(provider, parsed.getAwayTeamName()));
             summary.put("competitionName", parsed.getCompetitionName());
             summary.put("gameScore", parsed.getGameScore());
-            summary.put("goalsCount", parsed.getGoals() != null ? parsed.getGoals().size() : 0);
+            summary.put("goalsCount", countNonCardGoals(parsed.getGoals()));
             summary.put("goals", parsed.getGoals());
             summary.put("stats", parsed.getStats());
             return ExternalDataSandboxResultDto.builder()
@@ -336,8 +350,126 @@ public class ExternalDataSandboxService {
         } catch (BadRequestException e) {
             return fail(ExternalDataLayer.FULL_MATCH, provider, started, e.getMessage(), null);
         } catch (RuntimeException e) {
-            return fail(ExternalDataLayer.FULL_MATCH, provider, started, "soccer365FetchFailed", e.getMessage());
+            String fetchKey = ExternalProviderIds.RUSCORE.equals(provider) ? "ruscoreFetchFailed" : "soccer365FetchFailed";
+            return fail(ExternalDataLayer.FULL_MATCH, provider, started, fetchKey, e.getMessage());
         }
+    }
+
+    private ExternalDataSandboxResultDto runRuscoreFullMatch(
+            ExternalDataSandboxFullMatchRequestDto request,
+            long started
+    ) {
+        String gameIdRaw = request != null && request.getGameId() != null ? request.getGameId().trim() : "";
+        String dateRaw = request != null && request.getDate() != null ? request.getDate().trim() : "";
+        if (!gameIdRaw.isEmpty()) {
+            String slug;
+            String eventId;
+            int slash = gameIdRaw.lastIndexOf('/');
+            if (slash > 0 && slash < gameIdRaw.length() - 1) {
+                slug = gameIdRaw.substring(0, slash).trim();
+                eventId = gameIdRaw.substring(slash + 1).trim();
+            } else {
+                // eventId only — day browse should supply slug; allow numeric id via /game lookup is not supported
+                throw new BadRequestException("sandboxGameIdRequired");
+            }
+            if (slug.isEmpty() || eventId.isEmpty()) {
+                throw new BadRequestException("sandboxGameIdRequired");
+            }
+            // Accept "slug/eventId" or full path remnant
+            if (slug.contains("/")) {
+                int last = slug.lastIndexOf('/');
+                slug = slug.substring(last + 1);
+            }
+            String html = ruscoreHttpClient.fetchGameSummaryHtml(slug, eventId);
+            RuscoreParsedFullMatch parsed = ruscoreGameSummaryParser.parse(html, eventId, slug);
+            Map<String, Object> summary = new LinkedHashMap<>();
+            summary.put("gameId", slug + "/" + eventId);
+            summary.put("eventId", eventId);
+            summary.put("slug", slug);
+            summary.put("statusText", parsed.getStatusText());
+            summary.put("homeTeamName", parsed.getHomeTeamName());
+            summary.put("awayTeamName", parsed.getAwayTeamName());
+            summary.put("homeTeam", resolveSandboxTeam(ExternalProviderIds.RUSCORE, parsed.getHomeTeamName()));
+            summary.put("awayTeam", resolveSandboxTeam(ExternalProviderIds.RUSCORE, parsed.getAwayTeamName()));
+            summary.put("competitionName", parsed.getCompetitionName());
+            summary.put("gameScore", parsed.getGameScore());
+            summary.put("goalsCount", countNonCardGoals(parsed.getGoals()));
+            summary.put("goals", parsed.getGoals());
+            summary.put("stats", parsed.getStats());
+            summary.put("addedTimeFirstHalf", parsed.getAddedTimeFirstHalf());
+            summary.put("addedTimeSecondHalf", parsed.getAddedTimeSecondHalf());
+            return ExternalDataSandboxResultDto.builder()
+                    .success(true)
+                    .layer(ExternalDataLayer.FULL_MATCH.name())
+                    .provider(ExternalProviderIds.RUSCORE)
+                    .durationMs(System.currentTimeMillis() - started)
+                    .parsed(summary)
+                    .build();
+        }
+        if (dateRaw.isEmpty()) {
+            throw new BadRequestException("sandboxDateRequired");
+        }
+        LocalDate date;
+        try {
+            date = LocalDate.parse(dateRaw);
+        } catch (RuntimeException e) {
+            throw new BadRequestException("sandboxDateRequired");
+        }
+        String titleContains = request.getTitleContains() != null ? request.getTitleContains().trim() : "";
+        String html = ruscoreHttpClient.fetchDayFootballHtml(date);
+        RuscoreParsedDayPage page = ruscoreDayPageParser.parse(html, date);
+        List<RuscoreParsedDayPage.CompetitionBlock> all = page.getCompetitions() != null
+                ? page.getCompetitions()
+                : List.of();
+        List<RuscoreParsedDayPage.CompetitionBlock> filtered = titleContains.isEmpty()
+                ? all
+                : all.stream()
+                .filter(c -> RuscoreDayPageParser.competitionMatchesFilter(c, titleContains))
+                .collect(Collectors.toList());
+        return ExternalDataSandboxResultDto.builder()
+                .success(true)
+                .layer(ExternalDataLayer.FULL_MATCH.name())
+                .provider(ExternalProviderIds.RUSCORE)
+                .durationMs(System.currentTimeMillis() - started)
+                .parsed(toRuscoreDayParsed(date.toString(), titleContains, all.size(), filtered))
+                .build();
+    }
+
+    private Map<String, Object> toRuscoreDayParsed(
+            String date,
+            String titleContains,
+            int competitionsTotal,
+            List<RuscoreParsedDayPage.CompetitionBlock> filtered
+    ) {
+        int matchesCount = 0;
+        List<Map<String, Object>> competitions = new ArrayList<>();
+        for (RuscoreParsedDayPage.CompetitionBlock block : filtered) {
+            List<Map<String, Object>> matches = new ArrayList<>();
+            if (block.getMatches() != null) {
+                for (RuscoreParsedDayPage.Match match : block.getMatches()) {
+                    matchesCount++;
+                    Map<String, Object> row = new LinkedHashMap<>();
+                    row.put("externalMatchId", match.getEventId());
+                    row.put("gameId", match.getSlug() + "/" + match.getEventId());
+                    row.put("slug", match.getSlug());
+                    row.put("homeName", match.getHomeName());
+                    row.put("awayName", match.getAwayName());
+                    row.put("homeTeam", resolveSandboxTeam(ExternalProviderIds.RUSCORE, match.getHomeName()));
+                    row.put("awayTeam", resolveSandboxTeam(ExternalProviderIds.RUSCORE, match.getAwayName()));
+                    row.put("utcKickoff", match.getUtcKickoff() != null ? match.getUtcKickoff().toString() : null);
+                    row.put("status", match.getStatusText());
+                    row.put("scoreText", match.getScoreText());
+                    matches.add(row);
+                }
+            }
+            Map<String, Object> comp = new LinkedHashMap<>();
+            comp.put("title", block.getTitle());
+            comp.put("seasonId", block.getSeasonId());
+            comp.put("tournamentSlug", block.getTournamentSlug());
+            comp.put("matches", matches);
+            competitions.add(comp);
+        }
+        return liveParsedEnvelope(date, titleContains, competitionsTotal, matchesCount, competitions);
     }
 
     private static String requireProvider(String provider, String defaultProvider) {
@@ -786,6 +918,9 @@ public class ExternalDataSandboxService {
      * Best-effort alias resolve for sandbox card preview. Missing alias → null (UI keeps default logo).
      */
     private Map<String, Object> resolveSandboxTeam(String provider, String externalName) {
+        if (externalName == null || externalName.isBlank()) {
+            return null;
+        }
         return teamAliasResolver.resolveByProviderName(provider, externalName)
                 .map(team -> {
                     Map<String, Object> dto = new LinkedHashMap<>();
@@ -795,5 +930,18 @@ public class ExternalDataSandboxService {
                     return dto;
                 })
                 .orElse(null);
+    }
+
+    private static int countNonCardGoals(List<MatchGoalEvent> goals) {
+        if (goals == null || goals.isEmpty()) {
+            return 0;
+        }
+        int n = 0;
+        for (MatchGoalEvent g : goals) {
+            if (g != null && !Boolean.TRUE.equals(g.getRedCard())) {
+                n++;
+            }
+        }
+        return n;
     }
 }

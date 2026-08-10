@@ -60,6 +60,7 @@ public class ExternalApiMonitoringService {
     }
 
     private final ExternalApiMonitoringRepository repository;
+    private final ErrorLogService errorLogService;
 
     public static void setTriggerOverride(ExternalApiMonitoringTrigger trigger) {
         TRIGGER_OVERRIDE.set(trigger);
@@ -114,6 +115,16 @@ public class ExternalApiMonitoringService {
         run.setHttpLogs(new ArrayList<>(logs));
         run.setHttpRequestsTotal(logs.size());
         run.setHttpRequestsFailed(countFailed(logs));
+        if (run.getHttpRequestsFailed() > 0) {
+            errorLogService.recordHttpRequestFailuresIfNeeded(
+                    run.getLayer(),
+                    run.getProvider(),
+                    run.getLeagueCode(),
+                    run.getSeason(),
+                    logs,
+                    errorSummary
+            );
+        }
         if (failedMatchScheduleIds != null && !failedMatchScheduleIds.isEmpty()) {
             run.setFailedMatchScheduleIds(new ArrayList<>(new LinkedHashSet<>(failedMatchScheduleIds)));
         }

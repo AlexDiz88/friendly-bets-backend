@@ -10,6 +10,8 @@ class FullMatchStatusSupportTest {
     @Test
     void finishedLabels() {
         assertTrue(FullMatchStatusSupport.isProviderFinished("Завершен"));
+        assertTrue(FullMatchStatusSupport.isProviderFinished("завершён"));
+        assertTrue(FullMatchStatusSupport.isProviderFinished("Завершён"));
         assertTrue(FullMatchStatusSupport.isProviderFinished("Завершен. 7:6 по пенальти"));
         assertTrue(FullMatchStatusSupport.isProviderFinished("Finished"));
         assertTrue(FullMatchStatusSupport.isProviderFinished("FINISHED"));

@@ -10,6 +10,7 @@ public final class ExternalProviderIds {
     public static final String SOCCER365 = "soccer365.ru";
     public static final String SPORTS_RU = "sports.ru";
     public static final String FOOTBALL24 = "football24.ua";
+    public static final String RUSCORE = "ruscore.ru";
 
     private ExternalProviderIds() {
     }

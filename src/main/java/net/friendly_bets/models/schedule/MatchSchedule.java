@@ -83,6 +83,14 @@ public class MatchSchedule {
     @Field(name = "stats")
     private MatchTeamStats stats;
 
+    /** Announced injury/added time after first half (minutes); optional FULL_MATCH field. */
+    @Field(name = "added_time_first_half")
+    private Integer addedTimeFirstHalf;
+
+    /** Announced injury/added time after second half (minutes); optional FULL_MATCH field. */
+    @Field(name = "added_time_second_half")
+    private Integer addedTimeSecondHalf;
+
     @Field(name = "finalized_at")
     private Instant finalizedAt;
 
