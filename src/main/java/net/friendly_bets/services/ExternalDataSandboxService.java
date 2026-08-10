@@ -333,6 +333,8 @@ public class ExternalDataSandboxService {
             summary.put("statusText", parsed.getStatusText());
             summary.put("homeTeamName", parsed.getHomeTeamName());
             summary.put("awayTeamName", parsed.getAwayTeamName());
+            summary.put("homeTeam", resolveSandboxTeam(provider, parsed.getHomeTeamName()));
+            summary.put("awayTeam", resolveSandboxTeam(provider, parsed.getAwayTeamName()));
             summary.put("competitionName", parsed.getCompetitionName());
             summary.put("gameScore", parsed.getGameScore());
             summary.put("goalsCount", countNonCardGoals(parsed.getGoals()));
@@ -387,6 +389,8 @@ public class ExternalDataSandboxService {
             summary.put("statusText", parsed.getStatusText());
             summary.put("homeTeamName", parsed.getHomeTeamName());
             summary.put("awayTeamName", parsed.getAwayTeamName());
+            summary.put("homeTeam", resolveSandboxTeam(ExternalProviderIds.RUSCORE, parsed.getHomeTeamName()));
+            summary.put("awayTeam", resolveSandboxTeam(ExternalProviderIds.RUSCORE, parsed.getAwayTeamName()));
             summary.put("competitionName", parsed.getCompetitionName());
             summary.put("gameScore", parsed.getGameScore());
             summary.put("goalsCount", countNonCardGoals(parsed.getGoals()));
@@ -914,6 +918,9 @@ public class ExternalDataSandboxService {
      * Best-effort alias resolve for sandbox card preview. Missing alias → null (UI keeps default logo).
      */
     private Map<String, Object> resolveSandboxTeam(String provider, String externalName) {
+        if (externalName == null || externalName.isBlank()) {
+            return null;
+        }
         return teamAliasResolver.resolveByProviderName(provider, externalName)
                 .map(team -> {
                     Map<String, Object> dto = new LinkedHashMap<>();

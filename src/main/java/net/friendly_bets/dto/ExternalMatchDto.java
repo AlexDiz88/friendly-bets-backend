@@ -5,8 +5,10 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import net.friendly_bets.models.GameScore;
+import net.friendly_bets.models.schedule.MatchGoalEvent;
 
 import java.time.Instant;
+import java.util.List;
 
 @Data
 @Builder
@@ -46,4 +48,8 @@ public class ExternalMatchDto {
     private String slotId;
     /** Id матча в wc26_schedule (1–104), если известен. */
     private Integer wc26ScheduleId;
+    /** FULL_MATCH goal / red-card / miss events (empty until finalized). */
+    private List<MatchGoalEvent> goals;
+    private Integer addedTimeFirstHalf;
+    private Integer addedTimeSecondHalf;
 }

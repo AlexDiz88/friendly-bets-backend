@@ -96,6 +96,36 @@ class RuscoreGameSummaryParserTest {
     }
 
     @Test
+    void marksOwnGoalFromScoreSubtypeA() {
+        String html = """
+                <html><body>
+                <div data-test-id="status">завершён</div>
+                <span data-test-id="overall">0 : 2</span>
+                <div data-test-id="incident-wrapper">
+                  <div data-test-id="away-player">
+                    <span class="_score_x">0 : 1</span>
+                    <a data-test-id="player-name">M. Younis</a>
+                  </div>
+                  <span data-test-id="time">12'</span>
+                </div>
+                <div data-test-id="incident-wrapper">
+                  <div data-test-id="away-player">
+                    <span class="_score_x">0 : 2 <span class="_scoreSubtype_x">A</span></span>
+                    <a data-test-id="player-name">M. Kupijbida</a>
+                  </div>
+                  <span data-test-id="time">60'</span>
+                </div>
+                </body></html>
+                """;
+        RuscoreParsedFullMatch parsed = parser.parse(html, "544146", "ac-horsens-brondby");
+        assertEquals(2, parsed.getGoals().size());
+        assertNull(parsed.getGoals().get(0).getOwnGoal());
+        assertEquals("60", parsed.getGoals().get(1).getMinute());
+        assertEquals(Boolean.TRUE, parsed.getGoals().get(1).getOwnGoal());
+        assertEquals("AWAY", parsed.getGoals().get(1).getTeamSide());
+    }
+
+    @Test
     void secondYellowBecomesRedEventAndStats() {
         String html = """
                 <html><body>

@@ -119,13 +119,14 @@ public class RuscoreGameSummaryParser {
                 continue;
             }
             String minute = normalizeMinuteLabel(timeRaw);
-            Boolean penalty = isInMatchPenaltyGoal(inc);
+            ScoreSubtype subtype = parseScoreSubtype(inc);
             goals.add(MatchGoalEvent.builder()
                     .minute(minute)
                     .minuteNumber(parseMinuteNumber(minute))
                     .teamSide(side)
                     .playerName(player)
-                    .penalty(penalty)
+                    .penalty(subtype.penalty)
+                    .ownGoal(subtype.ownGoal)
                     .build());
         }
         return goals;
@@ -181,10 +182,12 @@ public class RuscoreGameSummaryParser {
     }
 
     /**
-     * In-match penalty goal: score box subtype {@code 11} (UI shows "11-м" via CSS).
-     * Shootout / missed pens are not marked this way on scored goals.
+     * Score-box subtype markers on ruscore goals:
+     * {@code 11} → in-match penalty (UI "11-м"); {@code A}/{@code А} → own goal.
      */
-    private static Boolean isInMatchPenaltyGoal(Element inc) {
+    private static ScoreSubtype parseScoreSubtype(Element inc) {
+        Boolean penalty = null;
+        Boolean ownGoal = null;
         for (Element el : inc.select("span[class*=scoreSubtype]")) {
             String t = text(el);
             if (t == null) {
@@ -198,10 +201,21 @@ public class RuscoreGameSummaryParser {
                     || norm.startsWith("11-")
                     || "11м".equals(norm)
                     || norm.contains("пеналт")) {
-                return true;
+                penalty = true;
+            } else if ("a".equals(norm)
+                    || "а".equals(norm)
+                    || "ag".equals(norm)
+                    || "аг".equals(norm)
+                    || norm.contains("автогол")
+                    || norm.contains("owngoal")
+                    || "og".equals(norm)) {
+                ownGoal = true;
             }
         }
-        return null;
+        return new ScoreSubtype(penalty, ownGoal);
+    }
+
+    private record ScoreSubtype(Boolean penalty, Boolean ownGoal) {
     }
 
     private static boolean isNonGoalPlayerLabel(String player) {
