@@ -71,8 +71,9 @@ public class FlashscoreMatchDetailParser {
             if (kp == null || !kp.equalsIgnoreCase(needle)) {
                 continue;
             }
-            String home = cleanTeamLabel(FlashscoreFeedSupport.firstNonBlank(fields, "KJ", "FH"));
-            String away = cleanTeamLabel(FlashscoreFeedSupport.firstNonBlank(fields, "KK", "FK"));
+            // FH/FK are canonical English labels used for alias autobind; KJ/KK may be localized.
+            String home = cleanTeamLabel(FlashscoreFeedSupport.firstNonBlank(fields, "FH", "KJ"));
+            String away = cleanTeamLabel(FlashscoreFeedSupport.firstNonBlank(fields, "FK", "KK"));
             String competition = fields.get("KF");
             if (home == null && away == null && competition == null) {
                 return null;

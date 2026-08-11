@@ -91,6 +91,14 @@ public class ExternalTeamAliasAutoBindService {
                     alreadyMapped++;
                     continue;
                 }
+                if (TeamAliasResolver.externalNameMatchesTeamDisplay(candidate, externalName)) {
+                    bindAlias(candidate, provider, externalName);
+                    teamsRepository.save(candidate);
+                    teamsById.put(candidate.getId(), candidate);
+                    errorLogService.purgeTeamMappingIssuesForExternalTeam(provider, externalName);
+                    autoBound++;
+                    continue;
+                }
                 // Team already mapped for this provider (e.g. RU alias vs EN label from the same API).
                 // Keep existing alias; log drift for ops; do not show a chip or toast "mismatch".
                 recordMismatch(provider, leagueCode.name(), candidate, existing.getExternalName(), externalName);

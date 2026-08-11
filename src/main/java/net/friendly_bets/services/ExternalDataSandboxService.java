@@ -10,6 +10,7 @@ import net.friendly_bets.dto.ExternalDataSandboxLiveRequestDto;
 import net.friendly_bets.dto.ExternalDataSandboxOddsRequestDto;
 import net.friendly_bets.dto.ExternalDataSandboxResultDto;
 import net.friendly_bets.dto.ExternalDataSandboxScheduleRequestDto;
+import net.friendly_bets.dto.TeamDisplayNamesDto;
 import net.friendly_bets.dto.MarathonbetMarketDto;
 import net.friendly_bets.exceptions.BadRequestException;
 import net.friendly_bets.providers.ExternalProviderIds;
@@ -1053,6 +1054,10 @@ public class ExternalDataSandboxService {
                     dto.put("id", team.getId());
                     dto.put("title", team.getTitle());
                     dto.put("logoKey", team.getLogo());
+                    TeamDisplayNamesDto displayNames = TeamDisplayNamesDto.from(team.getDisplayNames());
+                    if (displayNames != null) {
+                        dto.put("displayNames", displayNames);
+                    }
                     return dto;
                 })
                 .orElse(null);
