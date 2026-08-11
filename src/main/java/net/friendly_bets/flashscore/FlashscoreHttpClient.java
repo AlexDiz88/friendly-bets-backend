@@ -1,0 +1,148 @@
+package net.friendly_bets.flashscore;
+
+import lombok.RequiredArgsConstructor;
+import net.friendly_bets.exceptions.BadRequestException;
+import net.friendly_bets.flashscore.config.FlashscoreProperties;
+import net.friendly_bets.providers.ExternalDataLayer;
+import net.friendly_bets.providers.ExternalProviderIds;
+import net.friendly_bets.scrape.BrowserProfile;
+import net.friendly_bets.scrape.ExternalApiCircuitBreaker;
+import net.friendly_bets.scrape.ScrapeFailureKind;
+import net.friendly_bets.scrape.ScrapeHttpSupport;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Component;
+
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
+import java.time.temporal.ChronoUnit;
+
+@Component
+@RequiredArgsConstructor
+public class FlashscoreHttpClient {
+
+    private static final Logger log = LoggerFactory.getLogger(FlashscoreHttpClient.class);
+
+    private final FlashscoreProperties properties;
+    private final ExternalApiCircuitBreaker circuitBreaker;
+
+    private final BrowserProfile browserProfile = BrowserProfile.randomDesktopRu();
+    private final HttpClient httpClient = ScrapeHttpSupport.newBrowserClient(Duration.ofSeconds(30));
+
+    public String fetchDayFootballFeed(LocalDate date) {
+        if (date == null) {
+            throw new BadRequestException("flashscoreFetchFailed");
+        }
+        long dayOffset = ChronoUnit.DAYS.between(LocalDate.now(ZoneOffset.UTC), date);
+        String path = String.format("/2/x/feed/f_1_%d_3_%s_1", dayOffset, properties.getFeedLocale());
+        return fetchFeed(path, ExternalDataLayer.FULL_MATCH);
+    }
+
+    public String fetchMatchSummaryFeed(String eventId) {
+        return fetchMatchDetailFeed("df_sui_1_" + requireEventId(eventId));
+    }
+
+    public String fetchMatchStatsFeed(String eventId) {
+        return fetchMatchDetailFeed("df_st_1_" + requireEventId(eventId));
+    }
+
+    public String fetchMatchResultFeed(String eventId) {
+        return fetchMatchDetailFeed("df_sur_1_" + requireEventId(eventId));
+    }
+
+    public String fetchTournamentPageHtml(String tournamentPath) {
+        if (tournamentPath == null || tournamentPath.isBlank()) {
+            throw new BadRequestException("flashscoreTournamentNotConfigured");
+        }
+        String base = trimTrailingSlash(properties.getBaseUrl());
+        String path = tournamentPath.startsWith("/") ? tournamentPath : "/" + tournamentPath;
+        if (!path.endsWith("/")) {
+            path = path + "/";
+        }
+        String url = base + path;
+        ScrapeHttpSupport.jitterSleep(properties.getHttpDelayMinMs(), properties.getHttpDelayMaxMs());
+        return getText(url, base + "/football/", ExternalDataLayer.FULL_MATCH, true);
+    }
+
+    private String fetchMatchDetailFeed(String feedName) {
+        String path = "/2/x/feed/" + feedName;
+        return fetchFeed(path, ExternalDataLayer.FULL_MATCH);
+    }
+
+    private String fetchFeed(String path, ExternalDataLayer layer) {
+        String base = trimTrailingSlash(properties.getFeedBaseUrl());
+        String url = base + path;
+        ScrapeHttpSupport.jitterSleep(properties.getHttpDelayMinMs(), properties.getHttpDelayMaxMs());
+        return getText(url, properties.getBaseUrl() + "/football/", layer, true);
+    }
+
+    private String getText(String url, String referer, ExternalDataLayer layer, boolean reportCircuit) {
+        try {
+            HttpRequest.Builder builder = HttpRequest.newBuilder()
+                    .uri(URI.create(url))
+                    .timeout(Duration.ofSeconds(60))
+                    .GET();
+            ScrapeHttpSupport.applyNavigationHeaders(builder, browserProfile, referer);
+            builder.setHeader("x-fsign", properties.getFeedSign());
+            HttpResponse<String> response = httpClient.send(builder.build(), HttpResponse.BodyHandlers.ofString());
+            String body = response.body() != null ? response.body() : "";
+            if (ScrapeHttpSupport.looksLikeJsChallenge(body)) {
+                if (reportCircuit) {
+                    circuitBreaker.recordFailure(layer, ExternalProviderIds.FLASHSCORE, ScrapeFailureKind.CHALLENGE, url);
+                }
+                throw new BadRequestException("flashscoreFetchFailed");
+            }
+            if (response.statusCode() >= 400) {
+                ScrapeFailureKind kind = ScrapeHttpSupport.classifyHttpStatus(response.statusCode());
+                log.warn("flashscore HTTP {} for {}", response.statusCode(), url);
+                if (reportCircuit) {
+                    circuitBreaker.recordFailure(layer, ExternalProviderIds.FLASHSCORE, kind, "HTTP " + response.statusCode());
+                }
+                throw new BadRequestException("flashscoreFetchFailed");
+            }
+            if (body.length() < 5 && !"0".equals(body.trim())) {
+                log.warn("flashscore empty feed for {}", url);
+                if (reportCircuit) {
+                    circuitBreaker.recordFailure(layer, ExternalProviderIds.FLASHSCORE, ScrapeFailureKind.PARSE_ERROR, url);
+                }
+                throw new BadRequestException("flashscoreFetchFailed");
+            }
+            if (reportCircuit) {
+                circuitBreaker.recordSuccess(layer);
+            }
+            return body;
+        } catch (BadRequestException e) {
+            throw e;
+        } catch (Exception e) {
+            ScrapeFailureKind kind = ScrapeHttpSupport.classifyThrowable(e);
+            log.warn("flashscore fetch failed for {}: {}", url, e.getMessage());
+            if (reportCircuit) {
+                circuitBreaker.recordFailure(layer, ExternalProviderIds.FLASHSCORE, kind, e.getMessage());
+            }
+            throw new BadRequestException("flashscoreFetchFailed");
+        }
+    }
+
+    private static String requireEventId(String eventId) {
+        if (eventId == null || eventId.isBlank()) {
+            throw new BadRequestException("flashscoreGameIdRequired");
+        }
+        return eventId.trim();
+    }
+
+    private static String trimTrailingSlash(String baseUrl) {
+        if (baseUrl == null || baseUrl.isBlank()) {
+            return "https://www.flashscorekz.com";
+        }
+        String trimmed = baseUrl.trim();
+        while (trimmed.endsWith("/")) {
+            trimmed = trimmed.substring(0, trimmed.length() - 1);
+        }
+        return trimmed;
+    }
+}

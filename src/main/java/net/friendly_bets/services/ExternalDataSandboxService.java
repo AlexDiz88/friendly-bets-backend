@@ -45,6 +45,11 @@ import net.friendly_bets.ruscore.RuscoreGameSummaryParser;
 import net.friendly_bets.ruscore.RuscoreHttpClient;
 import net.friendly_bets.ruscore.RuscoreParsedDayPage;
 import net.friendly_bets.ruscore.RuscoreParsedFullMatch;
+import net.friendly_bets.flashscore.FlashscoreDayFeedParser;
+import net.friendly_bets.flashscore.FlashscoreHttpClient;
+import net.friendly_bets.flashscore.FlashscoreMatchDetailParser;
+import net.friendly_bets.flashscore.FlashscoreParsedDayPage;
+import net.friendly_bets.flashscore.FlashscoreParsedFullMatch;
 import net.friendly_bets.models.schedule.MatchGoalEvent;
 import net.friendly_bets.twentyfourscore.TwentyFourScoreDatePageParser;
 import net.friendly_bets.twentyfourscore.TwentyFourScoreHttpClient;
@@ -84,6 +89,9 @@ public class ExternalDataSandboxService {
     private final RuscoreHttpClient ruscoreHttpClient;
     private final RuscoreDayPageParser ruscoreDayPageParser;
     private final RuscoreGameSummaryParser ruscoreGameSummaryParser;
+    private final FlashscoreHttpClient flashscoreHttpClient;
+    private final FlashscoreDayFeedParser flashscoreDayFeedParser;
+    private final FlashscoreMatchDetailParser flashscoreMatchDetailParser;
     private final TeamAliasResolver teamAliasResolver;
 
     public ExternalDataSandboxResultDto runSchedule(ExternalDataSandboxScheduleRequestDto request) {
@@ -314,13 +322,18 @@ public class ExternalDataSandboxService {
 
     public ExternalDataSandboxResultDto runFullMatch(ExternalDataSandboxFullMatchRequestDto request) {
         String provider = requireProvider(request != null ? request.getProvider() : null, ExternalProviderIds.SOCCER365);
-        if (!ExternalProviderIds.SOCCER365.equals(provider) && !ExternalProviderIds.RUSCORE.equals(provider)) {
+        if (!ExternalProviderIds.SOCCER365.equals(provider)
+                && !ExternalProviderIds.RUSCORE.equals(provider)
+                && !ExternalProviderIds.FLASHSCORE.equals(provider)) {
             throw new BadRequestException("sandboxUnsupportedProvider");
         }
         long started = System.currentTimeMillis();
         try {
             if (ExternalProviderIds.RUSCORE.equals(provider)) {
                 return runRuscoreFullMatch(request, started);
+            }
+            if (ExternalProviderIds.FLASHSCORE.equals(provider)) {
+                return runFlashscoreFullMatch(request, started);
             }
             if (request == null || request.getGameId() == null || request.getGameId().isBlank()) {
                 throw new BadRequestException("sandboxGameIdRequired");
@@ -350,7 +363,11 @@ public class ExternalDataSandboxService {
         } catch (BadRequestException e) {
             return fail(ExternalDataLayer.FULL_MATCH, provider, started, e.getMessage(), null);
         } catch (RuntimeException e) {
-            String fetchKey = ExternalProviderIds.RUSCORE.equals(provider) ? "ruscoreFetchFailed" : "soccer365FetchFailed";
+            String fetchKey = ExternalProviderIds.RUSCORE.equals(provider)
+                    ? "ruscoreFetchFailed"
+                    : (ExternalProviderIds.FLASHSCORE.equals(provider)
+                    ? "flashscoreFetchFailed"
+                    : "soccer365FetchFailed");
             return fail(ExternalDataLayer.FULL_MATCH, provider, started, fetchKey, e.getMessage());
         }
     }
@@ -433,6 +450,114 @@ public class ExternalDataSandboxService {
                 .durationMs(System.currentTimeMillis() - started)
                 .parsed(toRuscoreDayParsed(date.toString(), titleContains, all.size(), filtered))
                 .build();
+    }
+
+    private ExternalDataSandboxResultDto runFlashscoreFullMatch(
+            ExternalDataSandboxFullMatchRequestDto request,
+            long started
+    ) {
+        String gameIdRaw = request != null && request.getGameId() != null ? request.getGameId().trim() : "";
+        String dateRaw = request != null && request.getDate() != null ? request.getDate().trim() : "";
+        if (!gameIdRaw.isEmpty()) {
+            String eventId = gameIdRaw;
+            int slash = gameIdRaw.lastIndexOf('/');
+            if (slash > 0 && slash < gameIdRaw.length() - 1) {
+                eventId = gameIdRaw.substring(slash + 1).trim();
+            }
+            if (eventId.isEmpty()) {
+                throw new BadRequestException("sandboxGameIdRequired");
+            }
+            String summaryFeed = flashscoreHttpClient.fetchMatchSummaryFeed(eventId);
+            String statsFeed = flashscoreHttpClient.fetchMatchStatsFeed(eventId);
+            String resultFeed = flashscoreHttpClient.fetchMatchResultFeed(eventId);
+            FlashscoreParsedFullMatch parsed = flashscoreMatchDetailParser.parse(
+                    summaryFeed, statsFeed, resultFeed, eventId);
+            Map<String, Object> summary = new LinkedHashMap<>();
+            summary.put("gameId", eventId);
+            summary.put("eventId", eventId);
+            summary.put("statusText", parsed.getStatusText());
+            summary.put("homeTeamName", parsed.getHomeTeamName());
+            summary.put("awayTeamName", parsed.getAwayTeamName());
+            summary.put("homeTeam", resolveSandboxTeam(ExternalProviderIds.FLASHSCORE, parsed.getHomeTeamName()));
+            summary.put("awayTeam", resolveSandboxTeam(ExternalProviderIds.FLASHSCORE, parsed.getAwayTeamName()));
+            summary.put("competitionName", parsed.getCompetitionName());
+            summary.put("gameScore", parsed.getGameScore());
+            summary.put("goalsCount", countNonCardGoals(parsed.getGoals()));
+            summary.put("goals", parsed.getGoals());
+            summary.put("stats", parsed.getStats());
+            summary.put("addedTimeFirstHalf", parsed.getAddedTimeFirstHalf());
+            summary.put("addedTimeSecondHalf", parsed.getAddedTimeSecondHalf());
+            return ExternalDataSandboxResultDto.builder()
+                    .success(true)
+                    .layer(ExternalDataLayer.FULL_MATCH.name())
+                    .provider(ExternalProviderIds.FLASHSCORE)
+                    .durationMs(System.currentTimeMillis() - started)
+                    .parsed(summary)
+                    .build();
+        }
+        if (dateRaw.isEmpty()) {
+            throw new BadRequestException("sandboxDateRequired");
+        }
+        LocalDate date;
+        try {
+            date = LocalDate.parse(dateRaw);
+        } catch (RuntimeException e) {
+            throw new BadRequestException("sandboxDateRequired");
+        }
+        String titleContains = request.getTitleContains() != null ? request.getTitleContains().trim() : "";
+        String feed = flashscoreHttpClient.fetchDayFootballFeed(date);
+        FlashscoreParsedDayPage page = flashscoreDayFeedParser.parse(feed, date);
+        List<FlashscoreParsedDayPage.CompetitionBlock> all = page.getCompetitions() != null
+                ? page.getCompetitions()
+                : List.of();
+        List<FlashscoreParsedDayPage.CompetitionBlock> filtered = titleContains.isEmpty()
+                ? all
+                : all.stream()
+                .filter(c -> FlashscoreDayFeedParser.competitionMatchesFilter(c, titleContains))
+                .collect(Collectors.toList());
+        return ExternalDataSandboxResultDto.builder()
+                .success(true)
+                .layer(ExternalDataLayer.FULL_MATCH.name())
+                .provider(ExternalProviderIds.FLASHSCORE)
+                .durationMs(System.currentTimeMillis() - started)
+                .parsed(toFlashscoreDayParsed(date.toString(), titleContains, all.size(), filtered))
+                .build();
+    }
+
+    private Map<String, Object> toFlashscoreDayParsed(
+            String date,
+            String titleContains,
+            int competitionsTotal,
+            List<FlashscoreParsedDayPage.CompetitionBlock> filtered
+    ) {
+        int matchesCount = 0;
+        List<Map<String, Object>> competitions = new ArrayList<>();
+        for (FlashscoreParsedDayPage.CompetitionBlock block : filtered) {
+            List<Map<String, Object>> matches = new ArrayList<>();
+            if (block.getMatches() != null) {
+                for (FlashscoreParsedDayPage.Match match : block.getMatches()) {
+                    matchesCount++;
+                    Map<String, Object> row = new LinkedHashMap<>();
+                    row.put("externalMatchId", match.getEventId());
+                    row.put("gameId", match.getEventId());
+                    row.put("homeName", match.getHomeName());
+                    row.put("awayName", match.getAwayName());
+                    row.put("homeTeam", resolveSandboxTeam(ExternalProviderIds.FLASHSCORE, match.getHomeName()));
+                    row.put("awayTeam", resolveSandboxTeam(ExternalProviderIds.FLASHSCORE, match.getAwayName()));
+                    row.put("utcKickoff", match.getUtcKickoff() != null ? match.getUtcKickoff().toString() : null);
+                    row.put("status", match.getStatusText());
+                    row.put("scoreText", match.getScoreText());
+                    matches.add(row);
+                }
+            }
+            Map<String, Object> comp = new LinkedHashMap<>();
+            comp.put("title", block.getTitle());
+            comp.put("stageId", block.getStageId());
+            comp.put("tournamentPath", block.getTournamentPath());
+            comp.put("matches", matches);
+            competitions.add(comp);
+        }
+        return liveParsedEnvelope(date, titleContains, competitionsTotal, matchesCount, competitions);
     }
 
     private Map<String, Object> toRuscoreDayParsed(
