@@ -136,7 +136,9 @@ public class FlashscoreFullMatchProvider implements FullMatchProvider {
             );
             throw new FullMatchNotReadyException(details.getStatusText());
         }
-        if (details.getGameScore() == null || details.getGameScore().getFullTime() == null) {
+        if (details.getGameScore() == null
+                || details.getGameScore().getFullTime() == null
+                || details.getGameScore().getFirstTime() == null) {
             monitoringService.finalizeAndSave(
                     run,
                     ExternalApiMonitoringStatus.FAILED,

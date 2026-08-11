@@ -1,7 +1,6 @@
 package net.friendly_bets.flashscore;
 
 import net.friendly_bets.exceptions.BadRequestException;
-import net.friendly_bets.matchschedule.GameScoreFromGoals;
 import net.friendly_bets.models.GameScore;
 import net.friendly_bets.models.schedule.MatchGoalEvent;
 import net.friendly_bets.models.schedule.MatchTeamStats;
@@ -40,34 +39,14 @@ public class FlashscoreMatchDetailParser {
         }
         Map<String, String> resultFields = parseAllRecordFields(resultFeed);
         String statusText = FlashscoreDayFeedParser.mapStatus(resultFields.get("AC"));
-        if (statusText == null) {
-            statusText = "finished";
-        }
 
-        ScoreBreakdown scores = parseScores(resultFields);
         List<MatchGoalEvent> goals = parseGoals(summaryFeed);
         MatchTeamStats stats = parseStats(statsFeed);
         FlashscoreMatchMeta meta = parseMatchMeta(h2hFeed, eventId);
 
-        GameScore fromGoals = GameScoreFromGoals.from(goals);
         String firstTime = parseFirstHalfScoreFromSummary(summaryFeed);
-        if (firstTime == null && fromGoals != null) {
-            firstTime = fromGoals.getFirstTime();
-        }
-        if (firstTime == null) {
-            firstTime = scores.firstTime();
-        }
-        String fullTime = scores.fullTime();
-        if (fullTime == null && fromGoals != null) {
-            fullTime = fromGoals.getFullTime();
-        }
-
-        GameScore gameScore = GameScore.builder()
-                .fullTime(fullTime)
-                .firstTime(firstTime)
-                .overTime(fromGoals != null ? fromGoals.getOverTime() : null)
-                .penalty(fromGoals != null ? fromGoals.getPenalty() : null)
-                .build();
+        String fullTime = parseFullTimeFromResult(resultFields);
+        GameScore gameScore = buildGameScore(fullTime, firstTime);
 
         return FlashscoreParsedFullMatch.builder()
                 .eventId(eventId.trim())
@@ -118,37 +97,42 @@ public class FlashscoreMatchDetailParser {
         return trimmed.isEmpty() ? null : trimmed;
     }
 
-    private record ScoreBreakdown(String fullTime, String firstTime) {
+    private static GameScore buildGameScore(String fullTime, String firstTime) {
+        if (fullTime == null && firstTime == null) {
+            return null;
+        }
+        return GameScore.builder()
+                .fullTime(fullTime)
+                .firstTime(firstTime)
+                .build();
     }
 
-    private static ScoreBreakdown parseScores(Map<String, String> resultFields) {
+    /**
+     * Full-time score from {@code df_sur} only ({@code BC+BA}/{@code BD+BB}, else {@code AG}/{@code AH}).
+     */
+    static String parseFullTimeFromResult(Map<String, String> resultFields) {
         if (resultFields == null || resultFields.isEmpty()) {
-            return new ScoreBreakdown(null, null);
+            return null;
         }
         String htHome = resultFields.get("BC");
         String htAway = resultFields.get("BD");
         String shHome = resultFields.get("BA");
         String shAway = resultFields.get("BB");
-        String firstTime = formatPair(htHome, htAway);
-        String fullTime = null;
         if (htHome != null && htAway != null && shHome != null && shAway != null) {
             try {
                 int ftH = Integer.parseInt(htHome.trim()) + Integer.parseInt(shHome.trim());
                 int ftA = Integer.parseInt(htAway.trim()) + Integer.parseInt(shAway.trim());
-                fullTime = ftH + ":" + ftA;
+                return ftH + ":" + ftA;
             } catch (NumberFormatException ignored) {
-                fullTime = formatPair(shHome, shAway);
+                return null;
             }
         }
-        if (fullTime == null) {
-            fullTime = formatPair(resultFields.get("AG"), resultFields.get("AH"));
-        }
-        return new ScoreBreakdown(fullTime, firstTime);
+        return formatPair(resultFields.get("AG"), resultFields.get("AH"));
     }
 
     /**
      * Half-time score from summary feed ({@code AC÷1st Half} + {@code IG}/{@code IH}).
-     * Includes stoppage-time goals; {@code df_sur} {@code BC}/{@code BD} often does not.
+     * Includes stoppage-time goals; {@code df_sur} {@code BC}/{@code BD} must not be used here.
      */
     static String parseFirstHalfScoreFromSummary(String summaryFeed) {
         if (summaryFeed == null || summaryFeed.isBlank()) {
