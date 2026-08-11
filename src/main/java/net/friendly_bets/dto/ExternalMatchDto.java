@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import net.friendly_bets.models.GameScore;
 import net.friendly_bets.models.schedule.MatchGoalEvent;
+import net.friendly_bets.models.schedule.MatchTeamStats;
 
 import java.time.Instant;
 import java.util.List;
@@ -52,4 +53,6 @@ public class ExternalMatchDto {
     private List<MatchGoalEvent> goals;
     private Integer addedTimeFirstHalf;
     private Integer addedTimeSecondHalf;
+    /** FULL_MATCH team stats (possession, shots, xG, …). */
+    private MatchTeamStats stats;
 }
