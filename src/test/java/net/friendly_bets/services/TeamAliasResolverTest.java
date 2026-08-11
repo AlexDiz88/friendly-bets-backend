@@ -2,7 +2,6 @@ package net.friendly_bets.services;
 
 import net.friendly_bets.models.Team;
 import net.friendly_bets.models.TeamDisplayNames;
-import net.friendly_bets.models.TeamExternalAlias;
 import net.friendly_bets.providers.ExternalProviderIds;
 import net.friendly_bets.repositories.TeamsRepository;
 import org.junit.jupiter.api.DisplayName;
@@ -39,33 +38,19 @@ class TeamAliasResolverTest {
     }
 
     @Test
-    @DisplayName("resolveByProviderName falls back to display name when alias locale differs")
-    void resolveByProviderName_matchesByDisplayNameWhenAliasLocaleDiffers() {
+    @DisplayName("resolveByProviderName does not guess by display name")
+    void resolveByProviderName_doesNotMatchDisplayNameVariant() {
         TeamAliasResolver resolver = new TeamAliasResolver(teamsRepository);
-        Team arsenal = Team.builder()
-                .id("ars1")
-                .title("Arsenal")
-                .displayNames(TeamDisplayNames.builder().en("Arsenal").ru("Арсенал").build())
-                .externalAliases(List.of(
-                        TeamExternalAlias.builder()
-                                .provider(ExternalProviderIds.FLASHSCORE)
-                                .externalName("Арсенал")
-                                .build()
-                ))
-                .build();
         when(teamsRepository.findByExternalAliasName(ExternalProviderIds.FLASHSCORE, "Arsenal"))
                 .thenReturn(Optional.empty());
-        when(teamsRepository.findByExternalAliasProvider(ExternalProviderIds.FLASHSCORE))
-                .thenReturn(List.of(arsenal));
 
         Optional<Team> team = resolver.resolveByProviderName(ExternalProviderIds.FLASHSCORE, "Arsenal");
 
-        assertTrue(team.isPresent());
-        assertEquals("ars1", team.get().getId());
+        assertTrue(team.isEmpty());
     }
 
     @Test
-    @DisplayName("teamMatchesProviderSide matches only same-provider alias")
+    @DisplayName("teamMatchesProviderSide matches only same-provider alias (exact name)")
     void teamMatchesProviderSide_matchesByAliasName() {
         TeamAliasResolver resolver = new TeamAliasResolver(teamsRepository);
         Team england = Team.builder()
@@ -85,21 +70,22 @@ class TeamAliasResolverTest {
     }
 
     @Test
-    @DisplayName("teamMatchesProviderSide accepts canonical English when alias stored in Russian")
-    void teamMatchesProviderSide_matchesDisplayNameVariant() {
+    @DisplayName("teamMatchesProviderSide does not match display name when alias locale differs")
+    void teamMatchesProviderSide_doesNotMatchDisplayNameVariant() {
         TeamAliasResolver resolver = new TeamAliasResolver(teamsRepository);
         Team dortmund = Team.builder()
                 .id("bvb1")
                 .title("BorussiaDortmund")
                 .displayNames(TeamDisplayNames.builder().en("Dortmund").ru("Дортмунд").build())
                 .externalAliases(List.of(
-                        TeamExternalAlias.builder()
+                        net.friendly_bets.models.TeamExternalAlias.builder()
                                 .provider(ExternalProviderIds.FLASHSCORE)
                                 .externalName("Дортмунд")
                                 .build()
                 ))
                 .build();
 
-        assertTrue(resolver.teamMatchesProviderSide(dortmund, ExternalProviderIds.FLASHSCORE, "Dortmund"));
+        assertFalse(resolver.teamMatchesProviderSide(dortmund, ExternalProviderIds.FLASHSCORE, "Dortmund"));
+        assertTrue(resolver.teamMatchesProviderSide(dortmund, ExternalProviderIds.FLASHSCORE, "Дортмунд"));
     }
 }

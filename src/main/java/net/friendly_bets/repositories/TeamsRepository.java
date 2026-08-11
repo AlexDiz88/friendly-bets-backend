@@ -4,7 +4,6 @@ import net.friendly_bets.models.Team;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.data.mongodb.repository.Query;
 
-import java.util.List;
 import java.util.Optional;
 
 
@@ -23,7 +22,4 @@ public interface TeamsRepository extends MongoRepository<Team, String> {
 
     @Query("{ 'external_aliases': { $elemMatch: { 'provider': ?0, 'external_name': ?1 } } }")
     Optional<Team> findByExternalAliasName(String provider, String externalName);
-
-    @Query("{ 'external_aliases.provider': ?0 }")
-    List<Team> findByExternalAliasProvider(String provider);
 }

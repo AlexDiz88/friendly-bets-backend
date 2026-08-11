@@ -130,8 +130,7 @@ public class MelbetEventMatcher {
             return false;
         }
         String primary = home ? event.getHomeTeam() : event.getAwayTeam();
-        String english = home ? event.getHomeTeamEn() : event.getAwayTeamEn();
-        return matchesAlias(teamId, primary) || matchesAlias(teamId, english);
+        return matchesAlias(teamId, primary);
     }
 
     private boolean matchesAlias(String teamId, String providerName) {
