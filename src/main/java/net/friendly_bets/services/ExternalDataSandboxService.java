@@ -1064,7 +1064,8 @@ public class ExternalDataSandboxService {
         }
         int n = 0;
         for (MatchGoalEvent g : goals) {
-            if (g == null || Boolean.TRUE.equals(g.getRedCard()) || Boolean.TRUE.equals(g.getMissed())) {
+            if (g == null || Boolean.TRUE.equals(g.getRedCard()) || Boolean.TRUE.equals(g.getMissed())
+                    || Boolean.TRUE.equals(g.getVarDisallowed())) {
                 continue;
             }
             n++;

@@ -70,6 +70,31 @@ class FlashscoreMatchDetailParserTest {
                         && "AWAY".equals(g.getTeamSide())));
     }
 
+    @Test
+    void parsesPenaltyGoalAndVarDisallowedGoal() throws IOException {
+        String summary = readFixture("flashscore/match-charleroi-sui.feed");
+        String result = readFixture("flashscore/match-charleroi-sur.feed");
+        String h2h = readFixture("flashscore/match-charleroi-hh.feed");
+
+        FlashscoreParsedFullMatch parsed = parser.parse(summary, null, result, "2a2t8EQF", h2h);
+
+        assertEquals("3:1", parsed.getGameScore().getFullTime());
+        assertEquals("2:0", parsed.getGameScore().getFirstTime());
+        assertTrue(parsed.getGoals().stream().anyMatch(
+                g -> Boolean.TRUE.equals(g.getPenalty())
+                        && "Guiagon P.".equals(g.getPlayerName())
+                        && "24".equals(g.getMinute())));
+        assertTrue(parsed.getGoals().stream().anyMatch(
+                g -> Boolean.TRUE.equals(g.getVarDisallowed())
+                        && "Keita C.".equals(g.getPlayerName())
+                        && "47".equals(g.getMinute())));
+        assertEquals(4, parsed.getGoals().stream()
+                .filter(g -> !Boolean.TRUE.equals(g.getMissed())
+                        && !Boolean.TRUE.equals(g.getRedCard())
+                        && !Boolean.TRUE.equals(g.getVarDisallowed()))
+                .count());
+    }
+
     private static String readFixture(String path) throws IOException {
         try (var in = FlashscoreMatchDetailParserTest.class.getClassLoader().getResourceAsStream(path)) {
             assertNotNull(in, path);

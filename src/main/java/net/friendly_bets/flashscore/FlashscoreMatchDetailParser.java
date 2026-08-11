@@ -146,94 +146,137 @@ public class FlashscoreMatchDetailParser {
         if (summaryFeed == null || summaryFeed.isBlank()) {
             return goals;
         }
-        String currentHalf = null;
         for (String record : FlashscoreFeedSupport.splitRecords(summaryFeed)) {
-            Map<String, String> fields = FlashscoreFeedSupport.parseRecord(record);
-            String ac = fields.get("AC");
-            if (ac != null && ac.toLowerCase(Locale.ROOT).contains("half")) {
-                currentHalf = ac;
-            }
-        }
-        String[] incidentBlocks = summaryFeed.split("~III÷");
-        for (int i = 1; i < incidentBlocks.length; i++) {
-            String block = "III÷" + incidentBlocks[i];
-            int end = block.indexOf("~III÷");
-            if (end > 0) {
-                block = block.substring(0, end);
-            }
-            int halfBreak = block.indexOf("~AC÷");
-            if (halfBreak > 0) {
-                block = block.substring(0, halfBreak);
-            }
-            String blockSide = null;
-            String blockMinute = null;
-            String subPlayer = null;
-            boolean penaltyAwardedInBlock = false;
-            for (String segment : block.split("¬")) {
-                if (segment == null || segment.isBlank() || !segment.contains("÷")) {
-                    continue;
+            if (record.startsWith("IIIX÷")) {
+                MatchGoalEvent varEvent = parseVarDisallowedBlock(record);
+                if (varEvent != null) {
+                    goals.add(varEvent);
                 }
-                int idx = segment.indexOf('÷');
-                String key = segment.substring(0, idx);
-                String value = segment.substring(idx + 1);
-                switch (key) {
-                    case "IA" -> blockSide = value;
-                    case "IB" -> blockMinute = value;
-                    case "IE" -> subPlayer = null;
-                    case "IF" -> subPlayer = value;
-                    case "IK" -> {
-                        if (value == null) {
-                            continue;
-                        }
-                        String kindLower = value.toLowerCase(Locale.ROOT);
-                        if (kindLower.contains("substitution")) {
-                            continue;
-                        }
-                        if (kindLower.contains("penalty awarded")) {
-                            penaltyAwardedInBlock = true;
-                            continue;
-                        }
-                        if (kindLower.contains("yellow")) {
-                            continue;
-                        }
-                        if (kindLower.contains("red")) {
-                            MatchGoalEvent card = parseCard(blockSide, blockMinute, subPlayer, kindLower);
-                            if (card != null) {
-                                goals.add(card);
-                            }
-                            continue;
-                        }
-                        if (kindLower.contains("penalty missed")) {
-                            MatchGoalEvent missed = parseMissedPenalty(blockSide, blockMinute, subPlayer);
-                            if (missed != null) {
-                                goals.add(missed);
-                            }
-                            continue;
-                        }
-                        if (kindLower.contains("own goal")) {
-                            MatchGoalEvent ownGoal = parseScoringEvent(
-                                    blockSide, blockMinute, subPlayer, true, false, false);
-                            if (ownGoal != null) {
-                                goals.add(ownGoal);
-                            }
-                            continue;
-                        }
-                        if (!kindLower.equals("goal") && !kindLower.startsWith("goal ")) {
-                            continue;
-                        }
-                        boolean fromPenalty = penaltyAwardedInBlock;
-                        MatchGoalEvent goal = parseScoringEvent(
-                                blockSide, blockMinute, subPlayer, false, fromPenalty, false);
-                        if (goal != null) {
-                            goals.add(goal);
-                        }
-                    }
-                    default -> {
-                    }
-                }
+            } else if (record.startsWith("III÷")) {
+                goals.addAll(parseIncidentBlock(record));
             }
         }
         return goals;
+    }
+
+    private static List<MatchGoalEvent> parseIncidentBlock(String block) {
+        List<MatchGoalEvent> events = new ArrayList<>();
+        String blockSide = null;
+        String blockMinute = null;
+        String subPlayer = null;
+        boolean penaltyAwardedInBlock = false;
+        for (String segment : block.split("¬")) {
+            if (segment == null || segment.isBlank() || !segment.contains("÷")) {
+                continue;
+            }
+            int idx = segment.indexOf('÷');
+            String key = segment.substring(0, idx);
+            String value = segment.substring(idx + 1);
+            switch (key) {
+                case "IA" -> blockSide = value;
+                case "IB" -> blockMinute = value;
+                case "IE" -> subPlayer = null;
+                case "IF" -> subPlayer = value;
+                case "IK" -> {
+                    if (value == null) {
+                        continue;
+                    }
+                    String kindLower = value.toLowerCase(Locale.ROOT);
+                    if (kindLower.contains("substitution")) {
+                        continue;
+                    }
+                    if (kindLower.contains("penalty awarded")) {
+                        penaltyAwardedInBlock = true;
+                        continue;
+                    }
+                    if (kindLower.contains("yellow")) {
+                        continue;
+                    }
+                    if (kindLower.contains("red")) {
+                        MatchGoalEvent card = parseCard(blockSide, blockMinute, subPlayer, kindLower);
+                        if (card != null) {
+                            events.add(card);
+                        }
+                        continue;
+                    }
+                    if (kindLower.contains("penalty missed")) {
+                        MatchGoalEvent missed = parseMissedPenalty(blockSide, blockMinute, subPlayer);
+                        if (missed != null) {
+                            events.add(missed);
+                        }
+                        continue;
+                    }
+                    if (kindLower.contains("own goal")) {
+                        MatchGoalEvent ownGoal = parseScoringEvent(
+                                blockSide, blockMinute, subPlayer, true, false, false, false);
+                        if (ownGoal != null) {
+                            events.add(ownGoal);
+                        }
+                        continue;
+                    }
+                    if (kindLower.equals("penalty")) {
+                        MatchGoalEvent penaltyGoal = parseScoringEvent(
+                                blockSide, blockMinute, subPlayer, false, true, false, false);
+                        if (penaltyGoal != null) {
+                            events.add(penaltyGoal);
+                        }
+                        continue;
+                    }
+                    if (!kindLower.equals("goal") && !kindLower.startsWith("goal ")) {
+                        continue;
+                    }
+                    boolean fromPenalty = penaltyAwardedInBlock;
+                    MatchGoalEvent goal = parseScoringEvent(
+                            blockSide, blockMinute, subPlayer, false, fromPenalty, false, false);
+                    if (goal != null) {
+                        events.add(goal);
+                    }
+                }
+                default -> {
+                }
+            }
+        }
+        return events;
+    }
+
+    private static MatchGoalEvent parseVarDisallowedBlock(String block) {
+        String blockSide = null;
+        String blockMinute = null;
+        String player = null;
+        boolean disallowed = false;
+        for (String segment : block.split("¬")) {
+            if (segment == null || segment.isBlank() || !segment.contains("÷")) {
+                continue;
+            }
+            int idx = segment.indexOf('÷');
+            String key = segment.substring(0, idx);
+            String value = segment.substring(idx + 1);
+            switch (key) {
+                case "IAX", "IA" -> blockSide = value;
+                case "IBX", "IB" -> blockMinute = value;
+                case "IFX", "IF" -> player = value;
+                case "IKX", "IK" -> {
+                    if (value != null && value.toLowerCase(Locale.ROOT).contains("goal disallowed")) {
+                        disallowed = true;
+                    }
+                }
+                default -> {
+                }
+            }
+        }
+        if (!disallowed || player == null || player.isBlank()) {
+            return null;
+        }
+        String side = mapSide(blockSide);
+        if (side == null) {
+            return null;
+        }
+        return MatchGoalEvent.builder()
+                .minute(normalizeMinute(blockMinute, null))
+                .teamSide(side)
+                .playerName(player.trim())
+                .varDisallowed(true)
+                .build();
     }
 
     private static MatchGoalEvent parseScoringEvent(
@@ -242,7 +285,8 @@ public class FlashscoreMatchDetailParser {
             String player,
             boolean ownGoal,
             boolean penalty,
-            boolean missed
+            boolean missed,
+            boolean varDisallowed
     ) {
         if (player == null || player.isBlank()) {
             return null;
@@ -258,11 +302,12 @@ public class FlashscoreMatchDetailParser {
                 .ownGoal(ownGoal ? true : null)
                 .penalty(penalty ? true : null)
                 .missed(missed ? true : null)
+                .varDisallowed(varDisallowed ? true : null)
                 .build();
     }
 
     private static MatchGoalEvent parseMissedPenalty(String blockSide, String blockMinute, String player) {
-        return parseScoringEvent(blockSide, blockMinute, player, false, true, true);
+        return parseScoringEvent(blockSide, blockMinute, player, false, true, true, false);
     }
 
     private static MatchGoalEvent parseCard(

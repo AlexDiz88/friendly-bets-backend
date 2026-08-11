@@ -40,7 +40,7 @@ public final class GameScoreFromGoals {
                     continue;
                 }
                 boolean home = "HOME".equalsIgnoreCase(goal.getTeamSide());
-                if (Boolean.TRUE.equals(goal.getMissed())) {
+                if (Boolean.TRUE.equals(goal.getMissed()) || Boolean.TRUE.equals(goal.getVarDisallowed())) {
                     continue;
                 }
                 if (Boolean.TRUE.equals(goal.getRedCard())) {
