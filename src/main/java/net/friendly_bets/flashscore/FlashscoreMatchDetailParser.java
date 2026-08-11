@@ -25,6 +25,16 @@ public class FlashscoreMatchDetailParser {
             String resultFeed,
             String eventId
     ) {
+        return parse(summaryFeed, statsFeed, resultFeed, eventId, null);
+    }
+
+    public FlashscoreParsedFullMatch parse(
+            String summaryFeed,
+            String statsFeed,
+            String resultFeed,
+            String eventId,
+            String h2hFeed
+    ) {
         if (eventId == null || eventId.isBlank()) {
             throw new BadRequestException("flashscoreGameIdRequired");
         }
@@ -38,6 +48,7 @@ public class FlashscoreMatchDetailParser {
         List<MatchGoalEvent> goals = parseGoals(summaryFeed);
         Integer[] added = parseAddedTimes(summaryFeed);
         MatchTeamStats stats = parseStats(statsFeed);
+        FlashscoreMatchMeta meta = parseMatchMeta(h2hFeed, eventId);
 
         GameScore gameScore = GameScore.builder()
                 .fullTime(scores.fullTime())
@@ -47,12 +58,52 @@ public class FlashscoreMatchDetailParser {
         return FlashscoreParsedFullMatch.builder()
                 .eventId(eventId.trim())
                 .statusText(statusText)
+                .homeTeamName(meta != null ? meta.getHomeTeamName() : null)
+                .awayTeamName(meta != null ? meta.getAwayTeamName() : null)
+                .competitionName(meta != null ? meta.getCompetitionName() : null)
                 .gameScore(gameScore)
                 .goals(goals)
                 .stats(stats)
                 .addedTimeFirstHalf(added[0])
                 .addedTimeSecondHalf(added[1])
                 .build();
+    }
+
+    static FlashscoreMatchMeta parseMatchMeta(String h2hFeed, String eventId) {
+        if (h2hFeed == null || h2hFeed.isBlank() || eventId == null || eventId.isBlank()) {
+            return null;
+        }
+        String needle = eventId.trim();
+        for (String record : FlashscoreFeedSupport.splitRecords(h2hFeed)) {
+            Map<String, String> fields = FlashscoreFeedSupport.parseRecord(record);
+            String kp = fields.get("KP");
+            if (kp == null || !kp.equalsIgnoreCase(needle)) {
+                continue;
+            }
+            String home = cleanTeamLabel(FlashscoreFeedSupport.firstNonBlank(fields, "KJ", "FH"));
+            String away = cleanTeamLabel(FlashscoreFeedSupport.firstNonBlank(fields, "KK", "FK"));
+            String competition = fields.get("KF");
+            if (home == null && away == null && competition == null) {
+                return null;
+            }
+            return FlashscoreMatchMeta.builder()
+                    .homeTeamName(home)
+                    .awayTeamName(away)
+                    .competitionName(competition)
+                    .build();
+        }
+        return null;
+    }
+
+    private static String cleanTeamLabel(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        String trimmed = raw.trim();
+        if (trimmed.startsWith("*")) {
+            trimmed = trimmed.substring(1).trim();
+        }
+        return trimmed.isEmpty() ? null : trimmed;
     }
 
     private record ScoreBreakdown(String fullTime, String firstTime) {
@@ -117,6 +168,7 @@ public class FlashscoreMatchDetailParser {
             String blockSide = null;
             String blockMinute = null;
             String subPlayer = null;
+            boolean penaltyAwardedInBlock = false;
             for (String segment : block.split("¬")) {
                 if (segment == null || segment.isBlank() || !segment.contains("÷")) {
                     continue;
@@ -134,7 +186,11 @@ public class FlashscoreMatchDetailParser {
                             continue;
                         }
                         String kindLower = value.toLowerCase(Locale.ROOT);
-                        if (kindLower.contains("substitution") || kindLower.contains("missed")) {
+                        if (kindLower.contains("substitution")) {
+                            continue;
+                        }
+                        if (kindLower.contains("penalty awarded")) {
+                            penaltyAwardedInBlock = true;
                             continue;
                         }
                         if (kindLower.contains("yellow")) {
@@ -147,18 +203,30 @@ public class FlashscoreMatchDetailParser {
                             }
                             continue;
                         }
+                        if (kindLower.contains("penalty missed")) {
+                            MatchGoalEvent missed = parseMissedPenalty(blockSide, blockMinute, subPlayer);
+                            if (missed != null) {
+                                goals.add(missed);
+                            }
+                            continue;
+                        }
+                        if (kindLower.contains("own goal")) {
+                            MatchGoalEvent ownGoal = parseScoringEvent(
+                                    blockSide, blockMinute, subPlayer, true, false, false);
+                            if (ownGoal != null) {
+                                goals.add(ownGoal);
+                            }
+                            continue;
+                        }
                         if (!kindLower.equals("goal") && !kindLower.startsWith("goal ")) {
                             continue;
                         }
-                        String side = mapSide(blockSide);
-                        if (side == null || subPlayer == null || subPlayer.isBlank()) {
-                            continue;
+                        boolean fromPenalty = penaltyAwardedInBlock;
+                        MatchGoalEvent goal = parseScoringEvent(
+                                blockSide, blockMinute, subPlayer, false, fromPenalty, false);
+                        if (goal != null) {
+                            goals.add(goal);
                         }
-                        goals.add(MatchGoalEvent.builder()
-                                .minute(normalizeMinute(blockMinute, currentHalf))
-                                .teamSide(side)
-                                .playerName(subPlayer.trim())
-                                .build());
                     }
                     default -> {
                     }
@@ -166,6 +234,35 @@ public class FlashscoreMatchDetailParser {
             }
         }
         return goals;
+    }
+
+    private static MatchGoalEvent parseScoringEvent(
+            String blockSide,
+            String blockMinute,
+            String player,
+            boolean ownGoal,
+            boolean penalty,
+            boolean missed
+    ) {
+        if (player == null || player.isBlank()) {
+            return null;
+        }
+        String side = mapSide(blockSide);
+        if (side == null) {
+            return null;
+        }
+        return MatchGoalEvent.builder()
+                .minute(normalizeMinute(blockMinute, null))
+                .teamSide(side)
+                .playerName(player.trim())
+                .ownGoal(ownGoal ? true : null)
+                .penalty(penalty ? true : null)
+                .missed(missed ? true : null)
+                .build();
+    }
+
+    private static MatchGoalEvent parseMissedPenalty(String blockSide, String blockMinute, String player) {
+        return parseScoringEvent(blockSide, blockMinute, player, false, true, true);
     }
 
     private static MatchGoalEvent parseCard(

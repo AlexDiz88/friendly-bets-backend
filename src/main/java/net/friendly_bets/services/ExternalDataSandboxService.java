@@ -470,8 +470,9 @@ public class ExternalDataSandboxService {
             String summaryFeed = flashscoreHttpClient.fetchMatchSummaryFeed(eventId);
             String statsFeed = flashscoreHttpClient.fetchMatchStatsFeed(eventId);
             String resultFeed = flashscoreHttpClient.fetchMatchResultFeed(eventId);
+            String h2hFeed = flashscoreHttpClient.fetchMatchH2HFeed(eventId);
             FlashscoreParsedFullMatch parsed = flashscoreMatchDetailParser.parse(
-                    summaryFeed, statsFeed, resultFeed, eventId);
+                    summaryFeed, statsFeed, resultFeed, eventId, h2hFeed);
             Map<String, Object> summary = new LinkedHashMap<>();
             summary.put("gameId", eventId);
             summary.put("eventId", eventId);
@@ -1063,9 +1064,10 @@ public class ExternalDataSandboxService {
         }
         int n = 0;
         for (MatchGoalEvent g : goals) {
-            if (g != null && !Boolean.TRUE.equals(g.getRedCard())) {
-                n++;
+            if (g == null || Boolean.TRUE.equals(g.getRedCard()) || Boolean.TRUE.equals(g.getMissed())) {
+                continue;
             }
+            n++;
         }
         return n;
     }
