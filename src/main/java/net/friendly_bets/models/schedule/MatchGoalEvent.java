@@ -42,6 +42,10 @@ public class MatchGoalEvent {
     @Field(name = "is_missed")
     private Boolean missed;
 
+    /** Goal disallowed by VAR; does not count toward score. */
+    @Field(name = "is_var_disallowed")
+    private Boolean varDisallowed;
+
     /** Straight red or second yellow shown as a red-card event (not a goal). */
     @Field(name = "is_red_card")
     private Boolean redCard;

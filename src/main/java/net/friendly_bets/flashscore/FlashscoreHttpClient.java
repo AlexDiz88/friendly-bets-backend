@@ -55,6 +55,10 @@ public class FlashscoreHttpClient {
         return fetchMatchDetailFeed("df_sur_1_" + requireEventId(eventId));
     }
 
+    public String fetchMatchH2HFeed(String eventId) {
+        return fetchMatchDetailFeed("df_hh_1_" + requireEventId(eventId));
+    }
+
     public String fetchTournamentPageHtml(String tournamentPath) {
         if (tournamentPath == null || tournamentPath.isBlank()) {
             throw new BadRequestException("flashscoreTournamentNotConfigured");

@@ -199,13 +199,30 @@ public class FlashscoreFullMatchProvider implements FullMatchProvider {
             httpLogs.add(logError("MATCH_RESULT", eventId, t0, reqAt, e));
             throw e;
         }
-        FlashscoreParsedFullMatch parsed = matchDetailParser.parse(summary, stats, result, eventId);
+        t0 = System.currentTimeMillis();
+        reqAt = Instant.now();
+        String h2h = null;
+        try {
+            h2h = httpClient.fetchMatchH2HFeed(eventId);
+            httpLogs.add(logEntry("MATCH_H2H", eventId, t0, reqAt));
+        } catch (RuntimeException e) {
+            httpLogs.add(logError("MATCH_H2H", eventId, t0, reqAt, e));
+        }
+        FlashscoreParsedFullMatch parsed = matchDetailParser.parse(summary, stats, result, eventId, h2h);
+        String homeName = resolved.getHomeName();
+        String awayName = resolved.getAwayName();
+        if (parsed.getHomeTeamName() != null && !parsed.getHomeTeamName().isBlank()) {
+            homeName = parsed.getHomeTeamName();
+        }
+        if (parsed.getAwayTeamName() != null && !parsed.getAwayTeamName().isBlank()) {
+            awayName = parsed.getAwayTeamName();
+        }
         return FlashscoreParsedFullMatch.builder()
                 .eventId(parsed.getEventId())
                 .statusText(parsed.getStatusText())
-                .homeTeamName(resolved.getHomeName())
-                .awayTeamName(resolved.getAwayName())
-                .competitionName(null)
+                .homeTeamName(homeName)
+                .awayTeamName(awayName)
+                .competitionName(parsed.getCompetitionName())
                 .gameScore(parsed.getGameScore())
                 .goals(parsed.getGoals())
                 .stats(parsed.getStats())

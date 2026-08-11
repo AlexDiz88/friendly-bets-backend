@@ -8,6 +8,7 @@ import java.nio.charset.StandardCharsets;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class FlashscoreMatchDetailParserTest {
@@ -26,7 +27,12 @@ class FlashscoreMatchDetailParserTest {
         assertNotNull(parsed.getGameScore());
         assertEquals("3:0", parsed.getGameScore().getFullTime());
         assertEquals("1:0", parsed.getGameScore().getFirstTime());
-        assertEquals(3, parsed.getGoals().size());
+        assertEquals(4, parsed.getGoals().size());
+        assertTrue(parsed.getGoals().stream().anyMatch(
+                g -> Boolean.TRUE.equals(g.getMissed()) && "Zoma M. A.".equals(g.getPlayerName())));
+        assertEquals(3, parsed.getGoals().stream()
+                .filter(g -> !Boolean.TRUE.equals(g.getMissed()) && !Boolean.TRUE.equals(g.getRedCard()))
+                .count());
         assertTrue(parsed.getGoals().stream().allMatch(g -> g.getRedCard() == null || !g.getRedCard()));
 
         assertNotNull(parsed.getStats());
@@ -41,7 +47,54 @@ class FlashscoreMatchDetailParserTest {
         assertEquals(2.24, parsed.getStats().getXgHome());
         assertEquals(1.96, parsed.getStats().getXgAway());
 
-        assertEquals(3, parsed.getAddedTimeFirstHalf());
+        assertNull(parsed.getAddedTimeFirstHalf());
+        assertNull(parsed.getAddedTimeSecondHalf());
+    }
+
+    @Test
+    void parsesOwnGoalAndTeamNamesFromH2H() throws IOException {
+        String summary = readFixture("flashscore/match-horsens-sui.feed");
+        String result = readFixture("flashscore/match-horsens-sur.feed");
+        String h2h = readFixture("flashscore/match-horsens-hh.feed");
+
+        FlashscoreParsedFullMatch parsed = parser.parse(summary, null, result, "MuXsRLdK", h2h);
+
+        assertEquals("Horsens", parsed.getHomeTeamName());
+        assertEquals("Brondby", parsed.getAwayTeamName());
+        assertEquals("Superliga", parsed.getCompetitionName());
+        assertEquals("0:2", parsed.getGameScore().getFullTime());
+        assertEquals(2, parsed.getGoals().stream()
+                .filter(g -> !Boolean.TRUE.equals(g.getMissed()) && !Boolean.TRUE.equals(g.getRedCard()))
+                .count());
+        assertTrue(parsed.getGoals().stream().anyMatch(
+                g -> Boolean.TRUE.equals(g.getOwnGoal())
+                        && "Kupijbida M.".equals(g.getPlayerName())
+                        && "AWAY".equals(g.getTeamSide())));
+    }
+
+    @Test
+    void parsesPenaltyGoalAndVarDisallowedGoal() throws IOException {
+        String summary = readFixture("flashscore/match-charleroi-sui.feed");
+        String result = readFixture("flashscore/match-charleroi-sur.feed");
+        String h2h = readFixture("flashscore/match-charleroi-hh.feed");
+
+        FlashscoreParsedFullMatch parsed = parser.parse(summary, null, result, "2a2t8EQF", h2h);
+
+        assertEquals("3:1", parsed.getGameScore().getFullTime());
+        assertEquals("2:0", parsed.getGameScore().getFirstTime());
+        assertTrue(parsed.getGoals().stream().anyMatch(
+                g -> Boolean.TRUE.equals(g.getPenalty())
+                        && "Guiagon P.".equals(g.getPlayerName())
+                        && "24".equals(g.getMinute())));
+        assertTrue(parsed.getGoals().stream().anyMatch(
+                g -> Boolean.TRUE.equals(g.getVarDisallowed())
+                        && "Keita C.".equals(g.getPlayerName())
+                        && "47".equals(g.getMinute())));
+        assertEquals(4, parsed.getGoals().stream()
+                .filter(g -> !Boolean.TRUE.equals(g.getMissed())
+                        && !Boolean.TRUE.equals(g.getRedCard())
+                        && !Boolean.TRUE.equals(g.getVarDisallowed()))
+                .count());
     }
 
     private static String readFixture(String path) throws IOException {
