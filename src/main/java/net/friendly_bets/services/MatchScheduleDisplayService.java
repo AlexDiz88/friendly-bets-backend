@@ -52,6 +52,7 @@ public class MatchScheduleDisplayService {
                 .goals(schedule.getGoals())
                 .addedTimeFirstHalf(schedule.getAddedTimeFirstHalf())
                 .addedTimeSecondHalf(schedule.getAddedTimeSecondHalf())
+                .stats(schedule.getStats())
                 .build();
 
         applyTeamDisplay(dto, true, findTeam(schedule.getHomeTeamId()), schedule.getLeagueCode());
