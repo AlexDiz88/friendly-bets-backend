@@ -8,6 +8,7 @@ import java.nio.charset.StandardCharsets;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class FlashscoreMatchDetailParserTest {
@@ -46,7 +47,8 @@ class FlashscoreMatchDetailParserTest {
         assertEquals(2.24, parsed.getStats().getXgHome());
         assertEquals(1.96, parsed.getStats().getXgAway());
 
-        assertEquals(3, parsed.getAddedTimeFirstHalf());
+        assertNull(parsed.getAddedTimeFirstHalf());
+        assertNull(parsed.getAddedTimeSecondHalf());
     }
 
     @Test

@@ -16,7 +16,6 @@ import java.util.regex.Pattern;
 @Component
 public class FlashscoreMatchDetailParser {
 
-    private static final Pattern ADDED_MINUTE = Pattern.compile("\\+(\\d+)");
     private static final Pattern MINUTE_NUMBER = Pattern.compile("(\\d{1,3})");
 
     public FlashscoreParsedFullMatch parse(
@@ -46,7 +45,6 @@ public class FlashscoreMatchDetailParser {
 
         ScoreBreakdown scores = parseScores(resultFields);
         List<MatchGoalEvent> goals = parseGoals(summaryFeed);
-        Integer[] added = parseAddedTimes(summaryFeed);
         MatchTeamStats stats = parseStats(statsFeed);
         FlashscoreMatchMeta meta = parseMatchMeta(h2hFeed, eventId);
 
@@ -64,8 +62,6 @@ public class FlashscoreMatchDetailParser {
                 .gameScore(gameScore)
                 .goals(goals)
                 .stats(stats)
-                .addedTimeFirstHalf(added[0])
-                .addedTimeSecondHalf(added[1])
                 .build();
     }
 
@@ -356,35 +352,6 @@ public class FlashscoreMatchDetailParser {
             }
         }
         return minute;
-    }
-
-    private static Integer[] parseAddedTimes(String summaryFeed) {
-        Integer first = null;
-        Integer second = null;
-        String currentHalf = null;
-        for (String record : FlashscoreFeedSupport.splitRecords(summaryFeed)) {
-            Map<String, String> fields = FlashscoreFeedSupport.parseRecord(record);
-            String ac = fields.get("AC");
-            if (ac != null && ac.toLowerCase(Locale.ROOT).contains("half")) {
-                currentHalf = ac.toLowerCase(Locale.ROOT);
-                continue;
-            }
-            String minute = fields.get("IB");
-            if (minute == null || currentHalf == null) {
-                continue;
-            }
-            Matcher m = ADDED_MINUTE.matcher(minute);
-            if (!m.find()) {
-                continue;
-            }
-            int added = Integer.parseInt(m.group(1));
-            if (currentHalf.contains("1st") && first == null) {
-                first = added;
-            } else if (currentHalf.contains("2nd") && second == null) {
-                second = added;
-            }
-        }
-        return new Integer[]{first, second};
     }
 
     private static MatchTeamStats parseStats(String statsFeed) {
