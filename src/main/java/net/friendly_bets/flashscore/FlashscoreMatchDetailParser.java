@@ -1,6 +1,7 @@
 package net.friendly_bets.flashscore;
 
 import net.friendly_bets.exceptions.BadRequestException;
+import net.friendly_bets.matchschedule.GameScoreFromGoals;
 import net.friendly_bets.models.GameScore;
 import net.friendly_bets.models.schedule.MatchGoalEvent;
 import net.friendly_bets.models.schedule.MatchTeamStats;
@@ -48,9 +49,24 @@ public class FlashscoreMatchDetailParser {
         MatchTeamStats stats = parseStats(statsFeed);
         FlashscoreMatchMeta meta = parseMatchMeta(h2hFeed, eventId);
 
+        GameScore fromGoals = GameScoreFromGoals.from(goals);
+        String firstTime = parseFirstHalfScoreFromSummary(summaryFeed);
+        if (firstTime == null && fromGoals != null) {
+            firstTime = fromGoals.getFirstTime();
+        }
+        if (firstTime == null) {
+            firstTime = scores.firstTime();
+        }
+        String fullTime = scores.fullTime();
+        if (fullTime == null && fromGoals != null) {
+            fullTime = fromGoals.getFullTime();
+        }
+
         GameScore gameScore = GameScore.builder()
-                .fullTime(scores.fullTime())
-                .firstTime(scores.firstTime())
+                .fullTime(fullTime)
+                .firstTime(firstTime)
+                .overTime(fromGoals != null ? fromGoals.getOverTime() : null)
+                .penalty(fromGoals != null ? fromGoals.getPenalty() : null)
                 .build();
 
         return FlashscoreParsedFullMatch.builder()
@@ -128,6 +144,28 @@ public class FlashscoreMatchDetailParser {
             fullTime = formatPair(resultFields.get("AG"), resultFields.get("AH"));
         }
         return new ScoreBreakdown(fullTime, firstTime);
+    }
+
+    /**
+     * Half-time score from summary feed ({@code AC÷1st Half} + {@code IG}/{@code IH}).
+     * Includes stoppage-time goals; {@code df_sur} {@code BC}/{@code BD} often does not.
+     */
+    static String parseFirstHalfScoreFromSummary(String summaryFeed) {
+        if (summaryFeed == null || summaryFeed.isBlank()) {
+            return null;
+        }
+        for (String record : FlashscoreFeedSupport.splitRecords(summaryFeed)) {
+            Map<String, String> fields = FlashscoreFeedSupport.parseRecord(record);
+            String ac = fields.get("AC");
+            if (ac == null) {
+                continue;
+            }
+            String lower = ac.toLowerCase(Locale.ROOT);
+            if (lower.contains("1st") && lower.contains("half")) {
+                return formatPair(fields.get("IG"), fields.get("IH"));
+            }
+        }
+        return null;
     }
 
     private static String formatPair(String home, String away) {

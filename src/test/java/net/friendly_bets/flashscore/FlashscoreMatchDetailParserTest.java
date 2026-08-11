@@ -26,7 +26,7 @@ class FlashscoreMatchDetailParserTest {
         assertTrue(FullMatchStatusSupport.isProviderFinished(parsed.getStatusText()));
         assertNotNull(parsed.getGameScore());
         assertEquals("3:0", parsed.getGameScore().getFullTime());
-        assertEquals("1:0", parsed.getGameScore().getFirstTime());
+        assertEquals("2:0", parsed.getGameScore().getFirstTime());
         assertEquals(4, parsed.getGoals().size());
         assertTrue(parsed.getGoals().stream().anyMatch(
                 g -> Boolean.TRUE.equals(g.getMissed()) && "Zoma M. A.".equals(g.getPlayerName())));
@@ -81,7 +81,7 @@ class FlashscoreMatchDetailParserTest {
         FlashscoreParsedFullMatch parsed = parser.parse(summary, null, result, "2a2t8EQF", h2h);
 
         assertEquals("3:1", parsed.getGameScore().getFullTime());
-        assertEquals("2:0", parsed.getGameScore().getFirstTime());
+        assertEquals("1:1", parsed.getGameScore().getFirstTime());
         assertTrue(parsed.getGoals().stream().anyMatch(
                 g -> Boolean.TRUE.equals(g.getPenalty())
                         && "Guiagon P.".equals(g.getPlayerName())
