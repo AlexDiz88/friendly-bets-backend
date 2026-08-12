@@ -42,6 +42,16 @@ public class ExternalTeamAliasAutoBindService {
             String leagueCodeRaw,
             List<String> externalNames
     ) {
+        return bindAndCollectUnmapped(provider, leagueCodeRaw, externalNames, false);
+    }
+
+    @Transactional
+    public ExternalTeamNamesLoadResultDto bindAndCollectUnmapped(
+            String provider,
+            String leagueCodeRaw,
+            List<String> externalNames,
+            boolean forceOverwrite
+    ) {
         if (provider == null || provider.isBlank()) {
             throw new BadRequestException("externalTeamNamesProviderRequired");
         }
@@ -61,8 +71,10 @@ public class ExternalTeamAliasAutoBindService {
 
         int autoBound = 0;
         int mismatch = 0;
+        int overwritten = 0;
         int alreadyMapped = 0;
         List<ExternalTeamNameChipDto> unmapped = new ArrayList<>();
+        List<ErrorLogService.TeamAliasMismatchDetail> mismatches = new ArrayList<>();
 
         Map<String, Team> teamsById = new LinkedHashMap<>();
         for (Team team : leagueTeams) {
@@ -91,10 +103,22 @@ public class ExternalTeamAliasAutoBindService {
                     alreadyMapped++;
                     continue;
                 }
-                // Team already mapped for this provider (e.g. RU alias vs EN label from the same API).
-                // Keep existing alias; log drift for ops; do not show a chip or toast "mismatch".
-                recordMismatch(provider, leagueCode.name(), candidate, existing.getExternalName(), externalName);
-                alreadyMapped++;
+                mismatches.add(ErrorLogService.TeamAliasMismatchDetail.builder()
+                        .teamId(candidate.getId())
+                        .teamTitle(candidate.getTitle())
+                        .currentAlias(existing.getExternalName())
+                        .incomingAlias(externalName)
+                        .build());
+                mismatch++;
+                if (forceOverwrite) {
+                    bindAlias(candidate, provider, externalName);
+                    teamsRepository.save(candidate);
+                    teamsById.put(candidate.getId(), candidate);
+                    errorLogService.purgeTeamMappingIssuesForExternalTeam(provider, externalName);
+                    overwritten++;
+                } else {
+                    alreadyMapped++;
+                }
                 continue;
             }
 
@@ -110,10 +134,20 @@ public class ExternalTeamAliasAutoBindService {
             autoBound++;
         }
 
+        if (!mismatches.isEmpty()) {
+            errorLogService.recordTeamAliasMismatchSummary(
+                    provider,
+                    leagueCode.name(),
+                    mismatches,
+                    forceOverwrite
+            );
+        }
+
         return ExternalTeamNamesLoadResultDto.builder()
                 .unmapped(unmapped)
                 .autoBoundCount(autoBound)
                 .mismatchCount(mismatch)
+                .overwrittenCount(overwritten)
                 .alreadyMappedCount(alreadyMapped)
                 .totalNames(uniqueNames.size())
                 .build();
@@ -129,35 +163,6 @@ public class ExternalTeamAliasAutoBindService {
         aliases.add(TeamExternalAlias.builder()
                 .provider(provider)
                 .externalName(externalName)
-                .build());
-    }
-
-    private void recordMismatch(
-            String provider,
-            String leagueCode,
-            Team team,
-            String currentAlias,
-            String incomingAlias
-    ) {
-        Map<String, String> context = new LinkedHashMap<>();
-        context.put("teamTitle", team.getTitle() != null ? team.getTitle() : "");
-        context.put("teamId", team.getId() != null ? team.getId() : "");
-        context.put("provider", provider);
-        context.put("currentAlias", currentAlias);
-        context.put("incomingAlias", incomingAlias);
-
-        String message = "Alias mismatch for provider " + provider
-                + ", team " + team.getTitle()
-                + ": current=\"" + currentAlias + "\", incoming=\"" + incomingAlias + "\"";
-
-        errorLogService.record(ErrorLogService.Entry.builder()
-                .severity(ErrorLogService.SEVERITY_WARN)
-                .provider(provider)
-                .code(ErrorLogService.CODE_TEAM_ALIAS_MISMATCH)
-                .message(message)
-                .leagueCode(leagueCode)
-                .homeTeam(team.getTitle())
-                .context(context)
                 .build());
     }
 

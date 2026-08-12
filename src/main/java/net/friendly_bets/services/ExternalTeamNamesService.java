@@ -34,6 +34,14 @@ public class ExternalTeamNamesService {
     private final ExternalTeamAliasAutoBindService autoBindService;
 
     public ExternalTeamNamesLoadResultDto fetchAndAutoBindTeamNames(String providerRaw, String leagueCode) {
+        return fetchAndAutoBindTeamNames(providerRaw, leagueCode, false);
+    }
+
+    public ExternalTeamNamesLoadResultDto fetchAndAutoBindTeamNames(
+            String providerRaw,
+            String leagueCode,
+            boolean forceOverwrite
+    ) {
         String provider = normalizeProvider(providerRaw);
         List<String> names = switch (provider) {
             case ExternalProviderIds.SOCCER365 -> soccer365TeamNamesService.fetchTeamNames(leagueCode);
@@ -48,7 +56,7 @@ public class ExternalTeamNamesService {
             case ExternalProviderIds.FLASHSCORE -> flashscoreTeamNamesService.fetchTeamNames(leagueCode);
             default -> throw new BadRequestException("externalTeamNamesProviderUnsupported");
         };
-        return autoBindService.bindAndCollectUnmapped(provider, leagueCode, names);
+        return autoBindService.bindAndCollectUnmapped(provider, leagueCode, names, forceOverwrite);
     }
 
     /** @deprecated use {@link #fetchAndAutoBindTeamNames}; kept for legacy soccer365 admin route. */

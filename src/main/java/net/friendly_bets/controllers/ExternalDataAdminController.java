@@ -85,9 +85,11 @@ public class ExternalDataAdminController {
     @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<ExternalTeamNamesLoadResultDto> fetchTeamNames(
             @RequestParam String provider,
-            @RequestParam String leagueCode
+            @RequestParam String leagueCode,
+            @RequestParam(defaultValue = "false") boolean forceOverwrite
     ) {
-        return ResponseEntity.ok(externalTeamNamesService.fetchAndAutoBindTeamNames(provider, leagueCode));
+        return ResponseEntity.ok(
+                externalTeamNamesService.fetchAndAutoBindTeamNames(provider, leagueCode, forceOverwrite));
     }
 
     @PostMapping("/schedule/sync")
