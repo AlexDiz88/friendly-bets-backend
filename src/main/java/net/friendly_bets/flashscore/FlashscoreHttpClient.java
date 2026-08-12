@@ -7,6 +7,7 @@ import net.friendly_bets.providers.ExternalDataLayer;
 import net.friendly_bets.providers.ExternalProviderIds;
 import net.friendly_bets.scrape.BrowserProfile;
 import net.friendly_bets.scrape.ExternalApiCircuitBreaker;
+import net.friendly_bets.scrape.ExternalApiHttpFailures;
 import net.friendly_bets.scrape.ScrapeFailureKind;
 import net.friendly_bets.scrape.ScrapeHttpSupport;
 import org.slf4j.Logger;
@@ -103,7 +104,7 @@ public class FlashscoreHttpClient {
                 if (reportCircuit) {
                     circuitBreaker.recordFailure(layer, ExternalProviderIds.FLASHSCORE, ScrapeFailureKind.CHALLENGE, url);
                 }
-                throw new BadRequestException("flashscoreFetchFailed");
+                throw ExternalApiHttpFailures.fetchFailed("flashscoreFetchFailed");
             }
             if (response.statusCode() >= 400) {
                 ScrapeFailureKind kind = ScrapeHttpSupport.classifyHttpStatus(response.statusCode());
@@ -111,14 +112,14 @@ public class FlashscoreHttpClient {
                 if (reportCircuit) {
                     circuitBreaker.recordFailure(layer, ExternalProviderIds.FLASHSCORE, kind, "HTTP " + response.statusCode());
                 }
-                throw new BadRequestException("flashscoreFetchFailed");
+                throw ExternalApiHttpFailures.fetchFailed("flashscoreFetchFailed");
             }
             if (body.length() < 5 && !"0".equals(body.trim())) {
                 log.warn("flashscore empty feed for {}", url);
                 if (reportCircuit) {
                     circuitBreaker.recordFailure(layer, ExternalProviderIds.FLASHSCORE, ScrapeFailureKind.PARSE_ERROR, url);
                 }
-                throw new BadRequestException("flashscoreFetchFailed");
+                throw ExternalApiHttpFailures.fetchFailed("flashscoreFetchFailed");
             }
             if (reportCircuit) {
                 circuitBreaker.recordSuccess(layer);
@@ -132,7 +133,7 @@ public class FlashscoreHttpClient {
             if (reportCircuit) {
                 circuitBreaker.recordFailure(layer, ExternalProviderIds.FLASHSCORE, kind, e.getMessage());
             }
-            throw new BadRequestException("flashscoreFetchFailed");
+            throw ExternalApiHttpFailures.fetchFailed("flashscoreFetchFailed");
         }
     }
 

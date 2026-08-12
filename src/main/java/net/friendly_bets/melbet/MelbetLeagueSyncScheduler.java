@@ -6,6 +6,8 @@ import net.friendly_bets.models.League;
 import net.friendly_bets.models.Season;
 import net.friendly_bets.providers.ExternalDataLayer;
 import net.friendly_bets.providers.ExternalProviderIds;
+import net.friendly_bets.providers.LayerProviderRouter;
+import net.friendly_bets.providers.OddsProvider;
 import net.friendly_bets.services.ExternalDataLayerConfigService;
 import net.friendly_bets.services.RunningSeasonLookup;
 import org.slf4j.Logger;
@@ -17,6 +19,7 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -31,7 +34,7 @@ public class MelbetLeagueSyncScheduler {
     private static final Logger log = LoggerFactory.getLogger(MelbetLeagueSyncScheduler.class);
 
     private final MelbetProperties properties;
-    private final MelbetSyncService melbetSyncService;
+    private final LayerProviderRouter router;
     private final RunningSeasonLookup runningSeasonLookup;
     private final ExternalDataLayerConfigService layerConfigService;
 
@@ -82,13 +85,33 @@ public class MelbetLeagueSyncScheduler {
             if (!completedHourRuns.add(runKey)) {
                 continue;
             }
+            League league = findLeague(active.get(), leagueCode);
+            if (league == null) {
+                continue;
+            }
             try {
-                melbetSyncService.syncLeague(leagueCode, true);
+                router.execute(
+                        ExternalDataLayer.ODDS,
+                        OddsProvider.class,
+                        p -> p.syncLeagueSlot(active.get(), league, league.getCurrentMatchDay(), List.of()),
+                        leagueCode
+                );
             } catch (Exception e) {
                 log.warn("melbet scheduled sync failed league={}: {}", leagueCode, e.getMessage());
                 completedHourRuns.remove(runKey);
             }
         }
+    }
+
+    private static League findLeague(Season season, String leagueCode) {
+        for (League league : season.getLeagues()) {
+            if (league != null
+                    && league.getLeagueCode() != null
+                    && leagueCode.equalsIgnoreCase(league.getLeagueCode().name())) {
+                return league;
+            }
+        }
+        return null;
     }
 
     private void pruneCompletedKeys(LocalDate today) {

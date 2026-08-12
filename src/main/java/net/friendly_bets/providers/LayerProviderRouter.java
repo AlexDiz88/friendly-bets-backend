@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import net.friendly_bets.exceptions.BadRequestException;
 import net.friendly_bets.exceptions.FullMatchNotReadyException;
 import net.friendly_bets.models.AppSettings;
+import net.friendly_bets.scrape.ExternalApiHttpFailures;
 import net.friendly_bets.services.ErrorLogService;
 import net.friendly_bets.services.ExternalDataLayerConfigService;
 import org.slf4j.Logger;
@@ -13,7 +14,7 @@ import org.springframework.stereotype.Component;
 import java.util.function.Function;
 
 /**
- * Runs a layer operation on primary provider; on failure retries once with secondary if configured.
+ * Runs a layer operation on primary provider; retries once with secondary only on HTTP/transport failures.
  */
 @Component
 @RequiredArgsConstructor
@@ -75,6 +76,15 @@ public class LayerProviderRouter {
             // Deferral signal — not a provider outage; do not failover or treat as layer failure.
             throw notReady;
         } catch (RuntimeException primaryError) {
+            if (!ExternalApiHttpFailures.isHttpTransportFailure(primaryError)) {
+                errorLogService.recordLayerFailure(
+                        layer, primaryId, ErrorLogService.ROLE_PRIMARY,
+                        resolveErrorCode(primaryError),
+                        primaryError.getMessage(),
+                        leagueCode
+                );
+                throw primaryError;
+            }
             String secondaryId = assignment.getSecondaryProvider();
             if (secondaryId == null || secondaryId.isBlank() || secondaryId.equals(primaryId)) {
                 errorLogService.recordLayerFailure(

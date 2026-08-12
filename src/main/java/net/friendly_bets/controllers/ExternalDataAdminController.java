@@ -6,6 +6,7 @@ import net.friendly_bets.dto.ExternalSiteAccessProbeRequestDto;
 import net.friendly_bets.dto.ExternalSiteAccessProbeResultDto;
 import net.friendly_bets.dto.LiveMatchSyncResultDto;
 import net.friendly_bets.dto.ScheduleSyncResultDto;
+import net.friendly_bets.dto.StandingsSyncResultDto;
 import net.friendly_bets.dto.ExternalTeamNamesLoadResultDto;
 import net.friendly_bets.models.League;
 import net.friendly_bets.models.Season;
@@ -16,6 +17,7 @@ import net.friendly_bets.providers.LayerProviderRouter;
 import net.friendly_bets.providers.LiveMatchProvider;
 import net.friendly_bets.providers.OddsProvider;
 import net.friendly_bets.providers.ScheduleProvider;
+import net.friendly_bets.providers.StandingsProvider;
 import net.friendly_bets.repositories.MatchScheduleRepository;
 import net.friendly_bets.services.ExternalApiMonitoringService;
 import net.friendly_bets.services.ExternalDataLayerConfigService;
@@ -167,6 +169,23 @@ public class ExternalDataAdminController {
                     p -> p.fetchAndPersistFullDetails(match)
             );
             return ResponseEntity.ok(updated);
+        } finally {
+            ExternalApiMonitoringService.clearTriggerOverride();
+        }
+    }
+
+    @PostMapping("/standings/sync")
+    @PreAuthorize("hasAuthority('ADMIN')")
+    public ResponseEntity<StandingsSyncResultDto> syncStandings(@RequestParam String leagueCode) {
+        ExternalApiMonitoringService.setTriggerOverride(ExternalApiMonitoringTrigger.ADMIN);
+        try {
+            StandingsSyncResultDto result = router.execute(
+                    ExternalDataLayer.STANDINGS,
+                    StandingsProvider.class,
+                    p -> p.syncByLeagueCode(leagueCode),
+                    leagueCode
+            );
+            return ResponseEntity.ok(result);
         } finally {
             ExternalApiMonitoringService.clearTriggerOverride();
         }

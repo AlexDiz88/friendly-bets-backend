@@ -7,5 +7,6 @@ public enum ExternalDataLayer {
     SCHEDULE,
     ODDS,
     LIVE,
-    FULL_MATCH
+    FULL_MATCH,
+    STANDINGS
 }

@@ -2,6 +2,7 @@ package net.friendly_bets.controllers;
 
 import lombok.RequiredArgsConstructor;
 import net.friendly_bets.dto.ExternalMatchdayPageDto;
+import net.friendly_bets.dto.LeagueStandingsPageDto;
 import net.friendly_bets.models.schedule.MatchSchedule;
 import net.friendly_bets.services.MatchScheduleDisplayService;
 import net.friendly_bets.services.MatchScheduleQueryService;
@@ -18,6 +19,7 @@ public class MatchResultsController {
 
     private final MatchScheduleQueryService matchScheduleQueryService;
     private final MatchScheduleDisplayService matchScheduleDisplayService;
+    private final LeagueStandingsService leagueStandingsService;
 
     @GetMapping("/competitions/{pathLeagueCode}/matchdays/{matchday}")
     @PreAuthorize("permitAll()")
@@ -33,5 +35,14 @@ public class MatchResultsController {
         return ResponseEntity.ok(ExternalMatchdayPageDto.builder()
                 .matches(matchScheduleDisplayService.toDisplayDtos(matches, season))
                 .build());
+    }
+
+    @GetMapping("/competitions/{pathLeagueCode}/standings")
+    @PreAuthorize("permitAll()")
+    public ResponseEntity<LeagueStandingsPageDto> getStandings(
+            @PathVariable String pathLeagueCode,
+            @RequestParam(defaultValue = "2025") String season,
+            @RequestParam(required = false) String leagueId) {
+        return ResponseEntity.ok(leagueStandingsService.getStandings(pathLeagueCode, season, leagueId));
     }
 }

@@ -47,6 +47,7 @@ public class MatchFinalizeOrchestrator {
     private final ExternalDataLayerConfigService layerConfigService;
     private final ExternalApiMonitoringService monitoringService;
     private final ErrorLogService errorLogService;
+    private final StandingsSyncOrchestrator standingsSyncOrchestrator;
 
     @Transactional
     public MatchSchedule finalizeFinishedMatch(MatchSchedule match) {
@@ -54,6 +55,7 @@ public class MatchFinalizeOrchestrator {
             return match;
         }
         MatchSchedule current = matchScheduleRepository.findById(match.getId()).orElse(match);
+        boolean wasFinalized = current.getFinalizedAt() != null;
         Instant now = Instant.now();
         if (current.getFullDetailsFetchedAt() == null
                 && layerConfigService.isLayerEnabled(ExternalDataLayer.FULL_MATCH)) {
@@ -77,6 +79,12 @@ public class MatchFinalizeOrchestrator {
         }
         if (properties.isAutoSettleEnabled() && MatchScheduleSettleService.isFinalizedForSettle(current)) {
             settleMatch(current);
+        }
+        if (!wasFinalized && MatchScheduleSettleService.isFinalizedForSettle(current)) {
+            standingsSyncOrchestrator.syncLeagueAfterMatchFinalized(
+                    current.getLeagueCode(),
+                    current.getSeasonId()
+            );
         }
         return current;
     }

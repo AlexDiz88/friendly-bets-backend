@@ -44,6 +44,10 @@ public class AppSettingsService {
                     .enabled(externalDataProperties.isLayerEnabled(layer))
                     .primaryProvider(ExternalProviderIds.TWENTYFOUR_SCORE)
                     .build();
+            case STANDINGS -> AppSettings.LayerAssignment.builder()
+                    .enabled(externalDataProperties.isLayerEnabled(layer))
+                    .primaryProvider(ExternalProviderIds.LIVERESULT)
+                    .build();
         };
     }
 
@@ -64,6 +68,10 @@ public class AppSettingsService {
             case LIVE -> AppSettings.LayerAssignment.builder()
                     .enabled(true)
                     .primaryProvider(ExternalProviderIds.TWENTYFOUR_SCORE)
+                    .build();
+            case STANDINGS -> AppSettings.LayerAssignment.builder()
+                    .enabled(true)
+                    .primaryProvider(ExternalProviderIds.LIVERESULT)
                     .build();
         };
     }

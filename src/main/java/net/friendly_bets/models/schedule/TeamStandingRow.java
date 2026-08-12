@@ -41,4 +41,7 @@ public class TeamStandingRow {
 
     @Field(name = "points")
     private int points;
+
+    @Field(name = "zone_code")
+    private String zoneCode;
 }
