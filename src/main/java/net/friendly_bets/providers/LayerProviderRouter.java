@@ -76,7 +76,7 @@ public class LayerProviderRouter {
             // Deferral signal — not a provider outage; do not failover or treat as layer failure.
             throw notReady;
         } catch (RuntimeException primaryError) {
-            if (!shouldFailover(layer, primaryError)) {
+            if (!ExternalApiHttpFailures.isHttpTransportFailure(primaryError)) {
                 errorLogService.recordLayerFailure(
                         layer, primaryId, ErrorLogService.ROLE_PRIMARY,
                         resolveErrorCode(primaryError),
@@ -129,10 +129,6 @@ public class LayerProviderRouter {
                 throw secondaryError;
             }
         }
-    }
-
-    private static boolean shouldFailover(ExternalDataLayer layer, RuntimeException error) {
-        return ExternalApiHttpFailures.isHttpTransportFailure(error);
     }
 
     private static String resolveErrorCode(RuntimeException error) {

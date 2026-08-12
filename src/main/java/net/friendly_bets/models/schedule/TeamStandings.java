@@ -38,6 +38,16 @@ public class TeamStandings {
     @Builder.Default
     private List<TeamStandingRow> rows = new ArrayList<>();
 
+    @Field(name = "zone_rules")
+    @Builder.Default
+    private List<StandingZoneRule> zoneRules = new ArrayList<>();
+
+    @Field(name = "provider")
+    private String provider;
+
+    @Field(name = "source_url")
+    private String sourceUrl;
+
     @Field(name = "updated_at")
     private Instant updatedAt;
 }
