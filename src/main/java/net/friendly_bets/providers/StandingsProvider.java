@@ -6,7 +6,7 @@ import net.friendly_bets.models.Season;
 import net.friendly_bets.providers.standings.StandingsTableSnapshot;
 
 /**
- * Layer STANDINGS: fetch league table from external source and persist snapshot in {@code team_standings}.
+ * Layer STANDINGS: fetch league table from external source and persist snapshot in {@code standings}.
  */
 public interface StandingsProvider extends ExternalDataProvider {
 

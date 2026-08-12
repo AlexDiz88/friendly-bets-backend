@@ -24,7 +24,7 @@ import java.util.Optional;
 import java.util.Set;
 
 /**
- * Provider-agnostic persist of {@link StandingsTableSnapshot} into {@code team_standings}.
+ * Provider-agnostic persist of {@link StandingsTableSnapshot} into {@code standings}.
  */
 @Component
 @RequiredArgsConstructor

@@ -50,7 +50,7 @@ public class UtcTimestampsMigrationService {
             Map.entry("tournament_archives", List.of("exported_at", "imported_at")),
             Map.entry("app_settings", List.of("client_version.updated_at")),
             Map.entry("playoff_brackets", List.of("updated_at")),
-            Map.entry("team_standings", List.of("updated_at"))
+            Map.entry("standings", List.of("updated_at"))
     );
 
     private final MongoTemplate mongoTemplate;
