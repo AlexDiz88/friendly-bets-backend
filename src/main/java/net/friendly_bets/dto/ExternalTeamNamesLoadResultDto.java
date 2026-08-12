@@ -19,6 +19,8 @@ public class ExternalTeamNamesLoadResultDto {
 
     private int autoBoundCount;
     private int mismatchCount;
+    /** Existing provider aliases replaced during force sync. */
+    private int overwrittenCount;
     private int alreadyMappedCount;
     private int totalNames;
 }

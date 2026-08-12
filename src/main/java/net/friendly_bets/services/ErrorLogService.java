@@ -204,6 +204,57 @@ public class ErrorLogService {
                 .build());
     }
 
+    /**
+     * One summary row when team-alias sync detected stored aliases that differ from the API names.
+     */
+    public void recordTeamAliasMismatchSummary(
+            String provider,
+            String leagueCode,
+            List<TeamAliasMismatchDetail> mismatches,
+            boolean overwritten
+    ) {
+        if (mismatches == null || mismatches.isEmpty()) {
+            return;
+        }
+        Map<String, String> context = new LinkedHashMap<>();
+        context.put("count", String.valueOf(mismatches.size()));
+        context.put("overwritten", String.valueOf(overwritten));
+        StringBuilder details = new StringBuilder();
+        for (TeamAliasMismatchDetail mismatch : mismatches) {
+            if (!details.isEmpty()) {
+                details.append("; ");
+            }
+            details.append(mismatch.getTeamTitle())
+                    .append(": \"")
+                    .append(mismatch.getCurrentAlias())
+                    .append("\" -> \"")
+                    .append(mismatch.getIncomingAlias())
+                    .append('"');
+        }
+        context.put("details", details.toString());
+
+        String action = overwritten ? "overwritten during force sync" : "kept unchanged";
+        String message = "Team alias mismatch for " + mismatches.size() + " team(s), " + action;
+
+        record(Entry.builder()
+                .severity(SEVERITY_WARN)
+                .provider(provider)
+                .code(CODE_TEAM_ALIAS_MISMATCH)
+                .message(message)
+                .leagueCode(leagueCode)
+                .context(context)
+                .build());
+    }
+
+    @Value
+    @Builder
+    public static class TeamAliasMismatchDetail {
+        String teamId;
+        String teamTitle;
+        String currentAlias;
+        String incomingAlias;
+    }
+
     public void recordTeamMappingMissing(
             String provider,
             String leagueCode,
