@@ -14,7 +14,6 @@ import net.friendly_bets.providers.standings.StandingsTableSnapshot;
 import net.friendly_bets.repositories.TeamStandingsRepository;
 import net.friendly_bets.services.ExternalTeamAliasAutoBindService;
 import net.friendly_bets.services.TeamAliasResolver;
-import net.friendly_bets.services.TeamLogoDownloadService;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
@@ -33,7 +32,6 @@ public class StandingsPersistSupport {
 
     private final TeamAliasResolver teamAliasResolver;
     private final ExternalTeamAliasAutoBindService autoBindService;
-    private final TeamLogoDownloadService logoDownloadService;
     private final TeamStandingsRepository teamStandingsRepository;
 
     public StandingsSyncResultDto persist(
@@ -68,9 +66,6 @@ public class StandingsPersistSupport {
                 continue;
             }
             Team resolved = team.get();
-            if (resolved.getLogo() != null && row.getLogoUrl() != null) {
-                logoDownloadService.downloadIfMissing(resolved.getLogo(), row.getLogoUrl());
-            }
             rows.add(TeamStandingRow.builder()
                     .rank(row.getRank())
                     .teamId(resolved.getId())
