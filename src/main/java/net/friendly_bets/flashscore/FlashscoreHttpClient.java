@@ -60,10 +60,14 @@ public class FlashscoreHttpClient {
     }
 
     public String fetchTournamentPageHtml(String tournamentPath) {
+        return fetchTournamentPageHtml(tournamentPath, properties.getBaseUrl());
+    }
+
+    public String fetchTournamentPageHtml(String tournamentPath, String baseUrl) {
         if (tournamentPath == null || tournamentPath.isBlank()) {
             throw new BadRequestException("flashscoreTournamentNotConfigured");
         }
-        String base = trimTrailingSlash(properties.getBaseUrl());
+        String base = trimTrailingSlash(baseUrl != null && !baseUrl.isBlank() ? baseUrl : properties.getBaseUrl());
         String path = tournamentPath.startsWith("/") ? tournamentPath : "/" + tournamentPath;
         if (!path.endsWith("/")) {
             path = path + "/";

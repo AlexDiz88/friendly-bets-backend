@@ -11,6 +11,8 @@ import java.util.Map;
 public class FlashscoreProperties {
 
     private String baseUrl = "https://www.flashscorekz.com";
+    /** English tournament pages for admin team-alias sync (FH/FK labels). */
+    private String teamNamesBaseUrl = "https://www.flashscore.com";
     private String feedBaseUrl = "https://46.flashscore.ninja";
     private String feedSign = "SW9D1eZo";
     private String feedLocale = "ru-kz";
