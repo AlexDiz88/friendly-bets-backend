@@ -6,6 +6,8 @@ import net.friendly_bets.models.League;
 import net.friendly_bets.models.Season;
 import net.friendly_bets.providers.ExternalDataLayer;
 import net.friendly_bets.providers.ExternalProviderIds;
+import net.friendly_bets.providers.LayerProviderRouter;
+import net.friendly_bets.providers.ScheduleProvider;
 import net.friendly_bets.services.ExternalDataLayerConfigService;
 import net.friendly_bets.services.RunningSeasonLookup;
 import org.slf4j.Logger;
@@ -31,7 +33,7 @@ public class Football24ScheduleSyncScheduler {
     private static final Logger log = LoggerFactory.getLogger(Football24ScheduleSyncScheduler.class);
 
     private final Football24Properties properties;
-    private final Football24ScheduleSyncService scheduleSyncService;
+    private final LayerProviderRouter router;
     private final RunningSeasonLookup runningSeasonLookup;
     private final ExternalDataLayerConfigService layerConfigService;
 
@@ -78,7 +80,12 @@ public class Football24ScheduleSyncScheduler {
             try {
                 applyJitter();
                 log.info("football24 due league={} hour={} zone={}", leagueCode, hour, zone);
-                scheduleSyncService.syncLeague(season, league, true);
+                router.execute(
+                        ExternalDataLayer.SCHEDULE,
+                        ScheduleProvider.class,
+                        p -> p.syncLeague(season, league, true),
+                        leagueCode
+                );
             } catch (Exception e) {
                 completedHourRuns.remove(runKey);
                 log.warn("football24 schedule sync failed for {}: {}", leagueCode, e.getMessage());

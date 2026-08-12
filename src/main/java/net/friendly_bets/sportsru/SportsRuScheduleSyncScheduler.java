@@ -5,6 +5,8 @@ import net.friendly_bets.models.League;
 import net.friendly_bets.models.Season;
 import net.friendly_bets.providers.ExternalDataLayer;
 import net.friendly_bets.providers.ExternalProviderIds;
+import net.friendly_bets.providers.LayerProviderRouter;
+import net.friendly_bets.providers.ScheduleProvider;
 import net.friendly_bets.services.ExternalDataLayerConfigService;
 import net.friendly_bets.services.RunningSeasonLookup;
 import net.friendly_bets.sportsru.config.SportsRuProperties;
@@ -34,7 +36,7 @@ public class SportsRuScheduleSyncScheduler {
     private static final Logger log = LoggerFactory.getLogger(SportsRuScheduleSyncScheduler.class);
 
     private final SportsRuProperties properties;
-    private final SportsRuScheduleSyncService scheduleSyncService;
+    private final LayerProviderRouter router;
     private final SportsRuTeamNamesService teamNamesService;
     private final RunningSeasonLookup runningSeasonLookup;
     private final ExternalDataLayerConfigService layerConfigService;
@@ -82,7 +84,12 @@ public class SportsRuScheduleSyncScheduler {
             try {
                 applyJitter();
                 log.info("sports.ru due league={} hour={} zone={}", leagueCode, hour, zone);
-                scheduleSyncService.syncLeague(season, league, true);
+                router.execute(
+                        ExternalDataLayer.SCHEDULE,
+                        ScheduleProvider.class,
+                        p -> p.syncLeague(season, league, true),
+                        leagueCode
+                );
             } catch (Exception e) {
                 completedHourRuns.remove(runKey);
                 log.warn("sports.ru schedule sync failed for {}: {}", leagueCode, e.getMessage());

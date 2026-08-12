@@ -6,6 +6,8 @@ import net.friendly_bets.marathonbet.config.MarathonbetProperties;
 import net.friendly_bets.models.League;
 import net.friendly_bets.models.Season;
 import net.friendly_bets.providers.ExternalDataLayer;
+import net.friendly_bets.providers.LayerProviderRouter;
+import net.friendly_bets.providers.OddsProvider;
 import net.friendly_bets.services.ExternalDataLayerConfigService;
 import net.friendly_bets.services.RunningSeasonLookup;
 import org.slf4j.Logger;
@@ -18,6 +20,7 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -33,7 +36,7 @@ public class MarathonbetLeagueSyncScheduler {
     private static final Logger log = LoggerFactory.getLogger(MarathonbetLeagueSyncScheduler.class);
 
     private final MarathonbetProperties properties;
-    private final MarathonbetSyncService marathonbetSyncService;
+    private final LayerProviderRouter router;
     private final RunningSeasonLookup runningSeasonLookup;
     private final ExternalDataLayerConfigService layerConfigService;
 
@@ -85,14 +88,34 @@ public class MarathonbetLeagueSyncScheduler {
             if (!completedHourRuns.add(runKey)) {
                 continue;
             }
+            League league = findLeague(active.get(), leagueCode);
+            if (league == null) {
+                continue;
+            }
             try {
                 log.info("marathonbet due league={} hour={} zone={}", leagueCode, hour, zone);
-                marathonbetSyncService.syncLeague(leagueCode);
+                router.execute(
+                        ExternalDataLayer.ODDS,
+                        OddsProvider.class,
+                        p -> p.syncLeagueSlot(active.get(), league, league.getCurrentMatchDay(), List.of()),
+                        leagueCode
+                );
             } catch (Exception e) {
                 completedHourRuns.remove(runKey);
                 log.warn("marathonbet league={} sync failed: {}", leagueCode, e.getMessage());
             }
         }
+    }
+
+    private static League findLeague(Season season, String leagueCode) {
+        for (League league : season.getLeagues()) {
+            if (league != null
+                    && league.getLeagueCode() != null
+                    && leagueCode.equalsIgnoreCase(league.getLeagueCode().name())) {
+                return league;
+            }
+        }
+        return null;
     }
 
     private void pruneCompletedKeys(LocalDate today) {

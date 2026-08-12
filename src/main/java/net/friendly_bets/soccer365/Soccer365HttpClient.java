@@ -5,6 +5,7 @@ import net.friendly_bets.exceptions.BadRequestException;
 import net.friendly_bets.providers.ExternalDataLayer;
 import net.friendly_bets.scrape.BrowserProfile;
 import net.friendly_bets.scrape.ExternalApiCircuitBreaker;
+import net.friendly_bets.scrape.ExternalApiHttpFailures;
 import net.friendly_bets.scrape.ScrapeFailureKind;
 import net.friendly_bets.scrape.ScrapeHttpSupport;
 import net.friendly_bets.soccer365.config.Soccer365Properties;
@@ -83,7 +84,7 @@ public class Soccer365HttpClient {
                 if (reportCircuit) {
                     circuitBreaker.recordFailure(layerForUrl(url), "soccer365.ru", ScrapeFailureKind.CHALLENGE, url);
                 }
-                throw new BadRequestException("soccer365FetchFailed");
+                throw ExternalApiHttpFailures.fetchFailed("soccer365FetchFailed");
             }
             if (response.statusCode() >= 400) {
                 ScrapeFailureKind kind = ScrapeHttpSupport.classifyHttpStatus(response.statusCode());
@@ -91,7 +92,7 @@ public class Soccer365HttpClient {
                 if (reportCircuit) {
                     circuitBreaker.recordFailure(layerForUrl(url), "soccer365.ru", kind, "HTTP " + response.statusCode());
                 }
-                throw new BadRequestException("soccer365FetchFailed");
+                throw ExternalApiHttpFailures.fetchFailed("soccer365FetchFailed");
             }
             if (reportCircuit) {
                 circuitBreaker.recordSuccess(layerForUrl(url));
@@ -105,7 +106,7 @@ public class Soccer365HttpClient {
             if (reportCircuit) {
                 circuitBreaker.recordFailure(layerForUrl(url), "soccer365.ru", kind, e.getMessage());
             }
-            throw new BadRequestException("soccer365FetchFailed");
+            throw ExternalApiHttpFailures.fetchFailed("soccer365FetchFailed");
         }
     }
 

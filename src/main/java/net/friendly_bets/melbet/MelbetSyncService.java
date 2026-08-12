@@ -36,6 +36,7 @@ import net.friendly_bets.services.AppSettingsService;
 import net.friendly_bets.services.GetEntityService;
 import net.friendly_bets.services.MatchScheduleDisplayService;
 import net.friendly_bets.services.MatchScheduleQueryService;
+import net.friendly_bets.scrape.ExternalApiHttpFailures;
 import net.friendly_bets.services.RunningSeasonLookup;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -142,6 +143,7 @@ public class MelbetSyncService {
                 failedRun.setSlotScope(OddsSlotScope.CURRENT.name());
                 failedRun.setSlotOrders(slotOrders);
                 finalizeRun(failedRun, httpLogs, false, SlotCounters.empty(), listResult.toErrorKey());
+                ExternalApiHttpFailures.throwIfMelbetTransportFailure(listResult);
                 throw new BadRequestException(listResult.toErrorKey());
             }
 
@@ -244,6 +246,7 @@ public class MelbetSyncService {
                     .season(season)
                     .build());
             finalizeRun(run, httpLogs, false, SlotCounters.empty(), errorSummary);
+            ExternalApiHttpFailures.throwIfMelbetTransportFailure(listResult);
             return toResult(code, season, slotOrders, SlotCounters.empty(), false, errorSummary);
         }
 

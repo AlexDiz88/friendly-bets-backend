@@ -28,6 +28,7 @@ import net.friendly_bets.services.ExternalApiMonitoringService;
 import net.friendly_bets.services.AppSettingsService;
 import net.friendly_bets.services.MatchScheduleDisplayService;
 import net.friendly_bets.services.MatchScheduleQueryService;
+import net.friendly_bets.scrape.ExternalApiHttpFailures;
 import net.friendly_bets.services.RunningSeasonLookup;
 import net.friendly_bets.providers.ExternalDataLayer;
 import net.friendly_bets.providers.odds.OddsCronSlotPlan;
@@ -217,6 +218,7 @@ public class MarathonbetSyncService {
                         SlotSyncCounters.empty(),
                         tournamentResult.toErrorKey()
                 );
+                ExternalApiHttpFailures.throwIfMarathonbetTransportFailure(tournamentResult);
                 throw new BadRequestException(tournamentResult.toErrorKey());
             }
             List<MarathonbetPrematchEvent> prematch =
@@ -294,36 +296,37 @@ public class MarathonbetSyncService {
                 tournamentId,
                 tournamentRequestedAt
         ));
-        if (!tournamentResult.isSuccess()) {
-            String errorSummary = tournamentResult.toErrorKey();
-            log.warn(
-                    "marathonbet tournament fetch failed league={}: status={}, outcome={}",
-                    code,
-                    tournamentResult.getHttpStatus(),
-                    tournamentResult.getOutcome()
-            );
-            errorLogService.record(ErrorLogService.Entry.builder()
-                    .severity(ErrorLogService.SEVERITY_ERROR)
-                    .layer(ExternalDataLayer.ODDS.name())
-                    .provider("marathonbet")
-                    .code(ErrorLogService.CODE_PROVIDER_FETCH_FAILED)
-                    .message(errorSummary)
-                    .leagueCode(code)
-                    .season(season)
-                    .build());
-            errorLogService.record(ErrorLogService.Entry.builder()
-                    .severity(ErrorLogService.SEVERITY_ERROR)
-                    .layer(ExternalDataLayer.ODDS.name())
-                    .provider("marathonbet")
-                    .providerRole(ErrorLogService.ROLE_PRIMARY)
-                    .code(ErrorLogService.CODE_PRIMARY_UNAVAILABLE)
-                    .message(errorSummary)
-                    .leagueCode(code)
-                    .season(season)
-                    .build());
-            finalizeOddsRun(run, httpLogs, false, SlotSyncCounters.empty(), errorSummary);
-            return toResult(code, season, slotOrders, SlotSyncCounters.empty(), false, errorSummary);
-        }
+            if (!tournamentResult.isSuccess()) {
+                String errorSummary = tournamentResult.toErrorKey();
+                log.warn(
+                        "marathonbet tournament fetch failed league={}: status={}, outcome={}",
+                        code,
+                        tournamentResult.getHttpStatus(),
+                        tournamentResult.getOutcome()
+                );
+                errorLogService.record(ErrorLogService.Entry.builder()
+                        .severity(ErrorLogService.SEVERITY_ERROR)
+                        .layer(ExternalDataLayer.ODDS.name())
+                        .provider("marathonbet")
+                        .code(ErrorLogService.CODE_PROVIDER_FETCH_FAILED)
+                        .message(errorSummary)
+                        .leagueCode(code)
+                        .season(season)
+                        .build());
+                errorLogService.record(ErrorLogService.Entry.builder()
+                        .severity(ErrorLogService.SEVERITY_ERROR)
+                        .layer(ExternalDataLayer.ODDS.name())
+                        .provider("marathonbet")
+                        .providerRole(ErrorLogService.ROLE_PRIMARY)
+                        .code(ErrorLogService.CODE_PRIMARY_UNAVAILABLE)
+                        .message(errorSummary)
+                        .leagueCode(code)
+                        .season(season)
+                        .build());
+                finalizeOddsRun(run, httpLogs, false, SlotSyncCounters.empty(), errorSummary);
+                ExternalApiHttpFailures.throwIfMarathonbetTransportFailure(tournamentResult);
+                return toResult(code, season, slotOrders, SlotSyncCounters.empty(), false, errorSummary);
+            }
 
         List<MarathonbetPrematchEvent> prematch =
                 MarathonbetTournamentParser.parsePrematchEvents(tournamentResult.getBody());

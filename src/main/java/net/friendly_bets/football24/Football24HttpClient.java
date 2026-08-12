@@ -7,6 +7,7 @@ import net.friendly_bets.providers.ExternalDataLayer;
 import net.friendly_bets.providers.ExternalProviderIds;
 import net.friendly_bets.scrape.BrowserProfile;
 import net.friendly_bets.scrape.ExternalApiCircuitBreaker;
+import net.friendly_bets.scrape.ExternalApiHttpFailures;
 import net.friendly_bets.scrape.ScrapeFailureKind;
 import net.friendly_bets.scrape.ScrapeHttpSupport;
 import org.slf4j.Logger;
@@ -105,7 +106,7 @@ public class Football24HttpClient {
                             url
                     );
                 }
-                throw new BadRequestException("football24FetchFailed");
+                throw ExternalApiHttpFailures.fetchFailed("football24FetchFailed");
             }
             if (response.statusCode() >= 400) {
                 ScrapeFailureKind kind = ScrapeHttpSupport.classifyHttpStatus(response.statusCode());
@@ -118,7 +119,7 @@ public class Football24HttpClient {
                             "HTTP " + response.statusCode()
                     );
                 }
-                throw new BadRequestException("football24FetchFailed");
+                throw ExternalApiHttpFailures.fetchFailed("football24FetchFailed");
             }
             if (reportCircuit) {
                 circuitBreaker.recordSuccess(ExternalDataLayer.SCHEDULE);
@@ -137,7 +138,7 @@ public class Football24HttpClient {
                         e.getMessage()
                 );
             }
-            throw new BadRequestException("football24FetchFailed");
+            throw ExternalApiHttpFailures.fetchFailed("football24FetchFailed");
         }
     }
 
