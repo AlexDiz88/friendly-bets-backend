@@ -225,16 +225,19 @@ public class ErrorLogService {
                 details.append("; ");
             }
             details.append(mismatch.getTeamTitle())
-                    .append(": \"")
+                    .append(": «")
                     .append(mismatch.getCurrentAlias())
-                    .append("\" -> \"")
+                    .append("» → «")
                     .append(mismatch.getIncomingAlias())
-                    .append('"');
+                    .append('»');
         }
         context.put("details", details.toString());
 
-        String action = overwritten ? "overwritten during force sync" : "kept unchanged";
-        String message = "Team alias mismatch for " + mismatches.size() + " team(s), " + action;
+        String action = overwritten
+                ? "алиасы перезаписаны при принудительной синхронизации"
+                : "алиасы оставлены без изменений";
+        String message = "Рассинхрон алиаса у "
+                + mismatches.size() + " " + teamsCountLabel(mismatches.size()) + ": " + action;
 
         record(Entry.builder()
                 .severity(SEVERITY_WARN)
@@ -384,5 +387,14 @@ public class ErrorLogService {
             return null;
         }
         return value.trim();
+    }
+
+    private static String teamsCountLabel(int count) {
+        int mod10 = count % 10;
+        int mod100 = count % 100;
+        if (mod100 >= 11 && mod100 <= 14) {
+            return "команд";
+        }
+        return mod10 == 1 ? "команды" : "команд";
     }
 }
