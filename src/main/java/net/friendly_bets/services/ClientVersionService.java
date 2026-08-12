@@ -26,27 +26,16 @@ public class ClientVersionService {
     }
 
     /**
-     * Принимает новый buildId только если он больше текущего (миллисекунды сборки).
-     * Старые клиенты не могут откатить версию назад.
+     * CI deploy: принимает buildId только если он больше текущего (миллисекунды сборки).
      */
     @Transactional
-    public ClientVersionDto registerIfNewer(String buildId) {
-        long incoming;
-        try {
-            incoming = Long.parseLong(buildId);
-        } catch (NumberFormatException e) {
-            throw new BadRequestException("invalidClientBuildId");
-        }
+    public ClientVersionDto setIfNewer(String buildId) {
+        long incoming = parseBuildId(buildId);
 
         AppSettings settings = appSettingsService.getOrCreate();
         AppSettings.ClientVersionBlock current = settings.getClientVersion();
         if (current != null && current.getBuildId() != null) {
-            long existing;
-            try {
-                existing = Long.parseLong(current.getBuildId());
-            } catch (NumberFormatException e) {
-                existing = -1L;
-            }
+            long existing = parseBuildIdLenient(current.getBuildId());
             if (incoming <= existing) {
                 return ClientVersionDto.builder().buildId(current.getBuildId()).build();
             }
@@ -59,5 +48,21 @@ public class ClientVersionService {
         settings.setClientVersion(next);
         appSettingsService.save(settings);
         return ClientVersionDto.builder().buildId(next.getBuildId()).build();
+    }
+
+    private static long parseBuildId(String buildId) {
+        try {
+            return Long.parseLong(buildId);
+        } catch (NumberFormatException e) {
+            throw new BadRequestException("invalidClientBuildId");
+        }
+    }
+
+    private static long parseBuildIdLenient(String buildId) {
+        try {
+            return Long.parseLong(buildId);
+        } catch (NumberFormatException e) {
+            return -1L;
+        }
     }
 }
