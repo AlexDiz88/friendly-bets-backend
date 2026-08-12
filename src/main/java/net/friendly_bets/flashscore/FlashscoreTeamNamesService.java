@@ -6,43 +6,39 @@ import net.friendly_bets.flashscore.config.FlashscoreProperties;
 import net.friendly_bets.models.League;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDate;
-import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
- * Team names for alias autobind — same canonical FH/FK labels as day feed / FULL_MATCH,
- * not localized labels from the tournament HTML page.
+ * Team names for alias autobind — canonical English FH/FK labels from the league
+ * tournament page feed (same strings as day feed / FULL_MATCH), scoped by stage id.
  */
 @Service
 @RequiredArgsConstructor
 public class FlashscoreTeamNamesService {
 
-    private static final int DAY_FEED_PAST_DAYS = 7;
-    private static final int DAY_FEED_FUTURE_DAYS = 21;
+    private static final Pattern EMBEDDED_FEED_BLOCK = Pattern.compile("data: `([^`]+)`");
 
     private final FlashscoreHttpClient httpClient;
-    private final FlashscoreDayFeedParser dayFeedParser;
     private final FlashscoreProperties properties;
 
     public List<String> fetchTeamNames(String leagueCodeRaw) {
         League.LeagueCode leagueCode = FlashscoreFullMatchResolver.parseLeagueCode(leagueCodeRaw);
         FlashscoreProperties.LeagueConfig config = requireLeagueConfig(leagueCode);
-        LocalDate today = LocalDate.now(ZoneOffset.UTC);
-        Set<String> unique = new LinkedHashSet<>();
-        for (int offset = -DAY_FEED_PAST_DAYS; offset <= DAY_FEED_FUTURE_DAYS; offset++) {
-            LocalDate day = today.plusDays(offset);
-            String feed = httpClient.fetchDayFootballFeed(day);
-            FlashscoreParsedDayPage page = dayFeedParser.parse(feed, day);
-            unique.addAll(extractTeamNames(page, config));
-        }
-        if (unique.isEmpty()) {
+        String html = httpClient.fetchTournamentPageHtml(
+                config.getTournamentPath(),
+                properties.getTeamNamesBaseUrl()
+        );
+        List<String> names = parseTeamNamesFromTournamentHtml(html, config.getStageId());
+        if (names.isEmpty()) {
             throw new BadRequestException("flashscoreTeamNamesEmpty");
         }
-        return new ArrayList<>(unique);
+        return names;
     }
 
     FlashscoreProperties.LeagueConfig requireLeagueConfig(League.LeagueCode leagueCode) {
@@ -52,43 +48,48 @@ public class FlashscoreTeamNamesService {
         if (config == null || config.getTournamentPath() == null || config.getTournamentPath().isBlank()) {
             throw new BadRequestException("flashscoreTournamentNotConfigured");
         }
+        if (config.getStageId() == null || config.getStageId().isBlank()) {
+            throw new BadRequestException("flashscoreTournamentNotConfigured");
+        }
         return config;
     }
 
-    static List<String> extractTeamNames(FlashscoreParsedDayPage page, FlashscoreProperties.LeagueConfig config) {
-        if (page == null || page.getCompetitions() == null || config == null) {
+    static List<String> parseTeamNamesFromTournamentHtml(String html, String stageId) {
+        if (html == null || html.isBlank() || stageId == null || stageId.isBlank()) {
             return List.of();
         }
         Set<String> unique = new LinkedHashSet<>();
-        for (FlashscoreParsedDayPage.CompetitionBlock block : page.getCompetitions()) {
-            if (!competitionMatchesLeague(block, config)) {
-                continue;
-            }
-            if (block.getMatches() == null) {
-                continue;
-            }
-            for (FlashscoreParsedDayPage.Match match : block.getMatches()) {
-                addName(unique, match.getHomeName());
-                addName(unique, match.getAwayName());
-            }
+        Matcher matcher = EMBEDDED_FEED_BLOCK.matcher(html);
+        while (matcher.find()) {
+            unique.addAll(extractTeamNamesFromFeedBlock(matcher.group(1), stageId));
         }
         unique.removeIf(FlashscoreTeamNamesService::isCountryLikeName);
         return new ArrayList<>(unique);
     }
 
-    static boolean competitionMatchesLeague(
-            FlashscoreParsedDayPage.CompetitionBlock block,
-            FlashscoreProperties.LeagueConfig config
-    ) {
-        if (block == null || config == null) {
-            return false;
+    static Set<String> extractTeamNamesFromFeedBlock(String feedBlock, String stageId) {
+        Set<String> unique = new LinkedHashSet<>();
+        String currentStageId = null;
+        for (String record : FlashscoreFeedSupport.splitRecords(feedBlock)) {
+            Map<String, String> fields = FlashscoreFeedSupport.parseRecord(record);
+            String za = fields.get("ZA");
+            if (za != null) {
+                currentStageId = fields.get("ZC");
+                continue;
+            }
+            if (!stageId.equalsIgnoreCase(currentStageId != null ? currentStageId : "")) {
+                continue;
+            }
+            if (fields.containsKey("AA")) {
+                addName(unique, fields.get("FH"));
+                addName(unique, fields.get("FK"));
+                continue;
+            }
+            if (fields.containsKey("TN")) {
+                addName(unique, fields.get("TN"));
+            }
         }
-        if (config.getStageId() != null
-                && !config.getStageId().isBlank()
-                && config.getStageId().equalsIgnoreCase(block.getStageId())) {
-            return true;
-        }
-        return FlashscoreDayFeedParser.competitionMatchesFilter(block, config.getTitleContains());
+        return unique;
     }
 
     private static boolean isCountryLikeName(String name) {

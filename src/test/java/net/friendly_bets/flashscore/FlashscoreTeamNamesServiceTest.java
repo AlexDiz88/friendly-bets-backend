@@ -1,13 +1,8 @@
 package net.friendly_bets.flashscore;
 
-import net.friendly_bets.flashscore.config.FlashscoreProperties;
 import org.junit.jupiter.api.Test;
 
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.time.LocalDate;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -16,37 +11,40 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class FlashscoreTeamNamesServiceTest {
 
     @Test
-    void extractTeamNamesFromDayFeedUsesCanonicalFhFkLabels() throws IOException {
-        String feed = readFixture("flashscore/day-nurnberg-mini.feed");
-        FlashscoreDayFeedParser parser = new FlashscoreDayFeedParser();
-        FlashscoreParsedDayPage page = parser.parse(feed, LocalDate.of(2026, 8, 12));
-
-        FlashscoreProperties.LeagueConfig bl = new FlashscoreProperties.LeagueConfig();
-        bl.setStageId("6khmdCet");
-        bl.setTitleContains("Bundesliga");
-
-        var names = FlashscoreTeamNamesService.extractTeamNames(page, bl);
-
-        assertTrue(names.contains("Nurnberg"));
-        assertTrue(names.contains("SG Dynamo Dresden"));
-        assertFalse(names.stream().anyMatch(name -> name.contains("Nurnberg") && name.contains("CX")));
+    void parseTeamNamesFromTournamentFeedScopedByStageId() {
+        String html = """
+                <script>
+                data: `SA÷1¬~ZA÷ENGLAND: Premier League¬ZC÷CfoA8Dmm¬ZL÷/football/england/premier-league/¬~AA÷x¬FH÷Arsenal¬FK÷Chelsea¬~AA÷y¬FH÷Liverpool¬FK÷Everton¬`
+                data: `SA÷1¬~ZA÷BHUTAN: Premier League¬ZC÷OtherStage¬~AA÷z¬FH÷Ugyen Academy¬FK÷BFF Academy U19¬`
+                </script>
+                """;
+        var names = FlashscoreTeamNamesService.parseTeamNamesFromTournamentHtml(html, "CfoA8Dmm");
+        assertTrue(names.contains("Arsenal"));
+        assertTrue(names.contains("Chelsea"));
+        assertTrue(names.contains("Liverpool"));
+        assertTrue(names.contains("Everton"));
+        assertFalse(names.contains("Ugyen Academy"));
+        assertFalse(names.contains("BFF Academy U19"));
+        assertEquals(4, names.size());
     }
 
     @Test
-    void competitionMatchesLeagueByStageIdOrTitle() {
-        FlashscoreParsedDayPage.CompetitionBlock block = FlashscoreParsedDayPage.CompetitionBlock.builder()
-                .title("GERMANY: 2. Bundesliga")
-                .stageId("6khmdCet")
-                .build();
-        FlashscoreProperties.LeagueConfig bl = new FlashscoreProperties.LeagueConfig();
-        bl.setStageId("6khmdCet");
-        bl.setTitleContains("Bundesliga");
-
-        assertTrue(FlashscoreTeamNamesService.competitionMatchesLeague(block, bl));
+    void parseTeamNamesFromStandingsRowsWhenPresent() {
+        String html = """
+                data: `SA÷1¬~ZA÷GERMANY: Bundesliga¬ZC÷jg0MwVuC¬~TI÷x¬TN÷Bayern Munich¬~TI÷y¬TN÷Dortmund¬`
+                """;
+        var names = FlashscoreTeamNamesService.parseTeamNamesFromTournamentHtml(html, "jg0MwVuC");
+        assertEquals(2, names.size());
+        assertTrue(names.contains("Bayern Munich"));
+        assertTrue(names.contains("Dortmund"));
     }
 
-    private static String readFixture(String resourcePath) throws IOException {
-        Path path = Path.of("src/test/resources", resourcePath);
-        return Files.readString(path, StandardCharsets.UTF_8);
+    @Test
+    void extractTeamNamesFromFeedBlockReturnsOnlyRequestedStage() {
+        String block = """
+                SA÷1¬~ZA÷ENGLAND: Premier League¬ZC÷CfoA8Dmm¬~AA÷x¬FH÷Arsenal¬FK÷Chelsea¬~ZA÷OTHER¬ZC÷OtherStage¬~AA÷y¬FH÷Ugyen Academy¬FK÷Ararat¬
+                """;
+        Set<String> names = FlashscoreTeamNamesService.extractTeamNamesFromFeedBlock(block, "CfoA8Dmm");
+        assertEquals(Set.of("Arsenal", "Chelsea"), names);
     }
 }
