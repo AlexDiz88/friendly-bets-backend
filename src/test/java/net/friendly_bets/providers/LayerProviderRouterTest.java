@@ -46,7 +46,6 @@ class LayerProviderRouterTest {
     primary.failWith = new BadRequestException("currentMatchdayUnresolved");
     assign("primary", "secondary");
     when(registry.findAs("primary", ScheduleProvider.class)).thenReturn(java.util.Optional.of(primary));
-    when(registry.findAs("secondary", ScheduleProvider.class)).thenReturn(java.util.Optional.of(secondary));
 
     assertThrows(BadRequestException.class, () ->
         router.execute(ExternalDataLayer.SCHEDULE, ScheduleProvider.class, p -> p.syncByLeagueCode("EPL", null)));
@@ -62,11 +61,11 @@ class LayerProviderRouterTest {
     when(registry.findAs("primary", ScheduleProvider.class)).thenReturn(java.util.Optional.of(primary));
     when(registry.findAs("secondary", ScheduleProvider.class)).thenReturn(java.util.Optional.of(secondary));
 
-    String result = router.execute(
+    net.friendly_bets.dto.ScheduleSyncResultDto result = router.execute(
         ExternalDataLayer.SCHEDULE,
         ScheduleProvider.class,
         p -> p.syncByLeagueCode("EPL", null));
-    assertEquals("secondary", result);
+    assertEquals("secondary", result.getLeagueCode());
   }
 
   @Test
@@ -76,7 +75,6 @@ class LayerProviderRouterTest {
     primary.failWith = new BadRequestException("mappingFailed");
     assignLive("primary", "secondary");
     when(registry.findAs("primary", LiveMatchProvider.class)).thenReturn(java.util.Optional.of(primary));
-    when(registry.findAs("secondary", LiveMatchProvider.class)).thenReturn(java.util.Optional.of(secondary));
 
     assertThrows(BadRequestException.class, () ->
         router.execute(ExternalDataLayer.LIVE, LiveMatchProvider.class, p -> p.syncLive(null)));
@@ -154,7 +152,7 @@ class LayerProviderRouterTest {
   static final class StubLiveProvider implements LiveMatchProvider {
     final String id;
     RuntimeException failWith;
-    final LiveSyncResult result = new LiveSyncResult(0, 0, 0, 0, 0, java.util.List.of());
+    final LiveSyncResult result = new LiveSyncResult(0, 0, 0, 0, null, java.util.List.of(), java.util.List.of());
 
     StubLiveProvider(String id) {
       this.id = id;
