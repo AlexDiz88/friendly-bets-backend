@@ -10,6 +10,7 @@ import java.util.Optional;
 
 /**
  * Resolves teams only via saved {@code external_aliases} for a concrete provider + external_name.
+ * Exact {@code external_name} match only — no normalization, display-name or cross-field fallbacks.
  */
 @Component
 @RequiredArgsConstructor
@@ -24,7 +25,7 @@ public class TeamAliasResolver {
         return teamsRepository.findByExternalAliasName(provider, externalName.trim());
     }
 
-    /** Сопоставление стороны матча с внутренней командой только по alias того же провайдера. */
+    /** Сопоставление стороны матча с внутренней командой только по alias того же провайдера (точное имя). */
     public boolean teamMatchesProviderSide(Team team, String provider, String externalTeamName) {
         if (team == null || provider == null || provider.isBlank()
                 || externalTeamName == null || externalTeamName.isBlank()) {
@@ -34,7 +35,8 @@ public class TeamAliasResolver {
             return false;
         }
         for (TeamExternalAlias alias : team.getExternalAliases()) {
-            if (provider.equals(alias.getProvider())
+            if (alias != null
+                    && provider.equals(alias.getProvider())
                     && externalTeamName.equals(alias.getExternalName())) {
                 return true;
             }

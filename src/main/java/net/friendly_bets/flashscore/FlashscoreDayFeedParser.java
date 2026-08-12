@@ -37,8 +37,9 @@ public class FlashscoreDayFeedParser {
             if (eventId == null || eventId.isBlank()) {
                 continue;
             }
-            String home = FlashscoreFeedSupport.firstNonBlank(fields, "CX", "AE", "FH");
-            String away = FlashscoreFeedSupport.firstNonBlank(fields, "AF", "FK");
+            // Prefer FH/FK (canonical) over CX/AF (may be localized on ru-kz feeds).
+            String home = FlashscoreFeedSupport.firstNonBlank(fields, "FH", "AE", "CX");
+            String away = FlashscoreFeedSupport.firstNonBlank(fields, "FK", "AF");
             if (home == null || away == null) {
                 continue;
             }

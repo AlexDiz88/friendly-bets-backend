@@ -1,6 +1,7 @@
 package net.friendly_bets.services;
 
 import net.friendly_bets.models.Team;
+import net.friendly_bets.models.TeamDisplayNames;
 import net.friendly_bets.providers.ExternalProviderIds;
 import net.friendly_bets.repositories.TeamsRepository;
 import org.junit.jupiter.api.DisplayName;
@@ -37,7 +38,19 @@ class TeamAliasResolverTest {
     }
 
     @Test
-    @DisplayName("teamMatchesProviderSide matches only same-provider alias")
+    @DisplayName("resolveByProviderName does not guess by display name")
+    void resolveByProviderName_doesNotMatchDisplayNameVariant() {
+        TeamAliasResolver resolver = new TeamAliasResolver(teamsRepository);
+        when(teamsRepository.findByExternalAliasName(ExternalProviderIds.FLASHSCORE, "Arsenal"))
+                .thenReturn(Optional.empty());
+
+        Optional<Team> team = resolver.resolveByProviderName(ExternalProviderIds.FLASHSCORE, "Arsenal");
+
+        assertTrue(team.isEmpty());
+    }
+
+    @Test
+    @DisplayName("teamMatchesProviderSide matches only same-provider alias (exact name)")
     void teamMatchesProviderSide_matchesByAliasName() {
         TeamAliasResolver resolver = new TeamAliasResolver(teamsRepository);
         Team england = Team.builder()
@@ -54,5 +67,25 @@ class TeamAliasResolverTest {
         assertTrue(resolver.teamMatchesProviderSide(england, ExternalProviderIds.TWENTYFOUR_SCORE, "Англия"));
         assertFalse(resolver.teamMatchesProviderSide(england, ExternalProviderIds.TWENTYFOUR_SCORE, "Франция"));
         assertFalse(resolver.teamMatchesProviderSide(england, ExternalProviderIds.SOCCER365, "Англия"));
+    }
+
+    @Test
+    @DisplayName("teamMatchesProviderSide does not match display name when alias locale differs")
+    void teamMatchesProviderSide_doesNotMatchDisplayNameVariant() {
+        TeamAliasResolver resolver = new TeamAliasResolver(teamsRepository);
+        Team dortmund = Team.builder()
+                .id("bvb1")
+                .title("BorussiaDortmund")
+                .displayNames(TeamDisplayNames.builder().en("Dortmund").ru("Дортмунд").build())
+                .externalAliases(List.of(
+                        net.friendly_bets.models.TeamExternalAlias.builder()
+                                .provider(ExternalProviderIds.FLASHSCORE)
+                                .externalName("Дортмунд")
+                                .build()
+                ))
+                .build();
+
+        assertFalse(resolver.teamMatchesProviderSide(dortmund, ExternalProviderIds.FLASHSCORE, "Dortmund"));
+        assertTrue(resolver.teamMatchesProviderSide(dortmund, ExternalProviderIds.FLASHSCORE, "Дортмунд"));
     }
 }

@@ -18,8 +18,9 @@ import java.util.regex.Pattern;
 @RequiredArgsConstructor
 public class FlashscoreTeamNamesService {
 
+    /** Canonical team labels for alias autobind (FH/FK), not localized CX/AF. */
     private static final Pattern FEED_NAME_FIELD = Pattern.compile(
-            "(?:CX|AF|AE|FH|FK)÷([^¬~{}]+)"
+            "(?:FH|FK)÷([^¬~{}]+)"
     );
 
     private final FlashscoreHttpClient httpClient;

@@ -52,6 +52,14 @@ class FlashscoreMatchDetailParserTest {
     }
 
     @Test
+    void parseMatchMetaPrefersCanonicalEnglishLabels() {
+        String h2h = "KC÷1¬KP÷UeyZrknC¬KJ÷*Арсенал¬KK÷Дортмунд¬FH÷Arsenal¬FK÷Dortmund¬";
+        FlashscoreMatchMeta meta = FlashscoreMatchDetailParser.parseMatchMeta(h2h, "UeyZrknC");
+        assertEquals("Arsenal", meta.getHomeTeamName());
+        assertEquals("Dortmund", meta.getAwayTeamName());
+    }
+
+    @Test
     void parsesOwnGoalAndTeamNamesFromH2H() throws IOException {
         String summary = readFixture("flashscore/match-horsens-sui.feed");
         String result = readFixture("flashscore/match-horsens-sur.feed");
