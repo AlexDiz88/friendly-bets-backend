@@ -5,6 +5,7 @@ import net.friendly_bets.exceptions.BadRequestException;
 import net.friendly_bets.providers.ExternalDataLayer;
 import net.friendly_bets.scrape.BrowserProfile;
 import net.friendly_bets.scrape.ExternalApiCircuitBreaker;
+import net.friendly_bets.scrape.ExternalApiHttpFailures;
 import net.friendly_bets.scrape.ScrapeFailureKind;
 import net.friendly_bets.scrape.ScrapeHttpSupport;
 import net.friendly_bets.twentyfourscore.config.TwentyFourScoreProperties;
@@ -110,7 +111,7 @@ public class TwentyFourScoreHttpClient {
                 if (reportCircuit) {
                     circuitBreaker.recordFailure(ExternalDataLayer.LIVE, "24score.pro", ScrapeFailureKind.CHALLENGE, url);
                 }
-                throw new BadRequestException("twentyFourScoreFetchFailed");
+                throw ExternalApiHttpFailures.fetchFailed("twentyFourScoreFetchFailed");
             }
             if (response.statusCode() >= 400) {
                 ScrapeFailureKind kind = ScrapeHttpSupport.classifyHttpStatus(response.statusCode());
@@ -118,7 +119,7 @@ public class TwentyFourScoreHttpClient {
                 if (reportCircuit) {
                     circuitBreaker.recordFailure(ExternalDataLayer.LIVE, "24score.pro", kind, "HTTP " + response.statusCode());
                 }
-                throw new BadRequestException("twentyFourScoreFetchFailed");
+                throw ExternalApiHttpFailures.fetchFailed("twentyFourScoreFetchFailed");
             }
             if (reportCircuit) {
                 circuitBreaker.recordSuccess(ExternalDataLayer.LIVE);
@@ -132,7 +133,7 @@ public class TwentyFourScoreHttpClient {
             if (reportCircuit) {
                 circuitBreaker.recordFailure(ExternalDataLayer.LIVE, "24score.pro", kind, e.getMessage());
             }
-            throw new BadRequestException("twentyFourScoreFetchFailed");
+            throw ExternalApiHttpFailures.fetchFailed("twentyFourScoreFetchFailed");
         }
     }
 

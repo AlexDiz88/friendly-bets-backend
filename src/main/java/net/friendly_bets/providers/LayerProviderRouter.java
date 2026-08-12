@@ -14,9 +14,7 @@ import org.springframework.stereotype.Component;
 import java.util.function.Function;
 
 /**
- * Runs a layer operation on primary provider.
- * SCHEDULE / ODDS / FULL_MATCH: retries once with secondary only on HTTP/transport failures.
- * LIVE: retries on any runtime failure except {@link FullMatchNotReadyException}.
+ * Runs a layer operation on primary provider; retries once with secondary only on HTTP/transport failures.
  */
 @Component
 @RequiredArgsConstructor
@@ -134,10 +132,7 @@ public class LayerProviderRouter {
     }
 
     private static boolean shouldFailover(ExternalDataLayer layer, RuntimeException error) {
-        return switch (layer) {
-            case SCHEDULE, ODDS, FULL_MATCH -> ExternalApiHttpFailures.isHttpTransportFailure(error);
-            case LIVE -> true;
-        };
+        return ExternalApiHttpFailures.isHttpTransportFailure(error);
     }
 
     private static String resolveErrorCode(RuntimeException error) {

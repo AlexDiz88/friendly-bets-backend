@@ -70,10 +70,24 @@ class LayerProviderRouterTest {
   }
 
   @Test
-  void live_failoverOnAnyRuntimeFailure() {
+  void live_failoverOnlyOnHttpTransportFailure() {
     StubLiveProvider primary = new StubLiveProvider("primary");
     StubLiveProvider secondary = new StubLiveProvider("secondary");
     primary.failWith = new BadRequestException("mappingFailed");
+    assignLive("primary", "secondary");
+    when(registry.findAs("primary", LiveMatchProvider.class)).thenReturn(java.util.Optional.of(primary));
+    when(registry.findAs("secondary", LiveMatchProvider.class)).thenReturn(java.util.Optional.of(secondary));
+
+    assertThrows(BadRequestException.class, () ->
+        router.execute(ExternalDataLayer.LIVE, LiveMatchProvider.class, p -> p.syncLive(null)));
+    verify(registry, never()).findAs("secondary", LiveMatchProvider.class);
+  }
+
+  @Test
+  void live_failoverWhenPrimaryHttpFails() {
+    StubLiveProvider primary = new StubLiveProvider("primary");
+    StubLiveProvider secondary = new StubLiveProvider("secondary");
+    primary.failWith = ExternalApiHttpFailures.fetchFailed("twentyFourScoreFetchFailed");
     assignLive("primary", "secondary");
     when(registry.findAs("primary", LiveMatchProvider.class)).thenReturn(java.util.Optional.of(primary));
     when(registry.findAs("secondary", LiveMatchProvider.class)).thenReturn(java.util.Optional.of(secondary));

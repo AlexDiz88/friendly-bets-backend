@@ -7,6 +7,7 @@ import net.friendly_bets.providers.ExternalDataLayer;
 import net.friendly_bets.providers.ExternalProviderIds;
 import net.friendly_bets.scrape.BrowserProfile;
 import net.friendly_bets.scrape.ExternalApiCircuitBreaker;
+import net.friendly_bets.scrape.ExternalApiHttpFailures;
 import net.friendly_bets.scrape.ScrapeFailureKind;
 import net.friendly_bets.scrape.ScrapeHttpSupport;
 import org.slf4j.Logger;
@@ -76,14 +77,14 @@ public class ChampionatHttpClient {
             if (ScrapeHttpSupport.looksLikeJsChallenge(body)) {
                 circuitBreaker.recordFailure(
                         ExternalDataLayer.LIVE, ExternalProviderIds.CHAMPIONAT, ScrapeFailureKind.CHALLENGE, url);
-                throw new BadRequestException("championatFetchFailed");
+                throw ExternalApiHttpFailures.fetchFailed("championatFetchFailed");
             }
             if (response.statusCode() >= 400) {
                 ScrapeFailureKind kind = ScrapeHttpSupport.classifyHttpStatus(response.statusCode());
                 log.warn("championat HTTP {} for {}", response.statusCode(), url);
                 circuitBreaker.recordFailure(
                         ExternalDataLayer.LIVE, ExternalProviderIds.CHAMPIONAT, kind, "HTTP " + response.statusCode());
-                throw new BadRequestException("championatFetchFailed");
+                throw ExternalApiHttpFailures.fetchFailed("championatFetchFailed");
             }
             circuitBreaker.recordSuccess(ExternalDataLayer.LIVE);
             return body;
@@ -94,7 +95,7 @@ public class ChampionatHttpClient {
             log.warn("championat fetch failed for {}: {}", url, e.getMessage());
             circuitBreaker.recordFailure(
                     ExternalDataLayer.LIVE, ExternalProviderIds.CHAMPIONAT, kind, e.getMessage());
-            throw new BadRequestException("championatFetchFailed");
+            throw ExternalApiHttpFailures.fetchFailed("championatFetchFailed");
         }
     }
 
