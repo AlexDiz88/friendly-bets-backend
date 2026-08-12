@@ -17,7 +17,7 @@ import java.util.List;
 @AllArgsConstructor
 @Builder
 @Data
-@Document(collection = "team_standings")
+@Document(collection = "standings")
 @CompoundIndex(name = "season_league", def = "{'season_id': 1, 'league_id': 1}", unique = true)
 public class TeamStandings {
 
