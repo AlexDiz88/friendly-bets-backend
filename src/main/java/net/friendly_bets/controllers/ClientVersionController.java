@@ -34,8 +34,9 @@ public class ClientVersionController {
 
     /**
      * CI deploy only. Requires {@code X-Deploy-Token} matching {@code app.deploy.token}.
+     * POST (not PUT) — reverse proxies often block PUT.
      */
-    @PutMapping
+    @PostMapping("/deploy")
     @PreAuthorize("permitAll()")
     public ResponseEntity<ClientVersionDto> setFromDeploy(
             @RequestHeader(value = "X-Deploy-Token", required = false) String token,
