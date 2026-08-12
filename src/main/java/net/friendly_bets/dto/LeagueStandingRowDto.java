@@ -17,6 +17,7 @@ public class LeagueStandingRowDto {
     private int rank;
     private String teamId;
     private String teamTitle;
+    private TeamDisplayNamesDto displayNames;
     private String logoKey;
     private int played;
     private int wins;
@@ -36,6 +37,7 @@ public class LeagueStandingRowDto {
                 .rank(row.getRank())
                 .teamId(row.getTeamId())
                 .teamTitle(team != null ? TeamTitleUtils.effectiveTitle(team) : null)
+                .displayNames(team != null ? TeamDisplayNamesDto.from(team.getDisplayNames()) : null)
                 .logoKey(team != null ? team.getLogo() : null)
                 .played(row.getPlayed())
                 .wins(row.getWins())
