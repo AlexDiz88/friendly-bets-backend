@@ -3,6 +3,7 @@ package net.friendly_bets.controllers;
 import lombok.RequiredArgsConstructor;
 import net.friendly_bets.controllers.api.StatsApi;
 import net.friendly_bets.dto.*;
+import net.friendly_bets.services.PlayerHighlightsService;
 import net.friendly_bets.services.StatsService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class StatsController implements StatsApi {
 
     private final StatsService statsService;
+    private final PlayerHighlightsService playerHighlightsService;
 
     @Override
     @GetMapping("/season/{season-id}")
@@ -60,6 +62,13 @@ public class StatsController implements StatsApi {
                                                            @PathVariable("user-id") String userId) {
         return ResponseEntity.status(200)
                 .body(statsService.getStatsByTeams(seasonId, leagueId, userId));
+    }
+
+    @Override
+    @GetMapping("/season/{season-id}/highlights")
+    public ResponseEntity<AllPlayerHighlightsDto> getPlayerHighlights(@PathVariable("season-id") String seasonId) {
+        return ResponseEntity.status(200)
+                .body(playerHighlightsService.getHighlights(seasonId));
     }
 
     @Override

@@ -95,6 +95,8 @@ public interface BetsRepository extends MongoRepository<Bet, String> {
 
     List<Bet> findAllBySeason_IdAndBetStatus(String seasonId, Bet.BetStatus betStatus);
 
+    List<Bet> findAllBySeason_IdAndBetStatusIn(String seasonId, List<Bet.BetStatus> betStatuses);
+
     Page<Bet> findAllBySeason_IdAndBetStatusIn(String seasonId, List<Bet.BetStatus> betStatuses, Pageable pageable);
 
     Page<Bet> findAllBySeason_IdAndBetStatusInAndLeague_IdAndUser_Id(String seasonId, List<Bet.BetStatus> betStatuses, String leagueId, String userId, Pageable pageable);

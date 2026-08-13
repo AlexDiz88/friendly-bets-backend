@@ -92,6 +92,18 @@ public interface StatsApi {
             @Parameter(description = "League ID") @NotBlank String leagueId,
             @Parameter(description = "Player ID") @NotBlank String userId);
 
+    @Operation(summary = "Form and top-stats highlights for all players in a season", description = "Accessible to everyone")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Highlights of all participants in the season",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = AllPlayerHighlightsDto.class))),
+            @ApiResponse(responseCode = "400", description = "Invalid season ID provided",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto"))),
+            @ApiResponse(responseCode = "404", description = "Season not found",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto")))
+    })
+    ResponseEntity<AllPlayerHighlightsDto> getPlayerHighlights(
+            @Parameter(description = "Season ID") @NotBlank String seasonId);
+
     @Operation(summary = "Full recalculation of all player statistics for a season", description = "Accessible only to administrators")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Recalculated statistics of all players in the season",
