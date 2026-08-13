@@ -10,9 +10,11 @@ import net.friendly_bets.dto.ExternalDataSandboxLiveRequestDto;
 import net.friendly_bets.dto.ExternalDataSandboxOddsRequestDto;
 import net.friendly_bets.dto.ExternalDataSandboxResultDto;
 import net.friendly_bets.dto.ExternalDataSandboxScheduleRequestDto;
+import net.friendly_bets.dto.ExternalDataSandboxStandingsRequestDto;
 import net.friendly_bets.dto.TeamDisplayNamesDto;
 import net.friendly_bets.dto.MarathonbetMarketDto;
 import net.friendly_bets.exceptions.BadRequestException;
+import net.friendly_bets.providers.ExternalDataLayer;
 import net.friendly_bets.providers.ExternalProviderIds;
 import net.friendly_bets.marathonbet.MarathonbetExtractedMarkets;
 import net.friendly_bets.marathonbet.MarathonbetMarketExtractor;
@@ -27,7 +29,10 @@ import net.friendly_bets.melbet.MelbetPrematchEvent;
 import net.friendly_bets.melbet.MelbetTournamentParser;
 import net.friendly_bets.melbet.client.MelbetHttpClient;
 import net.friendly_bets.melbet.client.MelbetHttpFetchResult;
-import net.friendly_bets.providers.ExternalDataLayer;
+import net.friendly_bets.liveresult.LiveresultTeamNamesService;
+import net.friendly_bets.providers.standings.StandingRowSnapshot;
+import net.friendly_bets.providers.standings.StandingZoneRuleSnapshot;
+import net.friendly_bets.providers.standings.StandingsTableSnapshot;
 import net.friendly_bets.providers.live.LiveMatchSnapshot;
 import net.friendly_bets.football24.Football24HttpClient;
 import net.friendly_bets.football24.Football24ParsedSchedule;
@@ -93,6 +98,7 @@ public class ExternalDataSandboxService {
     private final FlashscoreHttpClient flashscoreHttpClient;
     private final FlashscoreDayFeedParser flashscoreDayFeedParser;
     private final FlashscoreMatchDetailParser flashscoreMatchDetailParser;
+    private final LiveresultTeamNamesService liveresultTeamNamesService;
     private final TeamAliasResolver teamAliasResolver;
 
     public ExternalDataSandboxResultDto runSchedule(ExternalDataSandboxScheduleRequestDto request) {
@@ -318,6 +324,38 @@ public class ExternalDataSandboxService {
                     ? "championatFetchFailed"
                     : "twentyFourScoreFetchFailed";
             return fail(ExternalDataLayer.LIVE, provider, started, fetchKey, e.getMessage());
+        }
+    }
+
+    public ExternalDataSandboxResultDto runStandings(ExternalDataSandboxStandingsRequestDto request) {
+        String provider = requireProvider(
+                request != null ? request.getProvider() : null,
+                ExternalProviderIds.LIVERESULT
+        );
+        if (!ExternalProviderIds.LIVERESULT.equals(provider)) {
+            throw new BadRequestException("sandboxUnsupportedProvider");
+        }
+        if (request == null || request.getLeagueCode() == null || request.getLeagueCode().isBlank()) {
+            throw new BadRequestException("leagueCodeRequired");
+        }
+        String leagueCode = request.getLeagueCode().trim().toUpperCase(Locale.ROOT);
+        long started = System.currentTimeMillis();
+        try {
+            StandingsTableSnapshot snapshot = liveresultTeamNamesService.fetchStandingsSnapshot(leagueCode);
+            if (snapshot.getRows() == null || snapshot.getRows().isEmpty()) {
+                return fail(ExternalDataLayer.STANDINGS, provider, started, "liveresultStandingsEmpty", null);
+            }
+            return ExternalDataSandboxResultDto.builder()
+                    .success(true)
+                    .layer(ExternalDataLayer.STANDINGS.name())
+                    .provider(provider)
+                    .durationMs(System.currentTimeMillis() - started)
+                    .parsed(toStandingsParsed(leagueCode, provider, snapshot))
+                    .build();
+        } catch (BadRequestException e) {
+            return fail(ExternalDataLayer.STANDINGS, provider, started, e.getMessage(), null);
+        } catch (RuntimeException e) {
+            return fail(ExternalDataLayer.STANDINGS, provider, started, "liveresultFetchFailed", e.getMessage());
         }
     }
 
@@ -1038,6 +1076,58 @@ public class ExternalDataSandboxService {
         out.put("competitionsMatched", competitions.size());
         out.put("matchesCount", matchesCount);
         out.put("competitions", competitions);
+        return out;
+    }
+
+    private Map<String, Object> toStandingsParsed(
+            String leagueCode,
+            String provider,
+            StandingsTableSnapshot snapshot
+    ) {
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("leagueCode", leagueCode);
+        out.put("sourceUrl", snapshot.getSourceUrl());
+        out.put("group", snapshot.getGroup());
+        List<Map<String, Object>> zoneRules = new ArrayList<>();
+        if (snapshot.getZoneRules() != null) {
+            for (StandingZoneRuleSnapshot rule : snapshot.getZoneRules()) {
+                if (rule == null) {
+                    continue;
+                }
+                Map<String, Object> row = new LinkedHashMap<>();
+                row.put("code", rule.getCode());
+                row.put("label", rule.getLabel());
+                row.put("cssClass", rule.getCssClass());
+                zoneRules.add(row);
+            }
+        }
+        out.put("zoneRules", zoneRules);
+        List<Map<String, Object>> rows = new ArrayList<>();
+        if (snapshot.getRows() != null) {
+            for (StandingRowSnapshot row : snapshot.getRows()) {
+                if (row == null) {
+                    continue;
+                }
+                Map<String, Object> parsedRow = new LinkedHashMap<>();
+                parsedRow.put("rank", row.getRank());
+                parsedRow.put("externalTeamName", row.getExternalTeamName());
+                parsedRow.put("logoUrl", row.getLogoUrl());
+                parsedRow.put("played", row.getPlayed());
+                parsedRow.put("wins", row.getWins());
+                parsedRow.put("draws", row.getDraws());
+                parsedRow.put("losses", row.getLosses());
+                parsedRow.put("goalsFor", row.getGoalsFor());
+                parsedRow.put("goalsAgainst", row.getGoalsAgainst());
+                parsedRow.put("goalDifference", row.getGoalDifference());
+                parsedRow.put("points", row.getPoints());
+                parsedRow.put("zoneCode", row.getZoneCode());
+                parsedRow.put("team", resolveSandboxTeam(provider, row.getExternalTeamName()));
+                rows.add(parsedRow);
+            }
+        }
+        out.put("rows", rows);
+        out.put("rowsCount", rows.size());
+        out.put("zoneRulesCount", zoneRules.size());
         return out;
     }
 

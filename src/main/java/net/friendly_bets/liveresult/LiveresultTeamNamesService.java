@@ -20,12 +20,7 @@ public class LiveresultTeamNamesService {
     private final LiveresultStandingsParser standingsParser;
 
     public List<String> fetchTeamNames(String leagueCodeRaw) {
-        League.LeagueCode leagueCode = parseLeagueCode(leagueCodeRaw);
-        String path = requireStandingsPath(leagueCode);
-        String base = properties.getBaseUrl().replaceAll("/+$", "");
-        String url = base + (path.startsWith("/") ? path : "/" + path);
-        String html = httpClient.fetchStandingsHtml(path);
-        StandingsTableSnapshot snapshot = standingsParser.parse(html, url);
+        StandingsTableSnapshot snapshot = fetchStandingsSnapshot(leagueCodeRaw);
         List<String> names = snapshot.getRows().stream()
                 .map(row -> row.getExternalTeamName())
                 .filter(name -> name != null && !name.isBlank())
@@ -35,6 +30,15 @@ public class LiveresultTeamNamesService {
             throw new BadRequestException("liveresultTeamNamesEmpty");
         }
         return names;
+    }
+
+    public StandingsTableSnapshot fetchStandingsSnapshot(String leagueCodeRaw) {
+        League.LeagueCode leagueCode = parseLeagueCode(leagueCodeRaw);
+        String path = requireStandingsPath(leagueCode);
+        String base = properties.getBaseUrl().replaceAll("/+$", "");
+        String url = base + (path.startsWith("/") ? path : "/" + path);
+        String html = httpClient.fetchStandingsHtml(path);
+        return standingsParser.parse(html, url);
     }
 
     String requireStandingsPath(League.LeagueCode leagueCode) {

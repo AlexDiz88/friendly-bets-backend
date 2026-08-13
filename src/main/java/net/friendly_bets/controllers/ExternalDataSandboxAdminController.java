@@ -6,6 +6,7 @@ import net.friendly_bets.dto.ExternalDataSandboxLiveRequestDto;
 import net.friendly_bets.dto.ExternalDataSandboxOddsRequestDto;
 import net.friendly_bets.dto.ExternalDataSandboxResultDto;
 import net.friendly_bets.dto.ExternalDataSandboxScheduleRequestDto;
+import net.friendly_bets.dto.ExternalDataSandboxStandingsRequestDto;
 import net.friendly_bets.services.ExternalDataSandboxService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -51,5 +52,13 @@ public class ExternalDataSandboxAdminController {
             @RequestBody ExternalDataSandboxFullMatchRequestDto body
     ) {
         return ResponseEntity.ok(sandboxService.runFullMatch(body));
+    }
+
+    @PostMapping("/standings")
+    @PreAuthorize("hasAnyAuthority('ADMIN','MODERATOR')")
+    public ResponseEntity<ExternalDataSandboxResultDto> standings(
+            @RequestBody ExternalDataSandboxStandingsRequestDto body
+    ) {
+        return ResponseEntity.ok(sandboxService.runStandings(body));
     }
 }

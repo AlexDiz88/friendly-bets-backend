@@ -5,7 +5,6 @@ import net.friendly_bets.dto.LeagueStandingRowDto;
 import net.friendly_bets.dto.LeagueStandingsPageDto;
 import net.friendly_bets.dto.StandingZoneRuleDto;
 import net.friendly_bets.exceptions.BadRequestException;
-import net.friendly_bets.exceptions.NotFoundException;
 import net.friendly_bets.models.League;
 import net.friendly_bets.models.Season;
 import net.friendly_bets.models.Team;
@@ -33,10 +32,18 @@ public class LeagueStandingsService {
         League.LeagueCode leagueCode = parseLeagueCode(leagueCodeRaw);
         Season season = matchScheduleQueryService.resolveSeason(seasonYear);
         League league = resolveLeague(season, leagueCode, leagueId);
-        TeamStandings standings = teamStandingsRepository
+        return teamStandingsRepository
                 .findBySeasonIdAndLeagueId(season.getId(), league.getId())
-                .orElseThrow(() -> new NotFoundException("TeamStandings", leagueCode.name()));
+                .map(standings -> toPageDto(standings, season, league, leagueCode))
+                .orElseGet(() -> emptyPageDto(season, league, leagueCode));
+    }
 
+    private LeagueStandingsPageDto toPageDto(
+            TeamStandings standings,
+            Season season,
+            League league,
+            League.LeagueCode leagueCode
+    ) {
         Map<String, Team> teamsById = loadTeams(standings.getRows());
         List<LeagueStandingRowDto> rows = new ArrayList<>();
         for (TeamStandingRow row : standings.getRows()) {
@@ -63,6 +70,20 @@ public class LeagueStandingsService {
                 .zoneRules(zoneRules)
                 .rows(rows)
                 .updatedAt(standings.getUpdatedAt())
+                .build();
+    }
+
+    private static LeagueStandingsPageDto emptyPageDto(
+            Season season,
+            League league,
+            League.LeagueCode leagueCode
+    ) {
+        return LeagueStandingsPageDto.builder()
+                .seasonId(season.getId())
+                .leagueId(league.getId())
+                .leagueCode(leagueCode.name())
+                .rows(List.of())
+                .zoneRules(List.of())
                 .build();
     }
 
