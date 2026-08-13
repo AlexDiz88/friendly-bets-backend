@@ -66,6 +66,18 @@ public interface StatsApi {
     ResponseEntity<AllStatsByBetTitlesInSeasonDto> getAllStatsByBetTitlesInSeason(
             @Parameter(description = "Season ID") @NotBlank String seasonId);
 
+    @Operation(summary = "Statistics of all tournament participants in a season by bet odds ranges", description = "Accessible to everyone")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Statistics of all participants in the season by bet odds ranges",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = AllStatsByBetValuesInSeasonDto.class))),
+            @ApiResponse(responseCode = "400", description = "Invalid season ID provided",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto"))),
+            @ApiResponse(responseCode = "404", description = "Season not found",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto")))
+    })
+    ResponseEntity<AllStatsByBetValuesInSeasonDto> getAllStatsByBetValuesInSeason(
+            @Parameter(description = "Season ID") @NotBlank String seasonId);
+
     @Operation(summary = "Team statistics", description = "Accessible to everyone")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Statistics by teams",
@@ -112,6 +124,17 @@ public interface StatsApi {
                     content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto")))
     })
     ResponseEntity<Void> playersStatsByBetTitlesRecalculation(
+            @Parameter(description = "Season ID") @NotBlank String seasonId);
+
+    @Operation(summary = "Full recalculation of bet odds range player statistics for a season", description = "Accessible only to administrators")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Recalculated statistics of all players by bet odds ranges in the season"),
+            @ApiResponse(responseCode = "403", description = "User not authenticated or not authorized",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto"))),
+            @ApiResponse(responseCode = "404", description = "Season not found",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto")))
+    })
+    ResponseEntity<Void> playersStatsByBetValuesRecalculation(
             @Parameter(description = "Season ID") @NotBlank String seasonId);
 
     @Operation(summary = "Recalculate all gameweek statistics", description = "Accessible only to administrators")

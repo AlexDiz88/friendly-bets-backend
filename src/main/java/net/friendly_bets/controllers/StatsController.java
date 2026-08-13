@@ -47,6 +47,13 @@ public class StatsController implements StatsApi {
     }
 
     @Override
+    @GetMapping("/season/{season-id}/bet-values")
+    public ResponseEntity<AllStatsByBetValuesInSeasonDto> getAllStatsByBetValuesInSeason(@PathVariable("season-id") String seasonId) {
+        return ResponseEntity.status(200)
+                .body(statsService.getAllStatsByBetValuesInSeason(seasonId));
+    }
+
+    @Override
     @GetMapping("/season/{season-id}/league/{league-id}/user/{user-id}")
     public ResponseEntity<StatsByTeamsDto> getStatsByTeams(@PathVariable("season-id") String seasonId,
                                                            @PathVariable("league-id") String leagueId,
@@ -76,6 +83,14 @@ public class StatsController implements StatsApi {
     @GetMapping("/season/{season-id}/recalculation/bet-titles")
     public ResponseEntity<Void> playersStatsByBetTitlesRecalculation(@PathVariable("season-id") String seasonId) {
         statsService.playersStatsByBetTitlesRecalculation(seasonId);
+        return ResponseEntity.ok().build();
+    }
+
+    @Override
+    @PreAuthorize("hasAuthority('ADMIN')")
+    @GetMapping("/season/{season-id}/recalculation/bet-values")
+    public ResponseEntity<Void> playersStatsByBetValuesRecalculation(@PathVariable("season-id") String seasonId) {
+        statsService.playersStatsByBetValuesRecalculation(seasonId);
         return ResponseEntity.ok().build();
     }
 
