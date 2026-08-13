@@ -18,6 +18,7 @@ public class BiggestWinDto {
     private Integer betSize;
     private String leagueCode;
     private String matchDay;
+    private String calendarNodeId;
     private HighlightTeamDto homeTeam;
     private HighlightTeamDto awayTeam;
 }

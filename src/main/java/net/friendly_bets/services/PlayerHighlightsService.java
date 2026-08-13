@@ -108,17 +108,19 @@ public class PlayerHighlightsService {
                 .include("away_team")
                 .include("league")
                 .include("match_day")
-                .include("bet_size");
+                .include("bet_size")
+                .include("calendar_node_id");
         return mongoTemplate.find(query, Document.class, "bets").stream()
                 .map(PlayerHighlightsService::toBetRow)
                 .collect(Collectors.toList());
     }
 
     List<CalendarNode> loadFinishedNodes(String seasonId) {
-        Query query = Query.query(Criteria.where("season_id").is(seasonId).and("is_finished").is(true));
+        Query query = Query.query(Criteria.where("season_id").is(seasonId).and("has_bets").is(true));
         query.fields()
                 .include("start_date")
                 .include("end_date")
+                .include("is_finished")
                 .include("gameweek_stats")
                 .include("league_matchday_nodes.leagueCode")
                 .include("league_matchday_nodes.matchDay");
@@ -177,6 +179,7 @@ public class PlayerHighlightsService {
                 .sorted(Comparator.comparing(HighlightBetRow::time))
                 .collect(Collectors.toList());
         HighlightBetRow biggest = biggestWinRow(chronological);
+        String biggestLeagueCode = biggest == null ? null : leagueCodeById.get(biggest.getLeagueId());
         return PlayerHighlightDraft.builder()
                 .userId(userId)
                 .recentForm(recentForm(chronological))
@@ -186,10 +189,13 @@ public class PlayerHighlightsService {
                 .biggestWinOdds(biggest == null ? null : biggest.getBetOdds())
                 .biggestWinSize(biggest == null ? null : biggest.getBetSize())
                 .biggestWinLeagueId(biggest == null ? null : biggest.getLeagueId())
-                .biggestWinLeagueCode(biggest == null ? null : leagueCodeById.get(biggest.getLeagueId()))
+                .biggestWinLeagueCode(biggestLeagueCode)
                 .biggestWinMatchDay(biggest == null ? null : biggest.getMatchDay())
                 .biggestWinHomeTeamId(biggest == null ? null : biggest.getHomeTeamId())
                 .biggestWinAwayTeamId(biggest == null ? null : biggest.getAwayTeamId())
+                .biggestWinCalendarNodeId(biggest == null
+                        ? null
+                        : resolveCalendarNodeId(biggest.getCalendarNodeId(), biggestLeagueCode, biggest.getMatchDay(), finishedNodes))
                 .bestGameweek(bestGameweek(userId, finishedNodes))
                 .leagueTeams(leagueTeamDrafts(teamBalancesByLeague, leagueCodeById))
                 .build();
@@ -204,6 +210,7 @@ public class PlayerHighlightsService {
                     .betSize(draft.biggestWinSize)
                     .leagueCode(draft.biggestWinLeagueCode)
                     .matchDay(draft.biggestWinMatchDay)
+                    .calendarNodeId(draft.biggestWinCalendarNodeId)
                     .homeTeam(HighlightTeamDto.from(teamsById.get(draft.biggestWinHomeTeamId), null))
                     .awayTeam(HighlightTeamDto.from(teamsById.get(draft.biggestWinAwayTeamId), null))
                     .build();
@@ -293,7 +300,7 @@ public class PlayerHighlightsService {
     static BestGameweekDto bestGameweek(String userId, List<CalendarNode> finishedNodes) {
         BestGameweekDto best = null;
         for (CalendarNode node : finishedNodes) {
-            if (node.getGameweekStats() == null) {
+            if (node.getGameweekStats() == null || !Boolean.TRUE.equals(node.getIsFinished())) {
                 continue;
             }
             for (GameweekStats stats : node.getGameweekStats()) {
@@ -394,6 +401,34 @@ public class PlayerHighlightsService {
         return chosenId;
     }
 
+    static String resolveCalendarNodeId(
+            String calendarNodeId,
+            String leagueCode,
+            String matchDay,
+            List<CalendarNode> nodes
+    ) {
+        if (calendarNodeId != null && !calendarNodeId.isBlank()) {
+            return calendarNodeId;
+        }
+        if (leagueCode == null || matchDay == null || nodes == null) {
+            return null;
+        }
+        for (CalendarNode node : nodes) {
+            if (node.getLeagueMatchdayNodes() == null) {
+                continue;
+            }
+            for (LeagueMatchdayNode slot : node.getLeagueMatchdayNodes()) {
+                if (slot == null || slot.getLeagueCode() == null) {
+                    continue;
+                }
+                if (leagueCode.equals(slot.getLeagueCode().name()) && matchDay.equals(slot.getMatchDay())) {
+                    return node.getId();
+                }
+            }
+        }
+        return null;
+    }
+
     static HighlightBetRow toBetRow(Document doc) {
         return HighlightBetRow.builder()
                 .userId(dbRefId(doc.get("user")))
@@ -407,6 +442,7 @@ public class PlayerHighlightsService {
                 .leagueId(dbRefId(doc.get("league")))
                 .matchDay(doc.getString("match_day"))
                 .betSize(asInteger(doc.get("bet_size")))
+                .calendarNodeId(doc.getString("calendar_node_id"))
                 .build();
     }
 
@@ -491,6 +527,7 @@ public class PlayerHighlightsService {
         String leagueId;
         String matchDay;
         Integer betSize;
+        String calendarNodeId;
 
         Instant time() {
             if (resultAt != null) {
@@ -518,6 +555,7 @@ public class PlayerHighlightsService {
         String biggestWinMatchDay;
         String biggestWinHomeTeamId;
         String biggestWinAwayTeamId;
+        String biggestWinCalendarNodeId;
         BestGameweekDto bestGameweek;
         List<LeagueTeamDraft> leagueTeams;
     }

@@ -88,6 +88,7 @@ class PlayerHighlightsServiceTest {
         assertEquals(10, highlight.getBiggestWin().getBetSize());
         assertEquals("EPL", highlight.getBiggestWin().getLeagueCode());
         assertEquals("2", highlight.getBiggestWin().getMatchDay());
+        assertEquals("gw2", highlight.getBiggestWin().getCalendarNodeId());
         assertEquals("t-ars", highlight.getBiggestWin().getHomeTeam().getId());
         assertEquals("arsenal", highlight.getBiggestWin().getHomeTeam().getLogoKey());
         assertNotNull(highlight.getBestGameweek());
