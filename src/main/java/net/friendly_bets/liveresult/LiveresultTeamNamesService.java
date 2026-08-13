@@ -3,7 +3,7 @@ package net.friendly_bets.liveresult;
 import lombok.RequiredArgsConstructor;
 import net.friendly_bets.exceptions.BadRequestException;
 import net.friendly_bets.models.League;
-import net.friendly_bets.models.Season;
+import net.friendly_bets.providers.standings.StandingsLeagueCodes;
 import net.friendly_bets.providers.standings.StandingsTableSnapshot;
 import net.friendly_bets.liveresult.config.LiveresultProperties;
 import org.springframework.stereotype.Service;
@@ -33,7 +33,7 @@ public class LiveresultTeamNamesService {
     }
 
     public StandingsTableSnapshot fetchStandingsSnapshot(String leagueCodeRaw) {
-        League.LeagueCode leagueCode = parseLeagueCode(leagueCodeRaw);
+        League.LeagueCode leagueCode = StandingsLeagueCodes.parse(leagueCodeRaw);
         String path = requireStandingsPath(leagueCode);
         String base = properties.getBaseUrl().replaceAll("/+$", "");
         String url = base + (path.startsWith("/") ? path : "/" + path);
@@ -51,16 +51,5 @@ public class LiveresultTeamNamesService {
             throw new BadRequestException("liveresultStandingsNotConfigured");
         }
         return path.trim();
-    }
-
-    static League.LeagueCode parseLeagueCode(String leagueCodeRaw) {
-        if (leagueCodeRaw == null || leagueCodeRaw.isBlank()) {
-            throw new BadRequestException("leagueCodeRequired");
-        }
-        try {
-            return League.LeagueCode.valueOf(leagueCodeRaw.trim().toUpperCase());
-        } catch (IllegalArgumentException e) {
-            throw new BadRequestException("invalidLeagueCode");
-        }
     }
 }

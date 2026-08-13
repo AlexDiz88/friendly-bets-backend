@@ -20,4 +20,7 @@ public class StandingZoneRule {
 
     @Field(name = "css_class")
     private String cssClass;
+
+    @Field(name = "color")
+    private String color;
 }
