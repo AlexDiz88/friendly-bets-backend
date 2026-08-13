@@ -32,6 +32,7 @@ public class CalendarsService {
     BetsRepository betsRepository;
     GetEntityService getEntityService;
     KnockoutBetPrivacyService knockoutBetPrivacyService;
+    BetRelationsLoader betRelationsLoader;
 
 
     public CalendarNodesPage getAllSeasonCalendarNodes(String seasonId) {
@@ -158,6 +159,7 @@ public class CalendarsService {
     }
 
     private BetsPage toBetsPage(List<Bet> bets, String viewerUserId) {
+        betRelationsLoader.hydrate(bets, false);
         return BetsPage.builder()
                 .bets(knockoutBetPrivacyService.toDtoList(bets, viewerUserId))
                 .totalPages(1)

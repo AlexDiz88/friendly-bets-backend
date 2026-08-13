@@ -1,5 +1,6 @@
 package net.friendly_bets.dto;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -15,6 +16,7 @@ import java.util.stream.Collectors;
 @NoArgsConstructor
 @Builder
 @Data
+@JsonInclude(JsonInclude.Include.NON_NULL)
 @Schema(description = "Команда")
 public class TeamDto {
 
@@ -30,6 +32,9 @@ public class TeamDto {
     private List<TeamExternalAliasDto> externalAliases;
 
     public static TeamDto from(Team team) {
+        if (team == null) {
+            return null;
+        }
         List<TeamExternalAliasDto> aliases = team.getExternalAliases() == null
                 ? Collections.emptyList()
                 : team.getExternalAliases().stream().map(TeamExternalAliasDto::from).toList();
@@ -40,6 +45,20 @@ public class TeamDto {
                 .logoKey(team.getLogo())
                 .displayNames(TeamDisplayNamesDto.from(team.getDisplayNames()))
                 .externalAliases(aliases)
+                .build();
+    }
+
+    /** Карточка ставки: без externalAliases (это данные синка, не UI). */
+    public static TeamDto fromForBet(Team team) {
+        if (team == null) {
+            return null;
+        }
+        return TeamDto.builder()
+                .id(team.getId())
+                .title(team.getTitle())
+                .country(team.getCountry())
+                .logoKey(team.getLogo())
+                .displayNames(TeamDisplayNamesDto.from(team.getDisplayNames()))
                 .build();
     }
 

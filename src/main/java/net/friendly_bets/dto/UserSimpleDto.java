@@ -1,5 +1,6 @@
 package net.friendly_bets.dto;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -15,6 +16,7 @@ import java.util.stream.Collectors;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
+@JsonInclude(JsonInclude.Include.NON_NULL)
 @Schema(description = "Зарегистрированный пользователь")
 public class UserSimpleDto {
 
@@ -28,6 +30,9 @@ public class UserSimpleDto {
     private String avatar;
 
     public static UserSimpleDto from(User user) {
+        if (user == null) {
+            return null;
+        }
         return UserSimpleDto.builder()
                 .id(user.getId())
                 .username(user.getUsername())
