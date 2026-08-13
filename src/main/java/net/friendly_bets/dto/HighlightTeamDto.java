@@ -16,6 +16,7 @@ public class HighlightTeamDto {
 
     private String id;
     private String title;
+    private String logoKey;
     private TeamDisplayNamesDto displayNames;
     private Double actualBalance;
 
@@ -26,6 +27,7 @@ public class HighlightTeamDto {
         return HighlightTeamDto.builder()
                 .id(team.getId())
                 .title(team.getTitle())
+                .logoKey(team.getLogo())
                 .displayNames(TeamDisplayNamesDto.from(team.getDisplayNames()))
                 .actualBalance(actualBalance)
                 .build();

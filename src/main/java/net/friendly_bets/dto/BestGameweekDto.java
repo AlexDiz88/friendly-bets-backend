@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
+import java.util.List;
 
 @AllArgsConstructor
 @NoArgsConstructor
@@ -19,4 +20,5 @@ public class BestGameweekDto {
     private LocalDate startDate;
     private LocalDate endDate;
     private Double balanceChange;
+    private List<HighlightMatchdayDto> matchdays;
 }

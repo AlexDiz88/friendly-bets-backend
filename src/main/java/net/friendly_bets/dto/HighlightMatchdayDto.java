@@ -10,14 +10,9 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @Builder
 @Data
-@Schema(description = "Самый крупный выигрыш игрока")
-public class BiggestWinDto {
+@Schema(description = "Слот лиги в туре")
+public class HighlightMatchdayDto {
 
-    private Double balanceChange;
-    private Double betOdds;
-    private Integer betSize;
     private String leagueCode;
     private String matchDay;
-    private HighlightTeamDto homeTeam;
-    private HighlightTeamDto awayTeam;
 }

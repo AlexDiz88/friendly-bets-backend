@@ -20,7 +20,7 @@ public class PlayerHighlightDto {
     private List<String> recentForm;
     private BiggestWinDto biggestWin;
     private Integer bestWinStreak;
+    private Integer worstLoseStreak;
     private BestGameweekDto bestGameweek;
-    private HighlightTeamDto mostProfitableTeam;
-    private HighlightTeamDto mostUnprofitableTeam;
+    private List<LeagueTeamHighlightDto> leagueTeams;
 }
