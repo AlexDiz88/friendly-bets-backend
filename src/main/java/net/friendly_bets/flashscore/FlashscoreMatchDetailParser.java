@@ -183,6 +183,7 @@ public class FlashscoreMatchDetailParser {
         String blockSide = null;
         String blockMinute = null;
         String subPlayer = null;
+        String blockReason = null;
         boolean penaltyAwardedInBlock = false;
         for (String segment : block.split("¬")) {
             if (segment == null || segment.isBlank() || !segment.contains("÷")) {
@@ -196,6 +197,7 @@ public class FlashscoreMatchDetailParser {
                 case "IB" -> blockMinute = value;
                 case "IE" -> subPlayer = null;
                 case "IF" -> subPlayer = value;
+                case "IL" -> blockReason = value;
                 case "IK" -> {
                     if (value == null) {
                         continue;
@@ -222,6 +224,14 @@ public class FlashscoreMatchDetailParser {
                         MatchGoalEvent missed = parseMissedPenalty(blockSide, blockMinute, subPlayer);
                         if (missed != null) {
                             events.add(missed);
+                        }
+                        continue;
+                    }
+                    if (kindLower.contains("goal disallowed") || kindLower.contains("disallowed")) {
+                        MatchGoalEvent varEvent = buildVarDisallowed(
+                                blockSide, blockMinute, subPlayer, blockReason);
+                        if (varEvent != null) {
+                            events.add(varEvent);
                         }
                         continue;
                     }
@@ -262,6 +272,7 @@ public class FlashscoreMatchDetailParser {
         String blockSide = null;
         String blockMinute = null;
         String player = null;
+        String reason = null;
         boolean disallowed = false;
         for (String segment : block.split("¬")) {
             if (segment == null || segment.isBlank() || !segment.contains("÷")) {
@@ -274,6 +285,7 @@ public class FlashscoreMatchDetailParser {
                 case "IAX", "IA" -> blockSide = value;
                 case "IBX", "IB" -> blockMinute = value;
                 case "IFX", "IF" -> player = value;
+                case "ILX", "IL" -> reason = value;
                 case "IKX", "IK" -> {
                     if (value != null && value.toLowerCase(Locale.ROOT).contains("goal disallowed")) {
                         disallowed = true;
@@ -283,7 +295,19 @@ public class FlashscoreMatchDetailParser {
                 }
             }
         }
-        if (!disallowed || player == null || player.isBlank()) {
+        if (!disallowed) {
+            return null;
+        }
+        return buildVarDisallowed(blockSide, blockMinute, player, reason);
+    }
+
+    private static MatchGoalEvent buildVarDisallowed(
+            String blockSide,
+            String blockMinute,
+            String player,
+            String reason
+    ) {
+        if (player == null || player.isBlank()) {
             return null;
         }
         String side = mapSide(blockSide);
@@ -295,7 +319,16 @@ public class FlashscoreMatchDetailParser {
                 .teamSide(side)
                 .playerName(player.trim())
                 .varDisallowed(true)
+                .varDisallowedReason(normalizeVarReason(reason))
                 .build();
+    }
+
+    private static String normalizeVarReason(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        String normalized = raw.trim().toLowerCase(Locale.ROOT);
+        return normalized.isEmpty() ? null : normalized;
     }
 
     private static MatchGoalEvent parseScoringEvent(
