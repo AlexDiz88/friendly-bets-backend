@@ -1,5 +1,6 @@
 package net.friendly_bets.dto;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -19,6 +20,7 @@ import static net.friendly_bets.utils.Constants.WRL_STATUSES;
 @NoArgsConstructor
 @Builder
 @Data
+@JsonInclude(JsonInclude.Include.NON_NULL)
 @Schema(description = "Ставка")
 public class BetDto {
 
@@ -90,8 +92,8 @@ public class BetDto {
                     .createdAt(bet.getCreatedAt())
                     .player(UserSimpleDto.from(bet.getUser()))
                     .matchDay(bet.getMatchDay())
-                    .homeTeam(TeamDto.from(bet.getHomeTeam()))
-                    .awayTeam(TeamDto.from(bet.getAwayTeam()))
+                    .homeTeam(TeamDto.fromForBet(bet.getHomeTeam()))
+                    .awayTeam(TeamDto.fromForBet(bet.getAwayTeam()))
                     .betTitle(bet.getBetTitle())
                     .betOdds(bet.getBetOdds())
                     .betSize(bet.getBetSize())
@@ -112,8 +114,8 @@ public class BetDto {
                     .createdAt(bet.getCreatedAt())
                     .player(UserSimpleDto.from(bet.getUser()))
                     .matchDay(bet.getMatchDay())
-                    .homeTeam(TeamDto.from(bet.getHomeTeam()))
-                    .awayTeam(TeamDto.from(bet.getAwayTeam()))
+                    .homeTeam(TeamDto.fromForBet(bet.getHomeTeam()))
+                    .awayTeam(TeamDto.fromForBet(bet.getAwayTeam()))
                     .betTitle(bet.getBetTitle())
                     .betOdds(bet.getBetOdds())
                     .betSize(bet.getBetSize())

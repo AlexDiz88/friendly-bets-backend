@@ -14,4 +14,6 @@ public class StandingZoneRuleSnapshot {
     private String code;
     private String label;
     private String cssClass;
+    /** Optional hex color from the source (e.g. {@code #004682}), used when cssClass is provider-specific. */
+    private String color;
 }

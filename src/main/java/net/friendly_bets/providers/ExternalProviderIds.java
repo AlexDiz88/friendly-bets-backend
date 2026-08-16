@@ -12,6 +12,7 @@ public final class ExternalProviderIds {
     public static final String FOOTBALL24 = "football24.ua";
     public static final String RUSCORE = "ruscore.ru";
     public static final String FLASHSCORE = "flashscorekz.com";
+    public static final String FLASHSCORE_UA = "flashscore.com.ua";
     public static final String LIVERESULT = "liveresult.ru";
 
     private ExternalProviderIds() {

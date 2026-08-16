@@ -9,9 +9,10 @@ import net.friendly_bets.football24.Football24TeamNamesService;
 import net.friendly_bets.marathonbet.MarathonbetTeamNamesService;
 import net.friendly_bets.melbet.MelbetTeamNamesService;
 import net.friendly_bets.providers.ExternalProviderIds;
+import net.friendly_bets.providers.LayerProviderRegistry;
+import net.friendly_bets.providers.StandingsProvider;
 import net.friendly_bets.ruscore.RuscoreTeamNamesService;
 import net.friendly_bets.flashscore.FlashscoreTeamNamesService;
-import net.friendly_bets.liveresult.LiveresultTeamNamesService;
 import net.friendly_bets.soccer365.Soccer365TeamNamesService;
 import net.friendly_bets.sportsru.SportsRuTeamNamesService;
 import net.friendly_bets.twentyfourscore.TwentyFourScoreTeamNamesService;
@@ -32,7 +33,7 @@ public class ExternalTeamNamesService {
     private final ChampionatTeamNamesService championatTeamNamesService;
     private final RuscoreTeamNamesService ruscoreTeamNamesService;
     private final FlashscoreTeamNamesService flashscoreTeamNamesService;
-    private final LiveresultTeamNamesService liveresultTeamNamesService;
+    private final LayerProviderRegistry layerProviderRegistry;
     private final ExternalTeamAliasAutoBindService autoBindService;
 
     public ExternalTeamNamesLoadResultDto fetchAndAutoBindTeamNames(String providerRaw, String leagueCode) {
@@ -45,21 +46,26 @@ public class ExternalTeamNamesService {
             boolean forceOverwrite
     ) {
         String provider = normalizeProvider(providerRaw);
-        List<String> names = switch (provider) {
-            case ExternalProviderIds.SOCCER365 -> soccer365TeamNamesService.fetchTeamNames(leagueCode);
-            case ExternalProviderIds.MARATHONBET -> marathonbetTeamNamesService.fetchTeamNames(leagueCode);
-            case ExternalProviderIds.MELBET -> melbetTeamNamesService.fetchTeamNames(leagueCode);
-            case ExternalProviderIds.TWENTYFOUR_SCORE ->
-                    twentyFourScoreTeamNamesService.fetchTeamNames(leagueCode);
-            case ExternalProviderIds.SPORTS_RU -> sportsRuTeamNamesService.fetchTeamNames(leagueCode);
-            case ExternalProviderIds.FOOTBALL24 -> football24TeamNamesService.fetchTeamNames(leagueCode);
-            case ExternalProviderIds.CHAMPIONAT -> championatTeamNamesService.fetchTeamNames(leagueCode);
-            case ExternalProviderIds.RUSCORE -> ruscoreTeamNamesService.fetchTeamNames(leagueCode);
-            case ExternalProviderIds.FLASHSCORE -> flashscoreTeamNamesService.fetchTeamNames(leagueCode);
-            case ExternalProviderIds.LIVERESULT -> liveresultTeamNamesService.fetchTeamNames(leagueCode);
-            default -> throw new BadRequestException("externalTeamNamesProviderUnsupported");
-        };
+        List<String> names = fetchTeamNames(provider, leagueCode);
         return autoBindService.bindAndCollectUnmapped(provider, leagueCode, names, forceOverwrite);
+    }
+
+    private List<String> fetchTeamNames(String provider, String leagueCode) {
+        return layerProviderRegistry.findAs(provider, StandingsProvider.class)
+                .map(standings -> standings.fetchTeamNames(leagueCode))
+                .orElseGet(() -> switch (provider) {
+                    case ExternalProviderIds.SOCCER365 -> soccer365TeamNamesService.fetchTeamNames(leagueCode);
+                    case ExternalProviderIds.MARATHONBET -> marathonbetTeamNamesService.fetchTeamNames(leagueCode);
+                    case ExternalProviderIds.MELBET -> melbetTeamNamesService.fetchTeamNames(leagueCode);
+                    case ExternalProviderIds.TWENTYFOUR_SCORE ->
+                            twentyFourScoreTeamNamesService.fetchTeamNames(leagueCode);
+                    case ExternalProviderIds.SPORTS_RU -> sportsRuTeamNamesService.fetchTeamNames(leagueCode);
+                    case ExternalProviderIds.FOOTBALL24 -> football24TeamNamesService.fetchTeamNames(leagueCode);
+                    case ExternalProviderIds.CHAMPIONAT -> championatTeamNamesService.fetchTeamNames(leagueCode);
+                    case ExternalProviderIds.RUSCORE -> ruscoreTeamNamesService.fetchTeamNames(leagueCode);
+                    case ExternalProviderIds.FLASHSCORE -> flashscoreTeamNamesService.fetchTeamNames(leagueCode);
+                    default -> throw new BadRequestException("externalTeamNamesProviderUnsupported");
+                });
     }
 
     /** @deprecated use {@link #fetchAndAutoBindTeamNames}; kept for legacy soccer365 admin route. */

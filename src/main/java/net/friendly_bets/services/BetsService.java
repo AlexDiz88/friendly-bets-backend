@@ -45,6 +45,7 @@ public class BetsService {
     TeamStatsService teamStatsService;
     GameweekStatsService gameweekStatsService;
     BetTitleStatsService betTitleStatsService;
+    BetValueStatsService betValueStatsService;
     LeagueMatchdayService leagueMatchdayService;
     MatchScheduleRepository matchScheduleRepository;
     MatchdaySlotSupport matchdaySupport;
@@ -160,6 +161,7 @@ public class BetsService {
             gameweekStatsService.calculateGameweekStats(bet.getCalendarNodeId());
         }
         betTitleStatsService.calculateStatsByBetTitle(seasonId, userId, bet, true);
+        betValueStatsService.calculateStatsByBetValues(seasonId, leagueId, bet.getLeague().getLeagueCode(), userId, bet, true);
 
         return BetDto.from(bet);
     }
@@ -439,6 +441,8 @@ public class BetsService {
         if (WRL_STATUSES.contains(prevBetState.getBetStatus())) {
             teamStatsService.calculateStatsByTeams(prevSeasonId, prevLeagueId, prevUser.getId(), prevBetState, false);
             betTitleStatsService.calculateStatsByBetTitle(prevSeasonId, prevUser.getId(), prevBetState, false);
+            betValueStatsService.calculateStatsByBetValues(
+                    prevSeasonId, prevLeagueId, prevBetState.getLeague().getLeagueCode(), prevUser.getId(), prevBetState, false);
         }
     }
 
@@ -447,6 +451,8 @@ public class BetsService {
         if (WRL_STATUSES.contains(bet.getBetStatus())) {
             teamStatsService.calculateStatsByTeams(seasonId, leagueId, user.getId(), bet, true);
             betTitleStatsService.calculateStatsByBetTitle(seasonId, user.getId(), bet, true);
+            betValueStatsService.calculateStatsByBetValues(
+                    seasonId, leagueId, bet.getLeague().getLeagueCode(), user.getId(), bet, true);
         }
     }
 
@@ -472,6 +478,8 @@ public class BetsService {
             playerStatsService.calculateStatsBasedOnEditedBet(seasonId, leagueId, user, bet, false);
             teamStatsService.calculateStatsByTeams(seasonId, leagueId, user.getId(), bet, false);
             betTitleStatsService.calculateStatsByBetTitle(seasonId, user.getId(), bet, false);
+            betValueStatsService.calculateStatsByBetValues(
+                    seasonId, leagueId, bet.getLeague().getLeagueCode(), user.getId(), bet, false);
         }
 
         updateDeletedBetValues(bet, moderator);

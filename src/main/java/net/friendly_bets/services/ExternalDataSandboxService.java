@@ -16,6 +16,8 @@ import net.friendly_bets.dto.MarathonbetMarketDto;
 import net.friendly_bets.exceptions.BadRequestException;
 import net.friendly_bets.providers.ExternalDataLayer;
 import net.friendly_bets.providers.ExternalProviderIds;
+import net.friendly_bets.providers.LayerProviderRegistry;
+import net.friendly_bets.providers.StandingsProvider;
 import net.friendly_bets.marathonbet.MarathonbetExtractedMarkets;
 import net.friendly_bets.marathonbet.MarathonbetMarketExtractor;
 import net.friendly_bets.marathonbet.MarathonbetPrematchEvent;
@@ -29,7 +31,6 @@ import net.friendly_bets.melbet.MelbetPrematchEvent;
 import net.friendly_bets.melbet.MelbetTournamentParser;
 import net.friendly_bets.melbet.client.MelbetHttpClient;
 import net.friendly_bets.melbet.client.MelbetHttpFetchResult;
-import net.friendly_bets.liveresult.LiveresultTeamNamesService;
 import net.friendly_bets.providers.standings.StandingRowSnapshot;
 import net.friendly_bets.providers.standings.StandingZoneRuleSnapshot;
 import net.friendly_bets.providers.standings.StandingsTableSnapshot;
@@ -98,7 +99,7 @@ public class ExternalDataSandboxService {
     private final FlashscoreHttpClient flashscoreHttpClient;
     private final FlashscoreDayFeedParser flashscoreDayFeedParser;
     private final FlashscoreMatchDetailParser flashscoreMatchDetailParser;
-    private final LiveresultTeamNamesService liveresultTeamNamesService;
+    private final LayerProviderRegistry layerProviderRegistry;
     private final TeamAliasResolver teamAliasResolver;
 
     public ExternalDataSandboxResultDto runSchedule(ExternalDataSandboxScheduleRequestDto request) {
@@ -332,18 +333,17 @@ public class ExternalDataSandboxService {
                 request != null ? request.getProvider() : null,
                 ExternalProviderIds.LIVERESULT
         );
-        if (!ExternalProviderIds.LIVERESULT.equals(provider)) {
-            throw new BadRequestException("sandboxUnsupportedProvider");
-        }
+        StandingsProvider standingsProvider = layerProviderRegistry.findAs(provider, StandingsProvider.class)
+                .orElseThrow(() -> new BadRequestException("sandboxUnsupportedProvider"));
         if (request == null || request.getLeagueCode() == null || request.getLeagueCode().isBlank()) {
             throw new BadRequestException("leagueCodeRequired");
         }
         String leagueCode = request.getLeagueCode().trim().toUpperCase(Locale.ROOT);
         long started = System.currentTimeMillis();
         try {
-            StandingsTableSnapshot snapshot = liveresultTeamNamesService.fetchStandingsSnapshot(leagueCode);
+            StandingsTableSnapshot snapshot = standingsProvider.fetchTableSnapshotByLeagueCode(leagueCode);
             if (snapshot.getRows() == null || snapshot.getRows().isEmpty()) {
-                return fail(ExternalDataLayer.STANDINGS, provider, started, "liveresultStandingsEmpty", null);
+                return fail(ExternalDataLayer.STANDINGS, provider, started, "standingsEmpty", null);
             }
             return ExternalDataSandboxResultDto.builder()
                     .success(true)
@@ -355,7 +355,7 @@ public class ExternalDataSandboxService {
         } catch (BadRequestException e) {
             return fail(ExternalDataLayer.STANDINGS, provider, started, e.getMessage(), null);
         } catch (RuntimeException e) {
-            return fail(ExternalDataLayer.STANDINGS, provider, started, "liveresultFetchFailed", e.getMessage());
+            return fail(ExternalDataLayer.STANDINGS, provider, started, "standingsFetchFailed", e.getMessage());
         }
     }
 
@@ -1098,6 +1098,7 @@ public class ExternalDataSandboxService {
                 row.put("code", rule.getCode());
                 row.put("label", rule.getLabel());
                 row.put("cssClass", rule.getCssClass());
+                row.put("color", rule.getColor());
                 zoneRules.add(row);
             }
         }

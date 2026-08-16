@@ -4,10 +4,12 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import net.friendly_bets.dto.*;
+import net.friendly_bets.exceptions.BadRequestException;
 import net.friendly_bets.exceptions.NotFoundException;
 import net.friendly_bets.models.*;
 import net.friendly_bets.repositories.BetsRepository;
 import net.friendly_bets.repositories.PlayerStatsByBetTitlesRepository;
+import net.friendly_bets.repositories.PlayerStatsByBetValuesRepository;
 import net.friendly_bets.repositories.PlayerStatsByTeamsRepository;
 import net.friendly_bets.repositories.PlayerStatsRepository;
 import org.springframework.stereotype.Service;
@@ -32,13 +34,16 @@ public class StatsService {
     PlayerStatsRepository playerStatsRepository;
     PlayerStatsByTeamsRepository playerStatsByTeamsRepository;
     PlayerStatsByBetTitlesRepository playerStatsByBetTitlesRepository;
+    PlayerStatsByBetValuesRepository playerStatsByBetValuesRepository;
     BetsRepository betsRepository;
 
     PlayerStatsService playerStatsService;
     TeamStatsService teamStatsService;
     BetTitleStatsService betTitleStatsService;
+    BetValueStatsService betValueStatsService;
     GameweekStatsService gameweekStatsService;
     GetEntityService getEntityService;
+    RunningSeasonLookup runningSeasonLookup;
 
 
     public AllPlayersStatsPage getAllPlayersStatsBySeason(String seasonId) {
@@ -92,6 +97,12 @@ public class StatsService {
                 () -> new NotFoundException("Season", seasonId));
 
         return new AllStatsByBetTitlesInSeasonDto(PlayerStatsByBetTitlesDto.from(allStatsByBetTitles));
+    }
+
+    public AllStatsByBetValuesInSeasonDto getAllStatsByBetValuesInSeason(String seasonId) {
+        getEntityService.getSeasonOrThrow(seasonId);
+        List<PlayerStatsByBetValues> allStatsByBetValues = playerStatsByBetValuesRepository.findAllBySeasonId(seasonId);
+        return new AllStatsByBetValuesInSeasonDto(PlayerStatsByBetValuesDto.from(allStatsByBetValues));
     }
 
 
@@ -201,6 +212,51 @@ public class StatsService {
         }
     }
 
+    public void playersStatsByBetValuesRecalculation(String seasonId) {
+        Season season = runningSeasonLookup.findRunningSeasonOrThrow("noActiveSeasonWasFounded");
+        if (!season.getId().equals(seasonId)) {
+            throw new BadRequestException("onlyActiveSeasonRecalculation");
+        }
+        Map<String, League.LeagueCode> leagueCodesById = new HashMap<>();
+        if (season.getLeagues() != null) {
+            for (League league : season.getLeagues()) {
+                leagueCodesById.put(league.getId(), league.getLeagueCode());
+            }
+        }
+
+        playerStatsByBetValuesRepository.deleteAllBySeasonId(seasonId);
+        Map<String, PlayerStatsByBetValues> statsMap = new HashMap<>();
+        List<Bet> bets = betsRepository.findAllBySeason_Id(seasonId);
+
+        for (Bet bet : bets) {
+            if (!WRL_STATUSES.contains(bet.getBetStatus())) {
+                continue;
+            }
+
+            String userId = bet.getUser().getId();
+            String leagueId = bet.getLeague().getId();
+            League.LeagueCode leagueCode = leagueCodesById.get(leagueId);
+            if (leagueCode == null) {
+                throw new IllegalStateException("League not found in season: " + leagueId);
+            }
+            String leagueMapKey = seasonId + leagueId + userId;
+            String totalMapKey = seasonId + TOTAL_ID + userId;
+
+            PlayerStatsByBetValues leagueStats = statsMap.getOrDefault(
+                    leagueMapKey,
+                    betValueStatsService.createNewStats(seasonId, leagueId, leagueCode, userId));
+            PlayerStatsByBetValues totalStats = statsMap.getOrDefault(
+                    totalMapKey,
+                    betValueStatsService.createNewStats(seasonId, TOTAL_ID, null, userId));
+
+            betValueStatsService.applyBetToStats(leagueStats, bet, true);
+            statsMap.put(leagueMapKey, leagueStats);
+            betValueStatsService.applyBetToStats(totalStats, bet, true);
+            statsMap.put(totalMapKey, totalStats);
+        }
+
+        playerStatsByBetValuesRepository.saveAll(statsMap.values());
+    }
 
     public void recalculateAllGameweekStats(String seasonId) {
         gameweekStatsService.recalculateAllGameweekStats(seasonId);

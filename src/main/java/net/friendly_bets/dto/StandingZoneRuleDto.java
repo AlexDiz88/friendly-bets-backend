@@ -15,6 +15,7 @@ public class StandingZoneRuleDto {
     private String code;
     private String label;
     private String cssClass;
+    private String color;
 
     public static StandingZoneRuleDto from(StandingZoneRule rule) {
         if (rule == null) {
@@ -24,6 +25,7 @@ public class StandingZoneRuleDto {
                 .code(rule.getCode())
                 .label(rule.getLabel())
                 .cssClass(rule.getCssClass())
+                .color(rule.getColor())
                 .build();
     }
 }

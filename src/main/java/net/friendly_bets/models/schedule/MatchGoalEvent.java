@@ -46,6 +46,10 @@ public class MatchGoalEvent {
     @Field(name = "is_var_disallowed")
     private Boolean varDisallowed;
 
+    /** Flashscore ILX reason token, e.g. {@code offside}, {@code foul}, {@code handball}. */
+    @Field(name = "var_disallowed_reason")
+    private String varDisallowedReason;
+
     /** Straight red or second yellow shown as a red-card event (not a goal). */
     @Field(name = "is_red_card")
     private Boolean redCard;

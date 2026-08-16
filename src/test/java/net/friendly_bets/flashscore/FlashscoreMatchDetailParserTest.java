@@ -97,7 +97,8 @@ class FlashscoreMatchDetailParserTest {
         assertTrue(parsed.getGoals().stream().anyMatch(
                 g -> Boolean.TRUE.equals(g.getVarDisallowed())
                         && "Keita C.".equals(g.getPlayerName())
-                        && "47".equals(g.getMinute())));
+                        && "47".equals(g.getMinute())
+                        && "offside".equals(g.getVarDisallowedReason())));
         assertEquals(4, parsed.getGoals().stream()
                 .filter(g -> !Boolean.TRUE.equals(g.getMissed())
                         && !Boolean.TRUE.equals(g.getRedCard())

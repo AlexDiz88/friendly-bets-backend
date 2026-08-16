@@ -3,6 +3,7 @@ package net.friendly_bets.controllers;
 import lombok.RequiredArgsConstructor;
 import net.friendly_bets.controllers.api.StatsApi;
 import net.friendly_bets.dto.*;
+import net.friendly_bets.services.PlayerHighlightsService;
 import net.friendly_bets.services.StatsService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class StatsController implements StatsApi {
 
     private final StatsService statsService;
+    private final PlayerHighlightsService playerHighlightsService;
 
     @Override
     @GetMapping("/season/{season-id}")
@@ -47,12 +49,26 @@ public class StatsController implements StatsApi {
     }
 
     @Override
+    @GetMapping("/season/{season-id}/bet-values")
+    public ResponseEntity<AllStatsByBetValuesInSeasonDto> getAllStatsByBetValuesInSeason(@PathVariable("season-id") String seasonId) {
+        return ResponseEntity.status(200)
+                .body(statsService.getAllStatsByBetValuesInSeason(seasonId));
+    }
+
+    @Override
     @GetMapping("/season/{season-id}/league/{league-id}/user/{user-id}")
     public ResponseEntity<StatsByTeamsDto> getStatsByTeams(@PathVariable("season-id") String seasonId,
                                                            @PathVariable("league-id") String leagueId,
                                                            @PathVariable("user-id") String userId) {
         return ResponseEntity.status(200)
                 .body(statsService.getStatsByTeams(seasonId, leagueId, userId));
+    }
+
+    @Override
+    @GetMapping("/season/{season-id}/highlights")
+    public ResponseEntity<AllPlayerHighlightsDto> getPlayerHighlights(@PathVariable("season-id") String seasonId) {
+        return ResponseEntity.status(200)
+                .body(playerHighlightsService.getHighlights(seasonId));
     }
 
     @Override
@@ -76,6 +92,14 @@ public class StatsController implements StatsApi {
     @GetMapping("/season/{season-id}/recalculation/bet-titles")
     public ResponseEntity<Void> playersStatsByBetTitlesRecalculation(@PathVariable("season-id") String seasonId) {
         statsService.playersStatsByBetTitlesRecalculation(seasonId);
+        return ResponseEntity.ok().build();
+    }
+
+    @Override
+    @PreAuthorize("hasAuthority('ADMIN')")
+    @GetMapping("/season/{season-id}/recalculation/bet-values")
+    public ResponseEntity<Void> playersStatsByBetValuesRecalculation(@PathVariable("season-id") String seasonId) {
+        statsService.playersStatsByBetValuesRecalculation(seasonId);
         return ResponseEntity.ok().build();
     }
 

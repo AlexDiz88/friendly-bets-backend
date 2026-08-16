@@ -119,6 +119,7 @@ public class StandingsPersistSupport {
                 .code(snapshot.getCode())
                 .label(snapshot.getLabel())
                 .cssClass(snapshot.getCssClass())
+                .color(snapshot.getColor())
                 .build();
     }
 }
