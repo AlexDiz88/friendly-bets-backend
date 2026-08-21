@@ -10,17 +10,11 @@ import net.friendly_bets.wc26.Wc26TeamCatalog;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.Locale;
 import java.util.Optional;
-import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
 public class MatchScheduleDisplayService {
-
-    private static final Set<String> FINISHED_STATUSES = Set.of(
-            "FINISHED", "AWARDED", "COMPLETED", "FT", "AET", "PEN"
-    );
 
     private final TeamsRepository teamsRepository;
 
@@ -97,19 +91,11 @@ public class MatchScheduleDisplayService {
         return teamsRepository.findById(teamId);
     }
 
+    /**
+     * FULL_MATCH has locked the result ({@code finalized_at}). Live score / LIVE FINISHED
+     * are not enough — otherwise in-play 0:0 looks like «итог зафиксирован».
+     */
     public static boolean isFinalized(MatchSchedule schedule) {
-        if (schedule == null) {
-            return false;
-        }
-        if (schedule.getGameScore() != null
-                && schedule.getGameScore().getFullTime() != null
-                && !schedule.getGameScore().getFullTime().isBlank()) {
-            return true;
-        }
-        String status = schedule.getStatus();
-        if (status == null || status.isBlank()) {
-            return false;
-        }
-        return FINISHED_STATUSES.contains(status.trim().toUpperCase(Locale.ROOT));
+        return schedule != null && schedule.getFinalizedAt() != null;
     }
 }

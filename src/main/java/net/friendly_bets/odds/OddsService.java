@@ -38,7 +38,7 @@ public class OddsService {
     }
 
     /**
-     * Delete odds when the schedule is finalized (FINISHED / score present).
+     * Delete odds when FULL_MATCH has locked the schedule ({@code finalized_at}).
      */
     public void deleteIfFinalized(MatchSchedule schedule) {
         if (schedule == null || schedule.getId() == null) {
