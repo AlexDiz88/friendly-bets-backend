@@ -30,20 +30,31 @@ public class UserSimpleDto {
     private String avatar;
 
     public static UserSimpleDto from(User user) {
+        return from(user, true);
+    }
+
+    public static UserSimpleDto from(User user, boolean includeAvatar) {
         if (user == null) {
             return null;
         }
         return UserSimpleDto.builder()
                 .id(user.getId())
                 .username(user.getUsername())
-                .avatar(user.getAvatar() != null ?
+                .avatar(includeAvatar && user.getAvatar() != null ?
                         Base64.getEncoder().encodeToString(user.getAvatar().getData()) : null)
                 .build();
     }
 
     public static List<UserSimpleDto> from(List<User> users) {
+        return from(users, true);
+    }
+
+    public static List<UserSimpleDto> from(List<User> users, boolean includeAvatar) {
+        if (users == null) {
+            return List.of();
+        }
         return users.stream()
-                .map(UserSimpleDto::from)
+                .map(user -> from(user, includeAvatar))
                 .collect(Collectors.toList());
     }
 }

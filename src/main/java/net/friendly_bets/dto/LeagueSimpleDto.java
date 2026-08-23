@@ -43,6 +43,9 @@ public class LeagueSimpleDto {
     }
 
     public static List<LeagueSimpleDto> from(List<League> leagues) {
+        if (leagues == null) {
+            return List.of();
+        }
         return leagues.stream()
                 .map(LeagueSimpleDto::from)
                 .collect(Collectors.toList());
