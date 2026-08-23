@@ -28,6 +28,12 @@ public class SeasonsController implements SeasonsApi {
     }
 
     @Override
+    @GetMapping("/summaries")
+    public ResponseEntity<SeasonSummariesPage> getSeasonSummaries() {
+        return ResponseEntity.ok(seasonsService.getSummaries());
+    }
+
+    @Override
     @PreAuthorize("hasAuthority('ADMIN')")
     @PostMapping
     public ResponseEntity<SeasonDto> addSeason(@RequestBody @Valid NewSeasonDto newSeason) {

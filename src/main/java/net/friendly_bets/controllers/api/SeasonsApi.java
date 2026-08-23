@@ -32,6 +32,15 @@ public interface SeasonsApi {
     })
     ResponseEntity<SeasonsPage> getSeasons();
 
+    @Operation(summary = "Get season summaries for selectors", description = "Available to authenticated users only")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Successfully retrieved season summaries",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = SeasonSummariesPage.class))),
+            @ApiResponse(responseCode = "403", description = "User not authenticated",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto")))
+    })
+    ResponseEntity<SeasonSummariesPage> getSeasonSummaries();
+
     @Operation(summary = "Add new season", description = "Available to admin only")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "201", description = "Successfully created a new season",

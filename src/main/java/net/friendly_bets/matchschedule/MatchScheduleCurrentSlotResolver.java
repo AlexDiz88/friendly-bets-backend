@@ -7,7 +7,6 @@ import net.friendly_bets.models.Season;
 import net.friendly_bets.models.TournamentFormat;
 import net.friendly_bets.models.schedule.MatchSchedule;
 import net.friendly_bets.repositories.MatchScheduleRepository;
-import net.friendly_bets.services.MatchScheduleDisplayService;
 import net.friendly_bets.services.MatchScheduleQueryService;
 import net.friendly_bets.services.TournamentFormatExpander;
 import org.springframework.stereotype.Component;
@@ -15,14 +14,15 @@ import org.springframework.stereotype.Component;
 import java.util.List;
 
 /**
- * Текущий слот для страницы результатов: League.currentMatchDay, иначе первый незавершённый слот по match_schedules.
+ * Игровой текущий слот: первый тур формата, в котором ещё не все матчи терминальны
+ * ({@link MatchStatuses#isTerminal}). Источник — {@code match_schedules}, не
+ * {@link League#getCurrentMatchDay()} (тот слот — прогресс ставок).
  */
 @Component
 @RequiredArgsConstructor
 public class MatchScheduleCurrentSlotResolver {
 
     private final TournamentFormatExpander tournamentFormatExpander;
-    private final MatchdaySlotSupport matchdaySlotSupport;
     private final MatchScheduleRepository matchScheduleRepository;
     private final MatchScheduleQueryService matchScheduleQueryService;
 
@@ -31,9 +31,7 @@ public class MatchScheduleCurrentSlotResolver {
         if (slots.isEmpty()) {
             return 1;
         }
-
-        return matchdaySlotSupport.resolveSlotOrder(league, league.getCurrentMatchDay())
-                .orElseGet(() -> resolveFromSchedules(league, slots, season));
+        return resolveFromSchedules(league, slots, season);
     }
 
     private int resolveFromSchedules(League league, List<ExpandedMatchdaySlot> slots, String seasonYear) {
@@ -51,10 +49,21 @@ public class MatchScheduleCurrentSlotResolver {
             List<MatchSchedule> records = matchScheduleRepository
                     .findByLeagueIdAndSeasonIdAndMatchdayOrderByUtcKickoffAsc(
                             leagueId, seasonId, slot.getOrder());
-            if (records.isEmpty() || records.stream().anyMatch(m -> !MatchScheduleDisplayService.isFinalized(m))) {
+            if (isSlotStillOpen(records)) {
                 return slot.getOrder();
             }
         }
         return lastOrder;
+    }
+
+    /**
+     * Тур ещё идёт: нет расписания или есть матч не в терминальном статусе.
+     * Пустой слот не пропускаем — это следующий (ещё не синканутый) тур.
+     */
+    private static boolean isSlotStillOpen(List<MatchSchedule> records) {
+        if (records.isEmpty()) {
+            return true;
+        }
+        return records.stream().anyMatch(m -> !MatchStatuses.isTerminal(m.getStatus()));
     }
 }

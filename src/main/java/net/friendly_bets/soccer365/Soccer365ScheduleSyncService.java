@@ -5,6 +5,7 @@ import net.friendly_bets.dto.ScheduleSyncResultDto;
 import net.friendly_bets.exceptions.BadRequestException;
 import net.friendly_bets.providers.ExternalProviderIds;
 import net.friendly_bets.matchschedule.MatchdaySlotSupport;
+import net.friendly_bets.matchschedule.MatchScheduleCurrentSlotResolver;
 import net.friendly_bets.matchschedule.ScheduleFarKickoffSkipSupport;
 import net.friendly_bets.models.ExpandedMatchdaySlot;
 import net.friendly_bets.models.League;
@@ -64,6 +65,7 @@ public class Soccer365ScheduleSyncService implements ScheduleProvider {
     private final Soccer365TeamNamesService teamNamesService;
     private final RunningSeasonLookup runningSeasonLookup;
     private final MatchdaySlotSupport matchdaySlotSupport;
+    private final MatchScheduleCurrentSlotResolver matchScheduleCurrentSlotResolver;
     private final TournamentFormatExpander tournamentFormatExpander;
     private final GetEntityService getEntityService;
     private final TeamAliasResolver teamAliasResolver;
@@ -151,9 +153,10 @@ public class Soccer365ScheduleSyncService implements ScheduleProvider {
         String nextSlotId = null;
         boolean includeNext;
 
+        TournamentFormat format = null;
         List<ExpandedMatchdaySlot> formatSlots = List.of();
         if (league.getTournamentFormatId() != null && !league.getTournamentFormatId().isBlank()) {
-            TournamentFormat format = getEntityService.getTournamentFormatOrThrow(league.getTournamentFormatId());
+            format = getEntityService.getTournamentFormatOrThrow(league.getTournamentFormatId());
             formatSlots = tournamentFormatExpander.expand(format);
         }
 
@@ -172,11 +175,7 @@ public class Soccer365ScheduleSyncService implements ScheduleProvider {
                     .map(ExpandedMatchdaySlot::getId)
                     .orElse(String.valueOf(currentOrder));
         } else {
-            Optional<Integer> currentOrderOpt = matchdaySlotSupport.resolveSlotOrder(league, league.getCurrentMatchDay());
-            if (currentOrderOpt.isEmpty()) {
-                throw new BadRequestException("currentMatchdayUnresolved");
-            }
-            currentOrder = currentOrderOpt.get();
+            currentOrder = resolvePlayingCurrentOrder(league, format, externalSeason);
             includeNext = true;
             if (!formatSlots.isEmpty()) {
                 Optional<ExpandedMatchdaySlot> currentSlot = formatSlots.stream()
@@ -376,6 +375,14 @@ public class Soccer365ScheduleSyncService implements ScheduleProvider {
         existing.setFetchedAt(fetchedAt);
         matchScheduleRepository.save(existing);
         oddsService.deleteIfFinalized(existing);
+    }
+
+    private int resolvePlayingCurrentOrder(League league, TournamentFormat format, String externalSeason) {
+        if (format != null) {
+            return matchScheduleCurrentSlotResolver.resolveCurrentSlotOrder(league, format, externalSeason);
+        }
+        return matchdaySlotSupport.resolveSlotOrder(league, league.getCurrentMatchDay())
+                .orElseThrow(() -> new BadRequestException("currentMatchdayUnresolved"));
     }
 
     private Optional<League> findLeague(Season season, League.LeagueCode leagueCode) {

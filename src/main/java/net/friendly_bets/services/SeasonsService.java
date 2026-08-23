@@ -49,6 +49,14 @@ public class SeasonsService {
                 .build();
     }
 
+    @Transactional(readOnly = true)
+    public SeasonSummariesPage getSummaries() {
+        List<Season> allSeasons = seasonsRepository.findAll();
+        return SeasonSummariesPage.builder()
+                .seasons(allSeasons.stream().map(SeasonSummaryDto::from).toList())
+                .build();
+    }
+
     // ------------------------------------------------------------------------------------------------------ //
 
 
