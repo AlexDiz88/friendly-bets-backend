@@ -1,15 +1,15 @@
 package net.friendly_bets.providers;
 
 import net.friendly_bets.exceptions.BadRequestException;
-import net.friendly_bets.exceptions.ExternalApiHttpException;
 import net.friendly_bets.models.AppSettings;
-import net.friendly_bets.providers.ExternalDataProvider;
+import net.friendly_bets.models.schedule.MatchSchedule;
 import net.friendly_bets.scrape.ExternalApiHttpFailures;
 import net.friendly_bets.services.ErrorLogService;
 import net.friendly_bets.services.ExternalDataLayerConfigService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -18,6 +18,7 @@ import java.util.Set;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -50,6 +51,14 @@ class LayerProviderRouterTest {
     assertThrows(BadRequestException.class, () ->
         router.execute(ExternalDataLayer.SCHEDULE, ScheduleProvider.class, p -> p.syncByLeagueCode("EPL", null)));
     verify(registry, never()).findAs("secondary", ScheduleProvider.class);
+    verify(errorLogService).recordLayerFailure(
+        ExternalDataLayer.SCHEDULE,
+        "primary",
+        ErrorLogService.ROLE_PRIMARY,
+        "currentMatchdayUnresolved",
+        "currentMatchdayUnresolved",
+        null
+    );
   }
 
   @Test
@@ -97,6 +106,58 @@ class LayerProviderRouterTest {
     assertSame(secondary.result, result);
   }
 
+  @Test
+  void fullMatch_businessError_failoversToSecondaryWithoutDuplicateLayerFailure() {
+    StubFullMatchProvider primary = new StubFullMatchProvider("flashscorekz.com");
+    StubFullMatchProvider secondary = new StubFullMatchProvider("ruscore.ru");
+    primary.failWith = new BadRequestException("fullMatchNotFound");
+    assignFull("flashscorekz.com", "ruscore.ru");
+    when(registry.findAs("flashscorekz.com", FullMatchProvider.class)).thenReturn(java.util.Optional.of(primary));
+    when(registry.findAs("ruscore.ru", FullMatchProvider.class)).thenReturn(java.util.Optional.of(secondary));
+
+    MatchSchedule result = router.execute(
+        ExternalDataLayer.FULL_MATCH,
+        FullMatchProvider.class,
+        p -> p.fetchAndPersistFullDetails(null));
+    assertSame(secondary.ok, result);
+    verify(errorLogService, never()).recordLayerFailure(any(), any(), any(), any(), any(), any());
+    verify(errorLogService, never()).record(any());
+  }
+
+  @Test
+  void fullMatch_businessError_noSecondary_notLoggedByRouter() {
+    StubFullMatchProvider primary = new StubFullMatchProvider("flashscorekz.com");
+    primary.failWith = new BadRequestException("fullMatchNotFound");
+    assignFull("flashscorekz.com", null);
+    when(registry.findAs("flashscorekz.com", FullMatchProvider.class)).thenReturn(java.util.Optional.of(primary));
+
+    BadRequestException thrown = assertThrows(BadRequestException.class, () ->
+        router.execute(ExternalDataLayer.FULL_MATCH, FullMatchProvider.class, p -> p.fetchAndPersistFullDetails(null)));
+    assertEquals("fullMatchNotFound", thrown.getMessage());
+    verify(errorLogService, never()).recordLayerFailure(any(), any(), any(), any(), any(), any());
+    verify(errorLogService, never()).record(any());
+  }
+
+  @Test
+  void fullMatch_httpFailure_failoversWithoutDuplicateLayerFailure() {
+    StubFullMatchProvider primary = new StubFullMatchProvider("flashscorekz.com");
+    StubFullMatchProvider secondary = new StubFullMatchProvider("soccer365.ru");
+    primary.failWith = ExternalApiHttpFailures.fetchFailed("flashscoreFetchFailed");
+    assignFull("flashscorekz.com", "soccer365.ru");
+    when(registry.findAs("flashscorekz.com", FullMatchProvider.class)).thenReturn(java.util.Optional.of(primary));
+    when(registry.findAs("soccer365.ru", FullMatchProvider.class)).thenReturn(java.util.Optional.of(secondary));
+
+    MatchSchedule result = router.execute(
+        ExternalDataLayer.FULL_MATCH,
+        FullMatchProvider.class,
+        p -> p.fetchAndPersistFullDetails(null));
+    assertSame(secondary.ok, result);
+    verify(errorLogService, never()).recordLayerFailure(any(), any(), any(), any(), any(), any());
+    ArgumentCaptor<ErrorLogService.Entry> captor = ArgumentCaptor.forClass(ErrorLogService.Entry.class);
+    verify(errorLogService).record(captor.capture());
+    assertEquals(ErrorLogService.CODE_PRIMARY_UNAVAILABLE, captor.getValue().getCode());
+  }
+
   private void assign(String primaryId, String secondaryId) {
     when(configService.assignment(ExternalDataLayer.SCHEDULE)).thenReturn(
         AppSettings.LayerAssignment.builder()
@@ -107,6 +168,14 @@ class LayerProviderRouterTest {
 
   private void assignLive(String primaryId, String secondaryId) {
     when(configService.assignment(ExternalDataLayer.LIVE)).thenReturn(
+        AppSettings.LayerAssignment.builder()
+            .primaryProvider(primaryId)
+            .secondaryProvider(secondaryId)
+            .build());
+  }
+
+  private void assignFull(String primaryId, String secondaryId) {
+    when(configService.assignment(ExternalDataLayer.FULL_MATCH)).thenReturn(
         AppSettings.LayerAssignment.builder()
             .primaryProvider(primaryId)
             .secondaryProvider(secondaryId)
@@ -174,6 +243,34 @@ class LayerProviderRouterTest {
         throw failWith;
       }
       return result;
+    }
+  }
+
+  static final class StubFullMatchProvider implements FullMatchProvider {
+    final String id;
+    RuntimeException failWith;
+    final MatchSchedule ok = MatchSchedule.builder().id("ms-" + id).build();
+
+    StubFullMatchProvider(String id) {
+      this.id = id;
+    }
+
+    @Override
+    public String providerId() {
+      return id;
+    }
+
+    @Override
+    public Set<ExternalDataLayer> capabilities() {
+      return ExternalDataProvider.of(ExternalDataLayer.FULL_MATCH);
+    }
+
+    @Override
+    public MatchSchedule fetchAndPersistFullDetails(MatchSchedule match) {
+      if (failWith != null) {
+        throw failWith;
+      }
+      return ok;
     }
   }
 }

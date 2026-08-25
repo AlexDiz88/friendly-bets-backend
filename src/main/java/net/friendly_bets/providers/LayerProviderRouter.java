@@ -14,7 +14,8 @@ import org.springframework.stereotype.Component;
 import java.util.function.Function;
 
 /**
- * Runs a layer operation on primary provider; retries once with secondary only on HTTP/transport failures.
+ * Runs a layer operation on primary provider; retries once with secondary on HTTP/transport
+ * failures, and for FULL_MATCH also on business failures (match not found / parse).
  */
 @Component
 @RequiredArgsConstructor
@@ -76,59 +77,77 @@ public class LayerProviderRouter {
             // Deferral signal — not a provider outage; do not failover or treat as layer failure.
             throw notReady;
         } catch (RuntimeException primaryError) {
-            if (!ExternalApiHttpFailures.isHttpTransportFailure(primaryError)) {
-                errorLogService.recordLayerFailure(
-                        layer, primaryId, ErrorLogService.ROLE_PRIMARY,
-                        resolveErrorCode(primaryError),
-                        primaryError.getMessage(),
-                        leagueCode
-                );
+            boolean httpFail = ExternalApiHttpFailures.isHttpTransportFailure(primaryError);
+            boolean fullFailover = layer == ExternalDataLayer.FULL_MATCH;
+            if (!httpFail && !fullFailover) {
+                recordOperationFailure(layer, primaryId, ErrorLogService.ROLE_PRIMARY, primaryError, leagueCode);
                 throw primaryError;
             }
             String secondaryId = assignment.getSecondaryProvider();
             if (secondaryId == null || secondaryId.isBlank() || secondaryId.equals(primaryId)) {
-                errorLogService.recordLayerFailure(
-                        layer, primaryId, ErrorLogService.ROLE_PRIMARY,
-                        resolveErrorCode(primaryError),
-                        primaryError.getMessage(),
-                        leagueCode
-                );
+                recordOperationFailure(layer, primaryId, ErrorLogService.ROLE_PRIMARY, primaryError, leagueCode);
                 throw primaryError;
             }
             T secondary = registry.findAs(secondaryId, type).orElse(null);
             if (secondary == null || !secondary.supports(layer)) {
-                errorLogService.recordLayerFailure(
-                        layer, primaryId, ErrorLogService.ROLE_PRIMARY,
-                        resolveErrorCode(primaryError),
-                        primaryError.getMessage(),
-                        leagueCode
-                );
+                recordOperationFailure(layer, primaryId, ErrorLogService.ROLE_PRIMARY, primaryError, leagueCode);
                 throw primaryError;
             }
             log.warn("Layer {} primary {} failed ({}), trying secondary {}",
                     layer, primaryId, primaryError.getMessage(), secondaryId);
-            errorLogService.record(ErrorLogService.Entry.builder()
-                    .severity(ErrorLogService.SEVERITY_WARN)
-                    .layer(layer.name())
-                    .provider(primaryId)
-                    .providerRole(ErrorLogService.ROLE_PRIMARY)
-                    .code(ErrorLogService.CODE_PRIMARY_UNAVAILABLE)
-                    .message(primaryError.getMessage())
-                    .leagueCode(leagueCode)
-                    .build());
+            if (httpFail) {
+                errorLogService.record(ErrorLogService.Entry.builder()
+                        .severity(ErrorLogService.SEVERITY_WARN)
+                        .layer(layer.name())
+                        .provider(primaryId)
+                        .providerRole(ErrorLogService.ROLE_PRIMARY)
+                        .code(ErrorLogService.CODE_PRIMARY_UNAVAILABLE)
+                        .message(primaryError.getMessage())
+                        .leagueCode(leagueCode)
+                        .build());
+            }
             try {
                 return operation.apply(secondary);
+            } catch (FullMatchNotReadyException notReady) {
+                throw notReady;
             } catch (RuntimeException secondaryError) {
                 log.warn("Layer {} secondary {} also failed: {}", layer, secondaryId, secondaryError.getMessage());
-                errorLogService.recordLayerFailure(
-                        layer, secondaryId, ErrorLogService.ROLE_SECONDARY,
-                        ErrorLogService.CODE_SECONDARY_UNAVAILABLE,
-                        secondaryError.getMessage(),
-                        leagueCode
-                );
+                if (httpFail) {
+                    errorLogService.recordLayerFailure(
+                            layer, secondaryId, ErrorLogService.ROLE_SECONDARY,
+                            ErrorLogService.CODE_SECONDARY_UNAVAILABLE,
+                            secondaryError.getMessage(),
+                            leagueCode
+                    );
+                }
                 throw secondaryError;
             }
         }
+    }
+
+    /**
+     * FULL providers already write a match-scoped {@code error_logs} row before rethrowing.
+     * Router must not duplicate those business/HTTP-per-match failures; it still logs
+     * config/bean issues and primary→secondary failover separately.
+     */
+    private void recordOperationFailure(
+            ExternalDataLayer layer,
+            String providerId,
+            String providerRole,
+            RuntimeException error,
+            String leagueCode
+    ) {
+        if (layer == ExternalDataLayer.FULL_MATCH) {
+            return;
+        }
+        errorLogService.recordLayerFailure(
+                layer,
+                providerId,
+                providerRole,
+                resolveErrorCode(error),
+                error.getMessage(),
+                leagueCode
+        );
     }
 
     private static String resolveErrorCode(RuntimeException error) {

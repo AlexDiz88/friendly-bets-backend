@@ -8,7 +8,8 @@ import java.time.Duration;
 import java.time.Instant;
 
 /**
- * FULL_MATCH attempt timing: initial delay after LIVE→FINISHED, then 5‑min / hourly deferrals.
+ * FULL_MATCH attempt timing: initial delay after LIVE→FINISHED, then 5‑min / hourly deferrals
+ * after any unsuccessful attempt (not-ready, not-found, parse/HTTP failure).
  */
 public final class FullMatchAttemptSupport {
 
@@ -38,17 +39,29 @@ public final class FullMatchAttemptSupport {
         return Instant.EPOCH;
     }
 
-    public static Instant nextAttemptAfterNotReady(
+    /**
+     * After this failure is recorded, count becomes count+1: 1st unsuccessful attempt → 5 min,
+     * 2nd and later → hourly. Applies to not-ready and hard failures (not-found, parse, HTTP).
+     */
+    public static Instant nextAttemptAfterFailure(
             MatchSchedule schedule,
             Instant now,
             MatchResultSyncProperties properties
     ) {
         int count = schedule.getFullMatchNotReadyCount() != null ? schedule.getFullMatchNotReadyCount() : 0;
-        // After this failure is recorded, count becomes count+1; 1st failure → 5min, 2nd+ → hourly.
         if (count + 1 >= 2) {
             return now.plus(hourlyDelay(properties));
         }
         return now.plus(retryDelay(properties));
+    }
+
+    /** @see #nextAttemptAfterFailure */
+    public static Instant nextAttemptAfterNotReady(
+            MatchSchedule schedule,
+            Instant now,
+            MatchResultSyncProperties properties
+    ) {
+        return nextAttemptAfterFailure(schedule, now, properties);
     }
 
     public static boolean shouldLogNotReady(MatchSchedule schedule) {

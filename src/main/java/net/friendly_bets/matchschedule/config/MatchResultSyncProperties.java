@@ -19,8 +19,8 @@ public class MatchResultSyncProperties {
 
     /** Пауза после LIVE→FINISHED перед первым вызовом FULL (дать источнику дописать карточку). */
     private long fullMatchInitialDelayMs = 300_000L;
-    /** Пауза после первого FULL not-ready (статус ещё не FINISHED). */
+    /** Пауза после первой неуспешной попытки FULL (not-ready / not-found / parse / HTTP). */
     private long fullMatchRetryDelayMs = 300_000L;
-    /** Пауза после повторного not-ready (и далее): раз в час. */
+    /** Пауза после повторной неуспешной попытки FULL (и далее): раз в час. */
     private long fullMatchHourlyDelayMs = 3_600_000L;
 }

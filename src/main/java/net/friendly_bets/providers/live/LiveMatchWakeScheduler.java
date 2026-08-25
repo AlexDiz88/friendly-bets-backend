@@ -193,11 +193,7 @@ public class LiveMatchWakeScheduler {
 
         if (hasActiveOrPendingFull) {
             if (afterPoll) {
-                Instant afterInterval = now.plusMillis(schedulerTickMs);
-                if (nearestWake != null && nearestWake.isBefore(afterInterval)) {
-                    return Optional.of(nearestWake.isBefore(now) ? now : nearestWake);
-                }
-                return Optional.of(afterInterval);
+                return Optional.of(nextWakeAfterPoll(now, nearestWake, schedulerTickMs));
             }
             return Optional.of(now);
         }
@@ -205,6 +201,19 @@ public class LiveMatchWakeScheduler {
             return Optional.of(nearestWake.isBefore(now) ? now : nearestWake);
         }
         return Optional.empty();
+    }
+
+    /**
+     * After a poll, never fire immediately even if FULL due-at is already in the past
+     * (failed attempt without deferral used to tight-loop every 2–3s).
+     */
+    static Instant nextWakeAfterPoll(Instant now, Instant nearestWake, long schedulerTickMs) {
+        Instant afterInterval = now.plusMillis(Math.max(1_000L, schedulerTickMs));
+        Instant soonestFuture = nearestWake != null && !nearestWake.isBefore(now) ? nearestWake : null;
+        if (soonestFuture != null && soonestFuture.isBefore(afterInterval)) {
+            return soonestFuture;
+        }
+        return afterInterval;
     }
 
     private synchronized void scheduleNext(Optional<Instant> when) {

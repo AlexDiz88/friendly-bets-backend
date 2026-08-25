@@ -1,6 +1,8 @@
 package net.friendly_bets.services;
 
 import lombok.RequiredArgsConstructor;
+import net.friendly_bets.dto.ExternalApiMonitoringLayerPageDto;
+import net.friendly_bets.dto.ExternalApiMonitoringRunDto;
 import net.friendly_bets.exceptions.BadRequestException;
 import net.friendly_bets.exceptions.NotFoundException;
 import net.friendly_bets.models.monitoring.ExternalApiHttpLogEntry;
@@ -146,6 +148,25 @@ public class ExternalApiMonitoringService {
                 after,
                 PageRequest.of(0, safeLimit)
         );
+    }
+
+    public ExternalApiMonitoringLayerPageDto listPageByLayer(ExternalDataLayer layer, int hours, int limit) {
+        int safeHours = Math.max(1, Math.min(hours, 24 * 30));
+        Instant after = Instant.now().minus(Duration.ofHours(safeHours));
+        List<ExternalApiMonitoringRunDto> runs = listByLayer(layer, hours, limit).stream()
+                .map(ExternalApiMonitoringRunDto::summary)
+                .toList();
+        long total = repository.countByLayerAndStartedAtAfter(layer, after);
+        long failed = repository.countByLayerAndStatusAndStartedAtAfter(
+                layer,
+                ExternalApiMonitoringStatus.FAILED,
+                after
+        );
+        return ExternalApiMonitoringLayerPageDto.builder()
+                .runs(runs)
+                .total(total)
+                .failed(failed)
+                .build();
     }
 
     public ExternalApiMonitoringRun getById(String id) {

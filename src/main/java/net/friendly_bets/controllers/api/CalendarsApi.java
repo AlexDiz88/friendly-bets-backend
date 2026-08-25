@@ -43,6 +43,18 @@ public interface CalendarsApi {
     ResponseEntity<CalendarNodesPage> getSeasonCalendarHasBetsNodes(
             @Parameter(description = "Season ID") @NotBlank String seasonId);
 
+    @Operation(summary = "Get current / nearest gameweek calendar node", description = "Accessible to everyone. Primary: match_schedules terminal status; dates as fallback.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Current calendar node for betting progress plate and gameweek defaults.",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = CalendarNodeDto.class))),
+            @ApiResponse(responseCode = "400", description = "No calendar nodes for season.",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto"))),
+            @ApiResponse(responseCode = "403", description = "User not authenticated.",
+                    content = @Content(mediaType = "application/json", schema = @Schema(ref = "StandardResponseDto")))
+    })
+    ResponseEntity<CalendarNodeDto> getCurrentSeasonCalendarNode(
+            @Parameter(description = "Season ID") @NotBlank String seasonId);
+
     @Operation(summary = "Get current round calendar", description = "Accessible to everyone")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "List of bets for the current calendar round. The response contains a paginated list of bets that are active for the current round.",

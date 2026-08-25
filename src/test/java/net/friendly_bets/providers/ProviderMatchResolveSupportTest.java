@@ -103,4 +103,22 @@ class ProviderMatchResolveSupportTest {
         assertTrue(outcome.isAmbiguous());
         assertNull(outcome.match());
     }
+
+    @Test
+    void preferringWindow_uniqueSidesWhenKickoffMissingOnFeed() {
+        Instant scheduleKickoff = Instant.parse("2026-08-24T19:00:00Z");
+        MatchSchedule schedule = MatchSchedule.builder().utcKickoff(scheduleKickoff).build();
+        List<Cand> candidates = List.of(
+                new Cand("fulham-chelsea", null, true),
+                new Cand("other", scheduleKickoff, false)
+        );
+        var inWindowOnly = ProviderMatchResolveSupport.resolveUnique(
+                schedule, candidates, Duration.ofHours(12), Cand::kickoff, Cand::sidesOk);
+        assertTrue(inWindowOnly.isMissing());
+
+        var withFallback = ProviderMatchResolveSupport.resolveUniquePreferringKickoffWindow(
+                schedule, candidates, Duration.ofHours(12), Cand::kickoff, Cand::sidesOk);
+        assertTrue(withFallback.isUnique());
+        assertEquals("fulham-chelsea", withFallback.match().id());
+    }
 }

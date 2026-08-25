@@ -21,7 +21,7 @@ class ErrorLogServiceTeamAliasMismatchTest {
     @BeforeEach
     void setUp() {
         repository = mock(ErrorLogRepository.class);
-        service = new ErrorLogService(repository);
+        service = new ErrorLogService(repository, null, null);
     }
 
     @Test

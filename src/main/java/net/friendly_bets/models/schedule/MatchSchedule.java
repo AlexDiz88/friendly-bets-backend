@@ -107,11 +107,11 @@ public class MatchSchedule {
     @Field(name = "live_finished_detected_at")
     private Instant liveFinishedDetectedAt;
 
-    /** Earliest Instant when orchestrator may call FULL again (deferral after not-ready). */
+    /** Earliest Instant when orchestrator may call FULL again (deferral after not-ready or failure). */
     @Field(name = "full_match_next_attempt_at")
     private Instant fullMatchNextAttemptAt;
 
-    /** Consecutive FULL responses where provider status was still unfinished. */
+    /** Consecutive unsuccessful FULL attempts (not-ready, not-found, parse/HTTP). */
     @Field(name = "full_match_not_ready_count")
     private Integer fullMatchNotReadyCount;
 

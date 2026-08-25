@@ -4,12 +4,16 @@ import lombok.Builder;
 import lombok.RequiredArgsConstructor;
 import lombok.Value;
 import net.friendly_bets.dto.ErrorLogDto;
+import net.friendly_bets.exceptions.BadRequestException;
 import net.friendly_bets.exceptions.NotFoundException;
 import net.friendly_bets.models.ErrorLog;
+import net.friendly_bets.models.Team;
 import net.friendly_bets.models.monitoring.ExternalApiHttpLogEntry;
 import net.friendly_bets.models.schedule.MatchSchedule;
 import net.friendly_bets.providers.ExternalDataLayer;
 import net.friendly_bets.repositories.ErrorLogRepository;
+import net.friendly_bets.repositories.MatchScheduleRepository;
+import net.friendly_bets.repositories.TeamsRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -17,10 +21,15 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 
 /**
  * Persists operator-visible sync/provider errors to {@code error_logs}.
@@ -48,6 +57,8 @@ public class ErrorLogService {
     public static final String CODE_FULL_MATCH_NOT_READY = "fullMatchNotReady";
 
     private final ErrorLogRepository errorLogRepository;
+    private final MatchScheduleRepository matchScheduleRepository;
+    private final TeamsRepository teamsRepository;
 
     @Value
     @Builder
@@ -67,7 +78,7 @@ public class ErrorLogService {
         String awayTeam;
         @Builder.Default
         Map<String, String> context = new LinkedHashMap<>();
-        /** Skip insert if same provider+code+matchScheduleId already exists. */
+        /** If same provider+code+matchScheduleId exists, append Instant instead of inserting. */
         boolean dedupeByMatch;
     }
 
@@ -78,15 +89,27 @@ public class ErrorLogService {
         try {
             if (entry.isDedupeByMatch()
                     && entry.getMatchScheduleId() != null
-                    && !entry.getMatchScheduleId().isBlank()
-                    && errorLogRepository.existsByProviderAndCodeAndMatchScheduleId(
-                    blankToNull(entry.getProvider()),
-                    entry.getCode().trim(),
-                    entry.getMatchScheduleId().trim())) {
-                return;
+                    && !entry.getMatchScheduleId().isBlank()) {
+                Optional<ErrorLog> existing = errorLogRepository.findFirstByProviderAndCodeAndMatchScheduleId(
+                        blankToNull(entry.getProvider()),
+                        entry.getCode().trim(),
+                        entry.getMatchScheduleId().trim());
+                if (existing.isPresent()) {
+                    ErrorLog doc = existing.get();
+                    appendOccurrence(doc, Instant.now());
+                    errorLogRepository.save(doc);
+                    return;
+                }
             }
+            Instant now = Instant.now();
+            List<Instant> occurredAt = new ArrayList<>();
+            occurredAt.add(now);
             ErrorLog doc = ErrorLog.builder()
-                    .createdAt(Instant.now())
+                    .createdAt(now)
+                    .firstOccurredAt(now)
+                    .lastOccurredAt(now)
+                    .occurredAt(occurredAt)
+                    .occurrenceCount(1)
                     .severity(blankToNull(entry.getSeverity()) != null ? entry.getSeverity().trim().toUpperCase(Locale.ROOT) : SEVERITY_ERROR)
                     .layer(blankToNull(entry.getLayer()))
                     .provider(blankToNull(entry.getProvider()))
@@ -302,16 +325,18 @@ public class ErrorLogService {
     }
 
     public void recordFullMatchFailure(MatchSchedule match, String provider, String message) {
+        String code = blankToNull(message) != null ? message.trim() : CODE_FULL_MATCH_FAILED;
         record(Entry.builder()
                 .severity(SEVERITY_ERROR)
                 .layer(ExternalDataLayer.FULL_MATCH.name())
                 .provider(provider)
-                .code(CODE_FULL_MATCH_FAILED)
+                .code(code)
                 .message(message)
                 .leagueCode(match != null ? match.getLeagueCode() : null)
                 .matchday(match != null ? match.getMatchday() : null)
                 .matchScheduleId(match != null ? match.getId() : null)
                 .externalMatchId(null)
+                .dedupeByMatch(true)
                 .build());
     }
 
@@ -332,9 +357,97 @@ public class ErrorLogService {
                 .build());
     }
 
+    public static final int DEFAULT_PAGE_SIZE = 20;
+    private static final Set<Integer> ALLOWED_PAGE_SIZES = Set.of(20, 50, 100, 500);
+
     @Transactional(readOnly = true)
-    public List<ErrorLogDto> listRecent() {
-        return ErrorLogDto.fromList(errorLogRepository.findTop200ByOrderByCreatedAtDesc());
+    public List<ErrorLogDto> listRecent(int page, int size) {
+        if (page < 0) {
+            throw new BadRequestException("errorLogsInvalidPage");
+        }
+        if (!ALLOWED_PAGE_SIZES.contains(size)) {
+            throw new BadRequestException("errorLogsInvalidPageSize");
+        }
+        int skip = page * size;
+        List<ErrorLogDto> dtos = ErrorLogDto.fromList(errorLogRepository.findRecent(skip, size));
+        enrichFromMatchSchedules(dtos);
+        return dtos;
+    }
+
+    /**
+     * Resolve home/away titles and logo keys from {@code match_schedules} when the log has a match id.
+     * Stored {@code homeTeam}/{@code awayTeam} names are kept if already present.
+     */
+    private void enrichFromMatchSchedules(List<ErrorLogDto> dtos) {
+        if (dtos == null || dtos.isEmpty()) {
+            return;
+        }
+        Set<String> scheduleIds = new LinkedHashSet<>();
+        for (ErrorLogDto dto : dtos) {
+            String id = dto.getMatchScheduleId();
+            if (id != null && !id.isBlank()) {
+                scheduleIds.add(id);
+            }
+        }
+        if (scheduleIds.isEmpty()) {
+            return;
+        }
+        Map<String, MatchSchedule> schedules = new HashMap<>();
+        for (MatchSchedule schedule : matchScheduleRepository.findAllById(scheduleIds)) {
+            if (schedule.getId() != null) {
+                schedules.put(schedule.getId(), schedule);
+            }
+        }
+        if (schedules.isEmpty()) {
+            return;
+        }
+        Set<String> teamIds = new HashSet<>();
+        for (MatchSchedule schedule : schedules.values()) {
+            if (schedule.getHomeTeamId() != null && !schedule.getHomeTeamId().isBlank()) {
+                teamIds.add(schedule.getHomeTeamId());
+            }
+            if (schedule.getAwayTeamId() != null && !schedule.getAwayTeamId().isBlank()) {
+                teamIds.add(schedule.getAwayTeamId());
+            }
+        }
+        Map<String, Team> teams = new HashMap<>();
+        if (!teamIds.isEmpty()) {
+            for (Team team : teamsRepository.findAllById(teamIds)) {
+                if (team.getId() != null) {
+                    teams.put(team.getId(), team);
+                }
+            }
+        }
+        for (ErrorLogDto dto : dtos) {
+            if (dto.getMatchScheduleId() == null) {
+                continue;
+            }
+            MatchSchedule schedule = schedules.get(dto.getMatchScheduleId());
+            if (schedule == null) {
+                continue;
+            }
+            applyTeamFromSchedule(dto, true, teams.get(schedule.getHomeTeamId()));
+            applyTeamFromSchedule(dto, false, teams.get(schedule.getAwayTeamId()));
+        }
+    }
+
+    private static void applyTeamFromSchedule(ErrorLogDto dto, boolean home, Team team) {
+        if (team == null) {
+            return;
+        }
+        if (home) {
+            dto.setHomeTeamTitle(team.getTitle());
+            dto.setHomeTeamLogoKey(team.getLogo());
+            if (dto.getHomeTeam() == null || dto.getHomeTeam().isBlank()) {
+                dto.setHomeTeam(team.getTitle());
+            }
+        } else {
+            dto.setAwayTeamTitle(team.getTitle());
+            dto.setAwayTeamLogoKey(team.getLogo());
+            if (dto.getAwayTeam() == null || dto.getAwayTeam().isBlank()) {
+                dto.setAwayTeam(team.getTitle());
+            }
+        }
     }
 
     public long count() {
@@ -380,6 +493,36 @@ public class ErrorLogService {
             errorLogRepository.deleteAll(toDelete);
         }
         return toDelete.size();
+    }
+
+    /**
+     * Appends {@code now} to the incident timeline. {@code createdAt} stays the first failure.
+     * If an older row only has {@code occurrenceCount} (no timestamps), the count is preserved
+     * and new Instants start accumulating from this moment.
+     */
+    private static void appendOccurrence(ErrorLog doc, Instant now) {
+        List<Instant> times = doc.getOccurredAt() != null ? new ArrayList<>(doc.getOccurredAt()) : new ArrayList<>();
+        if (times.isEmpty()) {
+            Instant first = doc.getFirstOccurredAt() != null ? doc.getFirstOccurredAt() : doc.getCreatedAt();
+            if (first != null) {
+                times.add(first);
+            }
+        }
+        times.add(now);
+        doc.setOccurredAt(times);
+        int fromArray = times.size();
+        int prevCount = doc.getOccurrenceCount() == null || doc.getOccurrenceCount() < 1
+                ? 0
+                : doc.getOccurrenceCount();
+        doc.setOccurrenceCount(Math.max(fromArray, prevCount + 1));
+        doc.setLastOccurredAt(now);
+        Instant first = times.get(0);
+        if (doc.getCreatedAt() == null) {
+            doc.setCreatedAt(first);
+        }
+        if (doc.getFirstOccurredAt() == null) {
+            doc.setFirstOccurredAt(first);
+        }
     }
 
     private static String blankToNull(String value) {

@@ -2,12 +2,14 @@ package net.friendly_bets.services;
 
 import net.friendly_bets.models.ErrorLog;
 import net.friendly_bets.models.monitoring.ExternalApiHttpLogEntry;
+import net.friendly_bets.models.schedule.MatchSchedule;
 import net.friendly_bets.providers.ExternalDataLayer;
 import net.friendly_bets.repositories.ErrorLogRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -29,7 +31,7 @@ class ErrorLogServiceHttpFailuresTest {
     @BeforeEach
     void setUp() {
         repository = mock(ErrorLogRepository.class);
-        service = new ErrorLogService(repository);
+        service = new ErrorLogService(repository, null, null);
     }
 
     @Test
@@ -103,5 +105,65 @@ class ErrorLogServiceHttpFailuresTest {
         );
 
         verify(repository, never()).save(any());
+    }
+
+    @Test
+    void recordFullMatchFailure_usesSpecificMessageAsCode() {
+        MatchSchedule match = MatchSchedule.builder()
+                .id("ms-1")
+                .leagueCode("EPL")
+                .matchday(1)
+                .build();
+
+        service.recordFullMatchFailure(match, "flashscorekz.com", "fullMatchNotFound");
+
+        ArgumentCaptor<ErrorLog> captor = ArgumentCaptor.forClass(ErrorLog.class);
+        verify(repository).save(captor.capture());
+        assertEquals("fullMatchNotFound", captor.getValue().getCode());
+        assertEquals("fullMatchNotFound", captor.getValue().getMessage());
+        assertEquals("ms-1", captor.getValue().getMatchScheduleId());
+        assertEquals(ExternalDataLayer.FULL_MATCH.name(), captor.getValue().getLayer());
+    }
+
+    @Test
+    void recordFullMatchFailure_fallsBackWhenMessageBlank() {
+        service.recordFullMatchFailure(MatchSchedule.builder().id("ms-2").build(), "soccer365.ru", "  ");
+
+        ArgumentCaptor<ErrorLog> captor = ArgumentCaptor.forClass(ErrorLog.class);
+        verify(repository).save(captor.capture());
+        assertEquals(ErrorLogService.CODE_FULL_MATCH_FAILED, captor.getValue().getCode());
+    }
+
+    @Test
+    void recordFullMatchFailure_appendsOccurrenceTimeOnDedupe() {
+        Instant first = Instant.parse("2026-08-24T21:00:00Z");
+        ErrorLog existing = ErrorLog.builder()
+                .id("log-1")
+                .createdAt(first)
+                .firstOccurredAt(first)
+                .lastOccurredAt(first)
+                .occurredAt(new ArrayList<>(List.of(first)))
+                .occurrenceCount(1)
+                .code("fullMatchNotFound")
+                .matchScheduleId("ms-1")
+                .build();
+        when(repository.findFirstByProviderAndCodeAndMatchScheduleId(
+                "flashscorekz.com", "fullMatchNotFound", "ms-1")).thenReturn(Optional.of(existing));
+
+        service.recordFullMatchFailure(
+                MatchSchedule.builder().id("ms-1").build(),
+                "flashscorekz.com",
+                "fullMatchNotFound"
+        );
+
+        ArgumentCaptor<ErrorLog> captor = ArgumentCaptor.forClass(ErrorLog.class);
+        verify(repository).save(captor.capture());
+        ErrorLog saved = captor.getValue();
+        assertEquals(first, saved.getCreatedAt());
+        assertEquals(first, saved.getFirstOccurredAt());
+        assertEquals(2, saved.getOccurrenceCount());
+        assertEquals(2, saved.getOccurredAt().size());
+        assertEquals(first, saved.getOccurredAt().get(0));
+        assertEquals(saved.getLastOccurredAt(), saved.getOccurredAt().get(1));
     }
 }
