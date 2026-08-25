@@ -12,9 +12,10 @@ public interface ErrorLogRepository extends MongoRepository<ErrorLog, String> {
     @Aggregation(pipeline = {
             "{ $addFields: { sortAt: { $ifNull: ['$last_occurred_at', '$created_at'] } } }",
             "{ $sort: { sortAt: -1 } }",
-            "{ $limit: 200 }"
+            "{ $skip: ?0 }",
+            "{ $limit: ?1 }"
     })
-    List<ErrorLog> findRecent();
+    List<ErrorLog> findRecent(int skip, int limit);
 
     Optional<ErrorLog> findFirstByProviderAndCodeAndMatchScheduleId(String provider, String code, String matchScheduleId);
 

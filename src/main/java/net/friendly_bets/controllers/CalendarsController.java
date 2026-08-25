@@ -47,6 +47,12 @@ public class CalendarsController implements CalendarsApi {
     }
 
     @Override
+    @GetMapping("/seasons/{season-id}/current")
+    public ResponseEntity<CalendarNodeDto> getCurrentSeasonCalendarNode(@PathVariable("season-id") String seasonId) {
+        return ResponseEntity.ok(calendarsService.getCurrentSeasonCalendarNode(seasonId));
+    }
+
+    @Override
     @GetMapping("/seasons/{season-id}/actual")
     public ResponseEntity<BetsPage> getActualCalendarNodeBets(@AuthenticationPrincipal AuthenticatedUser currentUser,
                                                               @PathVariable("season-id") String seasonId) {

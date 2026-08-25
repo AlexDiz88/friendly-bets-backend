@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import net.friendly_bets.dto.*;
 import net.friendly_bets.exceptions.BadRequestException;
+import net.friendly_bets.matchschedule.CalendarGameweekCurrentResolver;
 import net.friendly_bets.models.Bet;
 import net.friendly_bets.models.CalendarNode;
 import net.friendly_bets.models.LeagueMatchdayNode;
@@ -13,9 +14,7 @@ import net.friendly_bets.repositories.CalendarsRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -33,6 +32,7 @@ public class CalendarsService {
     GetEntityService getEntityService;
     KnockoutBetPrivacyService knockoutBetPrivacyService;
     BetRelationsLoader betRelationsLoader;
+    CalendarGameweekCurrentResolver calendarGameweekCurrentResolver;
 
 
     public CalendarNodesPage getAllSeasonCalendarNodes(String seasonId) {
@@ -81,14 +81,25 @@ public class CalendarsService {
     // ------------------------------------------------------------------------------------------------------ //
 
 
-    public BetsPage getActualCalendarNodeBets(String seasonId, String viewerUserId) {
-        List<CalendarNode> calendarNodes = getEntityService.getListOfCalendarNodesWithBetsBySeasonOrThrow(seasonId);
-
-        CalendarNode closestNode = calendarNodes.stream()
-                .min(Comparator.comparing(node -> Math.abs(ChronoUnit.DAYS.between(LocalDate.now(), node.getStartDate()))))
+    /**
+     * Текущий / ближайший gameweek: по терминальности матчей в {@code match_schedules},
+     * даты узла — только fallback.
+     */
+    public CalendarNodeDto getCurrentSeasonCalendarNode(String seasonId) {
+        List<CalendarNode> calendarNodes = getEntityService.getListOfCalendarNodesBySeasonOrThrow(seasonId);
+        CalendarNode current = calendarGameweekCurrentResolver.resolve(seasonId, calendarNodes)
                 .orElseThrow(() -> new BadRequestException("noCalendarNodesBySeason"));
+        return CalendarNodeDto.from(current, false);
+    }
 
-        return getBetsByCalendarNode(closestNode.getId(), viewerUserId);
+    // ------------------------------------------------------------------------------------------------------ //
+
+
+    public BetsPage getActualCalendarNodeBets(String seasonId, String viewerUserId) {
+        List<CalendarNode> allNodes = getEntityService.getListOfCalendarNodesBySeasonOrThrow(seasonId);
+        CalendarNode current = calendarGameweekCurrentResolver.resolve(seasonId, allNodes)
+                .orElseThrow(() -> new BadRequestException("noCalendarNodesBySeason"));
+        return getBetsByCalendarNode(current.getId(), viewerUserId);
     }
 
     // ------------------------------------------------------------------------------------------------------ //

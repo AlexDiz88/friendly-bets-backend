@@ -4,6 +4,7 @@ import lombok.Builder;
 import lombok.RequiredArgsConstructor;
 import lombok.Value;
 import net.friendly_bets.dto.ErrorLogDto;
+import net.friendly_bets.exceptions.BadRequestException;
 import net.friendly_bets.exceptions.NotFoundException;
 import net.friendly_bets.models.ErrorLog;
 import net.friendly_bets.models.Team;
@@ -356,9 +357,19 @@ public class ErrorLogService {
                 .build());
     }
 
+    public static final int DEFAULT_PAGE_SIZE = 20;
+    private static final Set<Integer> ALLOWED_PAGE_SIZES = Set.of(20, 50, 100, 500);
+
     @Transactional(readOnly = true)
-    public List<ErrorLogDto> listRecent() {
-        List<ErrorLogDto> dtos = ErrorLogDto.fromList(errorLogRepository.findRecent());
+    public List<ErrorLogDto> listRecent(int page, int size) {
+        if (page < 0) {
+            throw new BadRequestException("errorLogsInvalidPage");
+        }
+        if (!ALLOWED_PAGE_SIZES.contains(size)) {
+            throw new BadRequestException("errorLogsInvalidPageSize");
+        }
+        int skip = page * size;
+        List<ErrorLogDto> dtos = ErrorLogDto.fromList(errorLogRepository.findRecent(skip, size));
         enrichFromMatchSchedules(dtos);
         return dtos;
     }

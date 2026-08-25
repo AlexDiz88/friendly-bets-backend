@@ -51,11 +51,11 @@ class ErrorLogServiceListRecentTest {
         Team home = Team.builder().id("home-1").title("Arsenal").logo("arsenal").build();
         Team away = Team.builder().id("away-1").title("Chelsea").logo("chelsea").build();
 
-        when(errorLogRepository.findRecent()).thenReturn(List.of(log));
+        when(errorLogRepository.findRecent(0, 20)).thenReturn(List.of(log));
         when(matchScheduleRepository.findAllById(any())).thenReturn(List.of(schedule));
         when(teamsRepository.findAllById(any())).thenReturn(List.of(home, away));
 
-        List<ErrorLogDto> result = service.listRecent();
+        List<ErrorLogDto> result = service.listRecent(0, 20);
 
         assertEquals(1, result.size());
         ErrorLogDto dto = result.get(0);
@@ -85,11 +85,11 @@ class ErrorLogServiceListRecentTest {
         Team home = Team.builder().id("home-2").title("Liverpool").logo("liverpool").build();
         Team away = Team.builder().id("away-2").title("Everton").logo("everton").build();
 
-        when(errorLogRepository.findRecent()).thenReturn(List.of(log));
+        when(errorLogRepository.findRecent(0, 20)).thenReturn(List.of(log));
         when(matchScheduleRepository.findAllById(any())).thenReturn(List.of(schedule));
         when(teamsRepository.findAllById(any())).thenReturn(List.of(home, away));
 
-        ErrorLogDto dto = service.listRecent().get(0);
+        ErrorLogDto dto = service.listRecent(0, 20).get(0);
         assertEquals("stored-home", dto.getHomeTeam());
         assertEquals("stored-away", dto.getAwayTeam());
         assertEquals("Liverpool", dto.getHomeTeamTitle());
@@ -104,9 +104,9 @@ class ErrorLogServiceListRecentTest {
                 .code("teamMappingMissing")
                 .homeTeam("Unknown FC")
                 .build();
-        when(errorLogRepository.findRecent()).thenReturn(List.of(log));
+        when(errorLogRepository.findRecent(0, 20)).thenReturn(List.of(log));
 
-        ErrorLogDto dto = service.listRecent().get(0);
+        ErrorLogDto dto = service.listRecent(0, 20).get(0);
         assertEquals("Unknown FC", dto.getHomeTeam());
         assertNull(dto.getHomeTeamTitle());
         assertNull(dto.getHomeTeamLogoKey());
