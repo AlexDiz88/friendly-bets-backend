@@ -107,16 +107,33 @@ class LayerProviderRouterTest {
   }
 
   @Test
-  void fullMatch_businessError_notLoggedAgainByRouter() {
+  void fullMatch_businessError_failoversToSecondaryWithoutDuplicateLayerFailure() {
+    StubFullMatchProvider primary = new StubFullMatchProvider("flashscorekz.com");
+    StubFullMatchProvider secondary = new StubFullMatchProvider("ruscore.ru");
+    primary.failWith = new BadRequestException("fullMatchNotFound");
+    assignFull("flashscorekz.com", "ruscore.ru");
+    when(registry.findAs("flashscorekz.com", FullMatchProvider.class)).thenReturn(java.util.Optional.of(primary));
+    when(registry.findAs("ruscore.ru", FullMatchProvider.class)).thenReturn(java.util.Optional.of(secondary));
+
+    MatchSchedule result = router.execute(
+        ExternalDataLayer.FULL_MATCH,
+        FullMatchProvider.class,
+        p -> p.fetchAndPersistFullDetails(null));
+    assertSame(secondary.ok, result);
+    verify(errorLogService, never()).recordLayerFailure(any(), any(), any(), any(), any(), any());
+    verify(errorLogService, never()).record(any());
+  }
+
+  @Test
+  void fullMatch_businessError_noSecondary_notLoggedByRouter() {
     StubFullMatchProvider primary = new StubFullMatchProvider("flashscorekz.com");
     primary.failWith = new BadRequestException("fullMatchNotFound");
-    assignFull("flashscorekz.com", "soccer365.ru");
+    assignFull("flashscorekz.com", null);
     when(registry.findAs("flashscorekz.com", FullMatchProvider.class)).thenReturn(java.util.Optional.of(primary));
 
     BadRequestException thrown = assertThrows(BadRequestException.class, () ->
         router.execute(ExternalDataLayer.FULL_MATCH, FullMatchProvider.class, p -> p.fetchAndPersistFullDetails(null)));
     assertEquals("fullMatchNotFound", thrown.getMessage());
-    verify(registry, never()).findAs("soccer365.ru", FullMatchProvider.class);
     verify(errorLogService, never()).recordLayerFailure(any(), any(), any(), any(), any(), any());
     verify(errorLogService, never()).record(any());
   }

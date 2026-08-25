@@ -322,6 +322,7 @@ public class ErrorLogService {
                 .matchday(match != null ? match.getMatchday() : null)
                 .matchScheduleId(match != null ? match.getId() : null)
                 .externalMatchId(null)
+                .dedupeByMatch(true)
                 .build());
     }
 

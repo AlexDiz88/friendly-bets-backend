@@ -60,7 +60,7 @@ public class FlashscoreFullMatchResolver {
         Team away = getEntityService.getTeamOrThrow(match.getAwayTeamId());
 
         ProviderMatchResolveSupport.ResolveOutcome<FlashscoreParsedDayPage.Match> outcome =
-                ProviderMatchResolveSupport.resolveUnique(
+                ProviderMatchResolveSupport.resolveUniquePreferringKickoffWindow(
                         match,
                         candidates,
                         window,

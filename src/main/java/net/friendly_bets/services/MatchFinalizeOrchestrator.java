@@ -30,7 +30,8 @@ import java.util.Set;
 
 /**
  * After LIVE detects finished: wait initial delay, FULL_MATCH (primary→secondary),
- * require provider FINISHED status, then optional bet settle. Not-ready → defer 5min / hourly.
+ * require provider FINISHED status, then optional bet settle.
+ * Unsuccessful FULL (not-ready / not-found / parse / HTTP) → defer 5 min, then hourly.
  */
 @Service
 @RequiredArgsConstructor
@@ -74,7 +75,10 @@ public class MatchFinalizeOrchestrator {
                     current = matchScheduleRepository.save(current);
                 }
             } catch (FullMatchNotReadyException e) {
-                return handleNotReady(current, e, now);
+                return handleUnsuccessfulAttempt(current, now, e);
+            } catch (RuntimeException e) {
+                log.warn("FULL failed for match {}: {}", current.getId(), e.getMessage());
+                return handleUnsuccessfulAttempt(current, now, null);
             }
         }
         if (properties.isAutoSettleEnabled() && MatchScheduleSettleService.isFinalizedForSettle(current)) {
@@ -153,29 +157,30 @@ public class MatchFinalizeOrchestrator {
             try {
                 finalizeFinishedMatch(match);
             } catch (FullMatchNotReadyException e) {
-                // Already handled inside finalizeFinishedMatch when thrown from router path;
-                // keep catch for safety if called differently.
                 log.debug("FULL not ready for match {}: {}", match.getId(), e.getProviderStatus());
             } catch (RuntimeException e) {
-                // FULL provider already wrote match-scoped error_logs before rethrowing.
                 log.warn("FULL/settle failed for match {}: {}", match.getId(), e.getMessage());
             }
         }
     }
 
-    private MatchSchedule handleNotReady(MatchSchedule current, FullMatchNotReadyException e, Instant now) {
-        Instant nextAt = FullMatchAttemptSupport.nextAttemptAfterNotReady(current, now, properties);
-        boolean logError = FullMatchAttemptSupport.shouldLogNotReady(current);
+    private MatchSchedule handleUnsuccessfulAttempt(
+            MatchSchedule current,
+            Instant now,
+            FullMatchNotReadyException notReady
+    ) {
+        Instant nextAt = FullMatchAttemptSupport.nextAttemptAfterFailure(current, now, properties);
+        boolean logNotReady = notReady != null && FullMatchAttemptSupport.shouldLogNotReady(current);
         int nextCount = (current.getFullMatchNotReadyCount() != null ? current.getFullMatchNotReadyCount() : 0) + 1;
         current.setFullMatchNotReadyCount(nextCount);
         current.setFullMatchNextAttemptAt(nextAt);
         MatchSchedule saved = matchScheduleRepository.save(current);
-        if (logError) {
+        if (logNotReady) {
             String provider = layerConfigService.assignment(ExternalDataLayer.FULL_MATCH).getPrimaryProvider();
-            errorLogService.recordFullMatchNotReady(saved, provider, e.getProviderStatus());
+            errorLogService.recordFullMatchNotReady(saved, provider, notReady.getProviderStatus());
         }
-        log.info("FULL not ready for match {} (status={}, attempt={}, next={})",
-                saved.getId(), e.getProviderStatus(), nextCount, nextAt);
+        log.info("FULL attempt deferred for match {} (count={}, next={})",
+                saved.getId(), nextCount, nextAt);
         return saved;
     }
 

@@ -132,4 +132,18 @@ class ErrorLogServiceHttpFailuresTest {
         verify(repository).save(captor.capture());
         assertEquals(ErrorLogService.CODE_FULL_MATCH_FAILED, captor.getValue().getCode());
     }
+
+    @Test
+    void recordFullMatchFailure_dedupesSameProviderCodeAndMatch() {
+        when(repository.existsByProviderAndCodeAndMatchScheduleId(
+                "flashscorekz.com", "fullMatchNotFound", "ms-1")).thenReturn(true);
+
+        service.recordFullMatchFailure(
+                MatchSchedule.builder().id("ms-1").build(),
+                "flashscorekz.com",
+                "fullMatchNotFound"
+        );
+
+        verify(repository, never()).save(any());
+    }
 }

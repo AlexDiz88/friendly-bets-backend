@@ -60,7 +60,7 @@ public class RuscoreFullMatchResolver {
         Team away = getEntityService.getTeamOrThrow(match.getAwayTeamId());
 
         ProviderMatchResolveSupport.ResolveOutcome<RuscoreParsedDayPage.Match> outcome =
-                ProviderMatchResolveSupport.resolveUnique(
+                ProviderMatchResolveSupport.resolveUniquePreferringKickoffWindow(
                         match,
                         candidates,
                         window,
