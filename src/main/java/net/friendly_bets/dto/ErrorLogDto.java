@@ -32,6 +32,11 @@ public class ErrorLogDto {
     private String externalMatchId;
     private String homeTeam;
     private String awayTeam;
+    /** Canonical Team.title from match_schedules (list enrichment). */
+    private String homeTeamTitle;
+    private String awayTeamTitle;
+    private String homeTeamLogoKey;
+    private String awayTeamLogoKey;
     private Map<String, String> context;
 
     public static ErrorLogDto from(ErrorLog log) {

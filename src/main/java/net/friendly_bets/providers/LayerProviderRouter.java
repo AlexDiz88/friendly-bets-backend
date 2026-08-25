@@ -77,32 +77,17 @@ public class LayerProviderRouter {
             throw notReady;
         } catch (RuntimeException primaryError) {
             if (!ExternalApiHttpFailures.isHttpTransportFailure(primaryError)) {
-                errorLogService.recordLayerFailure(
-                        layer, primaryId, ErrorLogService.ROLE_PRIMARY,
-                        resolveErrorCode(primaryError),
-                        primaryError.getMessage(),
-                        leagueCode
-                );
+                recordOperationFailure(layer, primaryId, ErrorLogService.ROLE_PRIMARY, primaryError, leagueCode);
                 throw primaryError;
             }
             String secondaryId = assignment.getSecondaryProvider();
             if (secondaryId == null || secondaryId.isBlank() || secondaryId.equals(primaryId)) {
-                errorLogService.recordLayerFailure(
-                        layer, primaryId, ErrorLogService.ROLE_PRIMARY,
-                        resolveErrorCode(primaryError),
-                        primaryError.getMessage(),
-                        leagueCode
-                );
+                recordOperationFailure(layer, primaryId, ErrorLogService.ROLE_PRIMARY, primaryError, leagueCode);
                 throw primaryError;
             }
             T secondary = registry.findAs(secondaryId, type).orElse(null);
             if (secondary == null || !secondary.supports(layer)) {
-                errorLogService.recordLayerFailure(
-                        layer, primaryId, ErrorLogService.ROLE_PRIMARY,
-                        resolveErrorCode(primaryError),
-                        primaryError.getMessage(),
-                        leagueCode
-                );
+                recordOperationFailure(layer, primaryId, ErrorLogService.ROLE_PRIMARY, primaryError, leagueCode);
                 throw primaryError;
             }
             log.warn("Layer {} primary {} failed ({}), trying secondary {}",
@@ -129,6 +114,31 @@ public class LayerProviderRouter {
                 throw secondaryError;
             }
         }
+    }
+
+    /**
+     * FULL providers already write a match-scoped {@code error_logs} row before rethrowing.
+     * Router must not duplicate those business/HTTP-per-match failures; it still logs
+     * config/bean issues and primary→secondary failover separately.
+     */
+    private void recordOperationFailure(
+            ExternalDataLayer layer,
+            String providerId,
+            String providerRole,
+            RuntimeException error,
+            String leagueCode
+    ) {
+        if (layer == ExternalDataLayer.FULL_MATCH) {
+            return;
+        }
+        errorLogService.recordLayerFailure(
+                layer,
+                providerId,
+                providerRole,
+                resolveErrorCode(error),
+                error.getMessage(),
+                leagueCode
+        );
     }
 
     private static String resolveErrorCode(RuntimeException error) {

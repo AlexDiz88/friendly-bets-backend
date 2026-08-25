@@ -157,7 +157,7 @@ public class MatchFinalizeOrchestrator {
                 // keep catch for safety if called differently.
                 log.debug("FULL not ready for match {}: {}", match.getId(), e.getProviderStatus());
             } catch (RuntimeException e) {
-                // LayerProviderRouter already wrote error_logs for FULL failure.
+                // FULL provider already wrote match-scoped error_logs before rethrowing.
                 log.warn("FULL/settle failed for match {}: {}", match.getId(), e.getMessage());
             }
         }

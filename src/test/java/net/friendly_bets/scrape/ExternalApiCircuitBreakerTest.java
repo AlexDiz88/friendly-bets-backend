@@ -30,7 +30,7 @@ class ExternalApiCircuitBreakerTest {
                 return true;
             }
         };
-        ErrorLogService errors = new ErrorLogService(null) {
+        ErrorLogService errors = new ErrorLogService(null, null, null) {
             @Override
             public void record(Entry entry) {
                 logged.add(entry);

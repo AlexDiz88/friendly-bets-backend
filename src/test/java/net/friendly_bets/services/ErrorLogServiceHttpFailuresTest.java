@@ -2,6 +2,7 @@ package net.friendly_bets.services;
 
 import net.friendly_bets.models.ErrorLog;
 import net.friendly_bets.models.monitoring.ExternalApiHttpLogEntry;
+import net.friendly_bets.models.schedule.MatchSchedule;
 import net.friendly_bets.providers.ExternalDataLayer;
 import net.friendly_bets.repositories.ErrorLogRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -29,7 +30,7 @@ class ErrorLogServiceHttpFailuresTest {
     @BeforeEach
     void setUp() {
         repository = mock(ErrorLogRepository.class);
-        service = new ErrorLogService(repository);
+        service = new ErrorLogService(repository, null, null);
     }
 
     @Test
@@ -103,5 +104,32 @@ class ErrorLogServiceHttpFailuresTest {
         );
 
         verify(repository, never()).save(any());
+    }
+
+    @Test
+    void recordFullMatchFailure_usesSpecificMessageAsCode() {
+        MatchSchedule match = MatchSchedule.builder()
+                .id("ms-1")
+                .leagueCode("EPL")
+                .matchday(1)
+                .build();
+
+        service.recordFullMatchFailure(match, "flashscorekz.com", "fullMatchNotFound");
+
+        ArgumentCaptor<ErrorLog> captor = ArgumentCaptor.forClass(ErrorLog.class);
+        verify(repository).save(captor.capture());
+        assertEquals("fullMatchNotFound", captor.getValue().getCode());
+        assertEquals("fullMatchNotFound", captor.getValue().getMessage());
+        assertEquals("ms-1", captor.getValue().getMatchScheduleId());
+        assertEquals(ExternalDataLayer.FULL_MATCH.name(), captor.getValue().getLayer());
+    }
+
+    @Test
+    void recordFullMatchFailure_fallsBackWhenMessageBlank() {
+        service.recordFullMatchFailure(MatchSchedule.builder().id("ms-2").build(), "soccer365.ru", "  ");
+
+        ArgumentCaptor<ErrorLog> captor = ArgumentCaptor.forClass(ErrorLog.class);
+        verify(repository).save(captor.capture());
+        assertEquals(ErrorLogService.CODE_FULL_MATCH_FAILED, captor.getValue().getCode());
     }
 }
