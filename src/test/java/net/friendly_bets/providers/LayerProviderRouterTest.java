@@ -249,10 +249,11 @@ class LayerProviderRouterTest {
   static final class StubFullMatchProvider implements FullMatchProvider {
     final String id;
     RuntimeException failWith;
-    final MatchSchedule ok = MatchSchedule.builder().id("ms-" + id).build();
+    final MatchSchedule ok;
 
     StubFullMatchProvider(String id) {
       this.id = id;
+      this.ok = MatchSchedule.builder().id("ms-" + id).build();
     }
 
     @Override
