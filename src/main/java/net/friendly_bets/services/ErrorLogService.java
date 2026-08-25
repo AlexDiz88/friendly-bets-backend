@@ -27,6 +27,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 /**
@@ -76,7 +77,7 @@ public class ErrorLogService {
         String awayTeam;
         @Builder.Default
         Map<String, String> context = new LinkedHashMap<>();
-        /** Skip insert if same provider+code+matchScheduleId already exists. */
+        /** If same provider+code+matchScheduleId exists, append Instant instead of inserting. */
         boolean dedupeByMatch;
     }
 
@@ -87,15 +88,27 @@ public class ErrorLogService {
         try {
             if (entry.isDedupeByMatch()
                     && entry.getMatchScheduleId() != null
-                    && !entry.getMatchScheduleId().isBlank()
-                    && errorLogRepository.existsByProviderAndCodeAndMatchScheduleId(
-                    blankToNull(entry.getProvider()),
-                    entry.getCode().trim(),
-                    entry.getMatchScheduleId().trim())) {
-                return;
+                    && !entry.getMatchScheduleId().isBlank()) {
+                Optional<ErrorLog> existing = errorLogRepository.findFirstByProviderAndCodeAndMatchScheduleId(
+                        blankToNull(entry.getProvider()),
+                        entry.getCode().trim(),
+                        entry.getMatchScheduleId().trim());
+                if (existing.isPresent()) {
+                    ErrorLog doc = existing.get();
+                    appendOccurrence(doc, Instant.now());
+                    errorLogRepository.save(doc);
+                    return;
+                }
             }
+            Instant now = Instant.now();
+            List<Instant> occurredAt = new ArrayList<>();
+            occurredAt.add(now);
             ErrorLog doc = ErrorLog.builder()
-                    .createdAt(Instant.now())
+                    .createdAt(now)
+                    .firstOccurredAt(now)
+                    .lastOccurredAt(now)
+                    .occurredAt(occurredAt)
+                    .occurrenceCount(1)
                     .severity(blankToNull(entry.getSeverity()) != null ? entry.getSeverity().trim().toUpperCase(Locale.ROOT) : SEVERITY_ERROR)
                     .layer(blankToNull(entry.getLayer()))
                     .provider(blankToNull(entry.getProvider()))
@@ -345,7 +358,7 @@ public class ErrorLogService {
 
     @Transactional(readOnly = true)
     public List<ErrorLogDto> listRecent() {
-        List<ErrorLogDto> dtos = ErrorLogDto.fromList(errorLogRepository.findTop200ByOrderByCreatedAtDesc());
+        List<ErrorLogDto> dtos = ErrorLogDto.fromList(errorLogRepository.findRecent());
         enrichFromMatchSchedules(dtos);
         return dtos;
     }
@@ -469,6 +482,36 @@ public class ErrorLogService {
             errorLogRepository.deleteAll(toDelete);
         }
         return toDelete.size();
+    }
+
+    /**
+     * Appends {@code now} to the incident timeline. {@code createdAt} stays the first failure.
+     * If an older row only has {@code occurrenceCount} (no timestamps), the count is preserved
+     * and new Instants start accumulating from this moment.
+     */
+    private static void appendOccurrence(ErrorLog doc, Instant now) {
+        List<Instant> times = doc.getOccurredAt() != null ? new ArrayList<>(doc.getOccurredAt()) : new ArrayList<>();
+        if (times.isEmpty()) {
+            Instant first = doc.getFirstOccurredAt() != null ? doc.getFirstOccurredAt() : doc.getCreatedAt();
+            if (first != null) {
+                times.add(first);
+            }
+        }
+        times.add(now);
+        doc.setOccurredAt(times);
+        int fromArray = times.size();
+        int prevCount = doc.getOccurrenceCount() == null || doc.getOccurrenceCount() < 1
+                ? 0
+                : doc.getOccurrenceCount();
+        doc.setOccurrenceCount(Math.max(fromArray, prevCount + 1));
+        doc.setLastOccurredAt(now);
+        Instant first = times.get(0);
+        if (doc.getCreatedAt() == null) {
+            doc.setCreatedAt(first);
+        }
+        if (doc.getFirstOccurredAt() == null) {
+            doc.setFirstOccurredAt(first);
+        }
     }
 
     private static String blankToNull(String value) {

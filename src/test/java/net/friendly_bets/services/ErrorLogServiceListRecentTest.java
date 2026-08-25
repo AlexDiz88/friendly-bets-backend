@@ -51,7 +51,7 @@ class ErrorLogServiceListRecentTest {
         Team home = Team.builder().id("home-1").title("Arsenal").logo("arsenal").build();
         Team away = Team.builder().id("away-1").title("Chelsea").logo("chelsea").build();
 
-        when(errorLogRepository.findTop200ByOrderByCreatedAtDesc()).thenReturn(List.of(log));
+        when(errorLogRepository.findRecent()).thenReturn(List.of(log));
         when(matchScheduleRepository.findAllById(any())).thenReturn(List.of(schedule));
         when(teamsRepository.findAllById(any())).thenReturn(List.of(home, away));
 
@@ -85,7 +85,7 @@ class ErrorLogServiceListRecentTest {
         Team home = Team.builder().id("home-2").title("Liverpool").logo("liverpool").build();
         Team away = Team.builder().id("away-2").title("Everton").logo("everton").build();
 
-        when(errorLogRepository.findTop200ByOrderByCreatedAtDesc()).thenReturn(List.of(log));
+        when(errorLogRepository.findRecent()).thenReturn(List.of(log));
         when(matchScheduleRepository.findAllById(any())).thenReturn(List.of(schedule));
         when(teamsRepository.findAllById(any())).thenReturn(List.of(home, away));
 
@@ -104,7 +104,7 @@ class ErrorLogServiceListRecentTest {
                 .code("teamMappingMissing")
                 .homeTeam("Unknown FC")
                 .build();
-        when(errorLogRepository.findTop200ByOrderByCreatedAtDesc()).thenReturn(List.of(log));
+        when(errorLogRepository.findRecent()).thenReturn(List.of(log));
 
         ErrorLogDto dto = service.listRecent().get(0);
         assertEquals("Unknown FC", dto.getHomeTeam());

@@ -1,6 +1,7 @@
 package net.friendly_bets.controllers;
 
 import lombok.RequiredArgsConstructor;
+import net.friendly_bets.dto.ExternalApiMonitoringLayerPageDto;
 import net.friendly_bets.dto.ExternalApiMonitoringRunDto;
 import net.friendly_bets.exceptions.BadRequestException;
 import net.friendly_bets.models.monitoring.ExternalApiMonitoringRun;
@@ -16,7 +17,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -28,16 +28,13 @@ public class ExternalApiMonitoringController {
 
     @GetMapping
     @PreAuthorize("hasAuthority('ADMIN') || hasAuthority('MODERATOR')")
-    public ResponseEntity<List<ExternalApiMonitoringRunDto>> list(
+    public ResponseEntity<ExternalApiMonitoringLayerPageDto> list(
             @RequestParam String layer,
             @RequestParam(defaultValue = "24") int hours,
             @RequestParam(defaultValue = "50") int limit
     ) {
         ExternalDataLayer parsed = parseLayer(layer);
-        List<ExternalApiMonitoringRunDto> runs = monitoringService.listByLayer(parsed, hours, limit).stream()
-                .map(ExternalApiMonitoringRunDto::summary)
-                .toList();
-        return ResponseEntity.ok(runs);
+        return ResponseEntity.ok(monitoringService.listPageByLayer(parsed, hours, limit));
     }
 
     @GetMapping("/latest")

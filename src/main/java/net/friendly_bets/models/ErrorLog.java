@@ -12,7 +12,9 @@ import org.springframework.data.mongodb.core.mapping.Field;
 import org.springframework.data.mongodb.core.mapping.MongoId;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 @NoArgsConstructor
@@ -31,6 +33,7 @@ public class ErrorLog {
     @Field(name = "_id")
     private String id;
 
+    /** First occurrence. Never bumped on repeats — last time lives in {@code occurredAt}. */
     @Field(name = "created_at")
     @Indexed
     private Instant createdAt;
@@ -77,6 +80,24 @@ public class ErrorLog {
 
     @Field(name = "away_team")
     private String awayTeam;
+
+    /** Same as {@code created_at} / first of {@code occurredAt}; kept for older documents. */
+    @Field(name = "first_occurred_at")
+    private Instant firstOccurredAt;
+
+    /** Last occurrence; used to keep the row among recent logs without rewriting {@code created_at}. */
+    @Field(name = "last_occurred_at")
+    @Indexed
+    private Instant lastOccurredAt;
+
+    /** Every failure Instant for this incident (same provider+code+match). */
+    @Field(name = "occurred_at")
+    @Builder.Default
+    private List<Instant> occurredAt = new ArrayList<>();
+
+    /** Times this row was recorded; equals {@code occurredAt.size()} when the array is present. */
+    @Field(name = "occurrence_count")
+    private Integer occurrenceCount;
 
     /** Extra chips: homeExternalId, awayExternalId, … */
     @Field(name = "context")

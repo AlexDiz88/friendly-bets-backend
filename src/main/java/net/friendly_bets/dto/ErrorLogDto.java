@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 import net.friendly_bets.models.ErrorLog;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -37,6 +38,10 @@ public class ErrorLogDto {
     private String awayTeamTitle;
     private String homeTeamLogoKey;
     private String awayTeamLogoKey;
+    private Instant firstOccurredAt;
+    private Instant lastOccurredAt;
+    private List<Instant> occurredAt;
+    private Integer occurrenceCount;
     private Map<String, String> context;
 
     public static ErrorLogDto from(ErrorLog log) {
@@ -62,6 +67,10 @@ public class ErrorLogDto {
                 .externalMatchId(log.getExternalMatchId())
                 .homeTeam(log.getHomeTeam())
                 .awayTeam(log.getAwayTeam())
+                .firstOccurredAt(log.getFirstOccurredAt())
+                .lastOccurredAt(log.getLastOccurredAt())
+                .occurredAt(log.getOccurredAt() != null ? new ArrayList<>(log.getOccurredAt()) : List.of())
+                .occurrenceCount(log.getOccurrenceCount())
                 .context(ctx)
                 .build();
     }

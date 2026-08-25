@@ -9,6 +9,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -134,9 +135,20 @@ class ErrorLogServiceHttpFailuresTest {
     }
 
     @Test
-    void recordFullMatchFailure_dedupesSameProviderCodeAndMatch() {
-        when(repository.existsByProviderAndCodeAndMatchScheduleId(
-                "flashscorekz.com", "fullMatchNotFound", "ms-1")).thenReturn(true);
+    void recordFullMatchFailure_appendsOccurrenceTimeOnDedupe() {
+        Instant first = Instant.parse("2026-08-24T21:00:00Z");
+        ErrorLog existing = ErrorLog.builder()
+                .id("log-1")
+                .createdAt(first)
+                .firstOccurredAt(first)
+                .lastOccurredAt(first)
+                .occurredAt(new ArrayList<>(List.of(first)))
+                .occurrenceCount(1)
+                .code("fullMatchNotFound")
+                .matchScheduleId("ms-1")
+                .build();
+        when(repository.findFirstByProviderAndCodeAndMatchScheduleId(
+                "flashscorekz.com", "fullMatchNotFound", "ms-1")).thenReturn(Optional.of(existing));
 
         service.recordFullMatchFailure(
                 MatchSchedule.builder().id("ms-1").build(),
@@ -144,6 +156,14 @@ class ErrorLogServiceHttpFailuresTest {
                 "fullMatchNotFound"
         );
 
-        verify(repository, never()).save(any());
+        ArgumentCaptor<ErrorLog> captor = ArgumentCaptor.forClass(ErrorLog.class);
+        verify(repository).save(captor.capture());
+        ErrorLog saved = captor.getValue();
+        assertEquals(first, saved.getCreatedAt());
+        assertEquals(first, saved.getFirstOccurredAt());
+        assertEquals(2, saved.getOccurrenceCount());
+        assertEquals(2, saved.getOccurredAt().size());
+        assertEquals(first, saved.getOccurredAt().get(0));
+        assertEquals(saved.getLastOccurredAt(), saved.getOccurredAt().get(1));
     }
 }
