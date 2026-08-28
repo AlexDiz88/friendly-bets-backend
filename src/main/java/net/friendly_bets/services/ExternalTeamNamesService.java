@@ -2,6 +2,7 @@ package net.friendly_bets.services;
 
 import lombok.RequiredArgsConstructor;
 import net.friendly_bets.championat.ChampionatTeamNamesService;
+import net.friendly_bets.eurofootball.EuroFootballTeamNamesService;
 import net.friendly_bets.dto.ExternalTeamNameChipDto;
 import net.friendly_bets.dto.ExternalTeamNamesLoadResultDto;
 import net.friendly_bets.exceptions.BadRequestException;
@@ -31,6 +32,7 @@ public class ExternalTeamNamesService {
     private final SportsRuTeamNamesService sportsRuTeamNamesService;
     private final Football24TeamNamesService football24TeamNamesService;
     private final ChampionatTeamNamesService championatTeamNamesService;
+    private final EuroFootballTeamNamesService euroFootballTeamNamesService;
     private final RuscoreTeamNamesService ruscoreTeamNamesService;
     private final FlashscoreTeamNamesService flashscoreTeamNamesService;
     private final LayerProviderRegistry layerProviderRegistry;
@@ -62,6 +64,7 @@ public class ExternalTeamNamesService {
                     case ExternalProviderIds.SPORTS_RU -> sportsRuTeamNamesService.fetchTeamNames(leagueCode);
                     case ExternalProviderIds.FOOTBALL24 -> football24TeamNamesService.fetchTeamNames(leagueCode);
                     case ExternalProviderIds.CHAMPIONAT -> championatTeamNamesService.fetchTeamNames(leagueCode);
+                    case ExternalProviderIds.EURO_FOOTBALL -> euroFootballTeamNamesService.fetchTeamNames(leagueCode);
                     case ExternalProviderIds.RUSCORE -> ruscoreTeamNamesService.fetchTeamNames(leagueCode);
                     case ExternalProviderIds.FLASHSCORE -> flashscoreTeamNamesService.fetchTeamNames(leagueCode);
                     default -> throw new BadRequestException("externalTeamNamesProviderUnsupported");

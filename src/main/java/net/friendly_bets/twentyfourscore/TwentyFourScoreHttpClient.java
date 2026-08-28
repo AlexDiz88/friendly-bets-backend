@@ -107,7 +107,7 @@ public class TwentyFourScoreHttpClient {
             }
             HttpResponse<String> response = httpClient.send(builder.build(), HttpResponse.BodyHandlers.ofString());
             String body = response.body() != null ? response.body() : "";
-            if (ScrapeHttpSupport.looksLikeJsChallenge(body)) {
+            if (ScrapeHttpSupport.looksLikeAccessWall(body)) {
                 if (reportCircuit) {
                     circuitBreaker.recordFailure(ExternalDataLayer.LIVE, "24score.pro", ScrapeFailureKind.CHALLENGE, url);
                 }

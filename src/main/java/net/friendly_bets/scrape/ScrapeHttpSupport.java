@@ -95,6 +95,9 @@ public final class ScrapeHttpSupport {
         }
     }
 
+    /**
+     * Cloudflare (or similar) JS challenge HTML — Java HttpClient cannot complete it.
+     */
     public static boolean looksLikeJsChallenge(String body) {
         if (body == null || body.isBlank()) {
             return false;
@@ -106,6 +109,25 @@ public final class ScrapeHttpSupport {
                 || lower.contains("checking your browser")
                 || lower.contains("enable javascript and cookies")
                 || (lower.contains("attention required") && lower.contains("cloudflare"));
+    }
+
+    /**
+     * Login/SSO interstitial served as HTTP 200 HTML instead of the requested page
+     * (championat.com SberID / Unity ID since 2026-08). Not a real scores/JSON body.
+     */
+    public static boolean looksLikeAuthInterstitial(String body) {
+        if (body == null || body.isBlank()) {
+            return false;
+        }
+        String lower = body.toLowerCase(Locale.ROOT);
+        return lower.contains("авторизация sberid")
+                || lower.contains("/static/auth/_script")
+                || (lower.contains("вход через sberid") && lower.contains("перенаправление"));
+    }
+
+    /** Any HTML wall that must not be parsed as provider data (CF challenge or SSO interstitial). */
+    public static boolean looksLikeAccessWall(String body) {
+        return looksLikeJsChallenge(body) || looksLikeAuthInterstitial(body);
     }
 
     public static ScrapeFailureKind classifyHttpStatus(int status) {

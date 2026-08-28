@@ -66,6 +66,11 @@ public class TwentyFourScoreLiveProvider implements LiveMatchProvider {
 
     @Override
     public LiveSyncResult syncLive(Season season) {
+        return syncLive(season, null);
+    }
+
+    @Override
+    public LiveSyncResult syncLive(Season season, LocalDate utcDate) {
         if (season == null || season.getId() == null || season.getId().isBlank()) {
             throw new BadRequestException("seasonRequired");
         }
@@ -74,7 +79,7 @@ public class TwentyFourScoreLiveProvider implements LiveMatchProvider {
                 ExternalDataLayer.LIVE,
                 ExternalProviderIds.TWENTYFOUR_SCORE,
                 ExternalApiMonitoringTrigger.CRON,
-                "ALL",
+                utcDate != null ? utcDate.toString() : "ALL",
                 season.getId()
         );
         List<ExternalApiHttpLogEntry> httpLogs = new ArrayList<>();
@@ -90,6 +95,11 @@ public class TwentyFourScoreLiveProvider implements LiveMatchProvider {
                 .filter(s -> LiveMatchSupport.isLiveHttpCandidate(s, now))
                 .sorted(Comparator.comparing(MatchSchedule::getUtcKickoff, Comparator.nullsLast(Comparator.naturalOrder())))
                 .toList();
+        if (utcDate != null) {
+            tracked = tracked.stream()
+                    .filter(s -> LocalDate.ofInstant(s.getUtcKickoff(), ZoneOffset.UTC).equals(utcDate))
+                    .toList();
+        }
 
         if (tracked.isEmpty()) {
             String skipReason = skippedMissingKickoff > 0

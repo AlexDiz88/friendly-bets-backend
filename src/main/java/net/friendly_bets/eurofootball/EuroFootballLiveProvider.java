@@ -1,7 +1,6 @@
-package net.friendly_bets.championat;
+package net.friendly_bets.eurofootball;
 
 import lombok.RequiredArgsConstructor;
-import net.friendly_bets.championat.config.ChampionatProperties;
 import net.friendly_bets.exceptions.BadRequestException;
 import net.friendly_bets.models.League;
 import net.friendly_bets.models.Season;
@@ -42,13 +41,12 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-public class ChampionatLiveProvider implements LiveMatchProvider {
+public class EuroFootballLiveProvider implements LiveMatchProvider {
 
-    private static final Logger log = LoggerFactory.getLogger(ChampionatLiveProvider.class);
+    private static final Logger log = LoggerFactory.getLogger(EuroFootballLiveProvider.class);
 
-    private final ChampionatHttpClient httpClient;
-    private final ChampionatDateJsonParser dateJsonParser;
-    private final ChampionatProperties properties;
+    private final EuroFootballHttpClient httpClient;
+    private final EuroFootballDateJsonParser dateJsonParser;
     private final MatchScheduleRepository matchScheduleRepository;
     private final TeamAliasResolver teamAliasResolver;
     private final TeamsRepository teamsRepository;
@@ -56,7 +54,7 @@ public class ChampionatLiveProvider implements LiveMatchProvider {
 
     @Override
     public String providerId() {
-        return ExternalProviderIds.CHAMPIONAT;
+        return ExternalProviderIds.EURO_FOOTBALL;
     }
 
     @Override
@@ -77,7 +75,7 @@ public class ChampionatLiveProvider implements LiveMatchProvider {
 
         ExternalApiMonitoringRun run = monitoringService.begin(
                 ExternalDataLayer.LIVE,
-                ExternalProviderIds.CHAMPIONAT,
+                ExternalProviderIds.EURO_FOOTBALL,
                 ExternalApiMonitoringTrigger.CRON,
                 utcDate != null ? utcDate.toString() : "ALL",
                 season.getId()
@@ -91,7 +89,7 @@ public class ChampionatLiveProvider implements LiveMatchProvider {
                 .count();
 
         List<MatchSchedule> tracked = allSchedules.stream()
-                .filter(s -> ChampionatLeagueSupport.isSupportedLeagueCode(s.getLeagueCode()))
+                .filter(s -> EuroFootballLeagueSupport.isSupportedLeagueCode(s.getLeagueCode()))
                 .filter(s -> LiveMatchSupport.isLiveHttpCandidate(s, now))
                 .sorted(Comparator.comparing(MatchSchedule::getUtcKickoff, Comparator.nullsLast(Comparator.naturalOrder())))
                 .toList();
@@ -130,59 +128,53 @@ public class ChampionatLiveProvider implements LiveMatchProvider {
         int finishedDetected = 0;
 
         try {
-            for (LocalDate date : dates) {
-                Instant reqAt = Instant.now();
-                long t0 = System.currentTimeMillis();
-                String json;
-                try {
-                    json = httpClient.fetchDateFootballJson(date);
-                    httpRequests++;
-                    httpLogs.add(ExternalApiMonitoringService.httpLog(
-                            "DATE_PAGE",
-                            date.toString(),
-                            200,
-                            "SUCCESS",
-                            System.currentTimeMillis() - t0,
-                            null,
-                            null,
-                            reqAt
-                    ));
-                } catch (RuntimeException e) {
-                    httpLogs.add(ExternalApiMonitoringService.httpLog(
-                            "DATE_PAGE",
-                            date.toString(),
-                            null,
-                            "HTTP_ERROR",
-                            System.currentTimeMillis() - t0,
-                            e.getMessage(),
-                            null,
-                            reqAt
-                    ));
-                    throw e;
+            Instant reqAt = Instant.now();
+            long t0 = System.currentTimeMillis();
+            String json;
+            try {
+                json = httpClient.fetchLiveJson();
+                httpRequests++;
+                httpLogs.add(ExternalApiMonitoringService.httpLog(
+                        "LIVE_JSON",
+                        "today",
+                        200,
+                        "SUCCESS",
+                        System.currentTimeMillis() - t0,
+                        null,
+                        null,
+                        reqAt
+                ));
+            } catch (RuntimeException e) {
+                httpLogs.add(ExternalApiMonitoringService.httpLog(
+                        "LIVE_JSON",
+                        "today",
+                        null,
+                        "HTTP_ERROR",
+                        System.currentTimeMillis() - t0,
+                        e.getMessage(),
+                        null,
+                        reqAt
+                ));
+                throw e;
+            }
+
+            EuroFootballParsedDatePage page = dateJsonParser.parse(json);
+            for (MatchSchedule schedule : tracked) {
+                League.LeagueCode leagueCode = EuroFootballLeagueSupport.parseLeagueCode(schedule.getLeagueCode());
+                if (leagueCode == null) {
+                    continue;
                 }
-
-                ChampionatParsedDatePage page = dateJsonParser.parse(json);
-                List<MatchSchedule> dateTracked = tracked.stream()
-                        .filter(s -> LocalDate.ofInstant(s.getUtcKickoff(), ZoneOffset.UTC).equals(date))
-                        .toList();
-
-                for (MatchSchedule schedule : dateTracked) {
-                    League.LeagueCode leagueCode = ChampionatLeagueSupport.parseLeagueCode(schedule.getLeagueCode());
-                    if (leagueCode == null) {
-                        continue;
-                    }
-                    List<ChampionatParsedDatePage.MatchRow> leagueRows = collectLeagueRows(page, leagueCode);
-                    Optional<ChampionatParsedDatePage.MatchRow> row = findRow(schedule, leagueRows, teamCache);
-                    if (row.isEmpty()) {
-                        continue;
-                    }
-                    boolean wasFinished = LiveMatchSupport.isFinishedStatus(schedule.getStatus());
-                    LiveMatchApplySupport.apply(schedule, row.get().getSnapshot(), now);
-                    matchScheduleRepository.save(schedule);
-                    updated++;
-                    if (!wasFinished && LiveMatchSupport.isFinishedStatus(schedule.getStatus())) {
-                        finishedDetected++;
-                    }
+                List<EuroFootballParsedDatePage.MatchRow> leagueRows = collectLeagueRows(page, leagueCode);
+                Optional<EuroFootballParsedDatePage.MatchRow> row = findRow(schedule, leagueRows, teamCache);
+                if (row.isEmpty()) {
+                    continue;
+                }
+                boolean wasFinished = LiveMatchSupport.isFinishedStatus(schedule.getStatus());
+                LiveMatchApplySupport.apply(schedule, row.get().getSnapshot(), now);
+                matchScheduleRepository.save(schedule);
+                updated++;
+                if (!wasFinished && LiveMatchSupport.isFinishedStatus(schedule.getStatus())) {
+                    finishedDetected++;
                 }
             }
         } catch (RuntimeException e) {
@@ -209,7 +201,7 @@ public class ChampionatLiveProvider implements LiveMatchProvider {
                 .collect(Collectors.toCollection(LinkedHashSet::new));
 
         if (!pendingFullIds.isEmpty()) {
-            log.info("championat LIVE pending FULL for {} match(es), httpRequests={}",
+            log.info("euro-football LIVE pending FULL for {} match(es), httpRequests={}",
                     pendingFullIds.size(), httpRequests);
         }
 
@@ -242,25 +234,22 @@ public class ChampionatLiveProvider implements LiveMatchProvider {
         );
     }
 
-    private List<ChampionatParsedDatePage.MatchRow> collectLeagueRows(
-            ChampionatParsedDatePage page,
+    private static List<EuroFootballParsedDatePage.MatchRow> collectLeagueRows(
+            EuroFootballParsedDatePage page,
             League.LeagueCode leagueCode
     ) {
-        Integer expectedId = properties.getTournamentIds() != null
-                ? properties.getTournamentIds().get(leagueCode.name())
-                : null;
-        List<ChampionatParsedDatePage.MatchRow> rows = new ArrayList<>();
-        for (ChampionatParsedDatePage.CompetitionBlock block : page.getCompetitions()) {
-            if (expectedId != null && expectedId.equals(block.getTournamentId())) {
+        List<EuroFootballParsedDatePage.MatchRow> rows = new ArrayList<>();
+        for (EuroFootballParsedDatePage.CompetitionBlock block : page.getCompetitions()) {
+            if (EuroFootballLeagueSupport.matchesTournament(leagueCode, block.getSlug(), block.getParentSlug())) {
                 rows.addAll(block.getMatches());
             }
         }
         return rows;
     }
 
-    private Optional<ChampionatParsedDatePage.MatchRow> findRow(
+    private Optional<EuroFootballParsedDatePage.MatchRow> findRow(
             MatchSchedule schedule,
-            List<ChampionatParsedDatePage.MatchRow> rows,
+            List<EuroFootballParsedDatePage.MatchRow> rows,
             Map<String, Team> teamCache
     ) {
         Team home = resolveTeam(schedule.getHomeTeamId(), teamCache);
@@ -268,9 +257,9 @@ public class ChampionatLiveProvider implements LiveMatchProvider {
         if (home == null || away == null) {
             return Optional.empty();
         }
-        for (ChampionatParsedDatePage.MatchRow row : rows) {
-            if (teamAliasResolver.teamMatchesProviderSide(home, ExternalProviderIds.CHAMPIONAT, row.getHomeName())
-                    && teamAliasResolver.teamMatchesProviderSide(away, ExternalProviderIds.CHAMPIONAT, row.getAwayName())) {
+        for (EuroFootballParsedDatePage.MatchRow row : rows) {
+            if (teamAliasResolver.teamMatchesProviderSide(home, ExternalProviderIds.EURO_FOOTBALL, row.getHomeName())
+                    && teamAliasResolver.teamMatchesProviderSide(away, ExternalProviderIds.EURO_FOOTBALL, row.getAwayName())) {
                 return Optional.of(row);
             }
         }

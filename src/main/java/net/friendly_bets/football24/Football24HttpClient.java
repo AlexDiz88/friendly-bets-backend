@@ -97,7 +97,7 @@ public class Football24HttpClient {
             ScrapeHttpSupport.applyNavigationHeaders(builder, browserProfile, referer);
             HttpResponse<String> response = httpClient.send(builder.build(), HttpResponse.BodyHandlers.ofString());
             String body = response.body() != null ? response.body() : "";
-            if (ScrapeHttpSupport.looksLikeJsChallenge(body)) {
+            if (ScrapeHttpSupport.looksLikeAccessWall(body)) {
                 if (reportCircuit) {
                     circuitBreaker.recordFailure(
                             ExternalDataLayer.SCHEDULE,
