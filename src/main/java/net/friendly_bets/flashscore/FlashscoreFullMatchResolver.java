@@ -15,7 +15,7 @@ import org.springframework.stereotype.Component;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.ZoneOffset;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -43,7 +43,8 @@ public class FlashscoreFullMatchResolver {
         Duration window = Duration.ofHours(windowHours);
 
         List<FlashscoreParsedDayPage.Match> candidates = new ArrayList<>();
-        for (LocalDate day : daysCoveringWindow(kickoff, window)) {
+        ZoneId feedZone = properties.feedZone();
+        for (LocalDate day : daysCoveringWindow(kickoff, window, feedZone)) {
             String feed = httpClient.fetchDayFootballFeed(day);
             FlashscoreParsedDayPage page = dayFeedParser.parse(feed, day);
             if (page.getCompetitions() == null) {
@@ -77,11 +78,11 @@ public class FlashscoreFullMatchResolver {
         throw new BadRequestException("fullMatchNotFound");
     }
 
-    static List<LocalDate> daysCoveringWindow(Instant kickoff, Duration window) {
+    static List<LocalDate> daysCoveringWindow(Instant kickoff, Duration window, ZoneId zone) {
         Instant from = kickoff.minus(window);
         Instant to = kickoff.plus(window);
-        LocalDate start = from.atZone(ZoneOffset.UTC).toLocalDate();
-        LocalDate end = to.atZone(ZoneOffset.UTC).toLocalDate();
+        LocalDate start = from.atZone(zone).toLocalDate();
+        LocalDate end = to.atZone(zone).toLocalDate();
         Set<LocalDate> days = new LinkedHashSet<>();
         for (LocalDate d = start; !d.isAfter(end); d = d.plusDays(1)) {
             days.add(d);

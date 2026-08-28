@@ -27,4 +27,26 @@ class RuscoreFullMatchResolverTest {
         List<LocalDate> days = RuscoreFullMatchResolver.daysCoveringWindow(kickoff, Duration.ofHours(12));
         assertEquals(List.of(LocalDate.of(2026, 8, 9)), days);
     }
+
+    @Test
+    void uniqueByEventId_keepsOneRowWhenMotdDuplicatesLeagueListing() {
+        Instant kickoff = Instant.parse("2026-08-28T19:00:00Z");
+        RuscoreParsedDayPage.Match motd = RuscoreParsedDayPage.Match.builder()
+                .eventId("558546")
+                .slug("crystal-palace-manchester-city")
+                .homeName("Кристал Пэлас")
+                .awayName("Манчестер Сити")
+                .utcKickoff(kickoff)
+                .build();
+        RuscoreParsedDayPage.Match league = RuscoreParsedDayPage.Match.builder()
+                .eventId("558546")
+                .slug("crystal-palace-manchester-city")
+                .homeName("Кристал Пэлас")
+                .awayName("Манчестер Сити")
+                .utcKickoff(kickoff)
+                .build();
+        List<RuscoreParsedDayPage.Match> unique = RuscoreFullMatchResolver.uniqueByEventId(List.of(motd, league));
+        assertEquals(1, unique.size());
+        assertEquals("558546", unique.get(0).getEventId());
+    }
 }

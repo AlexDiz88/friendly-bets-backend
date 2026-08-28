@@ -17,8 +17,10 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 @Component
@@ -55,6 +57,7 @@ public class RuscoreFullMatchResolver {
                 }
             }
         }
+        candidates = uniqueByEventId(candidates);
 
         Team home = getEntityService.getTeamOrThrow(match.getHomeTeamId());
         Team away = getEntityService.getTeamOrThrow(match.getAwayTeamId());
@@ -87,6 +90,20 @@ public class RuscoreFullMatchResolver {
             days.add(d);
         }
         return new ArrayList<>(days);
+    }
+
+    static List<RuscoreParsedDayPage.Match> uniqueByEventId(List<RuscoreParsedDayPage.Match> candidates) {
+        if (candidates == null || candidates.isEmpty()) {
+            return candidates == null ? List.of() : candidates;
+        }
+        Map<String, RuscoreParsedDayPage.Match> byId = new LinkedHashMap<>();
+        for (RuscoreParsedDayPage.Match candidate : candidates) {
+            if (candidate == null || candidate.getEventId() == null || candidate.getEventId().isBlank()) {
+                continue;
+            }
+            byId.put(candidate.getEventId(), candidate);
+        }
+        return new ArrayList<>(byId.values());
     }
 
     private boolean sidesMatch(Team home, Team away, RuscoreParsedDayPage.Match candidate) {

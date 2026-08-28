@@ -3,6 +3,7 @@ package net.friendly_bets.flashscore.config;
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
+import java.time.ZoneId;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -16,6 +17,11 @@ public class FlashscoreProperties {
     private String feedBaseUrl = "https://46.flashscore.ninja";
     private String feedSign = "SW9D1eZo";
     private String feedLocale = "ru-kz";
+    /**
+     * IANA zone of this Flashscore edition's day calendar ({@code f_1_{offset}} where 0 = today).
+     * kz edition follows Asia/Almaty, not UTC.
+     */
+    private String feedTimezone = "Asia/Almaty";
     /** Kickoff ±window hours when resolving FULL_MATCH via day feeds. */
     private int fullMatchKickoffWindowHours = 12;
     private long httpDelayMinMs = 800L;
@@ -34,6 +40,13 @@ public class FlashscoreProperties {
         c.setStageId(stageId);
         c.setTitleContains(titleContains);
         return c;
+    }
+
+    public ZoneId feedZone() {
+        if (feedTimezone == null || feedTimezone.isBlank()) {
+            throw new IllegalStateException("flashscore.feed-timezone is required");
+        }
+        return ZoneId.of(feedTimezone.trim());
     }
 
     @Data

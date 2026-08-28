@@ -35,6 +35,7 @@ class RuscoreDayPageParserTest {
         assertEquals("fk-dinamo-moscow-fc-dynamo-makhachkala", dinamo.getSlug());
         assertEquals(Instant.parse("2026-08-09T11:30:00+00:00"), dinamo.getUtcKickoff());
         assertEquals("Динамо М", dinamo.getHomeName());
+        assertEquals(1, countByEventId(page, "563678"));
 
         RuscoreParsedDayPage.CompetitionBlock epl = page.getCompetitions().stream()
                 .filter(c -> c.getSeasonId() != null && c.getSeasonId() == 5379)
@@ -58,6 +59,34 @@ class RuscoreDayPageParserTest {
         assertFalse(RuscoreDayPageParser.competitionMatchesFilter(secondBl, "Англия"));
     }
 
+    @Test
+    void skipsDuplicateEventListedAsMotdAndLeagueRow() {
+        String html = """
+                <a href="/game/crystal-palace-manchester-city/558546">
+                  <h3 data-test-id="player-title-home">Кристал Пэлас</h3>
+                  <h3 data-test-id="player-title-away">Манчестер Сити</h3>
+                </a>
+                <div data-test-id="event-list-header">
+                  <a href="/tournament/england-premier-league/5379">
+                    <span data-test-id="event-list-header-title-text">Премьер-Лига 26/27</span>
+                  </a>
+                </div>
+                <a href="/game/crystal-palace-manchester-city/558546/summary">
+                  <h3 data-test-id="player-title-home">Кристал Пэлас</h3>
+                  <h3 data-test-id="player-title-away">Манчестер Сити</h3>
+                </a>
+                <script id="__NUXT_DATA__" type="application/json">
+                558546,"2026-08-28T19:00:00+00:00"
+                </script>
+                """;
+        RuscoreParsedDayPage page = parser.parse(html, LocalDate.of(2026, 8, 28));
+        assertEquals(1, countByEventId(page, "558546"));
+        RuscoreParsedDayPage.Match match = findByEventId(page, "558546");
+        assertNotNull(match);
+        assertEquals("Кристал Пэлас", match.getHomeName());
+        assertEquals(Instant.parse("2026-08-28T19:00:00Z"), match.getUtcKickoff());
+    }
+
     private static RuscoreParsedDayPage.CompetitionBlock findCompetition(RuscoreParsedDayPage page, String title) {
         for (RuscoreParsedDayPage.CompetitionBlock block : page.getCompetitions()) {
             if (title.equals(block.getTitle())) {
@@ -79,6 +108,21 @@ class RuscoreDayPageParserTest {
             }
         }
         return null;
+    }
+
+    private static int countByEventId(RuscoreParsedDayPage page, String eventId) {
+        int count = 0;
+        for (RuscoreParsedDayPage.CompetitionBlock block : page.getCompetitions()) {
+            if (block.getMatches() == null) {
+                continue;
+            }
+            for (RuscoreParsedDayPage.Match match : block.getMatches()) {
+                if (eventId.equals(match.getEventId())) {
+                    count++;
+                }
+            }
+        }
+        return count;
     }
 
     private static String readFixture(String path) throws IOException {
