@@ -13,6 +13,7 @@ import net.friendly_bets.models.Season;
 import net.friendly_bets.models.schedule.MatchSchedule;
 import net.friendly_bets.providers.ExternalDataLayer;
 import net.friendly_bets.providers.FullMatchProvider;
+import net.friendly_bets.providers.LayerProviderRegistry;
 import net.friendly_bets.providers.LayerProviderRouter;
 import net.friendly_bets.providers.LiveMatchProvider;
 import net.friendly_bets.providers.OddsProvider;
@@ -27,6 +28,7 @@ import net.friendly_bets.services.GetEntityService;
 import net.friendly_bets.services.MatchFinalizeOrchestrator;
 import net.friendly_bets.services.RunningSeasonLookup;
 import net.friendly_bets.models.monitoring.ExternalApiMonitoringTrigger;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -38,6 +40,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @RestController
@@ -47,6 +50,7 @@ public class ExternalDataAdminController {
 
     private final ExternalDataLayerConfigService configService;
     private final LayerProviderRouter router;
+    private final LayerProviderRegistry layerProviderRegistry;
     private final RunningSeasonLookup runningSeasonLookup;
     private final GetEntityService getEntityService;
     private final MatchScheduleRepository matchScheduleRepository;
@@ -134,16 +138,25 @@ public class ExternalDataAdminController {
 
     @PostMapping("/live/sync")
     @PreAuthorize("hasAuthority('ADMIN')")
-    public ResponseEntity<LiveMatchSyncResultDto> syncLive() {
+    public ResponseEntity<LiveMatchSyncResultDto> syncLive(
+            @RequestParam String provider,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date
+    ) {
+        if (provider == null || provider.isBlank()) {
+            throw new net.friendly_bets.exceptions.BadRequestException("liveSyncProviderRequired");
+        }
+        if (date == null) {
+            throw new net.friendly_bets.exceptions.BadRequestException("liveSyncDateRequired");
+        }
+        LiveMatchProvider liveProvider = layerProviderRegistry
+                .findAs(provider.trim(), LiveMatchProvider.class)
+                .filter(p -> p.supports(ExternalDataLayer.LIVE))
+                .orElseThrow(() -> new net.friendly_bets.exceptions.BadRequestException(
+                        "externalDataProviderUnavailable"));
         Season season = runningSeasonLookup.findRunningSeasonOrThrow("noActiveSeasonWasFounded");
         ExternalApiMonitoringService.setTriggerOverride(ExternalApiMonitoringTrigger.ADMIN);
         try {
-            LiveMatchProvider.LiveSyncResult result = router.execute(
-                    ExternalDataLayer.LIVE,
-                    LiveMatchProvider.class,
-                    p -> p.syncLive(season),
-                    "ALL"
-            );
+            LiveMatchProvider.LiveSyncResult result = liveProvider.syncLive(season, date);
             try {
                 ExternalApiMonitoringService.setTriggerOverride(ExternalApiMonitoringTrigger.ADMIN);
                 matchFinalizeOrchestrator.finalizePendingFullMatches(result.pendingFullMatchIds());

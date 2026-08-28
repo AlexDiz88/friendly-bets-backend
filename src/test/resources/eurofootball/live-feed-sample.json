@@ -1,0 +1,93 @@
+{
+  "tournaments": [
+    {
+      "turnir_id": 25,
+      "title": "Бундеслига",
+      "pre_title": "Германия",
+      "slug": "bundesliga",
+      "parent_slug": "germaniya",
+      "icon": "de.gif",
+      "matches": [
+        {
+          "id": 1841397,
+          "status": "live",
+          "statusCode": 3,
+          "statusText": "<span class=\"match-status-checkmark green\"></span><span class=\"match-status-text\">88<span class=\"minutes\"> мин</span></span>",
+          "goals1": 4,
+          "goals2": 1,
+          "team1": "Бавария",
+          "team2": "Штутгарт",
+          "logo1": "https://www.euro-football.ru/media/clublogos/Logo_FC_Bayern.svg",
+          "logo2": "https://www.euro-football.ru/media/clublogos/Stuttgart2021.png",
+          "coeffs": {
+            "team1": 1.3,
+            "draw": 6.2,
+            "team2": 7.4
+          },
+          "url": "/online/match/1006240193-bavariya-shtuttgart-smotret-onlajn-pryamuyu-translyatsiyu-28-august-2026",
+          "videoUrl": "https://www.euro-football.ru/online/video/1006240193-videotranslyaciya-matcha-bavariya-shtuttgart-smotret-online-28-August-2026",
+          "dateStart": 1787941800,
+          "timeStart": "21:30"
+        }
+      ]
+    },
+    {
+      "turnir_id": 17,
+      "title": "Премьер-Лига",
+      "pre_title": "Англия",
+      "slug": "premer-liga",
+      "parent_slug": "angliya",
+      "icon": "eng.gif",
+      "matches": [
+        {
+          "id": 1841424,
+          "status": "live",
+          "statusCode": 3,
+          "statusText": "<span class=\"match-status-checkmark green\"></span><span class=\"match-status-text\">58<span class=\"minutes\"> мин</span></span>",
+          "goals1": 0,
+          "goals2": 2,
+          "team1": "Кристал Пэлас",
+          "team2": "Манчестер Сити",
+          "logo1": "https://www.euro-football.ru/media/clublogos/crystal-b_png.png",
+          "logo2": "https://www.euro-football.ru/media/clublogos/man_city2020.png",
+          "coeffs": {
+            "team1": 5.3,
+            "draw": 4.05,
+            "team2": 1.65
+          },
+          "url": "/online/match/1006240220-kristal-pelas-manchester-siti-smotret-onlajn-pryamuyu-translyatsiyu-28-august-2026",
+          "videoUrl": "https://www.euro-football.ru/online/video/1006240220-videotranslyaciya-matcha-kristal-pelas-manchester-siti-smotret-online-28-August-2026",
+          "dateStart": 1787943600,
+          "timeStart": "22:00"
+        }
+      ]
+    },
+    {
+      "turnir_id": 1512,
+      "title": "Премьер-лига",
+      "pre_title": "Гонконг",
+      "slug": "premer-liga",
+      "parent_slug": "gonkong",
+      "icon": "honkonk.gif",
+      "matches": [
+        {
+          "id": 1847013,
+          "status": "finished",
+          "statusCode": 9,
+          "statusText": "Окончен",
+          "goals1": 3,
+          "goals2": 0,
+          "team1": "Ли Ман Уорриорс",
+          "team2": "Шатин",
+          "logo1": "https://www.euro-football.ru/media/clublogos/Warriors.png",
+          "logo2": "https://www.euro-football.ru/media/clublogos/ShatinSA.jpg",
+          "coeffs": null,
+          "url": "/online/match/1006261019-warriors-shatin-sa-smotret-onlajn-pryamuyu-translyatsiyu-28-august-2026",
+          "videoUrl": "https://www.euro-football.ru/online/video/1006261019-videotranslyaciya-matcha-warriors-shatin-sa-smotret-online-28-August-2026",
+          "dateStart": 1787918400,
+          "timeStart": "15:00"
+        }
+      ]
+    }
+  ]
+}

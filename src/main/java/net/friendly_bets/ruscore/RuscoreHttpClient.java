@@ -100,7 +100,7 @@ public class RuscoreHttpClient {
             builder.setHeader("User-Agent", BOT_UA);
             HttpResponse<String> response = httpClient.send(builder.build(), HttpResponse.BodyHandlers.ofString());
             String body = response.body() != null ? response.body() : "";
-            if (ScrapeHttpSupport.looksLikeJsChallenge(body)) {
+            if (ScrapeHttpSupport.looksLikeAccessWall(body)) {
                 if (reportCircuit) {
                     circuitBreaker.recordFailure(layer, ExternalProviderIds.RUSCORE, ScrapeFailureKind.CHALLENGE, url);
                 }

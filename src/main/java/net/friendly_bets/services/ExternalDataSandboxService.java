@@ -5,6 +5,9 @@ import lombok.RequiredArgsConstructor;
 import net.friendly_bets.championat.ChampionatDateJsonParser;
 import net.friendly_bets.championat.ChampionatHttpClient;
 import net.friendly_bets.championat.ChampionatParsedDatePage;
+import net.friendly_bets.eurofootball.EuroFootballDateJsonParser;
+import net.friendly_bets.eurofootball.EuroFootballHttpClient;
+import net.friendly_bets.eurofootball.EuroFootballParsedDatePage;
 import net.friendly_bets.dto.ExternalDataSandboxFullMatchRequestDto;
 import net.friendly_bets.dto.ExternalDataSandboxLiveRequestDto;
 import net.friendly_bets.dto.ExternalDataSandboxOddsRequestDto;
@@ -93,6 +96,8 @@ public class ExternalDataSandboxService {
     private final TwentyFourScoreDatePageParser twentyFourScoreDatePageParser;
     private final ChampionatHttpClient championatHttpClient;
     private final ChampionatDateJsonParser championatDateJsonParser;
+    private final EuroFootballHttpClient euroFootballHttpClient;
+    private final EuroFootballDateJsonParser euroFootballDateJsonParser;
     private final RuscoreHttpClient ruscoreHttpClient;
     private final RuscoreDayPageParser ruscoreDayPageParser;
     private final RuscoreGameSummaryParser ruscoreGameSummaryParser;
@@ -265,7 +270,8 @@ public class ExternalDataSandboxService {
     public ExternalDataSandboxResultDto runLive(ExternalDataSandboxLiveRequestDto request) {
         String provider = requireProvider(request != null ? request.getProvider() : null, ExternalProviderIds.TWENTYFOUR_SCORE);
         if (!ExternalProviderIds.TWENTYFOUR_SCORE.equals(provider)
-                && !ExternalProviderIds.CHAMPIONAT.equals(provider)) {
+                && !ExternalProviderIds.CHAMPIONAT.equals(provider)
+                && !ExternalProviderIds.EURO_FOOTBALL.equals(provider)) {
             throw new BadRequestException("sandboxUnsupportedProvider");
         }
         if (request == null || request.getDate() == null || request.getDate().isBlank()) {
@@ -280,6 +286,26 @@ public class ExternalDataSandboxService {
         String titleContains = request.getTitleContains() != null ? request.getTitleContains().trim() : "";
         long started = System.currentTimeMillis();
         try {
+            if (ExternalProviderIds.EURO_FOOTBALL.equals(provider)) {
+                String json = euroFootballHttpClient.fetchLiveJson();
+                EuroFootballParsedDatePage page = euroFootballDateJsonParser.parse(json);
+                List<EuroFootballParsedDatePage.CompetitionBlock> all = page.getCompetitions() != null
+                        ? page.getCompetitions()
+                        : List.of();
+                List<EuroFootballParsedDatePage.CompetitionBlock> filtered = titleContains.isEmpty()
+                        ? all
+                        : all.stream()
+                        .filter(c -> c.getTitle() != null
+                                && c.getTitle().toLowerCase(Locale.ROOT).contains(titleContains.toLowerCase(Locale.ROOT)))
+                        .collect(Collectors.toList());
+                return ExternalDataSandboxResultDto.builder()
+                        .success(true)
+                        .layer(ExternalDataLayer.LIVE.name())
+                        .provider(provider)
+                        .durationMs(System.currentTimeMillis() - started)
+                        .parsed(toEuroFootballLiveParsed(date.toString(), titleContains, all.size(), filtered, provider))
+                        .build();
+            }
             if (ExternalProviderIds.CHAMPIONAT.equals(provider)) {
                 String json = championatHttpClient.fetchDateFootballJson(date);
                 ChampionatParsedDatePage page = championatDateJsonParser.parse(json);
@@ -323,6 +349,8 @@ public class ExternalDataSandboxService {
         } catch (RuntimeException e) {
             String fetchKey = ExternalProviderIds.CHAMPIONAT.equals(provider)
                     ? "championatFetchFailed"
+                    : ExternalProviderIds.EURO_FOOTBALL.equals(provider)
+                    ? "euroFootballFetchFailed"
                     : "twentyFourScoreFetchFailed";
             return fail(ExternalDataLayer.LIVE, provider, started, fetchKey, e.getMessage());
         }
@@ -1029,6 +1057,44 @@ public class ExternalDataSandboxService {
             Map<String, Object> comp = new LinkedHashMap<>();
             comp.put("title", block.getTitle());
             comp.put("tournamentId", block.getTournamentId());
+            comp.put("matches", matches);
+            competitions.add(comp);
+        }
+        return liveParsedEnvelope(date, titleContains, competitionsTotal, matchesCount, competitions);
+    }
+
+    private Map<String, Object> toEuroFootballLiveParsed(
+            String date,
+            String titleContains,
+            int competitionsTotal,
+            List<EuroFootballParsedDatePage.CompetitionBlock> filtered,
+            String provider
+    ) {
+        int matchesCount = 0;
+        List<Map<String, Object>> competitions = new ArrayList<>();
+        for (EuroFootballParsedDatePage.CompetitionBlock block : filtered) {
+            List<Map<String, Object>> matches = new ArrayList<>();
+            for (EuroFootballParsedDatePage.MatchRow match : block.getMatches()) {
+                matchesCount++;
+                LiveMatchSnapshot snapshot = match.getSnapshot();
+                matches.add(liveMatchRow(
+                        provider,
+                        match.getExternalMatchId(),
+                        match.getHomeName(),
+                        match.getAwayName(),
+                        match.getScoreText(),
+                        snapshot != null ? snapshot.fullTimeScore() : null,
+                        snapshot != null ? snapshot.firstTimeScore() : null,
+                        snapshot != null ? snapshot.penaltyScore() : null,
+                        snapshot != null ? snapshot.rawMinuteLabel() : null,
+                        snapshot != null ? snapshot.status() : null
+                ));
+            }
+            Map<String, Object> comp = new LinkedHashMap<>();
+            comp.put("title", block.getTitle());
+            comp.put("tournamentId", block.getTournamentId());
+            comp.put("slug", block.getSlug());
+            comp.put("parentSlug", block.getParentSlug());
             comp.put("matches", matches);
             competitions.add(comp);
         }

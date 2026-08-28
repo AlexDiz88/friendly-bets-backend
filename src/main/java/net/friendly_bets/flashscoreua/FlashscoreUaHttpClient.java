@@ -61,7 +61,7 @@ public class FlashscoreUaHttpClient {
             builder.setHeader("x-fsign", properties.getFeedSign());
             HttpResponse<String> response = httpClient.send(builder.build(), HttpResponse.BodyHandlers.ofString());
             String body = response.body() != null ? response.body() : "";
-            if (ScrapeHttpSupport.looksLikeJsChallenge(body)) {
+            if (ScrapeHttpSupport.looksLikeAccessWall(body)) {
                 circuitBreaker.recordFailure(
                         ExternalDataLayer.STANDINGS,
                         ExternalProviderIds.FLASHSCORE_UA,

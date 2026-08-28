@@ -1,8 +1,10 @@
 package net.friendly_bets.providers;
 
+import net.friendly_bets.exceptions.BadRequestException;
 import net.friendly_bets.models.Season;
 import net.friendly_bets.providers.live.LiveMatchSupport;
 
+import java.time.LocalDate;
 import java.util.List;
 
 /**
@@ -11,7 +13,8 @@ import java.util.List;
  * <p><b>Contract (all implementations):</b>
  * <ul>
  *   <li>One HTTP request per UTC kickoff <em>date</em> of tracked candidates
- *       (group schedules by {@code LocalDate.ofInstant(utcKickoff, UTC)}).</li>
+ *       (group schedules by {@code LocalDate.ofInstant(utcKickoff, UTC)}).
+ *       Cron uses all candidate dates; admin manual sync may pass a single date.</li>
  *   <li>Candidate selection / finished / wake windows — only via {@link LiveMatchSupport}
  *       (do not redefine per provider).</li>
  *   <li>Match resolve — aliases of <em>this</em> {@link #providerId()} only; never write
@@ -25,6 +28,17 @@ import java.util.List;
 public interface LiveMatchProvider extends ExternalDataProvider {
 
     LiveSyncResult syncLive(Season season);
+
+    /**
+     * Same as {@link #syncLive(Season)} but only matches whose UTC kickoff date equals {@code utcDate}
+     * (one HTTP). Admin/manual tool. {@code utcDate} must be non-null.
+     */
+    default LiveSyncResult syncLive(Season season, LocalDate utcDate) {
+        if (utcDate == null) {
+            throw new BadRequestException("liveSyncDateRequired");
+        }
+        return syncLive(season);
+    }
 
     record LiveSyncResult(
             int httpRequests,

@@ -11,9 +11,11 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class ExternalSiteAccessProbeResultDto {
     /**
-     * PASS — HTTP 2xx/3xx without JS challenge (Java likely OK from this host).
+     * PASS — HTTP 2xx/3xx without an access wall (Java likely OK from this host).
      * CLOUDFLARE_JS_CHALLENGE — Cloudflare interstitial (same class as aiscore).
-     * HTTP_BLOCKED — HTTP status ≥ 400 without clear JS challenge.
+     * AUTH_INTERSTITIAL — SSO/login HTML (e.g. championat.com SberID) instead of the page.
+     * GRAPHQL_NEEDS_QUERY — GraphQL engine reachable; GET/empty body is not a CF block.
+     * HTTP_BLOCKED — HTTP status ≥ 400 without a clear wall.
      * NETWORK_ERROR — DNS/TLS/timeout/connect failure.
      */
     private String verdict;
@@ -26,7 +28,8 @@ public class ExternalSiteAccessProbeResultDto {
     private String cfMitigated;
     private boolean cloudflareDetected;
     private boolean jsChallengeSuspected;
-    /** Truncated response body for diagnostics. */
+    private Integer bodyLength;
+    /** Visible text / JSON extract (HTML tags stripped). */
     private String bodySnippet;
     private String errorDetail;
 }

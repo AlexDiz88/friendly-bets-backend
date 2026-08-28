@@ -100,7 +100,7 @@ public class FlashscoreHttpClient {
             builder.setHeader("x-fsign", properties.getFeedSign());
             HttpResponse<String> response = httpClient.send(builder.build(), HttpResponse.BodyHandlers.ofString());
             String body = response.body() != null ? response.body() : "";
-            if (ScrapeHttpSupport.looksLikeJsChallenge(body)) {
+            if (ScrapeHttpSupport.looksLikeAccessWall(body)) {
                 if (reportCircuit) {
                     circuitBreaker.recordFailure(layer, ExternalProviderIds.FLASHSCORE, ScrapeFailureKind.CHALLENGE, url);
                 }
