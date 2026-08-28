@@ -16,6 +16,8 @@ public class LiveresultProperties {
     /** Standings page path per league code (absolute path on liveresult.ru). */
     private Map<String, String> standingsPaths = new HashMap<>(Map.of(
             "EPL", "/football/England/Premier-League/standings",
-            "BL", "/football/Germany/Bundesliga-I/standings"
+            "BL", "/football/Germany/Bundesliga-I/standings",
+            "CL", "/football/Champions-League",
+            "LE", "/football/Europa-League"
     ));
 }

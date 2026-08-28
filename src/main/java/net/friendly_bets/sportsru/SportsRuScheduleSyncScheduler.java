@@ -27,7 +27,7 @@ import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * Hour-staggered SCHEDULE sync when sports.ru is primary. Only leagues in
- * {@code sportsru.schedule-sync-league-codes} (EPL/BL by default).
+ * {@code sportsru.schedule-sync-league-codes} (EPL/BL/CL/LE by default).
  */
 @Component
 @RequiredArgsConstructor
