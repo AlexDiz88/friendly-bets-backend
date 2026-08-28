@@ -20,10 +20,12 @@ public class FlashscoreProperties {
     private int fullMatchKickoffWindowHours = 12;
     private long httpDelayMinMs = 800L;
     private long httpDelayMaxMs = 2_000L;
-    /** League code → tournament page / filter metadata (EPL, BL; CL/LE later). */
+    /** League code → tournament page / filter metadata (EPL, BL; CL/LE league stage). */
     private Map<String, LeagueConfig> leagues = new HashMap<>(Map.of(
             "EPL", league("/football/england/premier-league/", "CfoA8Dmm", "Premier League"),
-            "BL", league("/football/germany/bundesliga/", "jg0MwVuC", "Bundesliga")
+            "BL", league("/football/germany/bundesliga/", "jg0MwVuC", "Bundesliga"),
+            "CL", league("/football/europe/champions-league/", "vT1iNRGq", "champions-league"),
+            "LE", league("/football/europe/europa-league/", "OjQOTQKa", "europa-league")
     ));
 
     private static LeagueConfig league(String tournamentPath, String stageId, String titleContains) {

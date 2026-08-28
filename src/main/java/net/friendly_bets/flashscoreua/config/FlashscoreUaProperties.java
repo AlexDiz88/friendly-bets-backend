@@ -18,10 +18,12 @@ public class FlashscoreUaProperties {
     private String overallTableId = "1";
     private long httpDelayMinMs = 800L;
     private long httpDelayMaxMs = 2_000L;
-    /** League code → tournament page / feed ids (EPL, BL; CL/LE after group-stage draw). */
+    /** League code → tournament page / feed ids (EPL, BL; CL/LE league stage). */
     private Map<String, LeagueConfig> leagues = new HashMap<>(Map.of(
             "EPL", league("/football/england/premier-league/", "SY30SsKF", "CfoA8Dmm"),
-            "BL", league("/football/germany/bundesliga/", "KY7LrA6d", "jg0MwVuC")
+            "BL", league("/football/germany/bundesliga/", "KY7LrA6d", "jg0MwVuC"),
+            "CL", league("/football/europe/champions-league/", "tfRdlhP9", "vT1iNRGq"),
+            "LE", league("/football/europe/europa-league/", "nTFvUo9N", "OjQOTQKa")
     ));
 
     private static LeagueConfig league(String tournamentPath, String tournamentId, String stageId) {
