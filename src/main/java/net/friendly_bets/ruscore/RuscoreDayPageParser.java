@@ -12,10 +12,12 @@ import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -40,6 +42,7 @@ public class RuscoreDayPageParser {
         Map<String, Instant> kickoffs = parseKickoffs(html);
 
         Map<String, CompetitionBucket> byKey = new LinkedHashMap<>();
+        Set<String> seenEventIds = new HashSet<>();
         String currentTitle = "";
         Integer currentSeasonId = null;
         String currentSlug = null;
@@ -81,6 +84,9 @@ public class RuscoreDayPageParser {
             if (!"a".equals(el.normalName())) {
                 continue;
             }
+            if (isInsideFeaturedEvent(el)) {
+                continue;
+            }
             String href = el.attr("href");
             if (href == null || !href.startsWith("/game/")) {
                 continue;
@@ -94,6 +100,9 @@ public class RuscoreDayPageParser {
             String home = text(el.selectFirst("[data-test-id=player-title-home]"));
             String away = text(el.selectFirst("[data-test-id=player-title-away]"));
             if (home == null || away == null) {
+                continue;
+            }
+            if (!seenEventIds.add(eventId)) {
                 continue;
             }
             String status = text(el.selectFirst("[data-test-id=event-item-time-status]"));
@@ -182,6 +191,18 @@ public class RuscoreDayPageParser {
             }
         }
         return map;
+    }
+
+    /**
+     * «Матч дня» repeats a league-list row with the same event id (href may omit {@code /summary}).
+     */
+    private static boolean isInsideFeaturedEvent(Element el) {
+        for (Element scope = el; scope != null; scope = scope.parent()) {
+            if ("featured-event-item".equals(scope.attr("data-test-id"))) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static TournamentRef findTournamentRef(Element from) {

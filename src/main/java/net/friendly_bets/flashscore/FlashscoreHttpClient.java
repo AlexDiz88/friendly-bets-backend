@@ -20,7 +20,6 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.time.LocalDate;
-import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 
 @Component
@@ -39,9 +38,19 @@ public class FlashscoreHttpClient {
         if (date == null) {
             throw new BadRequestException("flashscoreFetchFailed");
         }
-        long dayOffset = ChronoUnit.DAYS.between(LocalDate.now(ZoneOffset.UTC), date);
+        long dayOffset = feedDayOffset(date, LocalDate.now(properties.feedZone()));
         String path = String.format("/2/x/feed/f_1_%d_3_%s_1", dayOffset, properties.getFeedLocale());
         return fetchFeed(path, ExternalDataLayer.FULL_MATCH);
+    }
+
+    /**
+     * Flashscore {@code f_1_{offset}} is relative to the edition calendar today, not UTC.
+     */
+    static long feedDayOffset(LocalDate requested, LocalDate feedToday) {
+        if (requested == null || feedToday == null) {
+            throw new BadRequestException("flashscoreFetchFailed");
+        }
+        return ChronoUnit.DAYS.between(feedToday, requested);
     }
 
     public String fetchMatchSummaryFeed(String eventId) {
