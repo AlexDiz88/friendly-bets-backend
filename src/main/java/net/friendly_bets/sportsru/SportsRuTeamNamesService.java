@@ -26,8 +26,15 @@ public class SportsRuTeamNamesService {
         String calendarPath = requireCalendarPath(leagueCode);
         runningSeasonLookup.findRunningSeasonOrThrow("noActiveSeasonWasFounded");
 
-        String html = httpClient.fetchCalendarHtml(calendarPath);
-        List<String> names = scheduleParser.parseTeamNamesFromMatchday(html, 1);
+        String calendarHtml = httpClient.fetchCalendarHtml(calendarPath);
+        List<String> names = scheduleParser.parseTeamNamesFromMatchday(calendarHtml, 1);
+        if (names.isEmpty()) {
+            String tablePath = calendarPath.replace("/calendar/", "/table/");
+            if (!tablePath.equals(calendarPath)) {
+                String tableHtml = httpClient.fetchCalendarHtml(tablePath);
+                names = scheduleParser.parseTeamNamesFromTable(tableHtml);
+            }
+        }
         if (names.isEmpty()) {
             throw new BadRequestException("sportsRuMatchdayOneTeamNamesEmpty");
         }

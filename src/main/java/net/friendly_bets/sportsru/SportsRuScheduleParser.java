@@ -57,8 +57,33 @@ public class SportsRuScheduleParser {
         return SportsRuParsedSchedule.builder().rounds(rounds).build();
     }
 
-    /** Team names from round 1 of a domestic calendar page. */
+    /** Team names from a calendar round (legacy stat-table or Vue match-schedule layout). */
     public List<String> parseTeamNamesFromMatchday(String html, int matchday) {
+        List<String> legacy = parseLegacyTeamNamesFromMatchday(html, matchday);
+        if (!legacy.isEmpty()) {
+            return legacy;
+        }
+        return parseVueTeamNamesFromMatchday(html, matchday);
+    }
+
+    /** Team names from tournament table page ({@code /table/}, {@code table.stat-table a.name}). */
+    public List<String> parseTeamNamesFromTable(String html) {
+        Set<String> names = new LinkedHashSet<>();
+        if (html == null || html.isBlank()) {
+            return List.of();
+        }
+        Document doc = Jsoup.parse(html);
+        for (Element link : doc.select("table.stat-table a.name[href*=/football/club/]")) {
+            String name = link.attr("title");
+            if (name == null || name.isBlank()) {
+                name = link.text();
+            }
+            addTeamName(names, name);
+        }
+        return new ArrayList<>(names);
+    }
+
+    private List<String> parseLegacyTeamNamesFromMatchday(String html, int matchday) {
         SportsRuParsedSchedule parsed = parseCalendar(html);
         SportsRuParsedSchedule.Round round = parsed.roundsByNumber().get(matchday);
         if (round == null || round.getMatches() == null || round.getMatches().isEmpty()) {
@@ -66,14 +91,40 @@ public class SportsRuScheduleParser {
         }
         Set<String> names = new LinkedHashSet<>();
         for (SportsRuParsedSchedule.Match match : round.getMatches()) {
-            if (match.getHomeName() != null && !match.getHomeName().isBlank()) {
-                names.add(match.getHomeName().trim());
+            addTeamName(names, match.getHomeName());
+            addTeamName(names, match.getAwayName());
+        }
+        return new ArrayList<>(names);
+    }
+
+    private List<String> parseVueTeamNamesFromMatchday(String html, int matchday) {
+        if (html == null || html.isBlank()) {
+            return List.of();
+        }
+        Document doc = Jsoup.parse(html);
+        Set<String> names = new LinkedHashSet<>();
+        for (Element column : doc.select("div.match-schedule-column")) {
+            Element header = column.selectFirst("div.match-schedule-column__group-header");
+            if (header == null) {
+                continue;
             }
-            if (match.getAwayName() != null && !match.getAwayName().isBlank()) {
-                names.add(match.getAwayName().trim());
+            Optional<Integer> roundNo = parseRoundNumber(header.text());
+            if (roundNo.isEmpty() || roundNo.get() != matchday) {
+                continue;
+            }
+            for (Element teamName : column.select("span.match-teaser__team-name")) {
+                addTeamName(names, teamName.attr("title"));
+                addTeamName(names, teamName.text());
             }
         }
         return new ArrayList<>(names);
+    }
+
+    private static void addTeamName(Set<String> names, String raw) {
+        if (raw == null || raw.isBlank()) {
+            return;
+        }
+        names.add(raw.trim());
     }
 
     /**

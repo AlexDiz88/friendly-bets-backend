@@ -138,6 +138,66 @@ class ExternalTeamAliasAutoBindServiceTest {
         verify(errorLogService, never()).recordTeamAliasMismatchSummary(any(), any(), any(), any(Boolean.class));
     }
 
+    @Test
+    void bindAndCollectUnmapped_matchesDisplayNameInSameLeague() {
+        arsenal.setExternalAliases(new ArrayList<>());
+        when(teamsRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        League clLeague = League.builder()
+                .leagueCode(League.LeagueCode.CL)
+                .teams(List.of(arsenal))
+                .build();
+        Season season = Season.builder()
+                .id("s1")
+                .leagues(List.of(clLeague))
+                .build();
+        when(runningSeasonLookup.findRunningSeasonOrThrow(any())).thenReturn(season);
+        when(teamsRepository.findById("ars1")).thenReturn(Optional.of(arsenal));
+
+        var result = service.bindAndCollectUnmapped(
+                ExternalProviderIds.MARATHONBET,
+                "CL",
+                List.of("Арсенал"),
+                false
+        );
+
+        assertEquals(1, result.getAutoBoundCount());
+        assertEquals(0, result.getUnmapped().size());
+        assertTrue(arsenal.getExternalAliases().stream()
+                .anyMatch(a -> ExternalProviderIds.MARATHONBET.equals(a.getProvider())
+                        && "Арсенал".equals(a.getExternalName())));
+    }
+
+    @Test
+    void bindAndCollectUnmapped_matchesTeamTitleWhenDisplayNamesEmpty() {
+        Team bayern = Team.builder()
+                .id("bay1")
+                .title("BayernMunich")
+                .displayNames(null)
+                .externalAliases(new ArrayList<>())
+                .build();
+        League league = League.builder()
+                .leagueCode(League.LeagueCode.CL)
+                .teams(List.of(bayern))
+                .build();
+        Season season = Season.builder()
+                .id("s1")
+                .leagues(List.of(league))
+                .build();
+        when(runningSeasonLookup.findRunningSeasonOrThrow(any())).thenReturn(season);
+        when(teamsRepository.findById("bay1")).thenReturn(Optional.of(bayern));
+        when(teamsRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        var result = service.bindAndCollectUnmapped(
+                ExternalProviderIds.MARATHONBET,
+                "CL",
+                List.of("BayernMunich"),
+                false
+        );
+
+        assertEquals(1, result.getAutoBoundCount());
+    }
+
     private static TeamExternalAlias findFlashscoreAlias(Team team) {
         return team.getExternalAliases().stream()
                 .filter(a -> ExternalProviderIds.FLASHSCORE.equals(a.getProvider()))
