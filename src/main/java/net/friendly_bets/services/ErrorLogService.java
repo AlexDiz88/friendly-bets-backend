@@ -259,8 +259,10 @@ public class ErrorLogService {
         String action = overwritten
                 ? "алиасы перезаписаны при принудительной синхронизации"
                 : "алиасы оставлены без изменений";
+        // Include per-team current→incoming aliases in message so /error-logs shows them without digging into context.
         String message = "Рассинхрон алиаса у "
-                + mismatches.size() + " " + teamsCountLabel(mismatches.size()) + ": " + action;
+                + mismatches.size() + " " + teamsCountLabel(mismatches.size()) + ": " + action
+                + ". " + details;
 
         record(Entry.builder()
                 .severity(SEVERITY_WARN)

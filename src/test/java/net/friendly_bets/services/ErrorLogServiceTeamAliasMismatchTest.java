@@ -40,7 +40,7 @@ class ErrorLogServiceTeamAliasMismatchTest {
         ArgumentCaptor<ErrorLog> captor = ArgumentCaptor.forClass(ErrorLog.class);
         verify(repository).save(captor.capture());
         assertEquals(
-                "Рассинхрон алиаса у 1 команды: алиасы оставлены без изменений",
+                "Рассинхрон алиаса у 1 команды: алиасы оставлены без изменений. Arsenal: «Арсенал» → «Arsenal»",
                 captor.getValue().getMessage()
         );
         assertTrue(captor.getValue().getContext().get("details").contains("«Арсенал» → «Arsenal»"));
@@ -69,7 +69,7 @@ class ErrorLogServiceTeamAliasMismatchTest {
         ArgumentCaptor<ErrorLog> captor = ArgumentCaptor.forClass(ErrorLog.class);
         verify(repository).save(captor.capture());
         assertEquals(
-                "Рассинхрон алиаса у 2 команд: алиасы перезаписаны при принудительной синхронизации",
+                "Рассинхрон алиаса у 2 команд: алиасы перезаписаны при принудительной синхронизации. A: «old» → «new»; B: «x» → «y»",
                 captor.getValue().getMessage()
         );
     }
