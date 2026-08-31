@@ -11,7 +11,6 @@ import net.friendly_bets.models.TeamDisplayNames;
 import net.friendly_bets.models.TeamExternalAlias;
 import net.friendly_bets.repositories.LeaguesRepository;
 import net.friendly_bets.repositories.TeamsRepository;
-import net.friendly_bets.utils.TeamI18nCatalog;
 import net.friendly_bets.utils.TeamNameNormalizer;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,8 +26,7 @@ import java.util.Set;
 
 /**
  * Auto-binds external provider team names to league teams when the name matches
- * displayNames (en/ru/de, including bundled i18n by title when DB fields are empty),
- * team title, or another provider's alias (normalized).
+ * displayNames (en/ru/de), team title, or another provider's alias (normalized).
  * Lookup is scoped to the selected league only. Ambiguous / unmatched / mismatched
  * names become chips for manual mapping.
  */
@@ -39,7 +37,6 @@ public class ExternalTeamAliasAutoBindService {
     private final RunningSeasonLookup runningSeasonLookup;
     private final LeaguesRepository leaguesRepository;
     private final TeamsRepository teamsRepository;
-    private final TeamI18nCatalog teamI18nCatalog;
     private final ErrorLogService errorLogService;
 
     @Transactional
@@ -218,7 +215,7 @@ public class ExternalTeamAliasAutoBindService {
         if (normalizedEquals(team.getTitle(), normalizedNeedle)) {
             return true;
         }
-        TeamDisplayNames names = effectiveDisplayNames(team);
+        TeamDisplayNames names = team.getDisplayNames();
         if (names != null) {
             if (normalizedEquals(names.getEn(), normalizedNeedle)
                     || normalizedEquals(names.getRu(), normalizedNeedle)
@@ -241,13 +238,6 @@ public class ExternalTeamAliasAutoBindService {
             }
         }
         return false;
-    }
-
-    private TeamDisplayNames effectiveDisplayNames(Team team) {
-        return TeamI18nCatalog.effectiveDisplayNames(
-                team.getDisplayNames(),
-                teamI18nCatalog.resolveByTitle(team.getTitle())
-        );
     }
 
     private static boolean normalizedEquals(String value, String normalizedNeedle) {

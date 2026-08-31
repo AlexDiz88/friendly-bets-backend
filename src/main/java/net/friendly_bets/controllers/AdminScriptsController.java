@@ -2,8 +2,10 @@ package net.friendly_bets.controllers;
 
 import lombok.RequiredArgsConstructor;
 import net.friendly_bets.dto.MatchScheduleExternalIdsMigrationResultDto;
+import net.friendly_bets.dto.TeamDisplayNamesMigrationResultDto;
 import net.friendly_bets.dto.UtcTimestampsMigrationResultDto;
 import net.friendly_bets.services.MatchScheduleExternalIdsMigrationService;
+import net.friendly_bets.services.TeamDisplayNamesMigrationService;
 import net.friendly_bets.services.UtcTimestampsMigrationService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -18,6 +20,7 @@ public class AdminScriptsController {
 
     private final UtcTimestampsMigrationService utcTimestampsMigrationService;
     private final MatchScheduleExternalIdsMigrationService matchScheduleExternalIdsMigrationService;
+    private final TeamDisplayNamesMigrationService teamDisplayNamesMigrationService;
 
     @PostMapping("/migrate-timestamps-to-utc-instant")
     @PreAuthorize("hasAuthority('ADMIN')")
@@ -29,5 +32,11 @@ public class AdminScriptsController {
     @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<MatchScheduleExternalIdsMigrationResultDto> unsetMatchScheduleExternalIds() {
         return ResponseEntity.ok(matchScheduleExternalIdsMigrationService.unsetExternalIds());
+    }
+
+    @PostMapping("/migrate-team-display-names")
+    @PreAuthorize("hasAuthority('ADMIN')")
+    public ResponseEntity<TeamDisplayNamesMigrationResultDto> migrateTeamDisplayNames() {
+        return ResponseEntity.ok(teamDisplayNamesMigrationService.migrate());
     }
 }

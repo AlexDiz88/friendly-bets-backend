@@ -138,21 +138,6 @@
                     <exclude>http/**</exclude>
                 </excludes>
             </resource>
-            <resource>
-                <directory>${basedir}/../frontend/i18n/en</directory>
-                <includes><include>teams.json</include></includes>
-                <targetPath>team-i18n/en</targetPath>
-            </resource>
-            <resource>
-                <directory>${basedir}/../frontend/i18n/ru</directory>
-                <includes><include>teams.json</include></includes>
-                <targetPath>team-i18n/ru</targetPath>
-            </resource>
-            <resource>
-                <directory>${basedir}/../frontend/i18n/de</directory>
-                <includes><include>teams.json</include></includes>
-                <targetPath>team-i18n/de</targetPath>
-            </resource>
         </resources>
         <plugins>
             <plugin>

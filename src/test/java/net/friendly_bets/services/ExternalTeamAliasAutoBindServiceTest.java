@@ -8,7 +8,6 @@ import net.friendly_bets.models.TeamExternalAlias;
 import net.friendly_bets.providers.ExternalProviderIds;
 import net.friendly_bets.repositories.LeaguesRepository;
 import net.friendly_bets.repositories.TeamsRepository;
-import net.friendly_bets.utils.TeamI18nCatalog;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -38,8 +37,6 @@ class ExternalTeamAliasAutoBindServiceTest {
     LeaguesRepository leaguesRepository;
     @Mock
     TeamsRepository teamsRepository;
-    @Mock
-    TeamI18nCatalog teamI18nCatalog;
     @Mock
     ErrorLogService errorLogService;
 
@@ -73,7 +70,6 @@ class ExternalTeamAliasAutoBindServiceTest {
 
         when(runningSeasonLookup.findRunningSeasonOrThrow(any())).thenReturn(season);
         when(teamsRepository.findById("ars1")).thenReturn(Optional.of(arsenal));
-        when(teamI18nCatalog.resolveByTitle(any())).thenReturn(null);
     }
 
     @Test
@@ -206,11 +202,11 @@ class ExternalTeamAliasAutoBindServiceTest {
     }
 
     @Test
-    void bindAndCollectUnmapped_matchesBundledI18nRuWhenDisplayNamesEmpty() {
+    void bindAndCollectUnmapped_matchesDisplayNameRuFromDatabase() {
         Team roma = Team.builder()
                 .id("roma1")
                 .title("Roma")
-                .displayNames(null)
+                .displayNames(TeamDisplayNames.builder().en("Roma").ru("Рома").build())
                 .externalAliases(new ArrayList<>())
                 .build();
         League clLeague = League.builder()
@@ -224,9 +220,6 @@ class ExternalTeamAliasAutoBindServiceTest {
         when(runningSeasonLookup.findRunningSeasonOrThrow(any())).thenReturn(season);
         when(teamsRepository.findById("roma1")).thenReturn(Optional.of(roma));
         when(teamsRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
-        when(teamI18nCatalog.resolveByTitle("Roma")).thenReturn(
-                TeamDisplayNames.builder().en("Roma").ru("Рома").de("AS Rom").build()
-        );
 
         var result = service.bindAndCollectUnmapped(
                 ExternalProviderIds.SPORTS_RU,
