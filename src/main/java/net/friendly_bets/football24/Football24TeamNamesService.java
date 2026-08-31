@@ -42,7 +42,7 @@ public class Football24TeamNamesService {
         int seasonId = seasonIdOpt.getAsInt();
         String slug = properties.getTournamentSlugs().get(leagueCode.name());
         String fixturesJson = httpClient.fetchFixturesRoundsJson(seasonId, slug);
-        List<String> names = scheduleParser.parseTeamNamesFromMatchday(fixturesJson, seasonId, 1);
+        List<String> names = scheduleParser.parseTeamNamesFromFixturesRounds(fixturesJson, seasonId);
         if (names.isEmpty()) {
             throw new BadRequestException("football24MatchdayOneTeamNamesEmpty");
         }

@@ -91,4 +91,49 @@ class SportsRuScheduleParserTest {
         assertTrue(names.contains("Арсенал"));
         assertTrue(names.contains("Ковентри"));
     }
+
+    @Test
+    void parseTeamNamesFromVueCalendarMatchdayOne() {
+        String html = """
+                <div class="match-schedule-column">
+                <div class="match-schedule-column__group-header">1 тур</div>
+                <div class="match-schedule-column__group">
+                <div class="match-teaser">
+                <span class="match-teaser__team-name" title="АЕК">АЕК</span>
+                <span class="match-teaser__team-name" tite="ЛАСК">ЛАСК</span>
+                </div>
+                </div>
+                </div>
+                <div class="match-schedule-column">
+                <div class="match-schedule-column__group-header">2 тур</div>
+                <div class="match-teaser">
+                <span class="match-teaser__team-name" title="Интер">Интер</span>
+                </div>
+                </div>
+                """;
+        var names = parser.parseTeamNamesFromMatchday(html, 1);
+        assertEquals(2, names.size());
+        assertTrue(names.contains("АЕК"));
+        assertTrue(names.contains("ЛАСК"));
+    }
+
+    @Test
+    void parseTeamNamesFromTablePage() {
+        String html = """
+                <table class="stat-table table sortable-table">
+                <tbody>
+                <tr>
+                <td class="name-td"><a class="name" href="https://www.sports.ru/football/club/milan/" title="Милан">Милан</a></td>
+                </tr>
+                <tr>
+                <td class="name-td"><a class="name" href="https://www.sports.ru/football/club/juventus/" title="Ювентус">Ювентус</a></td>
+                </tr>
+                </tbody>
+                </table>
+                """;
+        var names = parser.parseTeamNamesFromTable(html);
+        assertEquals(2, names.size());
+        assertTrue(names.contains("Милан"));
+        assertTrue(names.contains("Ювентус"));
+    }
 }

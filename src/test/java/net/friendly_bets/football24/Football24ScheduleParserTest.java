@@ -97,4 +97,42 @@ class Football24ScheduleParserTest {
         assertTrue(names.contains("Арсенал"));
         assertTrue(names.contains("Ковентрі Сіті"));
     }
+
+    @Test
+    void parseTeamNamesFromFixturesRounds_whenTourOneMissing_usesLaterTours() {
+        String json = """
+                {"data":[
+                  {"round":"ТУР 2","fixtures":[
+                    {"teamHome":{"name":"Арсенал"},"teamAway":{"name":"Астон Вілла"},
+                     "startingAt":"2026-08-31T19:00:00.000Z"}
+                  ]},
+                  {"round":"ТУР 3","fixtures":[
+                    {"teamHome":{"name":"Ліверпуль"},"teamAway":{"name":"Челсі"},
+                     "startingAt":"2026-09-12T19:00:00.000Z"}
+                  ]}
+                ]}
+                """;
+        List<String> names = parser.parseTeamNamesFromFixturesRounds(json, 1286);
+        assertEquals(4, names.size());
+        assertTrue(names.contains("Арсенал"));
+        assertTrue(names.contains("Ліверпуль"));
+    }
+
+    @Test
+    void parseTeamNamesFromFixturesRounds_acceptsLeaguePhaseRoundLabel() {
+        String json = """
+                {"data":[
+                  {"round":"Ліга чемпіонів","fixtures":[
+                    {"teamHome":{"name":"Арсенал"},"teamAway":{"name":"Баварія"},
+                     "startingAt":"2026-09-16T19:00:00.000Z"},
+                    {"teamHome":{"name":"Барселона"},"teamAway":{"name":"Інтер"},
+                     "startingAt":"2026-09-16T19:00:00.000Z"}
+                  ]}
+                ]}
+                """;
+        List<String> names = parser.parseTeamNamesFromFixturesRounds(json, 1298);
+        assertEquals(4, names.size());
+        assertTrue(names.contains("Баварія"));
+        assertTrue(names.contains("Інтер"));
+    }
 }

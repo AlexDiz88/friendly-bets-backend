@@ -117,16 +117,59 @@ public class Football24ScheduleParser {
         if (round == null || round.getMatches() == null || round.getMatches().isEmpty()) {
             return List.of();
         }
+        return teamNamesFromRound(round);
+    }
+
+    /**
+     * Team aliases: all non-qualifying rounds with fixtures.
+     * football24 may omit finished {@code ТУР 1}; CL/LE use league-phase round labels instead of {@code ТУР N}.
+     */
+    public List<String> parseTeamNamesFromFixturesRounds(String fixturesJson, int seasonId) {
         Set<String> names = new LinkedHashSet<>();
-        for (Football24ParsedSchedule.Match match : round.getMatches()) {
-            if (match.getHomeName() != null && !match.getHomeName().isBlank()) {
-                names.add(match.getHomeName().trim());
+        if (fixturesJson == null || fixturesJson.isBlank()) {
+            return List.of();
+        }
+        try {
+            JsonNode data = objectMapper.readTree(fixturesJson).path("data");
+            if (!data.isArray()) {
+                return List.of();
             }
-            if (match.getAwayName() != null && !match.getAwayName().isBlank()) {
-                names.add(match.getAwayName().trim());
+            for (JsonNode roundNode : data) {
+                String rawName = text(roundNode.path("round"));
+                if (isQualifyingRound(rawName)) {
+                    continue;
+                }
+                JsonNode fixtures = roundNode.path("fixtures");
+                if (!fixtures.isArray() || fixtures.isEmpty()) {
+                    continue;
+                }
+                for (JsonNode fx : fixtures) {
+                    parseMatch(fx).ifPresent(match -> {
+                        addTeamName(names, match.getHomeName());
+                        addTeamName(names, match.getAwayName());
+                    });
+                }
             }
+        } catch (Exception ignored) {
+            return List.of();
         }
         return new ArrayList<>(names);
+    }
+
+    private static List<String> teamNamesFromRound(Football24ParsedSchedule.Round round) {
+        Set<String> names = new LinkedHashSet<>();
+        for (Football24ParsedSchedule.Match match : round.getMatches()) {
+            addTeamName(names, match.getHomeName());
+            addTeamName(names, match.getAwayName());
+        }
+        return new ArrayList<>(names);
+    }
+
+    private static void addTeamName(Set<String> names, String raw) {
+        if (raw == null || raw.isBlank()) {
+            return;
+        }
+        names.add(raw.trim());
     }
 
     static OptionalInt parseTourNumber(String rawName) {
