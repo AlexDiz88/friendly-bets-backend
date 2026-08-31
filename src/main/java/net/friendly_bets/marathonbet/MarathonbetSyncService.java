@@ -3,6 +3,7 @@ package net.friendly_bets.marathonbet;
 import lombok.RequiredArgsConstructor;
 import net.friendly_bets.dto.ExternalCompetitionInfoDto;
 import net.friendly_bets.exceptions.BadRequestException;
+import net.friendly_bets.exceptions.ConflictException;
 import net.friendly_bets.matchschedule.ExternalCompetitionService;
 import net.friendly_bets.matchschedule.MatchdaySlotSupport;
 import net.friendly_bets.marathonbet.client.MarathonbetHttpFetchResult;
@@ -190,7 +191,9 @@ public class MarathonbetSyncService {
             ssePolicy = OddsFetchPolicy.MISSING_ONLY;
         }
 
-        pipelineLock.lock();
+        if (!pipelineLock.tryLock()) {
+            throw new ConflictException("marathonbetSyncBusy");
+        }
         try {
             List<ExternalApiHttpLogEntry> httpLogs = new ArrayList<>();
             Instant tournamentRequestedAt = Instant.now();

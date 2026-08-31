@@ -21,6 +21,7 @@ import net.friendly_bets.odds.OddsService;
 import net.friendly_bets.odds.mapping.MappedOddsQuote;
 import net.friendly_bets.odds.mapping.OddsMergeResult;
 import net.friendly_bets.exceptions.BadRequestException;
+import net.friendly_bets.exceptions.ConflictException;
 import net.friendly_bets.providers.ExternalDataLayer;
 import net.friendly_bets.providers.ExternalProviderIds;
 import net.friendly_bets.marathonbet.MarathonbetSyncBatchSupport;
@@ -126,7 +127,9 @@ public class MelbetSyncService {
             policy = OddsFetchPolicy.MISSING_ONLY;
         }
 
-        pipelineLock.lock();
+        if (!pipelineLock.tryLock()) {
+            throw new ConflictException("melbetSyncBusy");
+        }
         try {
             List<ExternalApiHttpLogEntry> httpLogs = new ArrayList<>();
             Instant listRequestedAt = Instant.now();
