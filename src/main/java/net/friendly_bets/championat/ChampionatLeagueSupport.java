@@ -10,9 +10,14 @@ public final class ChampionatLeagueSupport {
     private ChampionatLeagueSupport() {
     }
 
-    /** LIVE + team-names scope until CL/LE aliases land. */
+    /** LIVE + team-names scope (EPL/BL/CL/LE). */
     public static Set<League.LeagueCode> supported() {
-        return Set.of(League.LeagueCode.EPL, League.LeagueCode.BL);
+        return Set.of(
+                League.LeagueCode.EPL,
+                League.LeagueCode.BL,
+                League.LeagueCode.CL,
+                League.LeagueCode.LE
+        );
     }
 
     public static boolean isSupportedLeagueCode(String leagueCode) {
