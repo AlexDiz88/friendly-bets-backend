@@ -80,6 +80,44 @@ class Football24ScheduleParserTest {
         assertFalse(Football24ScheduleParser.isQualifyingRound("ТУР 1"));
         assertEquals(OptionalInt.of(1), Football24ScheduleParser.parseTourNumber("ТУР 1"));
         assertEquals(OptionalInt.of(12), Football24ScheduleParser.parseTourNumber("тур 12"));
+        assertTrue(Football24ScheduleParser.isLeaguePhaseRound("Груповий етап"));
+        assertTrue(Football24ScheduleParser.isLeaguePhaseRound("Групповой этап"));
+        assertTrue(Football24ScheduleParser.isLeaguePhaseRound("Ліга чемпіонів"));
+        assertFalse(Football24ScheduleParser.isLeaguePhaseRound("ТУР 1"));
+        assertFalse(Football24ScheduleParser.isLeaguePhaseRound("1/8 фіналу"));
+    }
+
+    @Test
+    void leaguePhaseBucket_splitsByKickoffGaps_andDedupes() {
+        String json = """
+                {"data":[
+                  {"round":"2-й кваліфікаційний раунд","fixtures":[
+                    {"teamHome":{"name":"КуПС"},"teamAway":{"name":"Сабах"},
+                     "startingAt":"2026-07-28T15:00:00.000Z","score":null}
+                  ]},
+                  {"round":"Груповий етап","fixtures":[
+                    {"teamHome":{"name":"Брюгге"},"teamAway":{"name":"Астон Вілла"},
+                     "startingAt":"2026-09-08T16:45:00.000Z","score":null},
+                    {"teamHome":{"name":"Реал Мадрид"},"teamAway":{"name":"Інтер"},
+                     "startingAt":"2026-09-08T19:00:00.000Z","score":null},
+                    {"teamHome":{"name":"Брюгге"},"teamAway":{"name":"Астон Вілла"},
+                     "startingAt":"2026-09-08T16:45:00.000Z","score":null},
+                    {"teamHome":{"name":"Ліверпуль"},"teamAway":{"name":"Атлетіко"},
+                     "startingAt":"2026-10-13T19:00:00.000Z","score":null},
+                    {"teamHome":{"name":"Баварія"},"teamAway":{"name":"Арсенал"},
+                     "startingAt":"2026-10-14T19:00:00.000Z","score":null}
+                  ]}
+                ]}
+                """;
+
+        Football24ParsedSchedule parsed = parser.parseFixturesRounds(json, 1298);
+        assertEquals(2, parsed.getRounds().size());
+        assertEquals(1, parsed.getRounds().get(0).getNumber());
+        assertEquals(2, parsed.getRounds().get(0).getMatches().size());
+        assertEquals(2, parsed.getRounds().get(1).getNumber());
+        assertEquals(2, parsed.getRounds().get(1).getMatches().size());
+        assertEquals("Брюгге", parsed.getRounds().get(0).getMatches().get(0).getHomeName());
+        assertEquals("Ліверпуль", parsed.getRounds().get(1).getMatches().get(0).getHomeName());
     }
 
     @Test

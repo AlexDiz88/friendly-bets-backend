@@ -26,7 +26,7 @@ public class SportsRuProperties {
     private int skipWhenKickoffFartherThanDays = 3;
     /**
      * Calendar paths per {@link net.friendly_bets.models.League.LeagueCode} (relative to baseUrl).
-     * CL/LE kept for future SCHEDULE parsing; sync currently only for {@link #scheduleSyncLeagueCodes}.
+     * Paths for EPL/BL/CL/LE; enabled sync set is {@link #scheduleSyncLeagueCodes}.
      */
     private Map<String, String> calendarPaths = new HashMap<>(Map.of(
             "EPL", "/football/tournament/premier-league/calendar/",
@@ -34,6 +34,6 @@ public class SportsRuProperties {
             "CL", "/football/tournament/ucl/calendar/",
             "LE", "/football/tournament/uel/calendar/"
     ));
-    /** League codes whose calendar HTML is parsed for SCHEDULE (EPL/BL). */
-    private Set<String> scheduleSyncLeagueCodes = new LinkedHashSet<>(Set.of("EPL", "BL"));
+    /** League codes whose calendar HTML is parsed for SCHEDULE. */
+    private Set<String> scheduleSyncLeagueCodes = new LinkedHashSet<>(Set.of("EPL", "BL", "CL", "LE"));
 }

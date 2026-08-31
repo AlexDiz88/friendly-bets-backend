@@ -5,15 +5,16 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
-import org.jsoup.select.Elements;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Matcher;
@@ -43,42 +44,32 @@ public class SportsRuScheduleParser {
             "\"startDate\"\\s*:\\s*\"([^\"]+)\"");
     private static final DateTimeFormatter ISO_OFFSET = DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 
+    /**
+     * Calendar schedule: legacy {@code h3}+{@code table.stat-table} (EPL/BL), else Vue
+     * {@code match-schedule-column} (CL/LE — several {@code N тур} groups in one column).
+     */
     public SportsRuParsedSchedule parseCalendar(String html) {
         Document doc = Jsoup.parse(html != null ? html : "");
-        List<SportsRuParsedSchedule.Round> rounds = new ArrayList<>();
-        SportsRuParsedSchedule.Round current = null;
-
-        Elements headings = doc.select("h3");
-        for (Element heading : headings) {
-            Optional<Integer> roundNo = parseRoundNumber(heading.text());
-            if (roundNo.isEmpty()) {
-                continue;
-            }
-            current = SportsRuParsedSchedule.Round.builder()
-                    .number(roundNo.get())
-                    .matches(new ArrayList<>())
-                    .build();
-            rounds.add(current);
-
-            Element table = findFollowingStatTable(heading);
-            if (table == null) {
-                continue;
-            }
-            for (Element row : table.select("tbody > tr")) {
-                parseMatchRow(row).ifPresent(current.getMatches()::add);
-            }
+        List<SportsRuParsedSchedule.Round> legacy = parseLegacyCalendar(doc);
+        if (hasAnyMatches(legacy)) {
+            return SportsRuParsedSchedule.builder().rounds(legacy).build();
         }
-
-        return SportsRuParsedSchedule.builder().rounds(rounds).build();
+        return SportsRuParsedSchedule.builder().rounds(parseVueCalendar(doc)).build();
     }
 
     /** Team names from a calendar round (legacy stat-table or Vue match-schedule layout). */
     public List<String> parseTeamNamesFromMatchday(String html, int matchday) {
-        List<String> legacy = parseLegacyTeamNamesFromMatchday(html, matchday);
-        if (!legacy.isEmpty()) {
-            return legacy;
+        SportsRuParsedSchedule parsed = parseCalendar(html);
+        SportsRuParsedSchedule.Round round = parsed.roundsByNumber().get(matchday);
+        if (round == null || round.getMatches() == null || round.getMatches().isEmpty()) {
+            return List.of();
         }
-        return parseVueTeamNamesFromMatchday(html, matchday);
+        Set<String> names = new LinkedHashSet<>();
+        for (SportsRuParsedSchedule.Match match : round.getMatches()) {
+            addTeamName(names, match.getHomeName());
+            addTeamName(names, match.getAwayName());
+        }
+        return new ArrayList<>(names);
     }
 
     /** Team names from tournament table page ({@code /table/}, {@code table.stat-table a.name}). */
@@ -143,41 +134,120 @@ public class SportsRuScheduleParser {
         node.fields().forEachRemaining(entry -> collectSportsTeamNames(entry.getValue(), names));
     }
 
-    private List<String> parseLegacyTeamNamesFromMatchday(String html, int matchday) {
-        SportsRuParsedSchedule parsed = parseCalendar(html);
-        SportsRuParsedSchedule.Round round = parsed.roundsByNumber().get(matchday);
-        if (round == null || round.getMatches() == null || round.getMatches().isEmpty()) {
-            return List.of();
+    private List<SportsRuParsedSchedule.Round> parseLegacyCalendar(Document doc) {
+        List<SportsRuParsedSchedule.Round> rounds = new ArrayList<>();
+        for (Element heading : doc.select("h3")) {
+            Optional<Integer> roundNo = parseRoundNumber(heading.text());
+            if (roundNo.isEmpty()) {
+                continue;
+            }
+            SportsRuParsedSchedule.Round current = SportsRuParsedSchedule.Round.builder()
+                    .number(roundNo.get())
+                    .matches(new ArrayList<>())
+                    .build();
+            rounds.add(current);
+            Element table = findFollowingStatTable(heading);
+            if (table == null) {
+                continue;
+            }
+            for (Element row : table.select("tbody > tr")) {
+                parseMatchRow(row).ifPresent(current.getMatches()::add);
+            }
         }
-        Set<String> names = new LinkedHashSet<>();
-        for (SportsRuParsedSchedule.Match match : round.getMatches()) {
-            addTeamName(names, match.getHomeName());
-            addTeamName(names, match.getAwayName());
-        }
-        return new ArrayList<>(names);
+        return rounds;
     }
 
-    private List<String> parseVueTeamNamesFromMatchday(String html, int matchday) {
-        if (html == null || html.isBlank()) {
-            return List.of();
-        }
-        Document doc = Jsoup.parse(html);
-        Set<String> names = new LinkedHashSet<>();
+    /**
+     * Vue calendar: document order of {@code group-header} / {@code matches-item}.
+     * Non-{@code N тур} headers (квалификация, плей-офф) clear the current round.
+     */
+    private List<SportsRuParsedSchedule.Round> parseVueCalendar(Document doc) {
+        List<SportsRuParsedSchedule.Round> rounds = new ArrayList<>();
+        Map<Integer, SportsRuParsedSchedule.Round> byNumber = new LinkedHashMap<>();
+        SportsRuParsedSchedule.Round current = null;
+
         for (Element column : doc.select("div.match-schedule-column")) {
-            Element header = column.selectFirst("div.match-schedule-column__group-header");
-            if (header == null) {
-                continue;
-            }
-            Optional<Integer> roundNo = parseRoundNumber(header.text());
-            if (roundNo.isEmpty() || roundNo.get() != matchday) {
-                continue;
-            }
-            for (Element teamName : column.select("span.match-teaser__team-name")) {
-                addTeamName(names, teamName.attr("title"));
-                addTeamName(names, teamName.text());
+            for (Element el : column.getAllElements()) {
+                if (el == column) {
+                    continue;
+                }
+                if (el.hasClass("match-schedule-column__group-header")) {
+                    Optional<Integer> roundNo = parseRoundNumber(el.text());
+                    if (roundNo.isEmpty()) {
+                        current = null;
+                        continue;
+                    }
+                    current = byNumber.computeIfAbsent(roundNo.get(), n -> {
+                        SportsRuParsedSchedule.Round round = SportsRuParsedSchedule.Round.builder()
+                                .number(n)
+                                .matches(new ArrayList<>())
+                                .build();
+                        rounds.add(round);
+                        return round;
+                    });
+                    continue;
+                }
+                if (current == null || !el.hasClass("match-schedule-column__matches-item")) {
+                    continue;
+                }
+                parseVueMatchTeaser(el).ifPresent(current.getMatches()::add);
             }
         }
-        return new ArrayList<>(names);
+        return rounds;
+    }
+
+    private Optional<SportsRuParsedSchedule.Match> parseVueMatchTeaser(Element teaser) {
+        Element homeEl = teaser.selectFirst(".match-teaser__team--home .match-teaser__team-name");
+        Element awayEl = teaser.selectFirst(".match-teaser__team--away .match-teaser__team-name");
+        Element link = teaser.selectFirst("a.match-teaser__link[href]");
+        if (homeEl == null || awayEl == null || link == null) {
+            return Optional.empty();
+        }
+        String homeName = resolveVueTeamName(homeEl);
+        String awayName = resolveVueTeamName(awayEl);
+        if (homeName.isBlank() || awayName.isBlank()) {
+            return Optional.empty();
+        }
+        String matchPath = normalizeMatchPath(link.attr("href"));
+        if (matchPath == null) {
+            return Optional.empty();
+        }
+        Element scoreEl = teaser.selectFirst(".match-teaser__team-score");
+        String scoreText = scoreEl != null ? scoreEl.text() : "";
+        String status = isPlaceholderScore(scoreText) ? "SCHEDULED" : "FINISHED";
+        return Optional.of(SportsRuParsedSchedule.Match.builder()
+                .homeName(homeName)
+                .awayName(awayName)
+                .matchPath(matchPath)
+                .status(status)
+                .build());
+    }
+
+    /**
+     * sports.ru often sets home name via typo attribute {@code tite} instead of {@code title}.
+     */
+    private static String resolveVueTeamName(Element nameEl) {
+        String title = nameEl.attr("title");
+        if (title != null && !title.isBlank()) {
+            return title.trim();
+        }
+        String tite = nameEl.attr("tite");
+        if (tite != null && !tite.isBlank()) {
+            return tite.trim();
+        }
+        return nameEl.text().trim();
+    }
+
+    private static boolean hasAnyMatches(List<SportsRuParsedSchedule.Round> rounds) {
+        if (rounds == null || rounds.isEmpty()) {
+            return false;
+        }
+        for (SportsRuParsedSchedule.Round round : rounds) {
+            if (round.getMatches() != null && !round.getMatches().isEmpty()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static void addTeamName(Set<String> names, String raw) {
@@ -313,6 +383,6 @@ public class SportsRuScheduleParser {
             return true;
         }
         String normalized = scoreText.replace('\u2013', '-').replace('\u2014', '-').trim();
-        return normalized.contains("-") && !normalized.matches(".*\\d+\\s*:\\s*\\d+.*");
+        return !normalized.matches(".*\\d+\\s*[:\\-]\\s*\\d+.*");
     }
 }
