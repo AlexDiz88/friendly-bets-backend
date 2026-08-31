@@ -35,4 +35,24 @@ class EuroFootballTeamNamesServiceTest {
                 """;
         assertEquals(List.of(), EuroFootballTeamNamesService.parseTeamNamesFromTablesHtml(html));
     }
+
+    @Test
+    void parseTeamNames_fromCalendarMatchList() {
+        String html = """
+                <div id="online-match-schedule" class="match-schedule">
+                  <div class="turnir-match-list__item">
+                    <div class="turnir-match-list__item-team1">Брюгге</div>
+                    <div class="turnir-match-list__item-team2">Астон Вилла</div>
+                  </div>
+                  <div class="turnir-match-list__item">
+                    <div class="turnir-match-list__item-team1">Интер Милан</div>
+                    <div class="turnir-match-list__item-team2">Рома</div>
+                  </div>
+                </div>
+                """;
+        assertEquals(
+                List.of("Брюгге", "Астон Вилла", "Интер Милан", "Рома"),
+                EuroFootballTeamNamesService.parseTeamNamesFromCalendarHtml(html)
+        );
+    }
 }

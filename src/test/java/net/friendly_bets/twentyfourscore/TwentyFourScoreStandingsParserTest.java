@@ -40,4 +40,22 @@ class TwentyFourScoreStandingsParserTest {
                 """;
         assertEquals(List.of("Арсенал", "Ливерпуль"), parser.parseTeamNames(html));
     }
+
+    @Test
+    @DisplayName("parseTeamNames reads fixture table cells when team links absent")
+    void parseTeamNames_fromFixturesTableCells() {
+        String html = """
+                <table class="t1 matches">
+                <tr class="odd">
+                <td class="w25p left"><img class="flag"> ЛАСК</td>
+                <td class="w25p left"><img class="flag"> Порту</td>
+                </tr>
+                <tr class="even">
+                <td class="w25p left">Боруссия Д</td>
+                <td class="w25p left">АЕК Афины</td>
+                </tr>
+                </table>
+                """;
+        assertEquals(List.of("ЛАСК", "Порту", "Боруссия Д", "АЕК Афины"), parser.parseTeamNames(html));
+    }
 }

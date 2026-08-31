@@ -43,7 +43,18 @@ public class EuroFootballHttpClient {
     }
 
     public String fetchLeagueTablesHtml(String leaguePath) {
+        return fetchLeaguePageHtml(leaguePath, "tables");
+    }
+
+    public String fetchLeagueCalendarHtml(String leaguePath) {
+        return fetchLeaguePageHtml(leaguePath, "calendar");
+    }
+
+    private String fetchLeaguePageHtml(String leaguePath, String pageSuffix) {
         if (leaguePath == null || leaguePath.isBlank()) {
+            throw new BadRequestException("euroFootballLeagueNotSupported");
+        }
+        if (pageSuffix == null || pageSuffix.isBlank()) {
             throw new BadRequestException("euroFootballLeagueNotSupported");
         }
         String base = trimTrailingSlash(properties.getBaseUrl());
@@ -51,10 +62,8 @@ public class EuroFootballHttpClient {
         while (path.endsWith("/")) {
             path = path.substring(0, path.length() - 1);
         }
-        if (!path.endsWith("/tables")) {
-            path = path + "/tables";
-        }
-        String url = base + path;
+        String suffix = pageSuffix.startsWith("/") ? pageSuffix.substring(1) : pageSuffix;
+        String url = base + path + "/" + suffix;
         ScrapeHttpSupport.jitterSleep(properties.getHttpDelayMinMs(), properties.getHttpDelayMaxMs());
         return getBody(url, base + "/", false);
     }

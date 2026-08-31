@@ -3,7 +3,6 @@ package net.friendly_bets.twentyfourscore;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
-import org.jsoup.select.Elements;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -36,13 +35,25 @@ public class TwentyFourScoreStandingsParser {
             return List.of();
         }
         Document doc = Jsoup.parse(standingsDataHtml);
-        Elements links = doc.select("a[href^=/football/team/]");
-        for (Element link : links) {
-            String name = link.text() != null ? link.text().trim() : "";
-            if (!name.isEmpty()) {
-                names.add(name);
-            }
+        for (Element link : doc.select("a[href^=/football/team/]")) {
+            addTeamName(names, link.text());
+        }
+        if (!names.isEmpty()) {
+            return new ArrayList<>(names);
+        }
+        for (Element cell : doc.select("table.matches td.w25p.left, table.t1.matches td.w25p.left")) {
+            addTeamName(names, cell.text());
         }
         return new ArrayList<>(names);
+    }
+
+    private static void addTeamName(Set<String> names, String raw) {
+        if (raw == null || raw.isBlank()) {
+            return;
+        }
+        String trimmed = raw.trim();
+        if (!trimmed.isEmpty()) {
+            names.add(trimmed);
+        }
     }
 }
