@@ -6,9 +6,14 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.OptionalInt;
 import java.util.Set;
@@ -18,17 +23,27 @@ import java.util.regex.Pattern;
 /**
  * Parses football24 {@code /fixture/getFixturesRounds} JSON.
  * Kickoff only from {@code startingAt} ISO-8601 with {@code Z} (or offset) → Instant UTC.
- * Numeric tours only ({@code ТУР N} / {@code Тур N}); qualification rounds are ignored.
+ * EPL/BL: numeric tours ({@code ТУР N}). CL/LE league phase: one bucket
+ * ({@code Груповий етап} / similar) → split into matchdays by UTC kickoff gaps.
+ * Qualification rounds are ignored.
  */
 @Component
 @RequiredArgsConstructor
 public class Football24ScheduleParser {
+
+    /** Max calendar-day gap (UTC) within one matchday cluster; larger gap starts the next tour. */
+    static final int LEAGUE_PHASE_MATCHDAY_GAP_DAYS = 3;
 
     private static final Pattern TOUR_NUMBER = Pattern.compile(
             "(?iu)^\\s*тур\\s+(\\d+)\\s*$"
     );
     private static final Pattern QUALIFYING = Pattern.compile(
             "(?iu)кваліфікац|квалификац|отбороч|qualif"
+    );
+    /** UA/RU league-phase / main-stage labels used for CL/LE instead of {@code ТУР N}. */
+    private static final Pattern LEAGUE_PHASE = Pattern.compile(
+            "(?iu)групов\\w*\\s+етап|групп\\w*\\s+этап|основн\\w*\\s+етап|основн\\w*\\s+этап"
+                    + "|ліга\\s+чемпіонів|лига\\s+чемпионов|ліга\\s+європи|лига\\s+европы"
     );
 
     private final ObjectMapper objectMapper;
@@ -49,27 +64,126 @@ public class Football24ScheduleParser {
                 if (isQualifyingRound(rawName)) {
                     continue;
                 }
+                List<Football24ParsedSchedule.Match> fixtures = parseFixtures(roundNode.path("fixtures"));
                 OptionalInt tourNo = parseTourNumber(rawName);
-                if (tourNo.isEmpty()) {
+                if (tourNo.isPresent()) {
+                    rounds.add(Football24ParsedSchedule.Round.builder()
+                            .number(tourNo.getAsInt())
+                            .rawName(rawName)
+                            .matches(fixtures)
+                            .build());
                     continue;
                 }
-                Football24ParsedSchedule.Round round = Football24ParsedSchedule.Round.builder()
-                        .number(tourNo.getAsInt())
-                        .rawName(rawName)
-                        .matches(new ArrayList<>())
-                        .build();
-                JsonNode fixtures = roundNode.path("fixtures");
-                if (fixtures.isArray()) {
-                    for (JsonNode fx : fixtures) {
-                        parseMatch(fx).ifPresent(round.getMatches()::add);
-                    }
+                if (isLeaguePhaseRound(rawName)) {
+                    rounds.addAll(expandLeaguePhaseIntoMatchdays(rawName, fixtures));
                 }
-                rounds.add(round);
             }
         } catch (Exception ignored) {
             return Football24ParsedSchedule.builder().seasonId(seasonId).rounds(rounds).build();
         }
         return Football24ParsedSchedule.builder().seasonId(seasonId).rounds(rounds).build();
+    }
+
+    private List<Football24ParsedSchedule.Match> parseFixtures(JsonNode fixtures) {
+        List<Football24ParsedSchedule.Match> matches = new ArrayList<>();
+        if (!fixtures.isArray()) {
+            return matches;
+        }
+        for (JsonNode fx : fixtures) {
+            parseMatch(fx).ifPresent(matches::add);
+        }
+        return matches;
+    }
+
+    /**
+     * football24 CL/LE put the whole league phase under one label (no {@code ТУР N}).
+     * Deduplicate identical fixtures, then split by UTC kickoff calendar gaps into matchdays 1..N.
+     */
+    static List<Football24ParsedSchedule.Round> expandLeaguePhaseIntoMatchdays(
+            String rawName,
+            List<Football24ParsedSchedule.Match> fixtures
+    ) {
+        List<Football24ParsedSchedule.Match> unique = dedupeLeaguePhaseMatches(fixtures);
+        List<Football24ParsedSchedule.Match> withKickoff = new ArrayList<>();
+        for (Football24ParsedSchedule.Match match : unique) {
+            if (match.getUtcKickoff() != null) {
+                withKickoff.add(match);
+            }
+        }
+        withKickoff.sort(Comparator.comparing(Football24ParsedSchedule.Match::getUtcKickoff));
+
+        List<Football24ParsedSchedule.Round> rounds = new ArrayList<>();
+        if (withKickoff.isEmpty()) {
+            return rounds;
+        }
+
+        List<Football24ParsedSchedule.Match> current = new ArrayList<>();
+        LocalDate clusterLastDate = null;
+        int matchday = 1;
+        for (Football24ParsedSchedule.Match match : withKickoff) {
+            LocalDate date = match.getUtcKickoff().atZone(ZoneOffset.UTC).toLocalDate();
+            if (clusterLastDate != null
+                    && ChronoUnit.DAYS.between(clusterLastDate, date) > LEAGUE_PHASE_MATCHDAY_GAP_DAYS) {
+                rounds.add(Football24ParsedSchedule.Round.builder()
+                        .number(matchday++)
+                        .rawName(rawName)
+                        .matches(current)
+                        .build());
+                current = new ArrayList<>();
+            }
+            current.add(match);
+            clusterLastDate = date;
+        }
+        if (!current.isEmpty()) {
+            rounds.add(Football24ParsedSchedule.Round.builder()
+                    .number(matchday)
+                    .rawName(rawName)
+                    .matches(current)
+                    .build());
+        }
+        return rounds;
+    }
+
+    /**
+     * football24 may list the same fixture twice (different ids, same teams + kickoff).
+     * Pair is unordered so home/away swap of the same event collapses.
+     */
+    static List<Football24ParsedSchedule.Match> dedupeLeaguePhaseMatches(
+            List<Football24ParsedSchedule.Match> fixtures
+    ) {
+        if (fixtures == null || fixtures.isEmpty()) {
+            return List.of();
+        }
+        Set<String> seen = new LinkedHashSet<>();
+        List<Football24ParsedSchedule.Match> out = new ArrayList<>();
+        for (Football24ParsedSchedule.Match match : fixtures) {
+            String key = leaguePhaseDedupeKey(match);
+            if (!seen.add(key)) {
+                continue;
+            }
+            out.add(match);
+        }
+        return out;
+    }
+
+    static String leaguePhaseDedupeKey(Football24ParsedSchedule.Match match) {
+        String home = normalizeTeamKey(match.getHomeName());
+        String away = normalizeTeamKey(match.getAwayName());
+        String a = home.compareTo(away) <= 0 ? home : away;
+        String b = home.compareTo(away) <= 0 ? away : home;
+        String kickoff = match.getUtcKickoff() != null ? match.getUtcKickoff().toString() : "";
+        return a + "|" + b + "|" + kickoff;
+    }
+
+    private static String normalizeTeamKey(String name) {
+        return name == null ? "" : name.trim().toLowerCase(Locale.ROOT);
+    }
+
+    static boolean isLeaguePhaseRound(String rawName) {
+        if (rawName == null || rawName.isBlank()) {
+            return false;
+        }
+        return LEAGUE_PHASE.matcher(rawName.trim()).find();
     }
 
     /**

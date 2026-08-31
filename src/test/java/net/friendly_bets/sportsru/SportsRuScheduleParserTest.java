@@ -93,24 +93,59 @@ class SportsRuScheduleParserTest {
     }
 
     @Test
-    void parseTeamNamesFromVueCalendarMatchdayOne() {
+    void parseVueCalendar_readsMultipleToursInOneColumn_andTiteTypo() {
         String html = """
+                <div class="match-schedule-column match-schedule__columns-item--hide">
+                <div class="match-schedule-column__group-header">плей-офф</div>
+                <div class="match-teaser match-schedule-column__matches-item">
+                <a class="match-teaser__link" href="/football/match/qual-a-vs-qual-b/">
+                <div class="match-teaser__team match-teaser__team--home">
+                <span class="match-teaser__team-name" title="КуПС">КуПС</span></div>
+                <div class="match-teaser__team-score"><span>-</span><span>–</span><span>-</span></div>
+                <div class="match-teaser__team match-teaser__team--away">
+                <span class="match-teaser__team-name" title="Сабах">Сабах</span></div>
+                </a>
+                </div>
+                </div>
                 <div class="match-schedule-column">
                 <div class="match-schedule-column__group-header">1 тур</div>
-                <div class="match-schedule-column__group">
-                <div class="match-teaser">
-                <span class="match-teaser__team-name" title="АЕК">АЕК</span>
-                <span class="match-teaser__team-name" tite="ЛАСК">ЛАСК</span>
+                <div class="match-teaser match-schedule-column__matches-item">
+                <a class="match-teaser__link" href="https://www.sports.ru/football/match/aek-athens-vs-lask/">
+                <div class="match-teaser__team match-teaser__team--home">
+                <span class="match-teaser__team-name" tite="АЕК">АЕК</span></div>
+                <div class="match-teaser__team-score"><span>-</span><span>–</span><span>-</span></div>
+                <div class="match-teaser__team match-teaser__team--away">
+                <span class="match-teaser__team-name" title="ЛАСК">ЛАСК</span></div>
+                </a>
                 </div>
-                </div>
-                </div>
-                <div class="match-schedule-column">
                 <div class="match-schedule-column__group-header">2 тур</div>
-                <div class="match-teaser">
-                <span class="match-teaser__team-name" title="Интер">Интер</span>
+                <div class="match-teaser match-schedule-column__matches-item">
+                <a class="match-teaser__link" href="/football/match/inter-vs-brugge-fc/">
+                <div class="match-teaser__team match-teaser__team--home">
+                <span class="match-teaser__team-name" title="Интер">Интер</span></div>
+                <div class="match-teaser__team-score"><span>1</span><span>–</span><span>0</span></div>
+                <div class="match-teaser__team match-teaser__team--away">
+                <span class="match-teaser__team-name" title="Брюгге">Брюгге</span></div>
+                </a>
                 </div>
                 </div>
                 """;
+
+        SportsRuParsedSchedule parsed = parser.parseCalendar(html);
+        assertEquals(2, parsed.getRounds().size());
+        assertEquals(1, parsed.getRounds().get(0).getNumber());
+        assertEquals(1, parsed.getRounds().get(0).getMatches().size());
+        SportsRuParsedSchedule.Match md1 = parsed.getRounds().get(0).getMatches().get(0);
+        assertEquals("АЕК", md1.getHomeName());
+        assertEquals("ЛАСК", md1.getAwayName());
+        assertEquals("/football/match/aek-athens-vs-lask/", md1.getMatchPath());
+        assertEquals("SCHEDULED", md1.getStatus());
+
+        assertEquals(2, parsed.getRounds().get(1).getNumber());
+        SportsRuParsedSchedule.Match md2 = parsed.getRounds().get(1).getMatches().get(0);
+        assertEquals("Интер", md2.getHomeName());
+        assertEquals("FINISHED", md2.getStatus());
+
         var names = parser.parseTeamNamesFromMatchday(html, 1);
         assertEquals(2, names.size());
         assertTrue(names.contains("АЕК"));
