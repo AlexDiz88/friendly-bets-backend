@@ -1,5 +1,7 @@
 package net.friendly_bets.sportsru;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -19,6 +21,19 @@ import java.util.regex.Pattern;
 
 @Component
 public class SportsRuScheduleParser {
+
+    private static final String SPORTS_TEAM_TYPE = "SportsTeam";
+
+    private final ObjectMapper objectMapper;
+
+    public SportsRuScheduleParser(ObjectMapper objectMapper) {
+        this.objectMapper = objectMapper;
+    }
+
+    /** No-arg for unit tests that do not need JSON-LD parsing. */
+    SportsRuScheduleParser() {
+        this(new ObjectMapper());
+    }
 
     private static final Pattern ROUND_TITLE = Pattern.compile(
             "^\\s*(\\d+)\\s*тур\\s*$", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
@@ -81,6 +96,51 @@ public class SportsRuScheduleParser {
             addTeamName(names, name);
         }
         return new ArrayList<>(names);
+    }
+
+    /** Team names from embedded JSON-LD ({@code SportsTeam} / {@code competitor} on calendar or table pages). */
+    public List<String> parseTeamNamesFromJsonLd(String html) {
+        Set<String> names = new LinkedHashSet<>();
+        if (html == null || html.isBlank()) {
+            return List.of();
+        }
+        Document doc = Jsoup.parse(html);
+        for (Element script : doc.select("script[type=application/ld+json]")) {
+            String json = script.data();
+            if (json == null || json.isBlank()) {
+                continue;
+            }
+            try {
+                JsonNode root = objectMapper.readTree(json);
+                collectSportsTeamNames(root, names);
+            } catch (Exception ignored) {
+                // skip malformed blocks
+            }
+        }
+        return new ArrayList<>(names);
+    }
+
+    private void collectSportsTeamNames(JsonNode node, Set<String> names) {
+        if (node == null || node.isNull()) {
+            return;
+        }
+        if (node.isArray()) {
+            for (JsonNode item : node) {
+                collectSportsTeamNames(item, names);
+            }
+            return;
+        }
+        if (!node.isObject()) {
+            return;
+        }
+        JsonNode typeNode = node.get("@type");
+        if (typeNode != null && SPORTS_TEAM_TYPE.equals(typeNode.asText())) {
+            JsonNode nameNode = node.get("name");
+            if (nameNode != null && nameNode.isTextual()) {
+                addTeamName(names, nameNode.asText());
+            }
+        }
+        node.fields().forEachRemaining(entry -> collectSportsTeamNames(entry.getValue(), names));
     }
 
     private List<String> parseLegacyTeamNamesFromMatchday(String html, int matchday) {

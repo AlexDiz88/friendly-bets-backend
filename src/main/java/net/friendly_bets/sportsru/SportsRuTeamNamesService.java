@@ -29,10 +29,16 @@ public class SportsRuTeamNamesService {
         String calendarHtml = httpClient.fetchCalendarHtml(calendarPath);
         List<String> names = scheduleParser.parseTeamNamesFromMatchday(calendarHtml, 1);
         if (names.isEmpty()) {
+            names = scheduleParser.parseTeamNamesFromJsonLd(calendarHtml);
+        }
+        if (names.isEmpty()) {
             String tablePath = calendarPath.replace("/calendar/", "/table/");
             if (!tablePath.equals(calendarPath)) {
                 String tableHtml = httpClient.fetchCalendarHtml(tablePath);
                 names = scheduleParser.parseTeamNamesFromTable(tableHtml);
+                if (names.isEmpty()) {
+                    names = scheduleParser.parseTeamNamesFromJsonLd(tableHtml);
+                }
             }
         }
         if (names.isEmpty()) {

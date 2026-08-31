@@ -6,6 +6,7 @@ import net.friendly_bets.models.Team;
 import net.friendly_bets.models.TeamDisplayNames;
 import net.friendly_bets.models.TeamExternalAlias;
 import net.friendly_bets.providers.ExternalProviderIds;
+import net.friendly_bets.repositories.LeaguesRepository;
 import net.friendly_bets.repositories.TeamsRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -32,6 +33,8 @@ class ExternalTeamAliasAutoBindServiceTest {
 
     @Mock
     RunningSeasonLookup runningSeasonLookup;
+    @Mock
+    LeaguesRepository leaguesRepository;
     @Mock
     TeamsRepository teamsRepository;
     @Mock
@@ -196,6 +199,40 @@ class ExternalTeamAliasAutoBindServiceTest {
         );
 
         assertEquals(1, result.getAutoBoundCount());
+    }
+
+    @Test
+    void bindAndCollectUnmapped_matchesDisplayNameRuFromDatabase() {
+        Team roma = Team.builder()
+                .id("roma1")
+                .title("Roma")
+                .displayNames(TeamDisplayNames.builder().en("Roma").ru("Рома").build())
+                .externalAliases(new ArrayList<>())
+                .build();
+        League clLeague = League.builder()
+                .leagueCode(League.LeagueCode.CL)
+                .teams(List.of(roma))
+                .build();
+        Season season = Season.builder()
+                .id("s1")
+                .leagues(List.of(clLeague))
+                .build();
+        when(runningSeasonLookup.findRunningSeasonOrThrow(any())).thenReturn(season);
+        when(teamsRepository.findById("roma1")).thenReturn(Optional.of(roma));
+        when(teamsRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        var result = service.bindAndCollectUnmapped(
+                ExternalProviderIds.SPORTS_RU,
+                "CL",
+                List.of("Рома"),
+                false
+        );
+
+        assertEquals(1, result.getAutoBoundCount());
+        assertEquals(0, result.getUnmapped().size());
+        assertTrue(roma.getExternalAliases().stream()
+                .anyMatch(a -> ExternalProviderIds.SPORTS_RU.equals(a.getProvider())
+                        && "Рома".equals(a.getExternalName())));
     }
 
     private static TeamExternalAlias findFlashscoreAlias(Team team) {

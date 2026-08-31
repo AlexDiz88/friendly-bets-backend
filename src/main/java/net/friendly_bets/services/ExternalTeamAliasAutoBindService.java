@@ -9,6 +9,7 @@ import net.friendly_bets.models.Season;
 import net.friendly_bets.models.Team;
 import net.friendly_bets.models.TeamDisplayNames;
 import net.friendly_bets.models.TeamExternalAlias;
+import net.friendly_bets.repositories.LeaguesRepository;
 import net.friendly_bets.repositories.TeamsRepository;
 import net.friendly_bets.utils.TeamNameNormalizer;
 import org.springframework.stereotype.Service;
@@ -34,6 +35,7 @@ import java.util.Set;
 public class ExternalTeamAliasAutoBindService {
 
     private final RunningSeasonLookup runningSeasonLookup;
+    private final LeaguesRepository leaguesRepository;
     private final TeamsRepository teamsRepository;
     private final ErrorLogService errorLogService;
 
@@ -195,7 +197,7 @@ public class ExternalTeamAliasAutoBindService {
         return null;
     }
 
-    private static List<Team> findMatchCandidates(Iterable<Team> teams, String provider, String externalName) {
+    private List<Team> findMatchCandidates(Iterable<Team> teams, String provider, String externalName) {
         String needle = TeamNameNormalizer.normalize(externalName);
         if (needle.isEmpty()) {
             return List.of();
@@ -209,7 +211,7 @@ public class ExternalTeamAliasAutoBindService {
         return new ArrayList<>(unique.values());
     }
 
-    private static boolean teamMatchesName(Team team, String provider, String normalizedNeedle) {
+    private boolean teamMatchesName(Team team, String provider, String normalizedNeedle) {
         if (normalizedEquals(team.getTitle(), normalizedNeedle)) {
             return true;
         }
@@ -256,10 +258,14 @@ public class ExternalTeamAliasAutoBindService {
 
     private List<Team> loadFreshLeagueTeams(League league) {
         List<Team> result = new ArrayList<>();
-        if (league.getTeams() == null) {
+        League source = league;
+        if (league.getId() != null) {
+            source = leaguesRepository.findById(league.getId()).orElse(league);
+        }
+        if (source.getTeams() == null) {
             return result;
         }
-        for (Team ref : league.getTeams()) {
+        for (Team ref : source.getTeams()) {
             if (ref == null || ref.getId() == null) {
                 continue;
             }
