@@ -14,7 +14,8 @@ public class EuroFootballProperties {
     private long httpDelayMinMs = 800L;
     private long httpDelayMaxMs = 2_000L;
     /**
-     * League overview path (no trailing slash). Team names: {@code path + "/tables"}.
+     * League overview path (no trailing slash). EPL/BL team names: {@code path + "/tables"};
+     * CL/LE: {@code path + "/calendar"} (group tables widget is empty on /tables).
      */
     private Map<String, String> leaguePaths = new HashMap<>(Map.of(
             "EPL", "/online/angliya/premer-liga",

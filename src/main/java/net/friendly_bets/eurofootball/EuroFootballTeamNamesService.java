@@ -34,12 +34,40 @@ public class EuroFootballTeamNamesService {
         if (path == null || path.isBlank()) {
             throw new BadRequestException("euroFootballLeagueNotSupported");
         }
-        String html = httpClient.fetchLeagueTablesHtml(path);
-        List<String> names = parseTeamNamesFromTablesHtml(html);
+        String html = leagueCode == League.LeagueCode.CL || leagueCode == League.LeagueCode.LE
+                ? httpClient.fetchLeagueCalendarHtml(path)
+                : httpClient.fetchLeagueTablesHtml(path);
+        List<String> names = leagueCode == League.LeagueCode.CL || leagueCode == League.LeagueCode.LE
+                ? parseTeamNamesFromCalendarHtml(html)
+                : parseTeamNamesFromTablesHtml(html);
         if (names.isEmpty()) {
             throw new BadRequestException("euroFootballTeamNamesEmpty");
         }
         return names;
+    }
+
+    /**
+     * Team names from league calendar ({@code /online/.../calendar}).
+     * Uses match rows only — avoids the site-wide standings dropdown (RPL/EPL widgets).
+     */
+    static List<String> parseTeamNamesFromCalendarHtml(String html) {
+        if (html == null || html.isBlank()) {
+            return List.of();
+        }
+        Document doc = Jsoup.parse(html);
+        Set<String> unique = new LinkedHashSet<>();
+        for (Element el : doc.select(
+                "#online-match-schedule .turnir-match-list__item-team1, "
+                        + "#online-match-schedule .turnir-match-list__item-team2")) {
+            String name = el.text();
+            if (name != null) {
+                name = name.trim();
+                if (!name.isEmpty()) {
+                    unique.add(name);
+                }
+            }
+        }
+        return new ArrayList<>(unique);
     }
 
     /**
