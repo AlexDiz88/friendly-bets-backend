@@ -19,13 +19,17 @@ public class ChampionatProperties {
      */
     private Map<String, Integer> tournamentIds = new HashMap<>(Map.of(
             "EPL", 7142,
-            "BL", 7146
+            "BL", 7146,
+            "CL", 7100,
+            "LE", 7104
     ));
     /**
      * Tournament page path per league (trailing slash). Standings: {@code path + "table/"}.
      */
     private Map<String, String> tournamentPaths = new HashMap<>(Map.of(
             "EPL", "/football/_england/tournament/7142/",
-            "BL", "/football/_germany/tournament/7146/"
+            "BL", "/football/_germany/tournament/7146/",
+            "CL", "/football/_ucl/tournament/7100/",
+            "LE", "/football/_europeleague/tournament/7104/"
     ));
 }
