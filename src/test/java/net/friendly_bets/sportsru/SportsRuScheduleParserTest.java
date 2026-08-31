@@ -136,4 +136,21 @@ class SportsRuScheduleParserTest {
         assertTrue(names.contains("Милан"));
         assertTrue(names.contains("Ювентус"));
     }
+
+    @Test
+    void parseTeamNamesFromJsonLd_competitorList() {
+        String html = """
+                <html><head>
+                <script type="application/ld+json">{"@context":"https://schema.org","@type":"SportsEvent",
+                "competitor":[
+                {"@type":"SportsTeam","name":"Арсенал"},
+                {"@type":"SportsTeam","name":"Ливерпуль"}
+                ]}</script>
+                </head><body></body></html>
+                """;
+        var names = parser.parseTeamNamesFromJsonLd(html);
+        assertEquals(2, names.size());
+        assertTrue(names.contains("Арсенал"));
+        assertTrue(names.contains("Ливерпуль"));
+    }
 }

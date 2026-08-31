@@ -9,7 +9,9 @@ import net.friendly_bets.models.Season;
 import net.friendly_bets.models.Team;
 import net.friendly_bets.models.TeamDisplayNames;
 import net.friendly_bets.models.TeamExternalAlias;
+import net.friendly_bets.repositories.LeaguesRepository;
 import net.friendly_bets.repositories.TeamsRepository;
+import net.friendly_bets.utils.TeamI18nCatalog;
 import net.friendly_bets.utils.TeamNameNormalizer;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,7 +27,8 @@ import java.util.Set;
 
 /**
  * Auto-binds external provider team names to league teams when the name matches
- * displayNames (en/ru/de), team title, or another provider's alias (normalized).
+ * displayNames (en/ru/de, including bundled i18n by title when DB fields are empty),
+ * team title, or another provider's alias (normalized).
  * Lookup is scoped to the selected league only. Ambiguous / unmatched / mismatched
  * names become chips for manual mapping.
  */
@@ -34,7 +37,9 @@ import java.util.Set;
 public class ExternalTeamAliasAutoBindService {
 
     private final RunningSeasonLookup runningSeasonLookup;
+    private final LeaguesRepository leaguesRepository;
     private final TeamsRepository teamsRepository;
+    private final TeamI18nCatalog teamI18nCatalog;
     private final ErrorLogService errorLogService;
 
     @Transactional
@@ -195,7 +200,7 @@ public class ExternalTeamAliasAutoBindService {
         return null;
     }
 
-    private static List<Team> findMatchCandidates(Iterable<Team> teams, String provider, String externalName) {
+    private List<Team> findMatchCandidates(Iterable<Team> teams, String provider, String externalName) {
         String needle = TeamNameNormalizer.normalize(externalName);
         if (needle.isEmpty()) {
             return List.of();
@@ -209,11 +214,11 @@ public class ExternalTeamAliasAutoBindService {
         return new ArrayList<>(unique.values());
     }
 
-    private static boolean teamMatchesName(Team team, String provider, String normalizedNeedle) {
+    private boolean teamMatchesName(Team team, String provider, String normalizedNeedle) {
         if (normalizedEquals(team.getTitle(), normalizedNeedle)) {
             return true;
         }
-        TeamDisplayNames names = team.getDisplayNames();
+        TeamDisplayNames names = effectiveDisplayNames(team);
         if (names != null) {
             if (normalizedEquals(names.getEn(), normalizedNeedle)
                     || normalizedEquals(names.getRu(), normalizedNeedle)
@@ -238,6 +243,13 @@ public class ExternalTeamAliasAutoBindService {
         return false;
     }
 
+    private TeamDisplayNames effectiveDisplayNames(Team team) {
+        return TeamI18nCatalog.effectiveDisplayNames(
+                team.getDisplayNames(),
+                teamI18nCatalog.resolveByTitle(team.getTitle())
+        );
+    }
+
     private static boolean normalizedEquals(String value, String normalizedNeedle) {
         return value != null && TeamNameNormalizer.normalize(value).equals(normalizedNeedle);
     }
@@ -256,10 +268,14 @@ public class ExternalTeamAliasAutoBindService {
 
     private List<Team> loadFreshLeagueTeams(League league) {
         List<Team> result = new ArrayList<>();
-        if (league.getTeams() == null) {
+        League source = league;
+        if (league.getId() != null) {
+            source = leaguesRepository.findById(league.getId()).orElse(league);
+        }
+        if (source.getTeams() == null) {
             return result;
         }
-        for (Team ref : league.getTeams()) {
+        for (Team ref : source.getTeams()) {
             if (ref == null || ref.getId() == null) {
                 continue;
             }
