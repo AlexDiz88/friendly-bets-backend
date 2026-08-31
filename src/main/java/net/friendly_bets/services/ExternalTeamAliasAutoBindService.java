@@ -25,8 +25,9 @@ import java.util.Set;
 
 /**
  * Auto-binds external provider team names to league teams when the name matches
- * a displayName or another provider's alias (normalized). Ambiguous / unmatched /
- * mismatched names become chips for manual mapping.
+ * displayNames (en/ru/de), team title, or another provider's alias (normalized).
+ * Lookup is scoped to the selected league only. Ambiguous / unmatched / mismatched
+ * names become chips for manual mapping.
  */
 @Service
 @RequiredArgsConstructor
@@ -209,6 +210,9 @@ public class ExternalTeamAliasAutoBindService {
     }
 
     private static boolean teamMatchesName(Team team, String provider, String normalizedNeedle) {
+        if (normalizedEquals(team.getTitle(), normalizedNeedle)) {
+            return true;
+        }
         TeamDisplayNames names = team.getDisplayNames();
         if (names != null) {
             if (normalizedEquals(names.getEn(), normalizedNeedle)
