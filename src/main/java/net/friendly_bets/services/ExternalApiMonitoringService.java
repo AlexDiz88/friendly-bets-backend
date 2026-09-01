@@ -139,34 +139,89 @@ public class ExternalApiMonitoringService {
         return repository.save(run);
     }
 
-    public List<ExternalApiMonitoringRun> listByLayer(ExternalDataLayer layer, int hours, int limit) {
-        int safeLimit = Math.max(1, Math.min(limit, 200));
+    public List<ExternalApiMonitoringRun> listByLayer(
+            ExternalDataLayer layer,
+            int hours,
+            int limit,
+            int offset,
+            List<ExternalApiMonitoringStatus> statusFilter
+    ) {
+        int safeLimit = Math.max(1, Math.min(limit, 500));
+        int safeOffset = Math.max(0, offset);
         int safeHours = Math.max(1, Math.min(hours, 24 * 30));
         Instant after = Instant.now().minus(Duration.ofHours(safeHours));
+        int page = safeOffset / safeLimit;
+        PageRequest pageable = PageRequest.of(page, safeLimit);
+        if (statusFilter != null && !statusFilter.isEmpty()) {
+            return repository.findByLayerAndStatusInAndStartedAtAfterOrderByStartedAtDesc(
+                    layer,
+                    statusFilter,
+                    after,
+                    pageable
+            );
+        }
         return repository.findByLayerAndStartedAtAfterOrderByStartedAtDesc(
                 layer,
                 after,
-                PageRequest.of(0, safeLimit)
+                pageable
         );
     }
 
-    public ExternalApiMonitoringLayerPageDto listPageByLayer(ExternalDataLayer layer, int hours, int limit) {
+    public ExternalApiMonitoringLayerPageDto listPageByLayer(
+            ExternalDataLayer layer,
+            int hours,
+            int limit,
+            int offset,
+            List<ExternalApiMonitoringStatus> statusFilter
+    ) {
         int safeHours = Math.max(1, Math.min(hours, 24 * 30));
+        int safeLimit = Math.max(1, Math.min(limit, 500));
+        int safeOffset = Math.max(0, offset);
         Instant after = Instant.now().minus(Duration.ofHours(safeHours));
-        List<ExternalApiMonitoringRunDto> runs = listByLayer(layer, hours, limit).stream()
+        List<ExternalApiMonitoringRunDto> runs = listByLayer(layer, hours, limit, offset, statusFilter).stream()
                 .map(ExternalApiMonitoringRunDto::summary)
                 .toList();
-        long total = repository.countByLayerAndStartedAtAfter(layer, after);
+        long total = statusFilter != null && !statusFilter.isEmpty()
+                ? repository.countByLayerAndStatusInAndStartedAtAfter(layer, statusFilter, after)
+                : repository.countByLayerAndStartedAtAfter(layer, after);
         long failed = repository.countByLayerAndStatusAndStartedAtAfter(
                 layer,
                 ExternalApiMonitoringStatus.FAILED,
                 after
         );
+        boolean hasMore = (long) safeOffset + runs.size() < total;
         return ExternalApiMonitoringLayerPageDto.builder()
                 .runs(runs)
                 .total(total)
                 .failed(failed)
+                .offset(safeOffset)
+                .limit(safeLimit)
+                .hasMore(hasMore)
                 .build();
+    }
+
+    public static List<ExternalApiMonitoringStatus> parseStatusFilter(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return List.of();
+        }
+        List<ExternalApiMonitoringStatus> out = new ArrayList<>();
+        for (String token : raw.split(",")) {
+            String trimmed = token.trim();
+            if (trimmed.isEmpty()) {
+                continue;
+            }
+            if ("issues".equalsIgnoreCase(trimmed)) {
+                out.add(ExternalApiMonitoringStatus.FAILED);
+                out.add(ExternalApiMonitoringStatus.PARTIAL);
+                continue;
+            }
+            try {
+                out.add(ExternalApiMonitoringStatus.valueOf(trimmed.toUpperCase()));
+            } catch (IllegalArgumentException ignored) {
+                throw new BadRequestException("externalApiMonitoringStatusInvalid");
+            }
+        }
+        return out.stream().distinct().toList();
     }
 
     public ExternalApiMonitoringRun getById(String id) {

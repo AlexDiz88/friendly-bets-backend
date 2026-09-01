@@ -14,6 +14,8 @@ import java.util.Set;
 public final class LiveMatchSupport {
 
     public static final long LIVE_WINDOW_SECONDS = 4 * 3600L;
+    /** Stop polling IN_PLAY matches long after kickoff (stuck sync); errors logged separately. */
+    public static final long LIVE_IN_PLAY_MAX_POLL_SECONDS = 6 * 3600L;
 
     private static final Set<String> FINISHED = Set.of(
             "FINISHED", "AWARDED", "COMPLETED", "FT", "AET", "PEN"
@@ -46,7 +48,7 @@ public final class LiveMatchSupport {
             return false;
         }
         if (IN_PLAY.contains(status)) {
-            return true;
+            return kickoff.isAfter(now.minusSeconds(LIVE_IN_PLAY_MAX_POLL_SECONDS));
         }
         return !kickoff.isAfter(now) && kickoff.isAfter(now.minusSeconds(LIVE_WINDOW_SECONDS));
     }

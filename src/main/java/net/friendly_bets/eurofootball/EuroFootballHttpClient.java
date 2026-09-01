@@ -19,6 +19,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.time.LocalDate;
 
 @Component
 @RequiredArgsConstructor
@@ -33,13 +34,24 @@ public class EuroFootballHttpClient {
     private final HttpClient httpClient = ScrapeHttpSupport.newBrowserClient(Duration.ofSeconds(20));
 
     /**
-     * Current-day LIVE JSON. Source ignores {@code ?date=} — always the site's "today" catalogue.
+     * Current-day LIVE JSON ({@code GET /online/data}). Not used by LIVE sync — layer reads HTML per kickoff date.
      */
     public String fetchLiveJson() {
         String base = trimTrailingSlash(properties.getBaseUrl());
         String url = base + "/online/data";
         ScrapeHttpSupport.jitterSleep(properties.getHttpDelayMinMs(), properties.getHttpDelayMaxMs());
         return getBody(url, base + "/online/today", true);
+    }
+
+    /** Day page with full schedule feed for a UTC calendar date. */
+    public String fetchDateOnlineHtml(LocalDate date) {
+        if (date == null) {
+            throw new BadRequestException("euroFootballFetchFailed");
+        }
+        String base = trimTrailingSlash(properties.getBaseUrl());
+        String url = base + "/online/" + date;
+        ScrapeHttpSupport.jitterSleep(properties.getHttpDelayMinMs(), properties.getHttpDelayMaxMs());
+        return getBody(url, base + "/online/today", false);
     }
 
     public String fetchLeagueTablesHtml(String leaguePath) {

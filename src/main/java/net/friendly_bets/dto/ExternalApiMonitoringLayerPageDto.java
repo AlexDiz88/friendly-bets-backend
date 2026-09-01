@@ -11,4 +11,7 @@ public class ExternalApiMonitoringLayerPageDto {
     List<ExternalApiMonitoringRunDto> runs;
     long total;
     long failed;
+    int offset;
+    int limit;
+    boolean hasMore;
 }
