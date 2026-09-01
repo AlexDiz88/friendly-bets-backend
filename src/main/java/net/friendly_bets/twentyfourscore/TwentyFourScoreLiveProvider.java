@@ -18,6 +18,7 @@ import net.friendly_bets.providers.LiveMatchProvider;
 import net.friendly_bets.providers.live.LiveMatchApplySupport;
 import net.friendly_bets.providers.live.LiveMatchSnapshot;
 import net.friendly_bets.providers.live.LiveMatchSupport;
+import net.friendly_bets.providers.live.LiveMatchSyncDiagnostics;
 import net.friendly_bets.repositories.MatchScheduleRepository;
 import net.friendly_bets.repositories.TeamsRepository;
 import net.friendly_bets.services.ExternalApiMonitoringService;
@@ -32,6 +33,7 @@ import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
@@ -53,6 +55,7 @@ public class TwentyFourScoreLiveProvider implements LiveMatchProvider {
     private final TeamAliasResolver teamAliasResolver;
     private final TeamsRepository teamsRepository;
     private final ExternalApiMonitoringService monitoringService;
+    private final LiveMatchSyncDiagnostics liveMatchSyncDiagnostics;
 
     @Override
     public String providerId() {
@@ -128,6 +131,8 @@ public class TwentyFourScoreLiveProvider implements LiveMatchProvider {
         int httpRequests = 0;
         int updated = 0;
         int finishedDetected = 0;
+        Set<String> updatedIds = new HashSet<>();
+        Set<String> notFoundIds = new HashSet<>();
 
         try {
             for (LocalDate date : dates) {
@@ -174,6 +179,7 @@ public class TwentyFourScoreLiveProvider implements LiveMatchProvider {
                     List<TwentyFourScoreParsedDatePage.MatchRow> leagueRows = collectLeagueRows(page, leagueCode);
                     Optional<TwentyFourScoreParsedDatePage.MatchRow> row = findRow(schedule, leagueRows, teamCache);
                     if (row.isEmpty()) {
+                        notFoundIds.add(schedule.getId());
                         continue;
                     }
                     boolean wasFinished = LiveMatchSupport.isFinishedStatus(schedule.getStatus());
@@ -190,6 +196,7 @@ public class TwentyFourScoreLiveProvider implements LiveMatchProvider {
                     );
                     matchScheduleRepository.save(schedule);
                     updated++;
+                    updatedIds.add(schedule.getId());
                     if (!wasFinished && LiveMatchSupport.isFinishedStatus(schedule.getStatus())) {
                         finishedDetected++;
                     }
@@ -210,6 +217,15 @@ public class TwentyFourScoreLiveProvider implements LiveMatchProvider {
             );
             throw e;
         }
+
+        liveMatchSyncDiagnostics.afterSync(
+                ExternalProviderIds.TWENTYFOUR_SCORE,
+                season.getId(),
+                tracked,
+                updatedIds,
+                notFoundIds,
+                now
+        );
 
         LinkedHashSet<String> pendingFullIds = allSchedules.stream()
                 .filter(LiveMatchSupport::needsFullMatch)

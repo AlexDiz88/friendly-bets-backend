@@ -14,8 +14,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Parses euro-football.ru LIVE JSON ({@code GET /online/data}).
- * Feed is the site's current day (query {@code date=} is ignored by the source).
+ * Parses euro-football.ru LIVE JSON ({@code GET /online/data}) — format reference / tests;
+ * LIVE sync uses {@link EuroFootballDateHtmlParser} per kickoff date.
  */
 @Component
 public class EuroFootballDateJsonParser {
@@ -139,7 +139,7 @@ public class EuroFootballDateJsonParser {
         return "SCHEDULED";
     }
 
-    private static boolean scoreAllowed(String mappedStatus) {
+    static boolean scoreAllowed(String mappedStatus) {
         return "IN_PLAY".equals(mappedStatus)
                 || "PAUSED".equals(mappedStatus)
                 || "EXTRA_TIME".equals(mappedStatus)

@@ -17,6 +17,19 @@ public interface ExternalApiMonitoringRepository extends MongoRepository<Externa
             Pageable pageable
     );
 
+    List<ExternalApiMonitoringRun> findByLayerAndStatusInAndStartedAtAfterOrderByStartedAtDesc(
+            ExternalDataLayer layer,
+            List<ExternalApiMonitoringStatus> statuses,
+            Instant startedAtAfter,
+            Pageable pageable
+    );
+
+    long countByLayerAndStatusInAndStartedAtAfter(
+            ExternalDataLayer layer,
+            List<ExternalApiMonitoringStatus> statuses,
+            Instant startedAtAfter
+    );
+
     List<ExternalApiMonitoringRun> findByLayerOrderByStartedAtDesc(
             ExternalDataLayer layer,
             Pageable pageable

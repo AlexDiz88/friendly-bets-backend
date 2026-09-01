@@ -55,6 +55,9 @@ public class ErrorLogService {
     public static final String CODE_LAYER_FAILED = "layerProviderFailed";
     public static final String CODE_FULL_MATCH_FAILED = "fullMatchFailed";
     public static final String CODE_FULL_MATCH_NOT_READY = "fullMatchNotReady";
+    public static final String CODE_LIVE_MATCH_SYNC_STUCK = "liveMatchSyncStuck";
+    public static final String CODE_LIVE_MATCH_NOT_IN_FEED = "liveMatchNotInFeed";
+    public static final String CODE_LIVE_MATCH_AMBIGUOUS = "liveMatchAmbiguous";
 
     private final ErrorLogRepository errorLogRepository;
     private final MatchScheduleRepository matchScheduleRepository;

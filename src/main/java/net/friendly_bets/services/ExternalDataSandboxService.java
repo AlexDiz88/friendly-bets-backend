@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import net.friendly_bets.championat.ChampionatDateJsonParser;
 import net.friendly_bets.championat.ChampionatHttpClient;
 import net.friendly_bets.championat.ChampionatParsedDatePage;
+import net.friendly_bets.eurofootball.EuroFootballDateHtmlParser;
 import net.friendly_bets.eurofootball.EuroFootballDateJsonParser;
 import net.friendly_bets.eurofootball.EuroFootballHttpClient;
 import net.friendly_bets.eurofootball.EuroFootballParsedDatePage;
@@ -98,6 +99,7 @@ public class ExternalDataSandboxService {
     private final ChampionatDateJsonParser championatDateJsonParser;
     private final EuroFootballHttpClient euroFootballHttpClient;
     private final EuroFootballDateJsonParser euroFootballDateJsonParser;
+    private final EuroFootballDateHtmlParser euroFootballDateHtmlParser;
     private final RuscoreHttpClient ruscoreHttpClient;
     private final RuscoreDayPageParser ruscoreDayPageParser;
     private final RuscoreGameSummaryParser ruscoreGameSummaryParser;
@@ -286,9 +288,9 @@ public class ExternalDataSandboxService {
         String titleContains = request.getTitleContains() != null ? request.getTitleContains().trim() : "";
         long started = System.currentTimeMillis();
         try {
-            if (ExternalProviderIds.EURO_FOOTBALL.equals(provider)) {
-                String json = euroFootballHttpClient.fetchLiveJson();
-                EuroFootballParsedDatePage page = euroFootballDateJsonParser.parse(json);
+			if (ExternalProviderIds.EURO_FOOTBALL.equals(provider)) {
+                String html = euroFootballHttpClient.fetchDateOnlineHtml(date);
+                EuroFootballParsedDatePage page = euroFootballDateHtmlParser.parse(html);
                 List<EuroFootballParsedDatePage.CompetitionBlock> all = page.getCompetitions() != null
                         ? page.getCompetitions()
                         : List.of();

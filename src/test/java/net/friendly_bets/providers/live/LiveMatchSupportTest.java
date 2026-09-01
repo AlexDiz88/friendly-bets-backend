@@ -62,6 +62,13 @@ class LiveMatchSupportTest {
     }
 
     @Test
+    void httpCandidate_stopsInPlayAfterMaxPollWindow() {
+        Instant veryOldKickoff = NOW.minusSeconds(LiveMatchSupport.LIVE_IN_PLAY_MAX_POLL_SECONDS + 1);
+        assertFalse(LiveMatchSupport.isLiveHttpCandidate(
+                MatchSchedule.builder().utcKickoff(veryOldKickoff).status("IN_PLAY").build(), NOW));
+    }
+
+    @Test
     void needsFull_onlyFinishedWithoutFullDetails() {
         assertTrue(LiveMatchSupport.needsFullMatch(
                 MatchSchedule.builder().status("FINISHED").build()));

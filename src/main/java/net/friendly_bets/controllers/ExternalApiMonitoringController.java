@@ -31,10 +31,18 @@ public class ExternalApiMonitoringController {
     public ResponseEntity<ExternalApiMonitoringLayerPageDto> list(
             @RequestParam String layer,
             @RequestParam(defaultValue = "24") int hours,
-            @RequestParam(defaultValue = "50") int limit
+            @RequestParam(defaultValue = "50") int limit,
+            @RequestParam(defaultValue = "0") int offset,
+            @RequestParam(required = false) String status
     ) {
         ExternalDataLayer parsed = parseLayer(layer);
-        return ResponseEntity.ok(monitoringService.listPageByLayer(parsed, hours, limit));
+        return ResponseEntity.ok(monitoringService.listPageByLayer(
+                parsed,
+                hours,
+                limit,
+                offset,
+                ExternalApiMonitoringService.parseStatusFilter(status)
+        ));
     }
 
     @GetMapping("/latest")
