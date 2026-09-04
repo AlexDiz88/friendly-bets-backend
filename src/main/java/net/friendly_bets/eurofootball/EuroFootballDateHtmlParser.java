@@ -14,7 +14,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Parses euro-football.ru online day pages ({@code /online/{yyyy-MM-dd}}).
+ * Parses euro-football.ru online day pages ({@code /online/today}, {@code /yesterday}, …).
  * Only the main schedule feed ({@code .match-schedule__item}) — sidebar widgets
  * ({@code .match-online__item}, {@code .liveresult__*}) are excluded.
  */
