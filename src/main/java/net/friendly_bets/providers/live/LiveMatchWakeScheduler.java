@@ -53,6 +53,7 @@ public class LiveMatchWakeScheduler {
     private final MatchScheduleRepository matchScheduleRepository;
     private final MatchResultSyncProperties matchResultSyncProperties;
     private final LiveMatchSyncDiagnostics liveMatchSyncDiagnostics;
+    private final LiveMatchSecondaryCatchUp liveMatchSecondaryCatchUp;
     private final ThreadPoolTaskScheduler taskScheduler;
     private final long schedulerTickMs;
 
@@ -67,6 +68,7 @@ public class LiveMatchWakeScheduler {
             MatchScheduleRepository matchScheduleRepository,
             MatchResultSyncProperties matchResultSyncProperties,
             LiveMatchSyncDiagnostics liveMatchSyncDiagnostics,
+            LiveMatchSecondaryCatchUp liveMatchSecondaryCatchUp,
             @Qualifier("liveMatchWakeTaskScheduler") ThreadPoolTaskScheduler taskScheduler,
             @Value("${external-data.layers.LIVE.scheduler-tick-ms:300000}") long schedulerTickMs
     ) {
@@ -77,6 +79,7 @@ public class LiveMatchWakeScheduler {
         this.matchScheduleRepository = matchScheduleRepository;
         this.matchResultSyncProperties = matchResultSyncProperties;
         this.liveMatchSyncDiagnostics = liveMatchSyncDiagnostics;
+        this.liveMatchSecondaryCatchUp = liveMatchSecondaryCatchUp;
         this.taskScheduler = taskScheduler;
         this.schedulerTickMs = Math.max(1_000L, schedulerTickMs);
     }
@@ -155,6 +158,24 @@ public class LiveMatchWakeScheduler {
             pendingFull.addAll(result.pendingFullMatchIds());
         } catch (RuntimeException e) {
             log.warn("LIVE sync failed: {}", e.getMessage());
+        }
+
+        // Re-read after primary: overdue non-terminal → independent poll via LIVE secondary.
+        List<MatchSchedule> afterPrimary = matchScheduleRepository.findBySeasonId(season.getId());
+        try {
+            liveMatchSecondaryCatchUp.catchUpIfNeeded(season, afterPrimary, Instant.now()).ifPresent(secondaryResult -> {
+                if (secondaryResult.updated() > 0 || secondaryResult.finishedDetected() > 0
+                        || !secondaryResult.pendingFullMatchIds().isEmpty()) {
+                    log.info("LIVE secondary catch-up http={} updated={} finished={} pendingFull={}",
+                            secondaryResult.httpRequests(),
+                            secondaryResult.updated(),
+                            secondaryResult.finishedDetected(),
+                            secondaryResult.pendingFullMatchIds().size());
+                }
+                pendingFull.addAll(secondaryResult.pendingFullMatchIds());
+            });
+        } catch (RuntimeException e) {
+            log.warn("LIVE secondary catch-up failed: {}", e.getMessage());
         }
 
         if (layerConfigService.isLayerEnabled(ExternalDataLayer.FULL_MATCH) && !pendingFull.isEmpty()) {

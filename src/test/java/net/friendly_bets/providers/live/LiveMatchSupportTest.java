@@ -70,6 +70,18 @@ class LiveMatchSupportTest {
     }
 
     @Test
+    void secondaryCatchUp_onlyAfterExpectedDurationWhileStillNonTerminal() {
+        Instant recent = NOW.minusSeconds(90 * 60L);
+        assertFalse(LiveMatchSupport.needsSecondaryStatusCatchUp(
+                MatchSchedule.builder().utcKickoff(recent).status("IN_PLAY").build(), NOW));
+        Instant overdue = NOW.minusSeconds(LiveMatchSupport.SECONDARY_CATCHUP_AFTER_KICKOFF_SECONDS + 60);
+        assertTrue(LiveMatchSupport.needsSecondaryStatusCatchUp(
+                MatchSchedule.builder().utcKickoff(overdue).status("IN_PLAY").build(), NOW));
+        assertFalse(LiveMatchSupport.needsSecondaryStatusCatchUp(
+                MatchSchedule.builder().utcKickoff(overdue).status("FINISHED").build(), NOW));
+    }
+
+    @Test
     void needsFull_onlyFinishedWithoutFullDetails() {
         assertTrue(LiveMatchSupport.needsFullMatch(
                 MatchSchedule.builder().status("FINISHED").build()));
