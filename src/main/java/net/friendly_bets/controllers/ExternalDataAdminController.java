@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import net.friendly_bets.dto.ExternalDataLayerConfigDto;
 import net.friendly_bets.dto.ExternalSiteAccessProbeRequestDto;
 import net.friendly_bets.dto.ExternalSiteAccessProbeResultDto;
+import net.friendly_bets.dto.FullMatchSyncResultDto;
 import net.friendly_bets.dto.LiveMatchSyncResultDto;
 import net.friendly_bets.dto.ScheduleSyncResultDto;
 import net.friendly_bets.dto.StandingsSyncResultDto;
@@ -164,6 +165,33 @@ public class ExternalDataAdminController {
                 // FULL failures are already in error_logs via LayerProviderRouter
             }
             return ResponseEntity.ok(LiveMatchSyncResultDto.from(result));
+        } finally {
+            ExternalApiMonitoringService.clearTriggerOverride();
+        }
+    }
+
+    @PostMapping("/full-match/sync")
+    @PreAuthorize("hasAuthority('ADMIN')")
+    public ResponseEntity<FullMatchSyncResultDto> syncFullMatch(
+            @RequestParam String provider,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date
+    ) {
+        if (provider == null || provider.isBlank()) {
+            throw new net.friendly_bets.exceptions.BadRequestException("fullMatchSyncProviderRequired");
+        }
+        if (date == null) {
+            throw new net.friendly_bets.exceptions.BadRequestException("fullMatchSyncDateRequired");
+        }
+        FullMatchProvider fullMatchProvider = layerProviderRegistry
+                .findAs(provider.trim(), FullMatchProvider.class)
+                .filter(p -> p.supports(ExternalDataLayer.FULL_MATCH))
+                .orElseThrow(() -> new net.friendly_bets.exceptions.BadRequestException(
+                        "externalDataProviderUnavailable"));
+        Season season = runningSeasonLookup.findRunningSeasonOrThrow("noActiveSeasonWasFounded");
+        ExternalApiMonitoringService.setTriggerOverride(ExternalApiMonitoringTrigger.ADMIN);
+        try {
+            return ResponseEntity.ok(
+                    matchFinalizeOrchestrator.syncByProviderAndUtcDate(fullMatchProvider, season, date));
         } finally {
             ExternalApiMonitoringService.clearTriggerOverride();
         }

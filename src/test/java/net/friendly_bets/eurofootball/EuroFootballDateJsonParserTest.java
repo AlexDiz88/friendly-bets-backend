@@ -29,6 +29,8 @@ class EuroFootballDateJsonParserTest {
         assertEquals("FINISHED", EuroFootballDateJsonParser.mapStatus("finished", 16, "Окончен после пенальти"));
         assertEquals("SCHEDULED", EuroFootballDateJsonParser.mapStatus("soon", 0, "22:00"));
         assertEquals("CANCELED", EuroFootballDateJsonParser.mapStatus("live", 3, "Матч отменён"));
+        assertEquals("IN_PLAY", EuroFootballDateJsonParser.mapStatus("live", 3, "171 мин"),
+                "absurd clock stays IN_PLAY — secondary catch-up resolves FT, not auto-FINISHED");
     }
 
     @Test

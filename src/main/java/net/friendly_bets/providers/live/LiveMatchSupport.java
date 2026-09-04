@@ -13,10 +13,14 @@ import java.util.Set;
  */
 public final class LiveMatchSupport {
 
-    /** Former post-kickoff window for SCHEDULED-only (4h); candidates now use {@link #LIVE_IN_PLAY_MAX_POLL_SECONDS}. */
     public static final long LIVE_WINDOW_SECONDS = 4 * 3600L;
     /** Stop polling non-terminal matches this long after kickoff (stuck sync); errors logged separately. */
     public static final long LIVE_IN_PLAY_MAX_POLL_SECONDS = 6 * 3600L;
+    /**
+     * After this much since kickoff, a still non-terminal match is overdue for FT —
+     * wake asks LIVE secondary for an independent status (weather delay / primary stuck clock).
+     */
+    public static final long SECONDARY_CATCHUP_AFTER_KICKOFF_SECONDS = 2 * 3600L + 15 * 60L;
 
     private static final Set<String> FINISHED = Set.of(
             "FINISHED", "AWARDED", "COMPLETED", "FT", "AET", "PEN"
@@ -55,6 +59,21 @@ public final class LiveMatchSupport {
             return false;
         }
         return kickoff.isAfter(now.minusSeconds(LIVE_IN_PLAY_MAX_POLL_SECONDS));
+    }
+
+    /**
+     * Primary still shows non-terminal after a typical match length — try LIVE secondary.
+     * Does not invent FINISHED; only signals that another provider should be polled.
+     */
+    public static boolean needsSecondaryStatusCatchUp(MatchSchedule schedule, Instant now) {
+        if (!isLiveHttpCandidate(schedule, now)) {
+            return false;
+        }
+        Instant kickoff = schedule.getUtcKickoff();
+        if (kickoff == null || now == null) {
+            return false;
+        }
+        return !kickoff.plusSeconds(SECONDARY_CATCHUP_AFTER_KICKOFF_SECONDS).isAfter(now);
     }
 
     /** Not finished/canceled/finalized and missing kickoff — LIVE cannot resolve. */
