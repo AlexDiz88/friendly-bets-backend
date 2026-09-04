@@ -12,10 +12,13 @@ import net.friendly_bets.models.monitoring.ExternalApiMonitoringRun;
 import net.friendly_bets.models.monitoring.ExternalApiMonitoringStatus;
 import net.friendly_bets.models.monitoring.ExternalApiMonitoringTrigger;
 import net.friendly_bets.models.schedule.MatchSchedule;
+import net.friendly_bets.dto.FullMatchSyncResultDto;
+import net.friendly_bets.models.Season;
 import net.friendly_bets.providers.ExternalDataLayer;
 import net.friendly_bets.providers.FullMatchAttemptSupport;
 import net.friendly_bets.providers.FullMatchProvider;
 import net.friendly_bets.providers.LayerProviderRouter;
+import net.friendly_bets.providers.live.LiveMatchSupport;
 import net.friendly_bets.repositories.MatchScheduleRepository;
 import net.friendly_bets.repositories.UsersRepository;
 import org.slf4j.Logger;
@@ -24,6 +27,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -79,6 +84,96 @@ public class MatchFinalizeOrchestrator {
             } catch (RuntimeException e) {
                 log.warn("FULL failed for match {}: {}", current.getId(), e.getMessage());
                 return handleUnsuccessfulAttempt(current, now, null);
+            }
+        }
+        if (properties.isAutoSettleEnabled() && MatchScheduleSettleService.isFinalizedForSettle(current)) {
+            settleMatch(current);
+        }
+        if (!wasFinalized && MatchScheduleSettleService.isFinalizedForSettle(current)) {
+            standingsSyncOrchestrator.syncLeagueAfterMatchFinalized(
+                    current.getLeagueCode(),
+                    current.getSeasonId()
+            );
+        }
+        return current;
+    }
+
+    /**
+     * Admin manual FULL_MATCH: selected provider (no failover), UTC kickoff date filter,
+     * bypasses initial/retry delay. Settles when auto-settle is enabled.
+     */
+    public FullMatchSyncResultDto syncByProviderAndUtcDate(
+            FullMatchProvider provider,
+            Season season,
+            LocalDate utcDate
+    ) {
+        if (provider == null || season == null || season.getId() == null || utcDate == null) {
+            return FullMatchSyncResultDto.builder()
+                    .provider(provider != null ? provider.providerId() : null)
+                    .date(utcDate != null ? utcDate.toString() : null)
+                    .build();
+        }
+        List<MatchSchedule> candidates = matchScheduleRepository.findBySeasonId(season.getId()).stream()
+                .filter(LiveMatchSupport::needsFullMatch)
+                .filter(s -> s.getUtcKickoff() != null)
+                .filter(s -> LocalDate.ofInstant(s.getUtcKickoff(), ZoneOffset.UTC).equals(utcDate))
+                .toList();
+        int succeeded = 0;
+        int notReady = 0;
+        int failed = 0;
+        for (MatchSchedule match : candidates) {
+            try {
+                MatchSchedule updated = finalizeFinishedMatchWithProvider(match, provider);
+                if (updated != null && updated.getFullDetailsFetchedAt() != null) {
+                    succeeded++;
+                } else {
+                    // Provider returned without FULL (e.g. alreadyFetched race) — treat as not ready.
+                    notReady++;
+                }
+            } catch (FullMatchNotReadyException e) {
+                notReady++;
+                log.debug("FULL not ready for match {}: {}", match.getId(), e.getProviderStatus());
+            } catch (RuntimeException e) {
+                failed++;
+                log.warn("FULL/settle failed for match {}: {}", match.getId(), e.getMessage());
+            }
+        }
+        return FullMatchSyncResultDto.builder()
+                .provider(provider.providerId())
+                .date(utcDate.toString())
+                .candidates(candidates.size())
+                .succeeded(succeeded)
+                .notReady(notReady)
+                .failed(failed)
+                .build();
+    }
+
+    /**
+     * Same as {@link #finalizeFinishedMatch} but uses a concrete provider (admin manual)
+     * and skips attempt-due / layer-enabled gates.
+     */
+    @Transactional
+    public MatchSchedule finalizeFinishedMatchWithProvider(MatchSchedule match, FullMatchProvider provider) {
+        if (match == null || match.getId() == null || provider == null) {
+            return match;
+        }
+        MatchSchedule current = matchScheduleRepository.findById(match.getId()).orElse(match);
+        boolean wasFinalized = current.getFinalizedAt() != null;
+        Instant now = Instant.now();
+        if (current.getFullDetailsFetchedAt() == null) {
+            try {
+                current = provider.fetchAndPersistFullDetails(current);
+                if (current.getFullDetailsFetchedAt() != null) {
+                    FullMatchAttemptSupport.clearAttemptState(current);
+                    current = matchScheduleRepository.save(current);
+                }
+            } catch (FullMatchNotReadyException e) {
+                handleUnsuccessfulAttempt(current, now, e);
+                throw e;
+            } catch (RuntimeException e) {
+                log.warn("FULL failed for match {}: {}", current.getId(), e.getMessage());
+                handleUnsuccessfulAttempt(current, now, null);
+                throw e;
             }
         }
         if (properties.isAutoSettleEnabled() && MatchScheduleSettleService.isFinalizedForSettle(current)) {
