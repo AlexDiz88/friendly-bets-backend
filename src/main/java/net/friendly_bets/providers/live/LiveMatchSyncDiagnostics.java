@@ -30,9 +30,71 @@ public class LiveMatchSyncDiagnostics {
     public static final long ERROR_AFTER_KICKOFF_SECONDS = Duration.ofMinutes(225).toSeconds();
     /** Not found in feed after kickoff — start warning. */
     public static final long NOT_IN_FEED_WARN_AFTER_KICKOFF_SECONDS = Duration.ofHours(1).toSeconds();
+    /** Kickoff passed but LIVE never wrote fetched_at — scheduler/poll gap. */
+    public static final long NEVER_POLLED_WARN_AFTER_KICKOFF_SECONDS = Duration.ofMinutes(20).toSeconds();
 
     private final ErrorLogService errorLogService;
     private final TeamsRepository teamsRepository;
+
+    /**
+     * Layer-level: kickoff already passed, status still non-terminal, LIVE never updated the row.
+     * Called from the wake scheduler even when {@code syncLive} did not run.
+     */
+    public void reportNeverPolledAfterKickoff(String seasonId, List<MatchSchedule> schedules, Instant now) {
+        if (schedules == null || schedules.isEmpty() || now == null) {
+            return;
+        }
+        Map<String, Team> teamCache = new HashMap<>();
+        for (MatchSchedule schedule : schedules) {
+            if (schedule == null || schedule.getId() == null || schedule.getId().isBlank()) {
+                continue;
+            }
+            Instant kickoff = schedule.getUtcKickoff();
+            if (kickoff == null || kickoff.isAfter(now)) {
+                continue;
+            }
+            if (schedule.getFinalizedAt() != null || schedule.getFullDetailsFetchedAt() != null) {
+                continue;
+            }
+            String status = schedule.getStatus();
+            if (LiveMatchSupport.isTerminalNoPoll(status)) {
+                continue;
+            }
+            Instant fetchedAt = schedule.getFetchedAt();
+            boolean neverPolledAfterKickoff = fetchedAt == null || fetchedAt.isBefore(kickoff);
+            if (!neverPolledAfterKickoff) {
+                continue;
+            }
+            long sinceKickoffSec = Math.max(0, Duration.between(kickoff, now).getSeconds());
+            if (sinceKickoffSec < NEVER_POLLED_WARN_AFTER_KICKOFF_SECONDS) {
+                continue;
+            }
+            String severity = sinceKickoffSec >= ERROR_AFTER_KICKOFF_SECONDS
+                    ? ErrorLogService.SEVERITY_ERROR
+                    : ErrorLogService.SEVERITY_WARN;
+            Map<String, String> context = baseContext(schedule, teamCache);
+            context.put("sinceKickoffSec", String.valueOf(sinceKickoffSec));
+            context.put("status", status != null ? status : "");
+            context.put("fetchedAt", fetchedAt != null ? fetchedAt.toString() : "");
+            errorLogService.record(ErrorLogService.Entry.builder()
+                    .severity(severity)
+                    .layer(ExternalDataLayer.LIVE.name())
+                    .provider(null)
+                    .code(ErrorLogService.CODE_LIVE_MATCH_NEVER_POLLED)
+                    .message("LIVE не опрашивал матч после kickoff (" + formatDuration(sinceKickoffSec)
+                            + "), статус " + (status != null ? status : "?")
+                            + " — wake/sync не обновил match_schedules")
+                    .leagueCode(schedule.getLeagueCode())
+                    .season(seasonId)
+                    .matchday(schedule.getMatchday())
+                    .matchScheduleId(schedule.getId())
+                    .homeTeam(teamName(schedule.getHomeTeamId(), teamCache))
+                    .awayTeam(teamName(schedule.getAwayTeamId(), teamCache))
+                    .context(context)
+                    .dedupeByMatch(true)
+                    .build());
+        }
+    }
 
     public void afterSync(
             String providerId,

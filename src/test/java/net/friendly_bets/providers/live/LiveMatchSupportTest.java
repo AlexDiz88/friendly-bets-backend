@@ -53,17 +53,18 @@ class LiveMatchSupportTest {
     }
 
     @Test
-    void httpCandidate_stopsAfterLiveWindowUnlessStillInPlay() {
-        Instant oldKickoff = NOW.minusSeconds(LiveMatchSupport.LIVE_WINDOW_SECONDS + 1);
-        assertFalse(LiveMatchSupport.isLiveHttpCandidate(
-                MatchSchedule.builder().utcKickoff(oldKickoff).status("SCHEDULED").build(), NOW));
+    void httpCandidate_keepsScheduledPastFormerFourHourWindow() {
+        Instant fiveHoursAgo = NOW.minusSeconds(5 * 3600L);
         assertTrue(LiveMatchSupport.isLiveHttpCandidate(
-                MatchSchedule.builder().utcKickoff(oldKickoff).status("LIVE").build(), NOW));
+                MatchSchedule.builder().utcKickoff(fiveHoursAgo).status("SCHEDULED").build(), NOW),
+                "stuck SCHEDULED after missed wake must stay pollable within max window");
     }
 
     @Test
-    void httpCandidate_stopsInPlayAfterMaxPollWindow() {
+    void httpCandidate_stopsAfterMaxPollWindowForAnyNonTerminal() {
         Instant veryOldKickoff = NOW.minusSeconds(LiveMatchSupport.LIVE_IN_PLAY_MAX_POLL_SECONDS + 1);
+        assertFalse(LiveMatchSupport.isLiveHttpCandidate(
+                MatchSchedule.builder().utcKickoff(veryOldKickoff).status("SCHEDULED").build(), NOW));
         assertFalse(LiveMatchSupport.isLiveHttpCandidate(
                 MatchSchedule.builder().utcKickoff(veryOldKickoff).status("IN_PLAY").build(), NOW));
     }

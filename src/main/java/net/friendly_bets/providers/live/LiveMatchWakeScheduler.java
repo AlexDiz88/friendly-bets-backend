@@ -24,6 +24,7 @@ import org.springframework.stereotype.Component;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -32,11 +33,18 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * Layer-level LIVE wake: first tick at {@code utc_kickoff}, then every poll interval
  * while any match is tracked. Calls {@link LayerProviderRouter} (primary → secondary) —
  * not a specific physical API.
+ *
+ * <p>Long waits until a distant kickoff are capped by a heartbeat so a lost
+ * {@link ScheduledFuture} (deploy, cancel race) cannot leave the layer dormant
+ * while kickoffs pass silently.
  */
 @Component
 public class LiveMatchWakeScheduler {
 
     private static final Logger log = LoggerFactory.getLogger(LiveMatchWakeScheduler.class);
+
+    /** Re-evaluate upcoming kickoffs at least this often (recovery from missed one-shot wakes). */
+    static final long WAKE_HEARTBEAT_MS = 900_000L;
 
     private final RunningSeasonLookup runningSeasonLookup;
     private final LayerProviderRouter router;
@@ -44,6 +52,7 @@ public class LiveMatchWakeScheduler {
     private final ExternalDataLayerConfigService layerConfigService;
     private final MatchScheduleRepository matchScheduleRepository;
     private final MatchResultSyncProperties matchResultSyncProperties;
+    private final LiveMatchSyncDiagnostics liveMatchSyncDiagnostics;
     private final ThreadPoolTaskScheduler taskScheduler;
     private final long schedulerTickMs;
 
@@ -57,6 +66,7 @@ public class LiveMatchWakeScheduler {
             ExternalDataLayerConfigService layerConfigService,
             MatchScheduleRepository matchScheduleRepository,
             MatchResultSyncProperties matchResultSyncProperties,
+            LiveMatchSyncDiagnostics liveMatchSyncDiagnostics,
             @Qualifier("liveMatchWakeTaskScheduler") ThreadPoolTaskScheduler taskScheduler,
             @Value("${external-data.layers.LIVE.scheduler-tick-ms:300000}") long schedulerTickMs
     ) {
@@ -66,6 +76,7 @@ public class LiveMatchWakeScheduler {
         this.layerConfigService = layerConfigService;
         this.matchScheduleRepository = matchScheduleRepository;
         this.matchResultSyncProperties = matchResultSyncProperties;
+        this.liveMatchSyncDiagnostics = liveMatchSyncDiagnostics;
         this.taskScheduler = taskScheduler;
         this.schedulerTickMs = Math.max(1_000L, schedulerTickMs);
     }
@@ -113,9 +124,12 @@ public class LiveMatchWakeScheduler {
         }
         Season season = seasonOpt.get();
         Instant now = Instant.now();
-        LinkedHashSet<String> pendingFull = collectPendingFullMatchIds(season.getId());
+        List<MatchSchedule> seasonSchedules = matchScheduleRepository.findBySeasonId(season.getId());
+        liveMatchSyncDiagnostics.reportNeverPolledAfterKickoff(season.getId(), seasonSchedules, now);
 
-        boolean hasTracked = matchScheduleRepository.findBySeasonId(season.getId()).stream()
+        LinkedHashSet<String> pendingFull = collectPendingFullMatchIds(seasonSchedules);
+
+        boolean hasTracked = seasonSchedules.stream()
                 .anyMatch(s -> LiveMatchSupport.isLiveHttpCandidate(s, now));
         if (!hasTracked && pendingFull.isEmpty()) {
             return;
@@ -152,9 +166,9 @@ public class LiveMatchWakeScheduler {
         }
     }
 
-    private LinkedHashSet<String> collectPendingFullMatchIds(String seasonId) {
+    private LinkedHashSet<String> collectPendingFullMatchIds(List<MatchSchedule> schedules) {
         LinkedHashSet<String> pendingFull = new LinkedHashSet<>();
-        for (MatchSchedule schedule : matchScheduleRepository.findBySeasonId(seasonId)) {
+        for (MatchSchedule schedule : schedules) {
             if (LiveMatchSupport.needsFullMatch(schedule) && schedule.getId() != null) {
                 pendingFull.add(schedule.getId());
             }
@@ -198,7 +212,8 @@ public class LiveMatchWakeScheduler {
             return Optional.of(now);
         }
         if (nearestWake != null) {
-            return Optional.of(nearestWake.isBefore(now) ? now : nearestWake);
+            Instant target = nearestWake.isBefore(now) ? now : nearestWake;
+            return Optional.of(capWakeByHeartbeat(now, target, WAKE_HEARTBEAT_MS));
         }
         return Optional.empty();
     }
@@ -214,6 +229,18 @@ public class LiveMatchWakeScheduler {
             return soonestFuture;
         }
         return afterInterval;
+    }
+
+    /**
+     * Do not sleep longer than {@code heartbeatMs} while waiting for a distant kickoff —
+     * otherwise a cancelled/missed one-shot {@link ScheduledFuture} leaves LIVE dormant.
+     */
+    static Instant capWakeByHeartbeat(Instant now, Instant target, long heartbeatMs) {
+        Instant cap = now.plusMillis(Math.max(1_000L, heartbeatMs));
+        if (target == null || target.isBefore(now)) {
+            return now;
+        }
+        return target.isBefore(cap) ? target : cap;
     }
 
     private synchronized void scheduleNext(Optional<Instant> when) {

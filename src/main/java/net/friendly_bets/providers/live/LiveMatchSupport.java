@@ -13,8 +13,9 @@ import java.util.Set;
  */
 public final class LiveMatchSupport {
 
+    /** Former post-kickoff window for SCHEDULED-only (4h); candidates now use {@link #LIVE_IN_PLAY_MAX_POLL_SECONDS}. */
     public static final long LIVE_WINDOW_SECONDS = 4 * 3600L;
-    /** Stop polling IN_PLAY matches long after kickoff (stuck sync); errors logged separately. */
+    /** Stop polling non-terminal matches this long after kickoff (stuck sync); errors logged separately. */
     public static final long LIVE_IN_PLAY_MAX_POLL_SECONDS = 6 * 3600L;
 
     private static final Set<String> FINISHED = Set.of(
@@ -29,8 +30,10 @@ public final class LiveMatchSupport {
     }
 
     /**
-     * HTTP candidate: not finalized/FULL; if still in play → true;
-     * else kickoff in {@code [now - LIVE_WINDOW, now]}.
+     * HTTP candidate: not finalized/FULL; kickoff already passed; still within
+     * {@link #LIVE_IN_PLAY_MAX_POLL_SECONDS} after kickoff.
+     * Applies to {@code SCHEDULED} stuck after kickoff as well as {@code IN_PLAY} —
+     * a missed wake must still be able to catch FT within this window.
      */
     public static boolean isLiveHttpCandidate(MatchSchedule schedule, Instant now) {
         if (schedule == null || now == null) {
@@ -47,10 +50,11 @@ public final class LiveMatchSupport {
         if (FINISHED.contains(status) || CANCELED.contains(status)) {
             return false;
         }
-        if (IN_PLAY.contains(status)) {
-            return kickoff.isAfter(now.minusSeconds(LIVE_IN_PLAY_MAX_POLL_SECONDS));
+        // Not started yet — wake scheduler fires at utc_kickoff; do not poll early.
+        if (kickoff.isAfter(now)) {
+            return false;
         }
-        return !kickoff.isAfter(now) && kickoff.isAfter(now.minusSeconds(LIVE_WINDOW_SECONDS));
+        return kickoff.isAfter(now.minusSeconds(LIVE_IN_PLAY_MAX_POLL_SECONDS));
     }
 
     /** Not finished/canceled/finalized and missing kickoff — LIVE cannot resolve. */
