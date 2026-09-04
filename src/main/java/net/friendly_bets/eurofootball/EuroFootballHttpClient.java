@@ -43,13 +43,24 @@ public class EuroFootballHttpClient {
         return getBody(url, base + "/online/today", true);
     }
 
-    /** Day page with full schedule feed for a UTC calendar date. */
-    public String fetchDateOnlineHtml(LocalDate date) {
-        if (date == null) {
+    /**
+     * Day page with full schedule feed for a site-calendar date ({@link EuroFootballFeedDates#FEED_ZONE}).
+     * Uses relative paths ({@code /online/yesterday}, …) — {@code /online/yyyy-MM-dd} has no match rows.
+     */
+    public String fetchDateOnlineHtml(LocalDate feedDate) {
+        return fetchDateOnlineHtml(feedDate, Instant.now());
+    }
+
+    public String fetchDateOnlineHtml(LocalDate feedDate, Instant now) {
+        if (feedDate == null) {
             throw new BadRequestException("euroFootballFetchFailed");
         }
         String base = trimTrailingSlash(properties.getBaseUrl());
-        String url = base + "/online/" + date;
+        String path = EuroFootballFeedDates.onlinePathForFeedDate(
+                feedDate,
+                EuroFootballFeedDates.siteToday(now)
+        );
+        String url = base + path;
         ScrapeHttpSupport.jitterSleep(properties.getHttpDelayMinMs(), properties.getHttpDelayMaxMs());
         return getBody(url, base + "/online/today", false);
     }

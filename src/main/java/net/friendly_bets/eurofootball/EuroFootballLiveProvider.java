@@ -121,8 +121,8 @@ public class EuroFootballLiveProvider implements LiveMatchProvider {
             return LiveSyncResult.skipped(skipReason);
         }
 
-        Set<LocalDate> dates = tracked.stream()
-                .map(s -> LocalDate.ofInstant(s.getUtcKickoff(), ZoneOffset.UTC))
+        Set<LocalDate> feedDates = tracked.stream()
+                .map(s -> EuroFootballFeedDates.feedDate(s.getUtcKickoff()))
                 .collect(Collectors.toCollection(TreeSet::new));
 
         Map<String, Team> teamCache = new HashMap<>();
@@ -133,16 +133,20 @@ public class EuroFootballLiveProvider implements LiveMatchProvider {
         Set<String> notFoundIds = new HashSet<>();
 
         try {
-            for (LocalDate date : dates) {
+            for (LocalDate feedDate : feedDates) {
                 Instant reqAt = Instant.now();
                 long t0 = System.currentTimeMillis();
+                String path = EuroFootballFeedDates.onlinePathForFeedDate(
+                        feedDate,
+                        EuroFootballFeedDates.siteToday(now)
+                );
                 String html;
                 try {
-                    html = httpClient.fetchDateOnlineHtml(date);
+                    html = httpClient.fetchDateOnlineHtml(feedDate, now);
                     httpRequests++;
                     httpLogs.add(ExternalApiMonitoringService.httpLog(
                             "DATE_PAGE",
-                            date.toString(),
+                            path + " (" + feedDate + ")",
                             200,
                             "SUCCESS",
                             System.currentTimeMillis() - t0,
@@ -153,7 +157,7 @@ public class EuroFootballLiveProvider implements LiveMatchProvider {
                 } catch (RuntimeException e) {
                     httpLogs.add(ExternalApiMonitoringService.httpLog(
                             "DATE_PAGE",
-                            date.toString(),
+                            path + " (" + feedDate + ")",
                             null,
                             "HTTP_ERROR",
                             System.currentTimeMillis() - t0,
@@ -167,7 +171,7 @@ public class EuroFootballLiveProvider implements LiveMatchProvider {
                 EuroFootballParsedDatePage page = dateHtmlParser.parse(html);
 
                 List<MatchSchedule> dateTracked = tracked.stream()
-                        .filter(s -> LocalDate.ofInstant(s.getUtcKickoff(), ZoneOffset.UTC).equals(date))
+                        .filter(s -> feedDate.equals(EuroFootballFeedDates.feedDate(s.getUtcKickoff())))
                         .toList();
 
                 for (MatchSchedule schedule : dateTracked) {
@@ -250,7 +254,7 @@ public class EuroFootballLiveProvider implements LiveMatchProvider {
                 warning
         );
 
-        List<String> datesSynced = dates.stream().map(LocalDate::toString).toList();
+        List<String> datesSynced = feedDates.stream().map(LocalDate::toString).toList();
         return new LiveSyncResult(
                 httpRequests,
                 tracked.size(),
