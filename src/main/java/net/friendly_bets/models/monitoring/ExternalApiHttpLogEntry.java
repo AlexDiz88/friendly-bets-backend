@@ -21,6 +21,22 @@ public class ExternalApiHttpLogEntry {
     @Field(name = "target")
     private String target;
 
+    /** Optional "Home - Away" label for match-scoped requests (SSE / EVENT). */
+    @Field(name = "teams")
+    private String teams;
+
+    @Field(name = "home_title")
+    private String homeTitle;
+
+    @Field(name = "away_title")
+    private String awayTitle;
+
+    @Field(name = "home_logo_key")
+    private String homeLogoKey;
+
+    @Field(name = "away_logo_key")
+    private String awayLogoKey;
+
     @Field(name = "http_status")
     private Integer httpStatus;
 

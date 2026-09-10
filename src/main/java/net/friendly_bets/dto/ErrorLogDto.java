@@ -38,6 +38,8 @@ public class ErrorLogDto {
     private String awayTeamTitle;
     private String homeTeamLogoKey;
     private String awayTeamLogoKey;
+    /** Failed ODDS matches (mapping) with titles + logos when context has schedule ids. */
+    private List<ExternalApiMatchTeamsDto> failedMatches;
     private Instant firstOccurredAt;
     private Instant lastOccurredAt;
     private List<Instant> occurredAt;

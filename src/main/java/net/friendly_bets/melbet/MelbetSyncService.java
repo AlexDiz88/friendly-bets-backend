@@ -11,6 +11,7 @@ import net.friendly_bets.melbet.mapping.MelbetBetTitleMapper;
 import net.friendly_bets.models.League;
 import net.friendly_bets.models.Season;
 import net.friendly_bets.models.monitoring.ExternalApiHttpLogEntry;
+import net.friendly_bets.models.monitoring.ExternalApiMatchTeamsRef;
 import net.friendly_bets.models.monitoring.ExternalApiMonitoringCounters;
 import net.friendly_bets.models.monitoring.ExternalApiMonitoringRun;
 import net.friendly_bets.models.monitoring.ExternalApiMonitoringStatus;
@@ -425,7 +426,8 @@ public class MelbetSyncService {
             sleepBeforeEvent();
             Instant requestedAt = Instant.now();
             MelbetHttpFetchResult eventResult = httpClient.fetchEvent(event.getEventId());
-            httpLogs.add(toLog("EVENT", event.getEventId(), eventResult, requestedAt));
+            ExternalApiMatchTeamsRef teamsRef = monitoringService.resolveMatchTeams(match);
+            httpLogs.add(toLog("EVENT", event.getEventId(), teamsRef, eventResult, requestedAt));
             if (!eventResult.isSuccess()) {
                 sleepRetryAfter(eventResult.getRetryAfterSeconds());
                 return MatchOutcome.matchedFail(true);
@@ -504,9 +506,20 @@ public class MelbetSyncService {
             MelbetHttpFetchResult result,
             Instant requestedAt
     ) {
+        return toLog(type, targetId, null, result, requestedAt);
+    }
+
+    private static ExternalApiHttpLogEntry toLog(
+            String type,
+            long targetId,
+            ExternalApiMatchTeamsRef teamsRef,
+            MelbetHttpFetchResult result,
+            Instant requestedAt
+    ) {
         return ExternalApiMonitoringService.httpLog(
                 type,
                 String.valueOf(targetId),
+                teamsRef,
                 result.getHttpStatus(),
                 result.getOutcome() != null ? result.getOutcome().name() : null,
                 result.getDurationMs(),

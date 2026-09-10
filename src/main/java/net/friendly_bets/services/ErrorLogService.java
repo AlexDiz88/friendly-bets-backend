@@ -4,6 +4,7 @@ import lombok.Builder;
 import lombok.RequiredArgsConstructor;
 import lombok.Value;
 import net.friendly_bets.dto.ErrorLogDto;
+import net.friendly_bets.dto.ExternalApiMatchTeamsDto;
 import net.friendly_bets.exceptions.BadRequestException;
 import net.friendly_bets.exceptions.NotFoundException;
 import net.friendly_bets.models.ErrorLog;
@@ -30,6 +31,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Persists operator-visible sync/provider errors to {@code error_logs}.
@@ -147,6 +149,18 @@ public class ErrorLogService {
             List<ExternalApiHttpLogEntry> httpLogs,
             String errorSummary
     ) {
+        recordHttpRequestFailuresIfNeeded(layer, provider, leagueCode, season, httpLogs, errorSummary, List.of());
+    }
+
+    public void recordHttpRequestFailuresIfNeeded(
+            ExternalDataLayer layer,
+            String provider,
+            String leagueCode,
+            String season,
+            List<ExternalApiHttpLogEntry> httpLogs,
+            String errorSummary,
+            List<String> failedMatchScheduleIds
+    ) {
         int failed = countFailedHttpLogs(httpLogs);
         if (failed <= 0) {
             return;
@@ -167,6 +181,8 @@ public class ErrorLogService {
                 message.trim()).isPresent()) {
             return;
         }
+        Map<String, String> context = new LinkedHashMap<>();
+        putFailedMatchIds(context, failedMatchScheduleIds);
         record(Entry.builder()
                 .severity(SEVERITY_ERROR)
                 .layer(layerName)
@@ -175,17 +191,86 @@ public class ErrorLogService {
                 .message(message.trim())
                 .leagueCode(leagueCode)
                 .season(blankToNull(season))
+                .context(context)
                 .build());
     }
 
+    /**
+     * Persists a provider-level error_log from an already-built summary (e.g. ODDS mappingFailures with team labels)
+     * when there were no failed HTTP rows to trigger {@link #recordHttpRequestFailuresIfNeeded}.
+     */
+    public void recordProviderMessageIfNeeded(
+            ExternalDataLayer layer,
+            String provider,
+            String leagueCode,
+            String season,
+            String message
+    ) {
+        recordProviderMessageIfNeeded(layer, provider, leagueCode, season, message, List.of());
+    }
+
+    public void recordProviderMessageIfNeeded(
+            ExternalDataLayer layer,
+            String provider,
+            String leagueCode,
+            String season,
+            String message,
+            List<String> failedMatchScheduleIds
+    ) {
+        if (message == null || message.isBlank()) {
+            return;
+        }
+        String providerNorm = blankToNull(provider);
+        String layerName = layer != null ? layer.name() : null;
+        String leagueNorm = blankToNull(leagueCode);
+        String trimmed = message.trim();
+        if (providerNorm != null
+                && errorLogRepository.findFirstByProviderAndCodeAndLayerAndLeagueCodeAndMessage(
+                providerNorm,
+                CODE_PROVIDER_FETCH_FAILED,
+                layerName,
+                leagueNorm,
+                trimmed).isPresent()) {
+            return;
+        }
+        Map<String, String> context = new LinkedHashMap<>();
+        putFailedMatchIds(context, failedMatchScheduleIds);
+        record(Entry.builder()
+                .severity(SEVERITY_ERROR)
+                .layer(layerName)
+                .provider(provider)
+                .code(CODE_PROVIDER_FETCH_FAILED)
+                .message(trimmed)
+                .leagueCode(leagueCode)
+                .season(blankToNull(season))
+                .context(context)
+                .build());
+    }
+
+    private static void putFailedMatchIds(Map<String, String> context, List<String> failedMatchScheduleIds) {
+        if (context == null || failedMatchScheduleIds == null || failedMatchScheduleIds.isEmpty()) {
+            return;
+        }
+        String joined = failedMatchScheduleIds.stream()
+                .filter(id -> id != null && !id.isBlank())
+                .distinct()
+                .collect(Collectors.joining(","));
+        if (!joined.isEmpty()) {
+            context.put("failedMatchScheduleIds", joined);
+        }
+    }
+
     private static String buildHttpFailureMessage(List<ExternalApiHttpLogEntry> httpLogs, String errorSummary) {
+        StringBuilder sb = new StringBuilder();
         if (errorSummary != null && !errorSummary.isBlank()) {
-            return errorSummary.trim();
+            sb.append(errorSummary.trim());
         }
         int total = httpLogs != null ? httpLogs.size() : 0;
         int failed = countFailedHttpLogs(httpLogs);
         int success = Math.max(0, total - failed);
-        StringBuilder sb = new StringBuilder();
+        if (sb.length() > 0) {
+            sb.append("; ");
+        }
         sb.append("httpSuccess=").append(success).append("/").append(total);
         if (httpLogs != null) {
             for (ExternalApiHttpLogEntry entry : httpLogs) {
@@ -195,6 +280,9 @@ public class ErrorLogService {
                 sb.append("; ");
                 sb.append(entry.getRequestType() != null ? entry.getRequestType() : "?");
                 sb.append(":").append(entry.getOutcome());
+                if (entry.getTeams() != null && !entry.getTeams().isBlank()) {
+                    sb.append(" (").append(entry.getTeams().trim()).append(")");
+                }
                 if (entry.getDetail() != null && !entry.getDetail().isBlank()) {
                     sb.append(" — ").append(entry.getDetail().trim());
                 }
@@ -381,7 +469,8 @@ public class ErrorLogService {
     }
 
     /**
-     * Resolve home/away titles and logo keys from {@code match_schedules} when the log has a match id.
+     * Resolve home/away titles and logo keys from {@code match_schedules} when the log has a match id
+     * or {@code context.failedMatchScheduleIds}.
      * Stored {@code homeTeam}/{@code awayTeam} names are kept if already present.
      */
     private void enrichFromMatchSchedules(List<ErrorLogDto> dtos) {
@@ -392,8 +481,9 @@ public class ErrorLogService {
         for (ErrorLogDto dto : dtos) {
             String id = dto.getMatchScheduleId();
             if (id != null && !id.isBlank()) {
-                scheduleIds.add(id);
+                scheduleIds.add(id.trim());
             }
+            scheduleIds.addAll(parseFailedMatchIds(dto.getContext()));
         }
         if (scheduleIds.isEmpty()) {
             return;
@@ -425,31 +515,90 @@ public class ErrorLogService {
             }
         }
         for (ErrorLogDto dto : dtos) {
-            if (dto.getMatchScheduleId() == null) {
-                continue;
+            if (dto.getMatchScheduleId() != null && !dto.getMatchScheduleId().isBlank()) {
+                MatchSchedule schedule = schedules.get(dto.getMatchScheduleId().trim());
+                if (schedule != null) {
+                    applyTeamFromSchedule(dto, true, teams.get(schedule.getHomeTeamId()));
+                    applyTeamFromSchedule(dto, false, teams.get(schedule.getAwayTeamId()));
+                }
             }
-            MatchSchedule schedule = schedules.get(dto.getMatchScheduleId());
-            if (schedule == null) {
-                continue;
+            List<String> failedIds = parseFailedMatchIds(dto.getContext());
+            if (!failedIds.isEmpty()) {
+                List<ExternalApiMatchTeamsDto> failedMatches = new ArrayList<>();
+                for (String failedId : failedIds) {
+                    MatchSchedule schedule = schedules.get(failedId);
+                    if (schedule == null) {
+                        continue;
+                    }
+                    Team home = teams.get(schedule.getHomeTeamId());
+                    Team away = teams.get(schedule.getAwayTeamId());
+                    failedMatches.add(ExternalApiMatchTeamsDto.builder()
+                            .matchScheduleId(failedId)
+                            .homeTitle(teamTitleOrId(home, schedule.getHomeTeamId()))
+                            .awayTitle(teamTitleOrId(away, schedule.getAwayTeamId()))
+                            .homeLogoKey(logoKeyOrTitle(home))
+                            .awayLogoKey(logoKeyOrTitle(away))
+                            .build());
+                }
+                if (!failedMatches.isEmpty()) {
+                    dto.setFailedMatches(failedMatches);
+                }
             }
-            applyTeamFromSchedule(dto, true, teams.get(schedule.getHomeTeamId()));
-            applyTeamFromSchedule(dto, false, teams.get(schedule.getAwayTeamId()));
         }
+    }
+
+    private static List<String> parseFailedMatchIds(Map<String, String> context) {
+        if (context == null) {
+            return List.of();
+        }
+        String raw = context.get("failedMatchScheduleIds");
+        if (raw == null || raw.isBlank()) {
+            return List.of();
+        }
+        List<String> out = new ArrayList<>();
+        for (String part : raw.split(",")) {
+            String id = part.trim();
+            if (!id.isEmpty()) {
+                out.add(id);
+            }
+        }
+        return out;
+    }
+
+    private static String teamTitleOrId(Team team, String fallbackId) {
+        if (team != null && team.getTitle() != null && !team.getTitle().isBlank()) {
+            return team.getTitle().trim();
+        }
+        return fallbackId;
+    }
+
+    private static String logoKeyOrTitle(Team team) {
+        if (team == null) {
+            return null;
+        }
+        if (team.getLogo() != null && !team.getLogo().isBlank()) {
+            return team.getLogo().trim();
+        }
+        if (team.getTitle() != null && !team.getTitle().isBlank()) {
+            return team.getTitle().trim();
+        }
+        return null;
     }
 
     private static void applyTeamFromSchedule(ErrorLogDto dto, boolean home, Team team) {
         if (team == null) {
             return;
         }
+        String logo = logoKeyOrTitle(team);
         if (home) {
             dto.setHomeTeamTitle(team.getTitle());
-            dto.setHomeTeamLogoKey(team.getLogo());
+            dto.setHomeTeamLogoKey(logo);
             if (dto.getHomeTeam() == null || dto.getHomeTeam().isBlank()) {
                 dto.setHomeTeam(team.getTitle());
             }
         } else {
             dto.setAwayTeamTitle(team.getTitle());
-            dto.setAwayTeamLogoKey(team.getLogo());
+            dto.setAwayTeamLogoKey(logo);
             if (dto.getAwayTeam() == null || dto.getAwayTeam().isBlank()) {
                 dto.setAwayTeam(team.getTitle());
             }
