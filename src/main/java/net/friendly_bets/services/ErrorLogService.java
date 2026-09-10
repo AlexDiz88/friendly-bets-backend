@@ -93,13 +93,13 @@ public class ErrorLogService {
             return;
         }
         try {
+            ResolvedEntry resolved = resolveEntry(entry);
             if (entry.isDedupeByMatch()
-                    && entry.getMatchScheduleId() != null
-                    && !entry.getMatchScheduleId().isBlank()) {
+                    && resolved.matchScheduleId != null) {
                 Optional<ErrorLog> existing = errorLogRepository.findFirstByProviderAndCodeAndMatchScheduleId(
-                        blankToNull(entry.getProvider()),
+                        resolved.provider,
                         entry.getCode().trim(),
-                        entry.getMatchScheduleId().trim());
+                        resolved.matchScheduleId);
                 if (existing.isPresent()) {
                     ErrorLog doc = existing.get();
                     appendOccurrence(doc, Instant.now());
@@ -117,23 +117,166 @@ public class ErrorLogService {
                     .occurredAt(occurredAt)
                     .occurrenceCount(1)
                     .severity(blankToNull(entry.getSeverity()) != null ? entry.getSeverity().trim().toUpperCase(Locale.ROOT) : SEVERITY_ERROR)
-                    .layer(blankToNull(entry.getLayer()))
-                    .provider(blankToNull(entry.getProvider()))
+                    .layer(resolved.layer)
+                    .provider(resolved.provider)
                     .providerRole(blankToNull(entry.getProviderRole()))
                     .code(entry.getCode().trim())
-                    .message(blankToNull(entry.getMessage()))
-                    .leagueCode(blankToNull(entry.getLeagueCode()))
-                    .season(blankToNull(entry.getSeason()))
-                    .matchday(entry.getMatchday())
-                    .matchScheduleId(blankToNull(entry.getMatchScheduleId()))
+                    .message(resolved.message)
+                    .leagueCode(resolved.leagueCode)
+                    .season(resolved.season)
+                    .matchday(resolved.matchday)
+                    .matchScheduleId(resolved.matchScheduleId)
                     .externalMatchId(blankToNull(entry.getExternalMatchId()))
-                    .homeTeam(blankToNull(entry.getHomeTeam()))
-                    .awayTeam(blankToNull(entry.getAwayTeam()))
+                    .homeTeam(resolved.homeTeam)
+                    .awayTeam(resolved.awayTeam)
                     .context(entry.getContext() != null ? new LinkedHashMap<>(entry.getContext()) : new LinkedHashMap<>())
                     .build();
             errorLogRepository.save(doc);
         } catch (Exception e) {
             log.warn("Failed to persist error_log: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * Builds the stored message: original detail plus always layer / provider / league / matchday / teams
+     * (explicit «недоступн*» when a field is missing).
+     */
+    String toStoredMessage(Entry entry) {
+        return resolveEntry(entry).message;
+    }
+
+    private ResolvedEntry resolveEntry(Entry entry) {
+        String layer = blankToNull(entry.getLayer());
+        String provider = blankToNull(entry.getProvider());
+        String leagueCode = blankToNull(entry.getLeagueCode());
+        String season = blankToNull(entry.getSeason());
+        Integer matchday = entry.getMatchday();
+        String matchScheduleId = blankToNull(entry.getMatchScheduleId());
+        String homeTeam = blankToNull(entry.getHomeTeam());
+        String awayTeam = blankToNull(entry.getAwayTeam());
+
+        if (matchScheduleId != null && matchScheduleRepository != null) {
+            MatchSchedule schedule = matchScheduleRepository.findById(matchScheduleId).orElse(null);
+            if (schedule != null) {
+                if (leagueCode == null) {
+                    leagueCode = blankToNull(schedule.getLeagueCode());
+                }
+                if (season == null) {
+                    season = blankToNull(schedule.getSeasonId());
+                }
+                if (matchday == null) {
+                    matchday = schedule.getMatchday();
+                }
+                if (homeTeam == null) {
+                    homeTeam = resolveTeamTitle(schedule.getHomeTeamId());
+                }
+                if (awayTeam == null) {
+                    awayTeam = resolveTeamTitle(schedule.getAwayTeamId());
+                }
+            }
+        }
+
+        String message = formatInformativeMessage(
+                blankToNull(entry.getMessage()),
+                layer,
+                provider,
+                leagueCode,
+                matchday,
+                homeTeam,
+                awayTeam
+        );
+        return new ResolvedEntry(layer, provider, leagueCode, season, matchday, matchScheduleId, homeTeam, awayTeam, message);
+    }
+
+    private String resolveTeamTitle(String teamId) {
+        if (teamId == null || teamId.isBlank() || teamsRepository == null) {
+            return blankToNull(teamId);
+        }
+        return teamsRepository.findById(teamId.trim())
+                .map(Team::getTitle)
+                .map(ErrorLogService::blankToNull)
+                .orElse(teamId.trim());
+    }
+
+    private static final String CONTEXT_SEP = " | ";
+
+    static String formatInformativeMessage(
+            String baseMessage,
+            String layer,
+            String provider,
+            String leagueCode,
+            Integer matchday,
+            String homeTeam,
+            String awayTeam
+    ) {
+        String suffix = buildContextSuffix(layer, provider, leagueCode, matchday, homeTeam, awayTeam);
+        if (baseMessage == null || baseMessage.isBlank()) {
+            return suffix;
+        }
+        if (baseMessage.contains(CONTEXT_SEP + "слой:")
+                || baseMessage.contains(CONTEXT_SEP + "данные о слое")) {
+            return baseMessage;
+        }
+        return baseMessage + CONTEXT_SEP + suffix;
+    }
+
+    private static String buildContextSuffix(
+            String layer,
+            String provider,
+            String leagueCode,
+            Integer matchday,
+            String homeTeam,
+            String awayTeam
+    ) {
+        String layerPart = layer != null ? "слой: " + layer : "данные о слое недоступны";
+        String providerPart = provider != null ? "провайдер: " + provider : "данные о провайдере недоступны";
+        String leaguePart = leagueCode != null ? "лига: " + leagueCode : "данные о лиге недоступны";
+        String matchdayPart = matchday != null ? "тур: " + matchday : "данные о туре недоступны";
+        String teamsPart;
+        if (homeTeam != null && awayTeam != null) {
+            teamsPart = "команды: " + homeTeam + " — " + awayTeam;
+        } else if (homeTeam != null || awayTeam != null) {
+            teamsPart = "команды: "
+                    + (homeTeam != null ? homeTeam : "?")
+                    + " — "
+                    + (awayTeam != null ? awayTeam : "?");
+        } else {
+            teamsPart = "информация о командах недоступна";
+        }
+        return layerPart + "; " + providerPart + "; " + leaguePart + "; " + matchdayPart + "; " + teamsPart;
+    }
+
+    private static final class ResolvedEntry {
+        final String layer;
+        final String provider;
+        final String leagueCode;
+        final String season;
+        final Integer matchday;
+        final String matchScheduleId;
+        final String homeTeam;
+        final String awayTeam;
+        final String message;
+
+        ResolvedEntry(
+                String layer,
+                String provider,
+                String leagueCode,
+                String season,
+                Integer matchday,
+                String matchScheduleId,
+                String homeTeam,
+                String awayTeam,
+                String message
+        ) {
+            this.layer = layer;
+            this.provider = provider;
+            this.leagueCode = leagueCode;
+            this.season = season;
+            this.matchday = matchday;
+            this.matchScheduleId = matchScheduleId;
+            this.homeTeam = homeTeam;
+            this.awayTeam = awayTeam;
+            this.message = message;
         }
     }
 
@@ -172,18 +315,9 @@ public class ErrorLogService {
         String providerNorm = blankToNull(provider);
         String layerName = layer != null ? layer.name() : null;
         String leagueNorm = blankToNull(leagueCode);
-        if (providerNorm != null
-                && errorLogRepository.findFirstByProviderAndCodeAndLayerAndLeagueCodeAndMessage(
-                providerNorm,
-                CODE_PROVIDER_FETCH_FAILED,
-                layerName,
-                leagueNorm,
-                message.trim()).isPresent()) {
-            return;
-        }
         Map<String, String> context = new LinkedHashMap<>();
         putFailedMatchIds(context, failedMatchScheduleIds);
-        record(Entry.builder()
+        Entry entry = Entry.builder()
                 .severity(SEVERITY_ERROR)
                 .layer(layerName)
                 .provider(provider)
@@ -192,7 +326,17 @@ public class ErrorLogService {
                 .leagueCode(leagueCode)
                 .season(blankToNull(season))
                 .context(context)
-                .build());
+                .build();
+        if (providerNorm != null
+                && errorLogRepository.findFirstByProviderAndCodeAndLayerAndLeagueCodeAndMessage(
+                providerNorm,
+                CODE_PROVIDER_FETCH_FAILED,
+                layerName,
+                leagueNorm,
+                toStoredMessage(entry)).isPresent()) {
+            return;
+        }
+        record(entry);
     }
 
     /**
@@ -224,18 +368,9 @@ public class ErrorLogService {
         String layerName = layer != null ? layer.name() : null;
         String leagueNorm = blankToNull(leagueCode);
         String trimmed = message.trim();
-        if (providerNorm != null
-                && errorLogRepository.findFirstByProviderAndCodeAndLayerAndLeagueCodeAndMessage(
-                providerNorm,
-                CODE_PROVIDER_FETCH_FAILED,
-                layerName,
-                leagueNorm,
-                trimmed).isPresent()) {
-            return;
-        }
         Map<String, String> context = new LinkedHashMap<>();
         putFailedMatchIds(context, failedMatchScheduleIds);
-        record(Entry.builder()
+        Entry entry = Entry.builder()
                 .severity(SEVERITY_ERROR)
                 .layer(layerName)
                 .provider(provider)
@@ -244,7 +379,17 @@ public class ErrorLogService {
                 .leagueCode(leagueCode)
                 .season(blankToNull(season))
                 .context(context)
-                .build());
+                .build();
+        if (providerNorm != null
+                && errorLogRepository.findFirstByProviderAndCodeAndLayerAndLeagueCodeAndMessage(
+                providerNorm,
+                CODE_PROVIDER_FETCH_FAILED,
+                layerName,
+                leagueNorm,
+                toStoredMessage(entry)).isPresent()) {
+            return;
+        }
+        record(entry);
     }
 
     private static void putFailedMatchIds(Map<String, String> context, List<String> failedMatchScheduleIds) {
@@ -465,7 +610,34 @@ public class ErrorLogService {
         int skip = page * size;
         List<ErrorLogDto> dtos = ErrorLogDto.fromList(errorLogRepository.findRecent(skip, size));
         enrichFromMatchSchedules(dtos);
+        enrichMessages(dtos);
         return dtos;
+    }
+
+    /** Ensure message always carries layer/provider/league/matchday/teams (also for legacy rows). */
+    private static void enrichMessages(List<ErrorLogDto> dtos) {
+        if (dtos == null || dtos.isEmpty()) {
+            return;
+        }
+        for (ErrorLogDto dto : dtos) {
+            String home = blankToNull(dto.getHomeTeamTitle());
+            if (home == null) {
+                home = blankToNull(dto.getHomeTeam());
+            }
+            String away = blankToNull(dto.getAwayTeamTitle());
+            if (away == null) {
+                away = blankToNull(dto.getAwayTeam());
+            }
+            dto.setMessage(formatInformativeMessage(
+                    dto.getMessage(),
+                    blankToNull(dto.getLayer()),
+                    blankToNull(dto.getProvider()),
+                    blankToNull(dto.getLeagueCode()),
+                    dto.getMatchday(),
+                    home,
+                    away
+            ));
+        }
     }
 
     /**

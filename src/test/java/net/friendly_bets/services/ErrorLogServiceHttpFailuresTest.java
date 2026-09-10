@@ -88,12 +88,21 @@ class ErrorLogServiceHttpFailuresTest {
         List<ExternalApiHttpLogEntry> logs = new ArrayList<>();
         logs.add(ExternalApiHttpLogEntry.builder().outcome("HTTP_ERROR").requestType("TOURNAMENT").build());
         String summary = "melbetHttpError";
+        String storedMessage = ErrorLogService.formatInformativeMessage(
+                "melbetHttpError; httpSuccess=0/1; TOURNAMENT:HTTP_ERROR",
+                "ODDS",
+                "melbet",
+                "EPL",
+                null,
+                null,
+                null
+        );
         when(repository.findFirstByProviderAndCodeAndLayerAndLeagueCodeAndMessage(
                 "melbet",
                 ErrorLogService.CODE_PROVIDER_FETCH_FAILED,
                 "ODDS",
                 "EPL",
-                summary)).thenReturn(Optional.of(ErrorLog.builder().id("existing").build()));
+                storedMessage)).thenReturn(Optional.of(ErrorLog.builder().id("existing").build()));
 
         service.recordHttpRequestFailuresIfNeeded(
                 ExternalDataLayer.ODDS,
@@ -120,7 +129,18 @@ class ErrorLogServiceHttpFailuresTest {
         ArgumentCaptor<ErrorLog> captor = ArgumentCaptor.forClass(ErrorLog.class);
         verify(repository).save(captor.capture());
         assertEquals("fullMatchNotFound", captor.getValue().getCode());
-        assertEquals("fullMatchNotFound", captor.getValue().getMessage());
+        assertEquals(
+                ErrorLogService.formatInformativeMessage(
+                        "fullMatchNotFound",
+                        ExternalDataLayer.FULL_MATCH.name(),
+                        "flashscorekz.com",
+                        "EPL",
+                        1,
+                        null,
+                        null
+                ),
+                captor.getValue().getMessage()
+        );
         assertEquals("ms-1", captor.getValue().getMatchScheduleId());
         assertEquals(ExternalDataLayer.FULL_MATCH.name(), captor.getValue().getLayer());
     }

@@ -39,8 +39,15 @@ public class LiveMatchSyncDiagnostics {
     /**
      * Layer-level: kickoff already passed, status still non-terminal, LIVE never updated the row.
      * Called from the wake scheduler even when {@code syncLive} did not run.
+     *
+     * @param livePrimaryProvider configured LIVE primary ({@code app_settings}), may be null
      */
-    public void reportNeverPolledAfterKickoff(String seasonId, List<MatchSchedule> schedules, Instant now) {
+    public void reportNeverPolledAfterKickoff(
+            String seasonId,
+            List<MatchSchedule> schedules,
+            Instant now,
+            String livePrimaryProvider
+    ) {
         if (schedules == null || schedules.isEmpty() || now == null) {
             return;
         }
@@ -79,7 +86,8 @@ public class LiveMatchSyncDiagnostics {
             errorLogService.record(ErrorLogService.Entry.builder()
                     .severity(severity)
                     .layer(ExternalDataLayer.LIVE.name())
-                    .provider(null)
+                    .provider(livePrimaryProvider)
+                    .providerRole(livePrimaryProvider != null ? ErrorLogService.ROLE_PRIMARY : null)
                     .code(ErrorLogService.CODE_LIVE_MATCH_NEVER_POLLED)
                     .message("LIVE не опрашивал матч после kickoff (" + formatDuration(sinceKickoffSec)
                             + "), статус " + (status != null ? status : "?")
