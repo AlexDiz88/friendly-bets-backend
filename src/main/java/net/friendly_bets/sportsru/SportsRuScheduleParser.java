@@ -45,11 +45,21 @@ public class SportsRuScheduleParser {
     private static final DateTimeFormatter ISO_OFFSET = DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 
     /**
-     * Calendar schedule: legacy {@code h3}+{@code table.stat-table} (EPL/BL), else Vue
-     * {@code match-schedule-column} (CL/LE — several {@code N тур} groups in one column).
+     * Calendar schedule, tried in order:
+     * <ul>
+     *   <li>{@code calendar-list} + {@code calendar-card} (EPL/BL/CL — rounds keyed by
+     *       {@code calendar-group-header--stage} «N тур»; day headers ignored)</li>
+     *   <li>legacy {@code h3}+{@code table.stat-table} (still used by LE / UEL)</li>
+     *   <li>Vue {@code match-schedule-column} (older CL/LE layout)</li>
+     * </ul>
+     * Round number is the primary grouping; kickoff Instant on the card is optional enrichment.
      */
     public SportsRuParsedSchedule parseCalendar(String html) {
         Document doc = Jsoup.parse(html != null ? html : "");
+        List<SportsRuParsedSchedule.Round> calendarList = parseCalendarList(doc);
+        if (hasAnyMatches(calendarList)) {
+            return SportsRuParsedSchedule.builder().rounds(calendarList).build();
+        }
         List<SportsRuParsedSchedule.Round> legacy = parseLegacyCalendar(doc);
         if (hasAnyMatches(legacy)) {
             return SportsRuParsedSchedule.builder().rounds(legacy).build();
@@ -132,6 +142,150 @@ public class SportsRuScheduleParser {
             }
         }
         node.fields().forEachRemaining(entry -> collectSportsTeamNames(entry.getValue(), names));
+    }
+
+    /**
+     * New sports.ru calendar (EPL/BL/CL): all tours in one SSR page; UI round selector only filters.
+     * Group solely by stage header «N тур» — day headers are not used for matching or kickoff.
+     */
+    private List<SportsRuParsedSchedule.Round> parseCalendarList(Document doc) {
+        Element list = doc.selectFirst("div.calendar-list, [data-testid=calendar-list]");
+        if (list == null) {
+            return List.of();
+        }
+        List<SportsRuParsedSchedule.Round> rounds = new ArrayList<>();
+        Map<Integer, SportsRuParsedSchedule.Round> byNumber = new LinkedHashMap<>();
+        SportsRuParsedSchedule.Round current = null;
+
+        for (Element el : list.getAllElements()) {
+            if (el == list) {
+                continue;
+            }
+            if (el.hasClass("calendar-group-header--stage")) {
+                Optional<Integer> roundNo = parseRoundNumber(el.text());
+                if (roundNo.isEmpty()) {
+                    current = null;
+                    continue;
+                }
+                current = byNumber.computeIfAbsent(roundNo.get(), n -> {
+                    SportsRuParsedSchedule.Round round = SportsRuParsedSchedule.Round.builder()
+                            .number(n)
+                            .matches(new ArrayList<>())
+                            .build();
+                    rounds.add(round);
+                    return round;
+                });
+                continue;
+            }
+            if (current == null
+                    || !"article".equalsIgnoreCase(el.tagName())
+                    || !el.hasClass("calendar-card")) {
+                continue;
+            }
+            parseCalendarCard(el).ifPresent(current.getMatches()::add);
+        }
+        return rounds;
+    }
+
+    private Optional<SportsRuParsedSchedule.Match> parseCalendarCard(Element card) {
+        Element homeEl = card.selectFirst("a.calendar-card__home, a.calendar-team.calendar-card__home");
+        Element awayEl = card.selectFirst("a.calendar-card__away, a.calendar-team.calendar-card__away");
+        Element link = card.selectFirst("a.calendar-card__match-link[href]");
+        if (homeEl == null || awayEl == null || link == null) {
+            return Optional.empty();
+        }
+        String homeName = resolveCalendarTeamName(homeEl);
+        String awayName = resolveCalendarTeamName(awayEl);
+        if (homeName.isBlank() || awayName.isBlank()) {
+            return Optional.empty();
+        }
+        String matchPath = normalizeMatchPath(link.attr("href"));
+        if (matchPath == null) {
+            return Optional.empty();
+        }
+        Instant utcKickoff = parseUtcKickoffFromDatetimeAttr(
+                card.selectFirst("time.calendar-status__moment[datetime]"));
+        String status = mapCalendarMatchStatus(card);
+        return Optional.of(SportsRuParsedSchedule.Match.builder()
+                .homeName(homeName)
+                .awayName(awayName)
+                .matchPath(matchPath)
+                .utcKickoff(utcKickoff)
+                .status(status)
+                .build());
+    }
+
+    /**
+     * Prefer full name from profile title; fall back to link own-text / logo alt.
+     * Never invent names from match URL slug (home/away order in slug can disagree with card).
+     */
+    private static String resolveCalendarTeamName(Element teamLink) {
+        String title = teamLink.attr("title");
+        String profilePrefix = "Перейти в профиль команды ";
+        if (title != null && title.startsWith(profilePrefix)) {
+            String fromTitle = title.substring(profilePrefix.length()).trim();
+            if (!fromTitle.isBlank()) {
+                return fromTitle;
+            }
+        }
+        String own = teamLink.ownText();
+        if (own != null && !own.isBlank()) {
+            return own.trim();
+        }
+        Element img = teamLink.selectFirst("img[alt]");
+        if (img != null) {
+            String alt = img.attr("alt");
+            String logoPrefix = "Логотип команды ";
+            if (alt != null && alt.startsWith(logoPrefix)) {
+                String fromAlt = alt.substring(logoPrefix.length()).trim();
+                if (!fromAlt.isBlank()) {
+                    return fromAlt;
+                }
+            }
+        }
+        return teamLink.text().trim();
+    }
+
+    private static String mapCalendarMatchStatus(Element card) {
+        String raw = card.attr("data-match-status");
+        if (raw != null && !raw.isBlank()) {
+            String normalized = raw.trim().toUpperCase();
+            if ("NOT_STARTED".equals(normalized) || "SCHEDULED".equals(normalized)) {
+                return "SCHEDULED";
+            }
+            if ("FINISHED".equals(normalized) || "ENDED".equals(normalized) || "COMPLETE".equals(normalized)) {
+                return "FINISHED";
+            }
+        }
+        Element score = card.selectFirst(".calendar-card__score, .calendar-score");
+        if (score != null && score.hasClass("calendar-score__score--empty")) {
+            return "SCHEDULED";
+        }
+        String scoreText = score != null ? score.text() : "";
+        return isPlaceholderScore(scoreText) ? "SCHEDULED" : "FINISHED";
+    }
+
+    /**
+     * Strict Instant only: {@code datetime} with {@code Z} or numeric offset. No wall-clock / TZ guess.
+     */
+    private static Instant parseUtcKickoffFromDatetimeAttr(Element timeEl) {
+        if (timeEl == null) {
+            return null;
+        }
+        String raw = timeEl.attr("datetime");
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        String value = raw.trim();
+        try {
+            if (value.endsWith("Z") || value.endsWith("z")) {
+                return Instant.parse(value);
+            }
+            OffsetDateTime odt = OffsetDateTime.parse(value, ISO_OFFSET);
+            return odt.toInstant();
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     private List<SportsRuParsedSchedule.Round> parseLegacyCalendar(Document doc) {
@@ -258,8 +412,8 @@ public class SportsRuScheduleParser {
     }
 
     /**
-     * Kickoff only from match-page {@code scheduledAt} with {@code Z}, else JSON-LD {@code startDate} with offset.
-     * Display wall-clock from the calendar is never used.
+     * Kickoff from match-page {@code scheduledAt} with {@code Z}, else JSON-LD {@code startDate} with offset.
+     * Used only when the calendar card has no strict {@code datetime}. Display wall-clock is never used.
      */
     public Instant parseUtcKickoffFromMatchHtml(String html) {
         if (html == null || html.isBlank()) {

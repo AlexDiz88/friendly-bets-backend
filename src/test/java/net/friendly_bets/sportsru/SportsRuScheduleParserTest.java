@@ -14,6 +14,98 @@ class SportsRuScheduleParserTest {
     private final SportsRuScheduleParser parser = new SportsRuScheduleParser();
 
     @Test
+    void parseCalendar_readsCalendarListByRoundNumber_andDatetimeKickoff() {
+        String html = """
+                <div class="calendar-list" data-testid="calendar-list">
+                <div class="calendar-group-header calendar-group-header--stage">3 тур</div>
+                <div class="calendar-group-header calendar-group-header--day">11 сентября</div>
+                <article class="calendar-card" data-match-status="NOT_STARTED">
+                  <a href="/football/match/schalke-vs-union-berlin/" title="Матч Унион Берлин - Шальке"
+                     class="calendar-card__match-link"></a>
+                  <time class="calendar-status__moment" datetime="2026-09-11T18:30:00Z">21:30</time>
+                  <a class="calendar-team calendar-card__home" href="/football/club/union-berlin/"
+                     title="Перейти в профиль команды Унион Берлин" data-testid="calendar-team-name">
+                    Унион Берлин <img alt="Логотип команды Унион Берлин"/>
+                  </a>
+                  <div class="calendar-score calendar-score__score--empty calendar-card__score">
+                    <span class="calendar-score__score">-</span>
+                    <div class="calendar-score__separator">-</div>
+                    <span class="calendar-score__score">-</span>
+                  </div>
+                  <a class="calendar-team calendar-team--away calendar-card__away" href="/football/club/schalke/"
+                     title="Перейти в профиль команды Шальке" data-testid="calendar-team-name">
+                    Шальке <img alt="Логотип команды Шальке"/>
+                  </a>
+                </article>
+                <div class="calendar-group-header calendar-group-header--stage">4 тур</div>
+                <div class="calendar-group-header calendar-group-header--day">19 сентября</div>
+                <article class="calendar-card" data-match-status="FINISHED">
+                  <a href="/football/match/bayern-vs-dortmund/" class="calendar-card__match-link"></a>
+                  <time class="calendar-status__moment" datetime="2026-09-19T13:30:00Z">16:30</time>
+                  <a class="calendar-team calendar-card__home" title="Перейти в профиль команды Бавария">Бавария</a>
+                  <div class="calendar-card__score"><span>2</span><span>-</span><span>1</span></div>
+                  <a class="calendar-team calendar-card__away" title="Перейти в профиль команды Боруссия Д">Боруссия Д</a>
+                </article>
+                <div class="calendar-group-header calendar-group-header--stage">плей-офф</div>
+                <article class="calendar-card" data-match-status="NOT_STARTED">
+                  <a href="/football/match/ignored-vs-playoff/" class="calendar-card__match-link"></a>
+                  <a class="calendar-team calendar-card__home" title="Перейти в профиль команды А">А</a>
+                  <a class="calendar-team calendar-card__away" title="Перейти в профиль команды Б">Б</a>
+                </article>
+                </div>
+                """;
+
+        SportsRuParsedSchedule parsed = parser.parseCalendar(html);
+        assertEquals(2, parsed.getRounds().size());
+
+        SportsRuParsedSchedule.Round md3 = parsed.getRounds().get(0);
+        assertEquals(3, md3.getNumber());
+        assertEquals(1, md3.getMatches().size());
+        SportsRuParsedSchedule.Match m3 = md3.getMatches().get(0);
+        // home/away from card classes — not from URL slug (schalke-vs-union-berlin)
+        assertEquals("Унион Берлин", m3.getHomeName());
+        assertEquals("Шальке", m3.getAwayName());
+        assertEquals("/football/match/schalke-vs-union-berlin/", m3.getMatchPath());
+        assertEquals("SCHEDULED", m3.getStatus());
+        assertEquals(Instant.parse("2026-09-11T18:30:00Z"), m3.getUtcKickoff());
+
+        SportsRuParsedSchedule.Round md4 = parsed.getRounds().get(1);
+        assertEquals(4, md4.getNumber());
+        SportsRuParsedSchedule.Match m4 = md4.getMatches().get(0);
+        assertEquals("Бавария", m4.getHomeName());
+        assertEquals("Боруссия Д", m4.getAwayName());
+        assertEquals("FINISHED", m4.getStatus());
+        assertEquals(Instant.parse("2026-09-19T13:30:00Z"), m4.getUtcKickoff());
+    }
+
+    @Test
+    void parseCalendar_prefersCalendarListOverLegacyWhenBothPresent() {
+        String html = """
+                <div class="calendar-list">
+                <div class="calendar-group-header--stage">2 тур</div>
+                <article class="calendar-card" data-match-status="NOT_STARTED">
+                  <a href="/football/match/a-vs-b/" class="calendar-card__match-link"></a>
+                  <time class="calendar-status__moment" datetime="2026-09-12T14:00:00Z"></time>
+                  <a class="calendar-team calendar-card__home" title="Перейти в профиль команды Хозяева">Хозяева</a>
+                  <a class="calendar-team calendar-card__away" title="Перейти в профиль команды Гости">Гости</a>
+                </article>
+                </div>
+                <h3>1 тур</h3>
+                <table class="stat-table"><tbody>
+                <tr>
+                <td class="owner-td"><a class="player" title="ЛегасиХ">ЛегасиХ</a></td>
+                <td class="score-td"><a class="score" href="/football/match/legacy-h-vs-a/"><b>- : -</b></a></td>
+                <td class="guests-td"><a class="player" title="ЛегасиГ">ЛегасиГ</a></td>
+                </tr>
+                </tbody></table>
+                """;
+        SportsRuParsedSchedule parsed = parser.parseCalendar(html);
+        assertEquals(1, parsed.getRounds().size());
+        assertEquals(2, parsed.getRounds().get(0).getNumber());
+        assertEquals("Хозяева", parsed.getRounds().get(0).getMatches().get(0).getHomeName());
+    }
+
+    @Test
     void parseCalendar_readsRoundAndTeams() {
         String html = """
                 <html><body>
