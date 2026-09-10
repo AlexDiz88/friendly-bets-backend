@@ -1,5 +1,6 @@
 package net.friendly_bets.providers.live;
 
+import net.friendly_bets.models.AppSettings;
 import net.friendly_bets.models.Season;
 import net.friendly_bets.models.schedule.MatchSchedule;
 import net.friendly_bets.matchschedule.config.MatchResultSyncProperties;
@@ -128,7 +129,9 @@ public class LiveMatchWakeScheduler {
         Season season = seasonOpt.get();
         Instant now = Instant.now();
         List<MatchSchedule> seasonSchedules = matchScheduleRepository.findBySeasonId(season.getId());
-        liveMatchSyncDiagnostics.reportNeverPolledAfterKickoff(season.getId(), seasonSchedules, now);
+        AppSettings.LayerAssignment liveAssignment = layerConfigService.assignment(ExternalDataLayer.LIVE);
+        String livePrimary = liveAssignment != null ? liveAssignment.getPrimaryProvider() : null;
+        liveMatchSyncDiagnostics.reportNeverPolledAfterKickoff(season.getId(), seasonSchedules, now, livePrimary);
 
         LinkedHashSet<String> pendingFull = collectPendingFullMatchIds(seasonSchedules);
 

@@ -35,6 +35,8 @@ public class ExternalApiMonitoringRunDto {
     List<ExternalApiHttpLogEntry> httpLogs;
     String errorSummary;
     List<String> failedMatchScheduleIds;
+    List<String> failedMatchLabels;
+    List<ExternalApiMatchTeamsDto> failedMatches;
     boolean failoverUsed;
 
     public static ExternalApiMonitoringRunDto from(ExternalApiMonitoringRun run) {
@@ -59,6 +61,8 @@ public class ExternalApiMonitoringRunDto {
                 .httpLogs(run.getHttpLogs())
                 .errorSummary(run.getErrorSummary())
                 .failedMatchScheduleIds(run.getFailedMatchScheduleIds())
+                .failedMatchLabels(run.getFailedMatchLabels())
+                .failedMatches(mapFailedMatches(run.getFailedMatches()))
                 .failoverUsed(run.isFailoverUsed())
                 .build();
     }
@@ -86,7 +90,18 @@ public class ExternalApiMonitoringRunDto {
                 .httpLogs(List.of())
                 .errorSummary(run.getErrorSummary())
                 .failedMatchScheduleIds(run.getFailedMatchScheduleIds())
+                .failedMatchLabels(run.getFailedMatchLabels())
+                .failedMatches(mapFailedMatches(run.getFailedMatches()))
                 .failoverUsed(run.isFailoverUsed())
                 .build();
+    }
+
+    private static List<ExternalApiMatchTeamsDto> mapFailedMatches(
+            List<net.friendly_bets.models.monitoring.ExternalApiMatchTeamsRef> refs
+    ) {
+        if (refs == null || refs.isEmpty()) {
+            return List.of();
+        }
+        return refs.stream().map(ExternalApiMatchTeamsDto::from).toList();
     }
 }

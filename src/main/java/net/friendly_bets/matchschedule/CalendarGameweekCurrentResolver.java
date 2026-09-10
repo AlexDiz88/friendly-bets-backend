@@ -71,6 +71,32 @@ public class CalendarGameweekCurrentResolver {
         return Optional.of(pickByDates(byStart));
     }
 
+    /**
+     * Слот лиги для дефолта страницы «Результаты» внутри текущего gameweek:
+     * первый с незавершёнными матчами; иначе первый без полной картины schedules;
+     * иначе первый слот узла.
+     */
+    public Optional<LeagueMatchdayNode> pickResultsDefaultSlot(String seasonId, CalendarNode node) {
+        if (node == null || node.getLeagueMatchdayNodes() == null || node.getLeagueMatchdayNodes().isEmpty()) {
+            return Optional.empty();
+        }
+        List<LeagueMatchdayNode> slots = node.getLeagueMatchdayNodes();
+        LeagueMatchdayNode firstUnknown = null;
+        for (LeagueMatchdayNode slot : slots) {
+            MatchCoverage coverage = evaluateSlot(seasonId, slot);
+            if (coverage == MatchCoverage.OPEN) {
+                return Optional.of(slot);
+            }
+            if (coverage == MatchCoverage.UNKNOWN && firstUnknown == null) {
+                firstUnknown = slot;
+            }
+        }
+        if (firstUnknown != null) {
+            return Optional.of(firstUnknown);
+        }
+        return Optional.of(slots.get(0));
+    }
+
     MatchCoverage evaluate(String seasonId, CalendarNode node) {
         List<LeagueMatchdayNode> slots = node.getLeagueMatchdayNodes();
         if (slots == null || slots.isEmpty()) {
@@ -81,32 +107,11 @@ public class CalendarGameweekCurrentResolver {
         boolean allSlotsHaveData = true;
 
         for (LeagueMatchdayNode slot : slots) {
-            if (slot.getLeagueId() == null || slot.getMatchDay() == null || slot.getMatchDay().isBlank()) {
-                allSlotsHaveData = false;
-                continue;
-            }
-            Optional<Integer> order;
-            try {
-                League league = getEntityService.getLeagueOrThrow(slot.getLeagueId());
-                order = matchdaySlotSupport.resolveSlotOrder(league, slot.getMatchDay().trim());
-            } catch (Exception e) {
-                allSlotsHaveData = false;
-                continue;
-            }
-            if (order.isEmpty()) {
-                allSlotsHaveData = false;
-                continue;
-            }
-
-            List<MatchSchedule> matches = matchScheduleRepository
-                    .findByLeagueIdAndSeasonIdAndMatchdayOrderByUtcKickoffAsc(
-                            slot.getLeagueId(), seasonId, order.get());
-            if (matches.isEmpty()) {
-                allSlotsHaveData = false;
-                continue;
-            }
-            if (matches.stream().anyMatch(m -> !MatchStatuses.isTerminal(m.getStatus()))) {
+            MatchCoverage slotCoverage = evaluateSlot(seasonId, slot);
+            if (slotCoverage == MatchCoverage.OPEN) {
                 anyNonTerminal = true;
+            } else if (slotCoverage != MatchCoverage.COMPLETE) {
+                allSlotsHaveData = false;
             }
         }
 
@@ -117,6 +122,34 @@ public class CalendarGameweekCurrentResolver {
             return MatchCoverage.COMPLETE;
         }
         return MatchCoverage.UNKNOWN;
+    }
+
+    MatchCoverage evaluateSlot(String seasonId, LeagueMatchdayNode slot) {
+        if (slot == null || slot.getLeagueId() == null
+                || slot.getMatchDay() == null || slot.getMatchDay().isBlank()) {
+            return MatchCoverage.UNKNOWN;
+        }
+        Optional<Integer> order;
+        try {
+            League league = getEntityService.getLeagueOrThrow(slot.getLeagueId());
+            order = matchdaySlotSupport.resolveSlotOrder(league, slot.getMatchDay().trim());
+        } catch (Exception e) {
+            return MatchCoverage.UNKNOWN;
+        }
+        if (order.isEmpty()) {
+            return MatchCoverage.UNKNOWN;
+        }
+
+        List<MatchSchedule> matches = matchScheduleRepository
+                .findByLeagueIdAndSeasonIdAndMatchdayOrderByUtcKickoffAsc(
+                        slot.getLeagueId(), seasonId, order.get());
+        if (matches.isEmpty()) {
+            return MatchCoverage.UNKNOWN;
+        }
+        if (matches.stream().anyMatch(m -> !MatchStatuses.isTerminal(m.getStatus()))) {
+            return MatchCoverage.OPEN;
+        }
+        return MatchCoverage.COMPLETE;
     }
 
     /**

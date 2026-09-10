@@ -14,6 +14,7 @@ import net.friendly_bets.marathonbet.mapping.MarathonbetBetTitleMapper;
 import net.friendly_bets.models.League;
 import net.friendly_bets.models.Season;
 import net.friendly_bets.models.monitoring.ExternalApiHttpLogEntry;
+import net.friendly_bets.models.monitoring.ExternalApiMatchTeamsRef;
 import net.friendly_bets.models.monitoring.ExternalApiMonitoringCounters;
 import net.friendly_bets.models.monitoring.ExternalApiMonitoringRun;
 import net.friendly_bets.models.monitoring.ExternalApiMonitoringStatus;
@@ -531,10 +532,12 @@ public class MarathonbetSyncService {
             sleepBeforeSse();
             Instant sseRequestedAt = Instant.now();
             MarathonbetHttpFetchResult sseResult = scrapeService.fetchEventSnapshotResult(event.getTreeId());
+            ExternalApiMatchTeamsRef teamsRef = monitoringService.resolveMatchTeams(match);
             httpLogs.add(MarathonbetHttpLogSupport.toLogEntry(
                     sseResult,
                     MarathonbetRequestType.SSE,
                     event.getTreeId(),
+                    teamsRef,
                     sseRequestedAt
             ));
             if (!sseResult.isSuccess()) {

@@ -253,6 +253,16 @@ public class SportsRuScheduleSyncService implements ScheduleProvider {
         }
 
         SportsRuParsedSchedule parsed = scheduleParser.parseCalendar(calendarHtml);
+        if (!hasAnyParsedMatches(parsed)) {
+            throw new BadRequestException("sportsRuCalendarParseEmpty");
+        }
+        boolean windowHasMatches = parsed.getRounds().stream()
+                .anyMatch(r -> window.contains(r.getNumber())
+                        && r.getMatches() != null
+                        && !r.getMatches().isEmpty());
+        if (!windowHasMatches) {
+            throw new BadRequestException("sportsRuRoundNotFoundInCalendar");
+        }
 
         Instant fetchedAt = Instant.now();
         int upserted = 0;
@@ -293,7 +303,12 @@ public class SportsRuScheduleSyncService implements ScheduleProvider {
                     continue;
                 }
 
-                Instant utcKickoff = fetchMatchKickoff(match.getMatchPath(), httpLogs);
+                // Prefer Instant already on the calendar card (Z/offset). Match-page only if missing —
+                // never derive kickoff from FriendlyBets gameweek/calendar date ranges.
+                Instant utcKickoff = match.getUtcKickoff();
+                if (utcKickoff == null) {
+                    utcKickoff = fetchMatchKickoff(match.getMatchPath(), httpLogs);
+                }
                 SportsRuParsedSchedule.Match enriched = SportsRuParsedSchedule.Match.builder()
                         .homeName(match.getHomeName())
                         .awayName(match.getAwayName())
@@ -430,5 +445,17 @@ public class SportsRuScheduleSyncService implements ScheduleProvider {
         return season.getLeagues().stream()
                 .filter(l -> l != null && l.getLeagueCode() == leagueCode)
                 .findFirst();
+    }
+
+    private static boolean hasAnyParsedMatches(SportsRuParsedSchedule parsed) {
+        if (parsed == null || parsed.getRounds() == null) {
+            return false;
+        }
+        for (SportsRuParsedSchedule.Round round : parsed.getRounds()) {
+            if (round.getMatches() != null && !round.getMatches().isEmpty()) {
+                return true;
+            }
+        }
+        return false;
     }
 }

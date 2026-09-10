@@ -90,6 +90,16 @@ public class ExternalApiMonitoringRun {
     @Builder.Default
     private List<String> failedMatchScheduleIds = new ArrayList<>();
 
+    /** Parallel to {@link #failedMatchScheduleIds}: "Home - Away" titles for UI / error summaries. */
+    @Field(name = "failed_match_labels")
+    @Builder.Default
+    private List<String> failedMatchLabels = new ArrayList<>();
+
+    /** Failed matches with titles + logo keys for UI. */
+    @Field(name = "failed_matches")
+    @Builder.Default
+    private List<ExternalApiMatchTeamsRef> failedMatches = new ArrayList<>();
+
     @Field(name = "failover_used")
     private boolean failoverUsed;
 }
