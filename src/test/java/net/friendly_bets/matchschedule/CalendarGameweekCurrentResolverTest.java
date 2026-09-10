@@ -28,6 +28,7 @@ class CalendarGameweekCurrentResolverTest {
     private static final String SEASON_ID = "season-1";
     private static final String EPL_ID = "epl";
     private static final String BL_ID = "bl";
+    private static final String CL_ID = "cl";
 
     @Mock
     MatchScheduleRepository matchScheduleRepository;
@@ -108,6 +109,41 @@ class CalendarGameweekCurrentResolverTest {
         );
 
         assertEquals("active", CalendarGameweekCurrentResolver.pickByDates(List.of(other, active)).getId());
+    }
+
+    @Test
+    void pickResultsDefaultSlotPrefersOpenLeagueOverFinished() {
+        CalendarNode gw = node(
+                "gw",
+                LocalDate.of(2026, 9, 16),
+                LocalDate.of(2026, 9, 18),
+                List.of(
+                        LeagueMatchdayNode.builder()
+                                .leagueId(EPL_ID)
+                                .leagueCode(League.LeagueCode.EPL)
+                                .matchDay("5")
+                                .build(),
+                        LeagueMatchdayNode.builder()
+                                .leagueId(CL_ID)
+                                .leagueCode(League.LeagueCode.CL)
+                                .matchDay("1")
+                                .build()
+                )
+        );
+        stubLeague(EPL_ID);
+        stubLeague(CL_ID);
+        when(matchdaySlotSupport.resolveSlotOrder(any(League.class), eq("5")))
+                .thenReturn(Optional.of(5));
+        when(matchdaySlotSupport.resolveSlotOrder(any(League.class), eq("1")))
+                .thenReturn(Optional.of(1));
+        stubMatches(EPL_ID, 5, List.of(match("FINISHED"), match("FINISHED")));
+        stubMatches(CL_ID, 1, List.of(match("SCHEDULED"), match("LIVE")));
+
+        Optional<LeagueMatchdayNode> slot = resolver.pickResultsDefaultSlot(SEASON_ID, gw);
+
+        assertTrue(slot.isPresent());
+        assertEquals(CL_ID, slot.get().getLeagueId());
+        assertEquals("1", slot.get().getMatchDay());
     }
 
     private void stubLeague(String leagueId) {

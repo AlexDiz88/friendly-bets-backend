@@ -45,6 +45,12 @@ public class CalendarNodeDto {
     @Schema(description = "список статистики игрового тура по участникам")
     private List<GameweekStatsDto> gameweekStats;
 
+    @Schema(description = "код лиги для дефолта «Результаты» (только GET .../current)", example = "CL")
+    private String resultsLeagueCode;
+
+    @Schema(description = "слот тура для дефолта «Результаты» (только GET .../current)", example = "1")
+    private String resultsMatchDay;
+
     public static CalendarNodeDto from(CalendarNode calendarNode, boolean isWithBets) {
         return CalendarNodeDto.builder()
                 .id(calendarNode.getId())

@@ -89,7 +89,14 @@ public class CalendarsService {
         List<CalendarNode> calendarNodes = getEntityService.getListOfCalendarNodesBySeasonOrThrow(seasonId);
         CalendarNode current = calendarGameweekCurrentResolver.resolve(seasonId, calendarNodes)
                 .orElseThrow(() -> new BadRequestException("noCalendarNodesBySeason"));
-        return CalendarNodeDto.from(current, false);
+        CalendarNodeDto dto = CalendarNodeDto.from(current, false);
+        calendarGameweekCurrentResolver.pickResultsDefaultSlot(seasonId, current).ifPresent(slot -> {
+            if (slot.getLeagueCode() != null) {
+                dto.setResultsLeagueCode(slot.getLeagueCode().name());
+            }
+            dto.setResultsMatchDay(slot.getMatchDay());
+        });
+        return dto;
     }
 
     // ------------------------------------------------------------------------------------------------------ //
