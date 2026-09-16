@@ -32,8 +32,9 @@ class LiveMatchSupportTest {
                 MatchSchedule.builder().utcKickoff(NOW).status("SCHEDULED").build(), NOW));
         assertTrue(LiveMatchSupport.isLiveHttpCandidate(
                 MatchSchedule.builder().utcKickoff(NOW.minusSeconds(600)).status("LIVE").build(), NOW));
-        assertFalse(LiveMatchSupport.isLiveHttpCandidate(
-                MatchSchedule.builder().utcKickoff(NOW.minusSeconds(600)).status("FINISHED").build(), NOW));
+        assertTrue(LiveMatchSupport.isLiveHttpCandidate(
+                MatchSchedule.builder().utcKickoff(NOW.minusSeconds(600)).status("FINISHED").build(), NOW),
+                "non-finalized FINISHED stays pollable");
         assertFalse(LiveMatchSupport.isLiveHttpCandidate(
                 MatchSchedule.builder()
                         .utcKickoff(NOW.minusSeconds(600))
@@ -50,6 +51,20 @@ class LiveMatchSupportTest {
                 MatchSchedule.builder().utcKickoff(oldKickoff).status("EXTRA_TIME").build(), NOW));
         assertFalse(LiveMatchSupport.isLiveHttpCandidate(
                 MatchSchedule.builder().utcKickoff(NOW.minusSeconds(600)).status("CANCELED").build(), NOW));
+    }
+
+    @Test
+    void httpCandidate_keepsNonFinalizedFinishedInsidePlayWindow() {
+        assertTrue(LiveMatchSupport.isLiveHttpCandidate(
+                MatchSchedule.builder().utcKickoff(NOW.minusSeconds(600)).status("FINISHED").build(), NOW),
+                "false FT must stay pollable until FULL locks the row");
+        assertFalse(LiveMatchSupport.isLiveHttpCandidate(
+                MatchSchedule.builder()
+                        .utcKickoff(NOW.minusSeconds(600))
+                        .status("FINISHED")
+                        .fullDetailsFetchedAt(NOW)
+                        .build(),
+                NOW));
     }
 
     @Test

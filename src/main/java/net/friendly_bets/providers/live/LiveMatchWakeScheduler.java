@@ -133,11 +133,10 @@ public class LiveMatchWakeScheduler {
         String livePrimary = liveAssignment != null ? liveAssignment.getPrimaryProvider() : null;
         liveMatchSyncDiagnostics.reportNeverPolledAfterKickoff(season.getId(), seasonSchedules, now, livePrimary);
 
-        LinkedHashSet<String> pendingFull = collectPendingFullMatchIds(seasonSchedules);
-
         boolean hasTracked = seasonSchedules.stream()
                 .anyMatch(s -> LiveMatchSupport.isLiveHttpCandidate(s, now));
-        if (!hasTracked && pendingFull.isEmpty()) {
+        boolean hasPendingFull = seasonSchedules.stream().anyMatch(LiveMatchSupport::needsFullMatch);
+        if (!hasTracked && !hasPendingFull) {
             return;
         }
 
@@ -158,7 +157,6 @@ public class LiveMatchWakeScheduler {
                         result.datesSynced(),
                         result.pendingFullMatchIds().size());
             }
-            pendingFull.addAll(result.pendingFullMatchIds());
         } catch (RuntimeException e) {
             log.warn("LIVE sync failed: {}", e.getMessage());
         }
@@ -175,12 +173,14 @@ public class LiveMatchWakeScheduler {
                             secondaryResult.finishedDetected(),
                             secondaryResult.pendingFullMatchIds().size());
                 }
-                pendingFull.addAll(secondaryResult.pendingFullMatchIds());
             });
         } catch (RuntimeException e) {
             log.warn("LIVE secondary catch-up failed: {}", e.getMessage());
         }
 
+        // Collect FULL targets only after LIVE may have corrected a false FINISHED.
+        List<MatchSchedule> afterLive = matchScheduleRepository.findBySeasonId(season.getId());
+        LinkedHashSet<String> pendingFull = collectPendingFullMatchIds(afterLive);
         if (layerConfigService.isLayerEnabled(ExternalDataLayer.FULL_MATCH) && !pendingFull.isEmpty()) {
             try {
                 matchFinalizeOrchestrator.finalizePendingFullMatches(new ArrayList<>(pendingFull));
