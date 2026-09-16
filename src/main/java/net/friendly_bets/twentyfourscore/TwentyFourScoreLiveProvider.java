@@ -174,6 +174,7 @@ public class TwentyFourScoreLiveProvider implements LiveMatchProvider {
                 for (MatchSchedule schedule : dateTracked) {
                     League.LeagueCode leagueCode = parseLeagueCode(schedule.getLeagueCode());
                     if (leagueCode == null) {
+                        notFoundIds.add(schedule.getId());
                         continue;
                     }
                     List<TwentyFourScoreParsedDatePage.MatchRow> leagueRows = collectLeagueRows(page, leagueCode);
@@ -238,20 +239,19 @@ public class TwentyFourScoreLiveProvider implements LiveMatchProvider {
             log.info("24score LIVE pending FULL for {} match(es), httpRequests={}", pendingFullIds.size(), httpRequests);
         }
 
-        String warning = skippedMissingKickoff > 0
-                ? ExternalApiMonitoringService.reasonMissingUtcKickoff(skippedMissingKickoff)
-                : null;
+        String warning = ExternalApiMonitoringService.liveSyncWarning(skippedMissingKickoff, notFoundIds.size());
         monitoringService.finalizeAndSave(
                 run,
-                ExternalApiMonitoringStatus.SUCCESS,
+                ExternalApiMonitoringService.liveSyncStatus(updated, notFoundIds.size()),
                 ExternalApiMonitoringCounters.builder()
                         .requested(tracked.size())
                         .updated(updated)
                         .finishedDetected(finishedDetected)
                         .skipped(skippedMissingKickoff)
+                        .mappingFailures(notFoundIds.size())
                         .build(),
                 httpLogs,
-                List.of(),
+                List.copyOf(notFoundIds),
                 warning
         );
 

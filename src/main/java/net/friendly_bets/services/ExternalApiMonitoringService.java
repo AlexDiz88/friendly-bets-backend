@@ -85,6 +85,29 @@ public class ExternalApiMonitoringService {
         return "mappingFailures=" + safe + " [" + String.join(", ", labels) + "]";
     }
 
+    /**
+     * LIVE sync: HTTP may succeed while alias/league resolve fails for every tracked match.
+     * Those runs must not look like a clean {@link ExternalApiMonitoringStatus#SUCCESS}.
+     */
+    public static ExternalApiMonitoringStatus liveSyncStatus(int updated, int mappingFailures) {
+        if (mappingFailures <= 0) {
+            return ExternalApiMonitoringStatus.SUCCESS;
+        }
+        return updated > 0 ? ExternalApiMonitoringStatus.PARTIAL : ExternalApiMonitoringStatus.FAILED;
+    }
+
+    public static String liveSyncWarning(int skippedMissingKickoff, int mappingFailures) {
+        String missing = skippedMissingKickoff > 0 ? reasonMissingUtcKickoff(skippedMissingKickoff) : null;
+        String mapping = mappingFailures > 0 ? mappingFailuresSummary(mappingFailures, List.of()) : null;
+        if (missing == null) {
+            return mapping;
+        }
+        if (mapping == null) {
+            return missing;
+        }
+        return missing + "; " + mapping;
+    }
+
     public static String teamsLabel(String home, String away) {
         String h = home != null ? home.trim() : "";
         String a = away != null ? away.trim() : "";

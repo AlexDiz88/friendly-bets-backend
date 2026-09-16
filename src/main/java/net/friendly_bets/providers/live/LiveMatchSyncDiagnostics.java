@@ -28,9 +28,12 @@ public class LiveMatchSyncDiagnostics {
     public static final long WARN_AFTER_KICKOFF_SECONDS = Duration.ofMinutes(165).toSeconds();
     /** Max regulation + ET + pens buffer — error threshold. */
     public static final long ERROR_AFTER_KICKOFF_SECONDS = Duration.ofMinutes(225).toSeconds();
-    /** Not found in feed after kickoff — start warning. */
-    public static final long NOT_IN_FEED_WARN_AFTER_KICKOFF_SECONDS = Duration.ofHours(1).toSeconds();
-    /** Kickoff passed but LIVE never wrote fetched_at — scheduler/poll gap. */
+    /** Not found in feed after kickoff — same urgency as never-polled (alias / league resolve). */
+    public static final long NOT_IN_FEED_WARN_AFTER_KICKOFF_SECONDS = Duration.ofMinutes(20).toSeconds();
+    /**
+     * Kickoff passed, LIVE never wrote {@code fetched_at}, and the match is outside the HTTP
+     * candidate window (wake will not poll). In-window unresolved rows use {@link #afterSync} notInFeed.
+     */
     public static final long NEVER_POLLED_WARN_AFTER_KICKOFF_SECONDS = Duration.ofMinutes(20).toSeconds();
 
     private final ErrorLogService errorLogService;
@@ -65,6 +68,11 @@ public class LiveMatchSyncDiagnostics {
             }
             String status = schedule.getStatus();
             if (LiveMatchSupport.isTerminalNoPoll(status)) {
+                continue;
+            }
+            // Wake still polls this row — mapping misses are reported in afterSync (notInFeed),
+            // not as a false "scheduler never ran" signal.
+            if (LiveMatchSupport.isLiveHttpCandidate(schedule, now)) {
                 continue;
             }
             Instant fetchedAt = schedule.getFetchedAt();
@@ -225,7 +233,8 @@ public class LiveMatchSyncDiagnostics {
                 .provider(providerId)
                 .code(ErrorLogService.CODE_LIVE_MATCH_NOT_IN_FEED)
                 .message("Матч не найден в ответе LIVE-провайдера спустя " + formatDuration(sinceKickoffSec)
-                        + " после kickoff (статус " + (status != null ? status : "?") + ")")
+                        + " после kickoff (статус " + (status != null ? status : "?")
+                        + ") — проверьте алиасы команд для этого провайдера")
                 .leagueCode(schedule.getLeagueCode())
                 .season(seasonId)
                 .matchday(schedule.getMatchday())
