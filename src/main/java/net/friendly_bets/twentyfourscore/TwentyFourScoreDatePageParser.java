@@ -29,7 +29,8 @@ public class TwentyFourScoreDatePageParser {
         for (Element row : rows) {
             Element header = row.selectFirst("th.champheader, .champheader_title");
             if (header != null || row.selectFirst("th") != null && row.text().length() > 0 && row.select("td").isEmpty()) {
-                String title = textOrEmpty(row.selectFirst("a, .champheader_title, th"));
+                // Prefer competition name link — not th.champheader (includes stats 2.8 / corners).
+                String title = resolveCompetitionTitle(row);
                 if (!title.isBlank()) {
                     current = TwentyFourScoreParsedDatePage.CompetitionBlock.builder()
                             .title(title)
@@ -144,6 +145,17 @@ public class TwentyFourScoreDatePageParser {
         return lower.contains("перер")
                 || lower.contains("half")
                 || lower.matches(".*\\bht\\b.*");
+    }
+
+    private static String resolveCompetitionTitle(Element row) {
+        if (row == null) {
+            return "";
+        }
+        Element titled = row.selectFirst(".champheader_title a, a[href*=/standings/], .champheader_title");
+        if (titled != null) {
+            return textOrEmpty(titled);
+        }
+        return textOrEmpty(row.selectFirst("a, th"));
     }
 
     private static String textOrEmpty(Element el) {
