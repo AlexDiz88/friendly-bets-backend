@@ -17,8 +17,10 @@ public class TwentyFourScoreDatePageParser {
 
     private static final Pattern SCORE = Pattern.compile("(\\d{1,2})\\s*:\\s*(\\d{1,2})");
     private static final Pattern HT = Pattern.compile("\\((\\d{1,2})\\s*:\\s*(\\d{1,2})\\)");
-    private static final Pattern LIVE_MIN = Pattern.compile("(\\d{1,3})\\s*'");
+    /** Minute marker: ASCII ', curly ’, prime ′, modifier ʼ (required — optional would match score digits). */
+    private static final Pattern LIVE_MIN = Pattern.compile("(\\d{1,3})\\s*['’′ʼ]");
     private static final Pattern MATCH_ID = Pattern.compile("/football/match/(\\d+)");
+    private static final Pattern MINUTE_DIGITS = Pattern.compile("(\\d{1,3})");
 
     public TwentyFourScoreParsedDatePage parse(String html) {
         Document doc = Jsoup.parse(html != null ? html : "");
@@ -78,8 +80,13 @@ public class TwentyFourScoreDatePageParser {
             return java.util.Optional.empty();
         }
         String scoreText = scoreCell != null ? textOrEmpty(scoreCell) : textOrEmpty(row.selectFirst("td.time"));
+        Element link = scoreCell != null
+                ? scoreCell.selectFirst("a[href*=/football/match/], a.match")
+                : row.selectFirst("a[href*=/football/match/]");
+        if (link == null) {
+            link = row.selectFirst("a[href*=/football/match/]");
+        }
         String matchId = null;
-        Element link = row.selectFirst("a[href*=/football/match/]");
         if (link != null) {
             Matcher idMatcher = MATCH_ID.matcher(link.attr("href"));
             if (idMatcher.find()) {
@@ -89,6 +96,7 @@ public class TwentyFourScoreDatePageParser {
         if (matchId == null && row.id() != null && row.id().startsWith("row_")) {
             matchId = row.id().substring(4);
         }
+        boolean liveCssClass = link != null && link.hasClass("live");
 
         String fullTime = null;
         String firstTime = null;
@@ -102,12 +110,27 @@ public class TwentyFourScoreDatePageParser {
         }
 
         String liveMinute = null;
-        Matcher liveMatcher = LIVE_MIN.matcher(scoreText);
-        if (liveMatcher.find()) {
-            liveMinute = liveMatcher.group(1);
+        Element minEl = scoreCell != null ? scoreCell.selectFirst("span.min, .min") : null;
+        if (minEl != null) {
+            String minText = textOrEmpty(minEl);
+            Matcher minMatcher = LIVE_MIN.matcher(minText);
+            if (minMatcher.find()) {
+                liveMinute = minMatcher.group(1);
+            } else {
+                Matcher digits = MINUTE_DIGITS.matcher(minText);
+                if (digits.find()) {
+                    liveMinute = digits.group(1);
+                }
+            }
+        }
+        if (liveMinute == null) {
+            Matcher liveMatcher = LIVE_MIN.matcher(scoreText);
+            if (liveMatcher.find()) {
+                liveMinute = liveMatcher.group(1);
+            }
         }
 
-        String status = resolveStatus(scoreText, fullTime, liveMinute);
+        String status = resolveStatus(scoreText, fullTime, liveMinute, liveCssClass);
         return java.util.Optional.of(TwentyFourScoreParsedDatePage.MatchRow.builder()
                 .externalMatchId(matchId)
                 .homeName(homeName)
@@ -120,13 +143,25 @@ public class TwentyFourScoreDatePageParser {
                 .build());
     }
 
-    private static String resolveStatus(String scoreText, String fullTime, String liveMinute) {
+    /**
+     * 24score marks in-play rows with {@code class="match live"}. A bare score without minute
+     * (AJAX lag / HT edge) must not become FINISHED — that previously triggered false FULL settle.
+     */
+    private static String resolveStatus(
+            String scoreText,
+            String fullTime,
+            String liveMinute,
+            boolean liveCssClass
+    ) {
         String lower = scoreText != null ? scoreText.toLowerCase(Locale.ROOT) : "";
         if (liveMinute != null) {
             return "LIVE";
         }
         if (isBreakPeriod(lower)) {
             return "PAUSED";
+        }
+        if (liveCssClass) {
+            return "LIVE";
         }
         if (fullTime != null) {
             return "FINISHED";

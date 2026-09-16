@@ -109,4 +109,67 @@ class TwentyFourScoreDatePageParserTest {
         assertEquals("PAUSED", htEn.getStatus());
         assertEquals("0:0", htEn.getFullTimeScore());
     }
+
+    @Test
+    @DisplayName("class=match live + score without minute → LIVE, not FINISHED")
+    void liveCssClassPreventsFalseFinished() {
+        String html = """
+                <table class="daymatches fbl"><tbody>
+                <tr><th class="champheader"><div class="champheader_title"><a>Test</a></div></th></tr>
+                <tr id="row_881236">
+                 <td class="team"><span class="tm1">Арарат-Армения</span></td>
+                 <td class="team"><span class="tm2">Спарта Пр</span></td>
+                 <td class="score">
+                   <a id="score_881236" href="/football/match/881236-x" class="match live">
+                     <b>1:3</b> (0:2)
+                   </a>
+                 </td>
+                </tr>
+                </tbody></table>
+                """;
+        TwentyFourScoreParsedDatePage.MatchRow row = parser.parse(html).getCompetitions().get(0).getMatches().get(0);
+        assertEquals("1:3", row.getFullTimeScore());
+        assertNull(row.getLiveMinuteLabel());
+        assertEquals("LIVE", row.getStatus());
+    }
+
+    @Test
+    @DisplayName("span.min with unicode apostrophe and class=live")
+    void parsesMinSpanWithCurlyApostrophe() {
+        String html = """
+                <table class="daymatches fbl"><tbody>
+                <tr><th class="champheader"><div class="champheader_title"><a>Test</a></div></th></tr>
+                <tr>
+                 <td class="team"><span class="tm1">A</span></td>
+                 <td class="team"><span class="tm2">B</span></td>
+                 <td class="score">
+                   <a class="match live" href="/football/match/1"><b>1:3</b> (0:2) <span class="min">64’</span></a>
+                 </td>
+                </tr>
+                </tbody></table>
+                """;
+        TwentyFourScoreParsedDatePage.MatchRow row = parser.parse(html).getCompetitions().get(0).getMatches().get(0);
+        assertEquals("64", row.getLiveMinuteLabel());
+        assertEquals("LIVE", row.getStatus());
+    }
+
+    @Test
+    @DisplayName("finished row without live class → FINISHED")
+    void finishedWithoutLiveClass() {
+        String html = """
+                <table class="daymatches fbl"><tbody>
+                <tr><th class="champheader"><div class="champheader_title"><a>Test</a></div></th></tr>
+                <tr id="row_1">
+                 <td class="team"><span class="tm1">A</span></td>
+                 <td class="team"><span class="tm2">B</span></td>
+                 <td class="score">
+                   <a href="/football/match/1" class="match"><b>2:1</b> (1:0)</a>
+                 </td>
+                </tr>
+                </tbody></table>
+                """;
+        TwentyFourScoreParsedDatePage.MatchRow row = parser.parse(html).getCompetitions().get(0).getMatches().get(0);
+        assertEquals("FINISHED", row.getStatus());
+        assertEquals("2:1", row.getFullTimeScore());
+    }
 }
