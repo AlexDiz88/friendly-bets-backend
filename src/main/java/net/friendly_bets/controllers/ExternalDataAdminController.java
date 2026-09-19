@@ -20,6 +20,8 @@ import net.friendly_bets.providers.LiveMatchProvider;
 import net.friendly_bets.providers.OddsProvider;
 import net.friendly_bets.providers.ScheduleProvider;
 import net.friendly_bets.providers.StandingsProvider;
+import net.friendly_bets.providers.live.LiveMatchSupport;
+import net.friendly_bets.providers.live.LiveMatchWakeScheduler;
 import net.friendly_bets.repositories.MatchScheduleRepository;
 import net.friendly_bets.services.ExternalApiMonitoringService;
 import net.friendly_bets.services.ExternalDataLayerConfigService;
@@ -42,6 +44,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 
 @RestController
@@ -56,6 +60,7 @@ public class ExternalDataAdminController {
     private final GetEntityService getEntityService;
     private final MatchScheduleRepository matchScheduleRepository;
     private final MatchFinalizeOrchestrator matchFinalizeOrchestrator;
+    private final LiveMatchWakeScheduler liveMatchWakeScheduler;
     private final ExternalTeamNamesService externalTeamNamesService;
     private final ExternalSiteAccessProbeService siteAccessProbeService;
 
@@ -160,13 +165,17 @@ public class ExternalDataAdminController {
             LiveMatchProvider.LiveSyncResult result = liveProvider.syncLive(season, date);
             try {
                 ExternalApiMonitoringService.setTriggerOverride(ExternalApiMonitoringTrigger.ADMIN);
-                matchFinalizeOrchestrator.finalizePendingFullMatches(result.pendingFullMatchIds());
+                // Same as LIVE wake cron: all season FINISHED-without-FULL, not only this run's ids.
+                matchFinalizeOrchestrator.finalizePendingFullMatches(
+                        collectPendingFullMatchIds(season.getId()));
             } catch (RuntimeException ignored) {
                 // FULL failures are already in error_logs via LayerProviderRouter
             }
             return ResponseEntity.ok(LiveMatchSyncResultDto.from(result));
         } finally {
             ExternalApiMonitoringService.clearTriggerOverride();
+            // Re-arm auto LIVE/FULL pipeline (candidates, deferred FULL due-at) like after SCHEDULE.
+            wakeLiveAutoPipeline();
         }
     }
 
@@ -194,6 +203,7 @@ public class ExternalDataAdminController {
                     matchFinalizeOrchestrator.syncByProviderAndUtcDate(fullMatchProvider, season, date));
         } finally {
             ExternalApiMonitoringService.clearTriggerOverride();
+            wakeLiveAutoPipeline();
         }
     }
 
@@ -212,6 +222,7 @@ public class ExternalDataAdminController {
             return ResponseEntity.ok(updated);
         } finally {
             ExternalApiMonitoringService.clearTriggerOverride();
+            wakeLiveAutoPipeline();
         }
     }
 
@@ -230,5 +241,27 @@ public class ExternalDataAdminController {
         } finally {
             ExternalApiMonitoringService.clearTriggerOverride();
         }
+    }
+
+    /**
+     * Manual LIVE/FULL must not leave auto wake idle: re-evaluate candidates and FULL due-at
+     * the same way SCHEDULE's {@code MatchSchedulesUpdatedEvent} does.
+     */
+    private void wakeLiveAutoPipeline() {
+        try {
+            liveMatchWakeScheduler.rescheduleFromKickoffs(false);
+        } catch (RuntimeException ignored) {
+            // Admin response already committed; wake failure must not mask sync result.
+        }
+    }
+
+    private List<String> collectPendingFullMatchIds(String seasonId) {
+        LinkedHashSet<String> pending = new LinkedHashSet<>();
+        for (MatchSchedule schedule : matchScheduleRepository.findBySeasonId(seasonId)) {
+            if (LiveMatchSupport.needsFullMatch(schedule) && schedule.getId() != null) {
+                pending.add(schedule.getId());
+            }
+        }
+        return new ArrayList<>(pending);
     }
 }

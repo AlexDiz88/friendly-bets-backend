@@ -23,7 +23,7 @@ class ExternalApiCircuitBreakerTest {
 
     @BeforeEach
     void setUp() {
-        ExternalDataLayerAutoDisableService autoDisable = new ExternalDataLayerAutoDisableService(null) {
+        ExternalDataLayerAutoDisableService autoDisable = new ExternalDataLayerAutoDisableService(null, null) {
             @Override
             public boolean disableLayer(ExternalDataLayer layer, String reason) {
                 disableCalls.incrementAndGet();

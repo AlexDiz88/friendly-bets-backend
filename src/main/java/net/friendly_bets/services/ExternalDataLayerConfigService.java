@@ -4,8 +4,10 @@ import lombok.RequiredArgsConstructor;
 import net.friendly_bets.exceptions.BadRequestException;
 import net.friendly_bets.models.AppSettings;
 import net.friendly_bets.providers.ExternalDataLayer;
+import net.friendly_bets.providers.ExternalDataLayersUpdatedEvent;
 import net.friendly_bets.providers.LayerProviderRegistry;
 import net.friendly_bets.providers.config.ExternalDataProperties;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,6 +26,7 @@ public class ExternalDataLayerConfigService {
     private final AppSettingsService appSettingsService;
     private final LayerProviderRegistry registry;
     private final ExternalDataProperties externalDataProperties;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
     public AppSettings.ExternalDataLayersBlock getOrCreateDefaults() {
@@ -104,6 +107,7 @@ public class ExternalDataLayerConfigService {
                 .build();
         settings.setExternalDataLayers(block);
         appSettingsService.save(settings);
+        eventPublisher.publishEvent(new ExternalDataLayersUpdatedEvent());
         return block;
     }
 

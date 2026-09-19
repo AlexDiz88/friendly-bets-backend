@@ -5,6 +5,7 @@ import net.friendly_bets.models.Season;
 import net.friendly_bets.models.schedule.MatchSchedule;
 import net.friendly_bets.matchschedule.config.MatchResultSyncProperties;
 import net.friendly_bets.providers.ExternalDataLayer;
+import net.friendly_bets.providers.ExternalDataLayersUpdatedEvent;
 import net.friendly_bets.providers.FullMatchAttemptSupport;
 import net.friendly_bets.providers.LayerProviderRouter;
 import net.friendly_bets.providers.LiveMatchProvider;
@@ -35,9 +36,13 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * while any match is tracked. Calls {@link LayerProviderRouter} (primary → secondary) —
  * not a specific physical API.
  *
- * <p>Long waits until a distant kickoff are capped by a heartbeat so a lost
- * {@link ScheduledFuture} (deploy, cancel race) cannot leave the layer dormant
- * while kickoffs pass silently.
+ * <p>No HTTP while the candidate list is empty: sleep until the nearest upcoming
+ * {@code utc_kickoff} (or FULL due-at). Long waits are capped by a heartbeat so a lost
+ * {@link ScheduledFuture} cannot miss kickoff; that heartbeat only re-evaluates the
+ * schedule — {@link #tick} skips {@code syncLive} when there are no candidates.
+ *
+ * <p>After circuit-breaker disable / admin layer PATCH, {@link ExternalDataLayersUpdatedEvent}
+ * reschedules (re-enable must not leave wake cancelled forever).
  */
 @Component
 public class LiveMatchWakeScheduler {
@@ -92,6 +97,11 @@ public class LiveMatchWakeScheduler {
 
     @EventListener(MatchSchedulesUpdatedEvent.class)
     public void onMatchSchedulesUpdated(MatchSchedulesUpdatedEvent ignored) {
+        rescheduleFromKickoffs(false);
+    }
+
+    @EventListener(ExternalDataLayersUpdatedEvent.class)
+    public void onExternalDataLayersUpdated(ExternalDataLayersUpdatedEvent ignored) {
         rescheduleFromKickoffs(false);
     }
 
@@ -273,7 +283,7 @@ public class LiveMatchWakeScheduler {
             nextFuture = null;
         }
         if (when.isEmpty()) {
-            log.debug("LIVE wake dormant (no upcoming kickoff / active matches)");
+            log.debug("LIVE wake idle (no candidates / upcoming kickoff)");
             return;
         }
         Instant fireAt = when.get().isBefore(Instant.now()) ? Instant.now() : when.get();
