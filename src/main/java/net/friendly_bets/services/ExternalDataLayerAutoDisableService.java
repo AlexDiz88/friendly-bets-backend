@@ -3,6 +3,8 @@ package net.friendly_bets.services;
 import lombok.RequiredArgsConstructor;
 import net.friendly_bets.models.AppSettings;
 import net.friendly_bets.providers.ExternalDataLayer;
+import net.friendly_bets.providers.ExternalDataLayersUpdatedEvent;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,6 +21,7 @@ import java.util.Map;
 public class ExternalDataLayerAutoDisableService {
 
     private final AppSettingsService appSettingsService;
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * Persist {@code enabled=false} for a layer (circuit breaker). Returns true when the flag changed.
@@ -56,6 +59,7 @@ public class ExternalDataLayerAutoDisableService {
                 .oddsRefreshWithinHours(block.getOddsRefreshWithinHours())
                 .build());
         appSettingsService.save(settings);
+        eventPublisher.publishEvent(new ExternalDataLayersUpdatedEvent());
         return true;
     }
 }
