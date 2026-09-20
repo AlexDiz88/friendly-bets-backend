@@ -36,10 +36,13 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * while any match is tracked. Calls {@link LayerProviderRouter} (primary → secondary) —
  * not a specific physical API.
  *
- * <p>No HTTP while the candidate list is empty: sleep until the nearest upcoming
- * {@code utc_kickoff} (or FULL due-at). Long waits are capped by a heartbeat so a lost
- * {@link ScheduledFuture} cannot miss kickoff; that heartbeat only re-evaluates the
- * schedule — {@link #tick} skips {@code syncLive} when there are no candidates.
+ * <p><b>HTTP only when there is work:</b> {@link #tick} calls {@code syncLive} only if there
+ * is at least one LIVE candidate or pending FULL. Empty re-eval ticks do not hit the network.
+ *
+ * <p><b>Never permanently dormant while LIVE is enabled:</b> if there are no candidates and
+ * no upcoming kickoff yet (gap between matchdays / missed SCHEDULE event), a re-eval
+ * heartbeat keeps the scheduler alive so the next kickoff cannot be missed. True idle
+ * ({@link Optional#empty()}) only when {@code LIVE.enabled=false}.
  *
  * <p>After circuit-breaker disable / admin layer PATCH, {@link ExternalDataLayersUpdatedEvent}
  * reschedules (re-enable must not leave wake cancelled forever).
@@ -49,8 +52,14 @@ public class LiveMatchWakeScheduler {
 
     private static final Logger log = LoggerFactory.getLogger(LiveMatchWakeScheduler.class);
 
-    /** Re-evaluate upcoming kickoffs at least this often (recovery from missed one-shot wakes). */
+    /**
+     * Re-evaluate upcoming kickoffs at least this often (recovery from missed one-shot wakes
+     * and from empty gaps between matchdays). Not an HTTP poll interval.
+     */
     static final long WAKE_HEARTBEAT_MS = 900_000L;
+
+    /** Short retry when a tick overlaps another and the chain would otherwise be lost. */
+    static final long OVERLAP_RETRY_MS = 5_000L;
 
     private final RunningSeasonLookup runningSeasonLookup;
     private final LayerProviderRouter router;
@@ -92,6 +101,7 @@ public class LiveMatchWakeScheduler {
 
     @EventListener(ApplicationReadyEvent.class)
     public void onApplicationReady() {
+        ensureLiveEnabled();
         rescheduleFromKickoffs(false);
     }
 
@@ -106,11 +116,28 @@ public class LiveMatchWakeScheduler {
     }
 
     public void rescheduleFromKickoffs(boolean afterPoll) {
-        scheduleNext(computeNextWake(Instant.now(), afterPoll));
+        WakePlan plan = computeNextWake(Instant.now(), afterPoll);
+        scheduleNext(plan);
+    }
+
+    /**
+     * After admin LIVE/FULL sync: ensure LIVE auto-sync is on, then re-arm wake.
+     */
+    public void armAfterManualSync() {
+        ensureLiveEnabled();
+        rescheduleFromKickoffs(false);
+    }
+
+    /** If Mongo has LIVE.enabled=false (circuit / toggle), turn it back on. */
+    private void ensureLiveEnabled() {
+        if (layerConfigService.ensureLayerEnabled(ExternalDataLayer.LIVE)) {
+            log.warn("LIVE.enabled was false — set to true (auto-sync restored)");
+        }
     }
 
     private void safeTick() {
         if (!running.compareAndSet(false, true)) {
+            armOverlapRetry();
             return;
         }
         try {
@@ -123,9 +150,24 @@ public class LiveMatchWakeScheduler {
                 scheduleNext(computeNextWake(Instant.now(), true));
             } catch (RuntimeException e) {
                 log.warn("LIVE wake reschedule failed: {}", e.getMessage());
-                scheduleNext(Optional.of(Instant.now().plusMillis(schedulerTickMs)));
+                scheduleNext(WakePlan.at(
+                        Instant.now().plusMillis(schedulerTickMs),
+                        "reschedule failure fallback"));
             }
         }
+    }
+
+    /**
+     * Another tick is in progress. If its future was already cancelled and nothing is armed,
+     * schedule a short retry so the chain cannot die on overlap.
+     */
+    private synchronized void armOverlapRetry() {
+        if (nextFuture != null && !nextFuture.isDone() && !nextFuture.isCancelled()) {
+            return;
+        }
+        Instant retryAt = Instant.now().plusMillis(OVERLAP_RETRY_MS);
+        nextFuture = taskScheduler.schedule(this::safeTick, retryAt);
+        log.warn("LIVE wake overlap; retry at {}", retryAt);
     }
 
     private void tick() {
@@ -147,6 +189,7 @@ public class LiveMatchWakeScheduler {
                 .anyMatch(s -> LiveMatchSupport.isLiveHttpCandidate(s, now));
         boolean hasPendingFull = seasonSchedules.stream().anyMatch(LiveMatchSupport::needsFullMatch);
         if (!hasTracked && !hasPendingFull) {
+            // Re-eval only — no HTTP. Scheduler stays armed via computeNextWake heartbeat.
             return;
         }
 
@@ -210,13 +253,13 @@ public class LiveMatchWakeScheduler {
         return pendingFull;
     }
 
-    Optional<Instant> computeNextWake(Instant now, boolean afterPoll) {
+    WakePlan computeNextWake(Instant now, boolean afterPoll) {
         if (!layerConfigService.isLayerEnabled(ExternalDataLayer.LIVE)) {
-            return Optional.empty();
+            return WakePlan.idle("layer disabled");
         }
         Optional<Season> seasonOpt = runningSeasonLookup.findRunningSeason();
         if (seasonOpt.isEmpty()) {
-            return Optional.empty();
+            return WakePlan.at(reevalAt(now), "no running season");
         }
         String seasonId = seasonOpt.get().getId();
         boolean hasActiveOrPendingFull = false;
@@ -241,15 +284,25 @@ public class LiveMatchWakeScheduler {
 
         if (hasActiveOrPendingFull) {
             if (afterPoll) {
-                return Optional.of(nextWakeAfterPoll(now, nearestWake, schedulerTickMs));
+                return WakePlan.at(
+                        nextWakeAfterPoll(now, nearestWake, schedulerTickMs),
+                        "active poll interval");
             }
-            return Optional.of(now);
+            return WakePlan.at(now, "active immediate");
         }
         if (nearestWake != null) {
             Instant target = nearestWake.isBefore(now) ? now : nearestWake;
-            return Optional.of(capWakeByHeartbeat(now, target, WAKE_HEARTBEAT_MS));
+            return WakePlan.at(
+                    capWakeByHeartbeat(now, target, WAKE_HEARTBEAT_MS),
+                    "await kickoff/full due");
         }
-        return Optional.empty();
+        // Enabled, season exists, but no kickoffs yet — keep re-eval so SCHEDULE gaps cannot
+        // leave LIVE dead until the next deploy/restart.
+        return WakePlan.at(reevalAt(now), "await schedule/kickoffs");
+    }
+
+    static Instant reevalAt(Instant now) {
+        return now.plusMillis(Math.max(1_000L, WAKE_HEARTBEAT_MS));
     }
 
     /**
@@ -277,17 +330,30 @@ public class LiveMatchWakeScheduler {
         return target.isBefore(cap) ? target : cap;
     }
 
-    private synchronized void scheduleNext(Optional<Instant> when) {
+    private synchronized void scheduleNext(WakePlan plan) {
         if (nextFuture != null) {
             nextFuture.cancel(false);
             nextFuture = null;
         }
-        if (when.isEmpty()) {
-            log.debug("LIVE wake idle (no candidates / upcoming kickoff)");
+        if (plan == null || plan.when().isEmpty()) {
+            log.info("LIVE wake idle ({})", plan != null ? plan.reason() : "null plan");
             return;
         }
-        Instant fireAt = when.get().isBefore(Instant.now()) ? Instant.now() : when.get();
+        Instant fireAt = plan.when().get().isBefore(Instant.now()) ? Instant.now() : plan.when().get();
         nextFuture = taskScheduler.schedule(this::safeTick, fireAt);
-        log.debug("LIVE wake next at {}", fireAt);
+        log.info("LIVE wake next at {} ({})", fireAt, plan.reason());
+    }
+
+    /**
+     * Next wake instant + reason for logs. {@code when} empty = true idle (layer disabled).
+     */
+    record WakePlan(Optional<Instant> when, String reason) {
+        static WakePlan idle(String reason) {
+            return new WakePlan(Optional.empty(), reason);
+        }
+
+        static WakePlan at(Instant when, String reason) {
+            return new WakePlan(Optional.of(when), reason);
+        }
     }
 }

@@ -244,12 +244,11 @@ public class ExternalDataAdminController {
     }
 
     /**
-     * Manual LIVE/FULL must not leave auto wake idle: re-evaluate candidates and FULL due-at
-     * the same way SCHEDULE's {@code MatchSchedulesUpdatedEvent} does.
+     * Manual LIVE/FULL must not leave auto wake idle: ensure LIVE.enabled=true, then re-arm.
      */
     private void wakeLiveAutoPipeline() {
         try {
-            liveMatchWakeScheduler.rescheduleFromKickoffs(false);
+            liveMatchWakeScheduler.armAfterManualSync();
         } catch (RuntimeException ignored) {
             // Admin response already committed; wake failure must not mask sync result.
         }

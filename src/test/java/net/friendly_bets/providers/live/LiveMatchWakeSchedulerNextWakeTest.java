@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import java.time.Instant;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class LiveMatchWakeSchedulerNextWakeTest {
 
@@ -52,5 +53,12 @@ class LiveMatchWakeSchedulerNextWakeTest {
         Instant next = LiveMatchWakeScheduler.capWakeByHeartbeat(
                 NOW, kickoff, LiveMatchWakeScheduler.WAKE_HEARTBEAT_MS);
         assertEquals(kickoff, next);
+    }
+
+    @Test
+    void reevalAt_usesHeartbeatInterval() {
+        Instant next = LiveMatchWakeScheduler.reevalAt(NOW);
+        assertEquals(NOW.plusMillis(LiveMatchWakeScheduler.WAKE_HEARTBEAT_MS), next);
+        assertTrue(next.isAfter(NOW));
     }
 }
