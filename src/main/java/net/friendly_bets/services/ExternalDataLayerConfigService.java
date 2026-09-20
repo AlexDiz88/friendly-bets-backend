@@ -67,6 +67,44 @@ public class ExternalDataLayerConfigService {
         return externalDataProperties.isLayerEnabled(layer);
     }
 
+    /**
+     * Persist {@code enabled=true} when the layer is currently off (circuit / admin).
+     * No-op if already enabled. Returns true when the flag changed.
+     */
+    @Transactional
+    public boolean ensureLayerEnabled(ExternalDataLayer layer) {
+        if (layer == null || isLayerEnabled(layer)) {
+            return false;
+        }
+        AppSettings settings = appSettingsService.getOrCreate();
+        AppSettings.ExternalDataLayersBlock block = settings.getExternalDataLayers();
+        if (block == null || block.getLayers() == null) {
+            block = appSettingsService.defaultExternalDataLayers();
+            settings.setExternalDataLayers(block);
+        }
+        Map<ExternalDataLayer, AppSettings.LayerAssignment> layers = new EnumMap<>(ExternalDataLayer.class);
+        if (block.getLayers() != null) {
+            layers.putAll(block.getLayers());
+        }
+        for (ExternalDataLayer l : ExternalDataLayer.values()) {
+            layers.putIfAbsent(l, appSettingsService.defaultLayerAssignment(l));
+        }
+        AppSettings.LayerAssignment current = layers.get(layer);
+        AppSettings.LayerAssignment next = AppSettings.LayerAssignment.builder()
+                .enabled(true)
+                .primaryProvider(current != null ? current.getPrimaryProvider() : null)
+                .secondaryProvider(current != null ? current.getSecondaryProvider() : null)
+                .build();
+        layers.put(layer, next);
+        settings.setExternalDataLayers(AppSettings.ExternalDataLayersBlock.builder()
+                .layers(layers)
+                .oddsRefreshWithinHours(block.getOddsRefreshWithinHours())
+                .build());
+        appSettingsService.save(settings);
+        eventPublisher.publishEvent(new ExternalDataLayersUpdatedEvent());
+        return true;
+    }
+
     /** ODDS cron refresh / near-kickoff window (hours). Mongo, else properties default. */
     public int oddsRefreshWithinHours() {
         return appSettingsService.oddsRefreshWithinHours();

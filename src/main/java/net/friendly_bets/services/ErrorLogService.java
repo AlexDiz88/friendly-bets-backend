@@ -61,6 +61,8 @@ public class ErrorLogService {
     public static final String CODE_LIVE_MATCH_NOT_IN_FEED = "liveMatchNotInFeed";
     public static final String CODE_LIVE_MATCH_AMBIGUOUS = "liveMatchAmbiguous";
     public static final String CODE_LIVE_MATCH_NEVER_POLLED = "liveMatchNeverPolled";
+    /** Manual LIVE/FULL ran while auto LIVE is disabled — CRON will stay idle. */
+    public static final String CODE_LIVE_WAKE_DISABLED = "liveWakeDisabled";
 
     private final ErrorLogRepository errorLogRepository;
     private final MatchScheduleRepository matchScheduleRepository;
