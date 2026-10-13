@@ -140,8 +140,9 @@ public class ErrorLogService {
     }
 
     /**
-     * Builds the stored message: original detail plus always layer / provider / league / matchday / teams
-     * (explicit «недоступн*» when a field is missing).
+     * Builds the stored message: original detail plus known context
+     * (layer / provider / league / matchday / teams). Missing fields are omitted —
+     * not phrased as «недоступны».
      */
     String toStoredMessage(Entry entry) {
         return resolveEntry(entry).message;
@@ -211,17 +212,50 @@ public class ErrorLogService {
             String homeTeam,
             String awayTeam
     ) {
+        String base = stripContextSuffix(baseMessage);
         String suffix = buildContextSuffix(layer, provider, leagueCode, matchday, homeTeam, awayTeam);
-        if (baseMessage == null || baseMessage.isBlank()) {
+        if (suffix.isEmpty()) {
+            return base != null ? base : "";
+        }
+        if (base == null || base.isBlank()) {
             return suffix;
         }
-        if (baseMessage.contains(CONTEXT_SEP + "слой:")
-                || baseMessage.contains(CONTEXT_SEP + "данные о слое")) {
-            return baseMessage;
-        }
-        return baseMessage + CONTEXT_SEP + suffix;
+        return base + CONTEXT_SEP + suffix;
     }
 
+    /**
+     * Removes a previously appended context suffix (current or legacy «недоступн*» style)
+     * so enrich/list can rebuild from structured fields without doubling or keeping placeholders.
+     */
+    static String stripContextSuffix(String message) {
+        if (message == null || message.isBlank()) {
+            return message;
+        }
+        int idx = message.indexOf(CONTEXT_SEP);
+        if (idx < 0) {
+            return message;
+        }
+        String after = message.substring(idx + CONTEXT_SEP.length()).trim();
+        if (!looksLikeContextSuffix(after)) {
+            return message;
+        }
+        String base = message.substring(0, idx).trim();
+        return base.isEmpty() ? null : base;
+    }
+
+    private static boolean looksLikeContextSuffix(String after) {
+        return after.startsWith("слой:")
+                || after.startsWith("провайдер:")
+                || after.startsWith("лига:")
+                || after.startsWith("тур:")
+                || after.startsWith("команды:")
+                || after.startsWith("данные о ")
+                || after.startsWith("информация о командах");
+    }
+
+    /**
+     * Only known fields — omit absent ones (page-level fetch has league, not matchday/teams).
+     */
     private static String buildContextSuffix(
             String layer,
             String provider,
@@ -230,22 +264,28 @@ public class ErrorLogService {
             String homeTeam,
             String awayTeam
     ) {
-        String layerPart = layer != null ? "слой: " + layer : "данные о слое недоступны";
-        String providerPart = provider != null ? "провайдер: " + provider : "данные о провайдере недоступны";
-        String leaguePart = leagueCode != null ? "лига: " + leagueCode : "данные о лиге недоступны";
-        String matchdayPart = matchday != null ? "тур: " + matchday : "данные о туре недоступны";
-        String teamsPart;
+        List<String> parts = new ArrayList<>();
+        if (layer != null) {
+            parts.add("слой: " + layer);
+        }
+        if (provider != null) {
+            parts.add("провайдер: " + provider);
+        }
+        if (leagueCode != null) {
+            parts.add("лига: " + leagueCode);
+        }
+        if (matchday != null) {
+            parts.add("тур: " + matchday);
+        }
         if (homeTeam != null && awayTeam != null) {
-            teamsPart = "команды: " + homeTeam + " — " + awayTeam;
+            parts.add("команды: " + homeTeam + " — " + awayTeam);
         } else if (homeTeam != null || awayTeam != null) {
-            teamsPart = "команды: "
+            parts.add("команды: "
                     + (homeTeam != null ? homeTeam : "?")
                     + " — "
-                    + (awayTeam != null ? awayTeam : "?");
-        } else {
-            teamsPart = "информация о командах недоступна";
+                    + (awayTeam != null ? awayTeam : "?"));
         }
-        return layerPart + "; " + providerPart + "; " + leaguePart + "; " + matchdayPart + "; " + teamsPart;
+        return String.join("; ", parts);
     }
 
     private static final class ResolvedEntry {
@@ -616,7 +656,7 @@ public class ErrorLogService {
         return dtos;
     }
 
-    /** Ensure message always carries layer/provider/league/matchday/teams (also for legacy rows). */
+    /** Rebuild message suffix from structured fields (also strips legacy «недоступн*» placeholders). */
     private static void enrichMessages(List<ErrorLogDto> dtos) {
         if (dtos == null || dtos.isEmpty()) {
             return;
