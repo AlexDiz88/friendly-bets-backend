@@ -6,6 +6,7 @@ import net.friendly_bets.exceptions.BadRequestException;
 import net.friendly_bets.matchschedule.MatchdaySlotSupport;
 import net.friendly_bets.matchschedule.MatchScheduleCurrentSlotResolver;
 import net.friendly_bets.matchschedule.ScheduleFarKickoffSkipSupport;
+import net.friendly_bets.matchschedule.ScheduleStatusWriteSupport;
 import net.friendly_bets.models.ExpandedMatchdaySlot;
 import net.friendly_bets.models.League;
 import net.friendly_bets.models.Season;
@@ -422,9 +423,7 @@ public class SportsRuScheduleSyncService implements ScheduleProvider {
         if (match.getUtcKickoff() != null) {
             existing.setUtcKickoff(match.getUtcKickoff());
         }
-        if (match.getStatus() != null) {
-            existing.setStatus(match.getStatus());
-        }
+        ScheduleStatusWriteSupport.applyFromSchedule(existing, match.getStatus());
         existing.setFetchedAt(fetchedAt);
         matchScheduleRepository.save(existing);
         oddsService.deleteIfFinalized(existing);
