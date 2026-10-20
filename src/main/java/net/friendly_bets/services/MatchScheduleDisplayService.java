@@ -2,14 +2,22 @@ package net.friendly_bets.services;
 
 import lombok.RequiredArgsConstructor;
 import net.friendly_bets.dto.ExternalMatchDto;
+import net.friendly_bets.dto.MatchResultOddsDto;
 import net.friendly_bets.dto.TeamDisplayNamesDto;
 import net.friendly_bets.models.Team;
+import net.friendly_bets.models.odds.Odds;
 import net.friendly_bets.models.schedule.MatchSchedule;
+import net.friendly_bets.odds.MatchResultOddsExtractor;
+import net.friendly_bets.odds.MatchScheduleNotStarted;
+import net.friendly_bets.repositories.OddsRepository;
 import net.friendly_bets.repositories.TeamsRepository;
 import net.friendly_bets.wc26.Wc26TeamCatalog;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Service
@@ -17,12 +25,33 @@ import java.util.Optional;
 public class MatchScheduleDisplayService {
 
     private final TeamsRepository teamsRepository;
+    private final OddsRepository oddsRepository;
 
     public List<ExternalMatchDto> toDisplayDtos(List<MatchSchedule> schedules, String seasonYear) {
-        return schedules.stream().map(s -> toDisplayDto(s, seasonYear)).toList();
+        Instant now = Instant.now();
+        Map<String, MatchResultOddsDto> oddsByScheduleId = loadMatchResultOdds(schedules, now);
+        return schedules.stream()
+                .map(s -> toDisplayDto(s, seasonYear, oddsByScheduleId.get(s.getId())))
+                .toList();
     }
 
     public ExternalMatchDto toDisplayDto(MatchSchedule schedule, String seasonYear) {
+        MatchResultOddsDto matchResultOdds = null;
+        if (schedule != null
+                && schedule.getId() != null
+                && MatchScheduleNotStarted.isNotStarted(schedule)) {
+            matchResultOdds = oddsRepository.findByMatchScheduleId(schedule.getId())
+                    .flatMap(MatchResultOddsExtractor::extract)
+                    .orElse(null);
+        }
+        return toDisplayDto(schedule, seasonYear, matchResultOdds);
+    }
+
+    private ExternalMatchDto toDisplayDto(
+            MatchSchedule schedule,
+            String seasonYear,
+            MatchResultOddsDto matchResultOdds
+    ) {
         boolean finalized = isFinalized(schedule);
         ExternalMatchDto dto = ExternalMatchDto.builder()
                 .id(schedule.getId())
@@ -47,11 +76,35 @@ public class MatchScheduleDisplayService {
                 .addedTimeFirstHalf(schedule.getAddedTimeFirstHalf())
                 .addedTimeSecondHalf(schedule.getAddedTimeSecondHalf())
                 .stats(schedule.getStats())
+                .matchResultOdds(matchResultOdds)
                 .build();
 
         applyTeamDisplay(dto, true, findTeam(schedule.getHomeTeamId()), schedule.getLeagueCode());
         applyTeamDisplay(dto, false, findTeam(schedule.getAwayTeamId()), schedule.getLeagueCode());
         return dto;
+    }
+
+    private Map<String, MatchResultOddsDto> loadMatchResultOdds(List<MatchSchedule> schedules, Instant now) {
+        Map<String, MatchResultOddsDto> result = new HashMap<>();
+        if (schedules == null || schedules.isEmpty()) {
+            return result;
+        }
+        List<String> notStartedIds = schedules.stream()
+                .filter(s -> s != null && s.getId() != null && MatchScheduleNotStarted.isNotStarted(s, now))
+                .map(MatchSchedule::getId)
+                .toList();
+        if (notStartedIds.isEmpty()) {
+            return result;
+        }
+        List<Odds> oddsDocs = oddsRepository.findByMatchScheduleIdIn(notStartedIds);
+        for (Odds odds : oddsDocs) {
+            if (odds == null || odds.getMatchScheduleId() == null) {
+                continue;
+            }
+            MatchResultOddsExtractor.extract(odds)
+                    .ifPresent(dto -> result.put(odds.getMatchScheduleId(), dto));
+        }
+        return result;
     }
 
     private void applyTeamDisplay(ExternalMatchDto dto, boolean home, Optional<Team> team, String leagueCode) {

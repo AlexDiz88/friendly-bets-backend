@@ -55,4 +55,8 @@ public class ExternalMatchDto {
     private Integer addedTimeSecondHalf;
     /** FULL_MATCH team stats (possession, shots, xG, …). */
     private MatchTeamStats stats;
+    /**
+     * Compact 1X2 preview for not-started matches only; null when absent or match already started.
+     */
+    private MatchResultOddsDto matchResultOdds;
 }
