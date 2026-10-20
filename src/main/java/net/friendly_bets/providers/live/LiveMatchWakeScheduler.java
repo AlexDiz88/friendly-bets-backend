@@ -11,6 +11,7 @@ import net.friendly_bets.providers.LayerProviderRouter;
 import net.friendly_bets.providers.LiveMatchProvider;
 import net.friendly_bets.providers.MatchSchedulesUpdatedEvent;
 import net.friendly_bets.repositories.MatchScheduleRepository;
+import net.friendly_bets.services.ExternalDataLayerAutoDisableService;
 import net.friendly_bets.services.ExternalDataLayerConfigService;
 import net.friendly_bets.services.MatchFinalizeOrchestrator;
 import net.friendly_bets.services.RunningSeasonLookup;
@@ -23,6 +24,7 @@ import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.stereotype.Component;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -65,12 +67,14 @@ public class LiveMatchWakeScheduler {
     private final LayerProviderRouter router;
     private final MatchFinalizeOrchestrator matchFinalizeOrchestrator;
     private final ExternalDataLayerConfigService layerConfigService;
+    private final ExternalDataLayerAutoDisableService layerAutoDisableService;
     private final MatchScheduleRepository matchScheduleRepository;
     private final MatchResultSyncProperties matchResultSyncProperties;
     private final LiveMatchSyncDiagnostics liveMatchSyncDiagnostics;
     private final LiveMatchSecondaryCatchUp liveMatchSecondaryCatchUp;
     private final ThreadPoolTaskScheduler taskScheduler;
     private final long schedulerTickMs;
+    private final Duration circuitReenableAfter;
 
     private final AtomicBoolean running = new AtomicBoolean(false);
     private volatile ScheduledFuture<?> nextFuture;
@@ -80,23 +84,27 @@ public class LiveMatchWakeScheduler {
             LayerProviderRouter router,
             MatchFinalizeOrchestrator matchFinalizeOrchestrator,
             ExternalDataLayerConfigService layerConfigService,
+            ExternalDataLayerAutoDisableService layerAutoDisableService,
             MatchScheduleRepository matchScheduleRepository,
             MatchResultSyncProperties matchResultSyncProperties,
             LiveMatchSyncDiagnostics liveMatchSyncDiagnostics,
             LiveMatchSecondaryCatchUp liveMatchSecondaryCatchUp,
             @Qualifier("liveMatchWakeTaskScheduler") ThreadPoolTaskScheduler taskScheduler,
-            @Value("${external-data.layers.LIVE.scheduler-tick-ms:300000}") long schedulerTickMs
+            @Value("${external-data.layers.LIVE.scheduler-tick-ms:300000}") long schedulerTickMs,
+            @Value("${external-data.circuit-breaker.reenable-after-hours:6}") long circuitReenableAfterHours
     ) {
         this.runningSeasonLookup = runningSeasonLookup;
         this.router = router;
         this.matchFinalizeOrchestrator = matchFinalizeOrchestrator;
         this.layerConfigService = layerConfigService;
+        this.layerAutoDisableService = layerAutoDisableService;
         this.matchScheduleRepository = matchScheduleRepository;
         this.matchResultSyncProperties = matchResultSyncProperties;
         this.liveMatchSyncDiagnostics = liveMatchSyncDiagnostics;
         this.liveMatchSecondaryCatchUp = liveMatchSecondaryCatchUp;
         this.taskScheduler = taskScheduler;
         this.schedulerTickMs = Math.max(1_000L, schedulerTickMs);
+        this.circuitReenableAfter = Duration.ofHours(Math.max(1L, circuitReenableAfterHours));
     }
 
     @EventListener(ApplicationReadyEvent.class)
@@ -128,8 +136,15 @@ public class LiveMatchWakeScheduler {
         rescheduleFromKickoffs(false);
     }
 
-    /** If Mongo has LIVE.enabled=false (circuit / toggle), turn it back on. */
+    /**
+     * If Mongo has LIVE.enabled=false (admin toggle / legacy), turn it back on.
+     * Respects circuit cooldown — do not undo {@code layerCircuitOpen} before auto-re-enable.
+     */
     private void ensureLiveEnabled() {
+        if (layerAutoDisableService.isCircuitCooldownActive(ExternalDataLayer.LIVE, circuitReenableAfter)) {
+            log.info("LIVE circuit cooldown active — skip ensureLayerEnabled");
+            return;
+        }
         if (layerConfigService.ensureLayerEnabled(ExternalDataLayer.LIVE)) {
             log.warn("LIVE.enabled was false — set to true (auto-sync restored)");
         }

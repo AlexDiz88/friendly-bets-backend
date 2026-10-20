@@ -75,5 +75,12 @@ public class AppSettings {
 
         @Field(name = "secondary_provider")
         private String secondaryProvider;
+
+        /**
+         * When set, layer was disabled by the scrape circuit breaker.
+         * Auto-re-enable after cooldown uses this stamp; admin PATCH clears it.
+         */
+        @Field(name = "circuit_disabled_at")
+        private Instant circuitDisabledAt;
     }
 }

@@ -45,6 +45,8 @@ public class ErrorLogDto {
     private List<Instant> occurredAt;
     private Integer occurrenceCount;
     private Map<String, String> context;
+    private boolean archived;
+    private Instant archivedAt;
 
     public static ErrorLogDto from(ErrorLog log) {
         if (log == null) {
@@ -74,6 +76,8 @@ public class ErrorLogDto {
                 .occurredAt(log.getOccurredAt() != null ? new ArrayList<>(log.getOccurredAt()) : List.of())
                 .occurrenceCount(log.getOccurrenceCount())
                 .context(ctx)
+                .archived(Boolean.TRUE.equals(log.getArchived()))
+                .archivedAt(log.getArchivedAt())
                 .build();
     }
 

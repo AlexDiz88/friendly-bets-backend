@@ -1,12 +1,23 @@
 package net.friendly_bets.scrape;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.UncheckedIOException;
 import java.net.CookieManager;
 import java.net.CookiePolicy;
 import java.net.http.HttpClient;
+import java.net.http.HttpHeaders;
 import java.net.http.HttpRequest;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.zip.GZIPInputStream;
+import java.util.zip.InflaterInputStream;
 
 /**
  * Shared builders and browser-like header application for HTML scrapers.
@@ -149,5 +160,88 @@ public final class ScrapeHttpSupport {
             return ScrapeFailureKind.TIMEOUT;
         }
         return ScrapeFailureKind.NETWORK_ERROR;
+    }
+
+    /**
+     * Decode HTTP body: gunzip/deflate when {@code Content-Encoding} (or gzip magic) says so,
+     * then charset from {@code Content-Type} (default UTF-8).
+     * Java {@link HttpClient} does not auto-decompress when the server still sends gzip.
+     */
+    public static String decodeResponseBody(byte[] body, HttpHeaders headers) {
+        if (body == null || body.length == 0) {
+            return "";
+        }
+        String encoding = headerValue(headers, "Content-Encoding").orElse(null);
+        String contentType = headerValue(headers, "Content-Type").orElse(null);
+        byte[] raw = decompressIfNeeded(body, encoding);
+        return new String(raw, charsetFromContentType(contentType));
+    }
+
+    static byte[] decompressIfNeeded(byte[] body, String contentEncoding) {
+        if (body == null || body.length == 0) {
+            return body != null ? body : new byte[0];
+        }
+        String enc = contentEncoding != null ? contentEncoding.toLowerCase(Locale.ROOT).trim() : "";
+        boolean gzipHeader = enc.contains("gzip");
+        boolean deflateHeader = enc.contains("deflate");
+        boolean gzipMagic = body.length >= 2
+                && (body[0] & 0xFF) == 0x1F
+                && (body[1] & 0xFF) == 0x8B;
+        if (gzipHeader || gzipMagic) {
+            try {
+                return readCompressed(new GZIPInputStream(new ByteArrayInputStream(body)));
+            } catch (IOException e) {
+                if (gzipHeader) {
+                    throw new UncheckedIOException("gzip decompress failed", e);
+                }
+                return body;
+            }
+        }
+        if (deflateHeader) {
+            try {
+                return readCompressed(new InflaterInputStream(new ByteArrayInputStream(body)));
+            } catch (IOException e) {
+                throw new UncheckedIOException("deflate decompress failed", e);
+            }
+        }
+        return body;
+    }
+
+    static Charset charsetFromContentType(String contentType) {
+        if (contentType == null || contentType.isBlank()) {
+            return StandardCharsets.UTF_8;
+        }
+        String lower = contentType.toLowerCase(Locale.ROOT);
+        int idx = lower.indexOf("charset=");
+        if (idx < 0) {
+            return StandardCharsets.UTF_8;
+        }
+        String raw = contentType.substring(idx + "charset=".length()).trim();
+        int semi = raw.indexOf(';');
+        if (semi >= 0) {
+            raw = raw.substring(0, semi).trim();
+        }
+        if (raw.startsWith("\"") && raw.endsWith("\"") && raw.length() >= 2) {
+            raw = raw.substring(1, raw.length() - 1);
+        }
+        try {
+            return Charset.forName(raw);
+        } catch (Exception e) {
+            return StandardCharsets.UTF_8;
+        }
+    }
+
+    private static byte[] readCompressed(InputStream in) throws IOException {
+        try (InputStream stream = in; ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            stream.transferTo(out);
+            return out.toByteArray();
+        }
+    }
+
+    private static Optional<String> headerValue(HttpHeaders headers, String name) {
+        if (headers == null || name == null) {
+            return Optional.empty();
+        }
+        return headers.firstValue(name);
     }
 }
