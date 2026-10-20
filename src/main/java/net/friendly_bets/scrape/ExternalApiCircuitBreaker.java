@@ -25,6 +25,7 @@ public class ExternalApiCircuitBreaker {
     private static final Logger log = LoggerFactory.getLogger(ExternalApiCircuitBreaker.class);
 
     public static final String CODE_LAYER_CIRCUIT_OPEN = "layerCircuitOpen";
+    public static final String CODE_LAYER_CIRCUIT_AUTO_REENABLED = "layerCircuitAutoReenabled";
 
     private final ExternalDataLayerAutoDisableService layerAutoDisableService;
     private final ErrorLogService errorLogService;

@@ -47,9 +47,15 @@ public class ExternalSiteAccessProbeService {
                     .timeout(Duration.ofSeconds(30))
                     .GET();
             ScrapeHttpSupport.applyNavigationHeaders(builder, browserProfile, null);
-            HttpResponse<String> response = httpClient.send(builder.build(), HttpResponse.BodyHandlers.ofString());
+            // Prefer identity; some hosts still send gzip for Chrome UA — decode below.
+            builder.header("Accept-Encoding", "gzip, deflate, identity");
+            HttpResponse<byte[]> response = httpClient.send(
+                    builder.build(),
+                    HttpResponse.BodyHandlers.ofByteArray()
+            );
             long durationMs = System.currentTimeMillis() - started;
-            String body = response.body() != null ? response.body() : "";
+            byte[] raw = response.body() != null ? response.body() : new byte[0];
+            String body = ScrapeHttpSupport.decodeResponseBody(raw, response.headers());
             String server = firstHeader(response, "server");
             String cfRay = firstHeader(response, "cf-ray");
             String cfMitigated = firstHeader(response, "cf-mitigated");

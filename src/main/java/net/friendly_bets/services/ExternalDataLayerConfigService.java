@@ -94,6 +94,7 @@ public class ExternalDataLayerConfigService {
                 .enabled(true)
                 .primaryProvider(current != null ? current.getPrimaryProvider() : null)
                 .secondaryProvider(current != null ? current.getSecondaryProvider() : null)
+                .circuitDisabledAt(null)
                 .build();
         layers.put(layer, next);
         settings.setExternalDataLayers(AppSettings.ExternalDataLayersBlock.builder()
@@ -127,10 +128,12 @@ public class ExternalDataLayerConfigService {
                 continue;
             }
             validateAssignment(layer, incoming);
+            // Admin PATCH owns enabled state — clear circuit stamp (no auto-re-enable).
             next.put(layer, AppSettings.LayerAssignment.builder()
                     .enabled(incoming.getEnabled() == null || incoming.getEnabled())
                     .primaryProvider(blankToNull(incoming.getPrimaryProvider()))
                     .secondaryProvider(blankToNull(incoming.getSecondaryProvider()))
+                    .circuitDisabledAt(null)
                     .build());
         }
 

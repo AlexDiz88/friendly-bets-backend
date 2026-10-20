@@ -2,6 +2,10 @@ package net.friendly_bets.scrape;
 
 import org.junit.jupiter.api.Test;
 
+import java.io.ByteArrayOutputStream;
+import java.nio.charset.StandardCharsets;
+import java.util.zip.GZIPOutputStream;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -57,5 +61,41 @@ class ScrapeHttpSupportTest {
                 ScrapeFailureKind.NETWORK_ERROR,
                 ScrapeHttpSupport.classifyThrowable(new java.io.IOException("connection reset"))
         );
+    }
+
+    @Test
+    void decompressIfNeeded_gunzipsByHeaderAndMagic() throws Exception {
+        byte[] plain = "<html>Ставки на футбол</html>".getBytes(StandardCharsets.UTF_8);
+        byte[] gzipped = gzip(plain);
+        assertEquals(
+                new String(plain, StandardCharsets.UTF_8),
+                new String(ScrapeHttpSupport.decompressIfNeeded(gzipped, "gzip"), StandardCharsets.UTF_8)
+        );
+        assertEquals(
+                new String(plain, StandardCharsets.UTF_8),
+                new String(ScrapeHttpSupport.decompressIfNeeded(gzipped, null), StandardCharsets.UTF_8)
+        );
+        assertEquals(
+                "plain",
+                new String(ScrapeHttpSupport.decompressIfNeeded("plain".getBytes(StandardCharsets.UTF_8), null),
+                        StandardCharsets.UTF_8)
+        );
+    }
+
+    @Test
+    void charsetFromContentType_readsExplicitCharset() {
+        assertEquals(StandardCharsets.UTF_8, ScrapeHttpSupport.charsetFromContentType(null));
+        assertEquals(
+                java.nio.charset.Charset.forName("windows-1251"),
+                ScrapeHttpSupport.charsetFromContentType("text/html; charset=windows-1251")
+        );
+    }
+
+    private static byte[] gzip(byte[] input) throws Exception {
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        try (GZIPOutputStream gzip = new GZIPOutputStream(bos)) {
+            gzip.write(input);
+        }
+        return bos.toByteArray();
     }
 }
