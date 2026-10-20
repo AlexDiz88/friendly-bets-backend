@@ -10,9 +10,11 @@ import net.friendly_bets.odds.mapping.OddsMerger;
 import net.friendly_bets.odds.mapping.OddsProductionMergeFilter;
 import net.friendly_bets.repositories.OddsRepository;
 import net.friendly_bets.services.MatchScheduleDisplayService;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -26,6 +28,9 @@ public class OddsService {
 
     private final OddsRepository oddsRepository;
 
+    @Value("${odds.retention-after-finalized-days:14}")
+    private int retentionAfterFinalizedDays;
+
     public Optional<Odds> findByMatchScheduleId(String matchScheduleId) {
         return oddsRepository.findByMatchScheduleId(matchScheduleId);
     }
@@ -38,13 +43,33 @@ public class OddsService {
     }
 
     /**
-     * Delete odds when FULL_MATCH has locked the schedule ({@code finalized_at}).
+     * Cutoff Instant: odds for schedules with {@code finalized_at <= cutoff} may be purged.
+     */
+    public Instant retentionCutoff(Instant now) {
+        Instant at = now != null ? now : Instant.now();
+        int days = Math.max(retentionAfterFinalizedDays, 0);
+        return at.minus(days, ChronoUnit.DAYS);
+    }
+
+    /**
+     * True when FULL_MATCH locked the schedule and retention window has elapsed.
+     */
+    public boolean isPastRetention(MatchSchedule schedule, Instant now) {
+        if (!MatchScheduleDisplayService.isFinalized(schedule) || schedule.getFinalizedAt() == null) {
+            return false;
+        }
+        Instant cutoff = retentionCutoff(now);
+        return !schedule.getFinalizedAt().isAfter(cutoff);
+    }
+
+    /**
+     * Delete odds when FULL_MATCH has locked the schedule and retention after {@code finalized_at} has elapsed.
      */
     public void deleteIfFinalized(MatchSchedule schedule) {
         if (schedule == null || schedule.getId() == null) {
             return;
         }
-        if (MatchScheduleDisplayService.isFinalized(schedule)) {
+        if (isPastRetention(schedule, Instant.now())) {
             oddsRepository.deleteByMatchScheduleId(schedule.getId());
         }
     }

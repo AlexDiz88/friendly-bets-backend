@@ -3,10 +3,13 @@ package net.friendly_bets.repositories;
 import net.friendly_bets.models.schedule.MatchSchedule;
 import org.springframework.data.mongodb.repository.MongoRepository;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
 public interface MatchScheduleRepository extends MongoRepository<MatchSchedule, String> {
+
+    List<MatchSchedule> findByFinalizedAtLessThanEqual(Instant cutoff);
 
     List<MatchSchedule> findByLeagueIdAndSeasonIdAndMatchdayOrderByUtcKickoffAsc(
             String leagueId,
