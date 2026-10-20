@@ -103,4 +103,14 @@ public class ErrorLog {
     @Field(name = "context")
     @Builder.Default
     private Map<String, String> context = new LinkedHashMap<>();
+
+    /**
+     * Hidden from the default error-log list. Missing/null = active (not archived).
+     * Cleared automatically when the same incident is recorded again.
+     */
+    @Field(name = "archived")
+    private Boolean archived;
+
+    @Field(name = "archived_at")
+    private Instant archivedAt;
 }

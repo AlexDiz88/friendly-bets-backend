@@ -6,6 +6,7 @@ import lombok.Value;
 import net.friendly_bets.dto.ErrorLogDto;
 import net.friendly_bets.dto.ExternalApiMatchTeamsDto;
 import net.friendly_bets.exceptions.BadRequestException;
+import net.friendly_bets.exceptions.ConflictException;
 import net.friendly_bets.exceptions.NotFoundException;
 import net.friendly_bets.models.ErrorLog;
 import net.friendly_bets.models.Team;
@@ -105,6 +106,7 @@ public class ErrorLogService {
                 if (existing.isPresent()) {
                     ErrorLog doc = existing.get();
                     appendOccurrence(doc, Instant.now());
+                    clearArchiveFlags(doc);
                     errorLogRepository.save(doc);
                     return;
                 }
@@ -132,6 +134,7 @@ public class ErrorLogService {
                     .homeTeam(resolved.homeTeam)
                     .awayTeam(resolved.awayTeam)
                     .context(entry.getContext() != null ? new LinkedHashMap<>(entry.getContext()) : new LinkedHashMap<>())
+                    .archived(false)
                     .build();
             errorLogRepository.save(doc);
         } catch (Exception e) {
@@ -369,14 +372,19 @@ public class ErrorLogService {
                 .season(blankToNull(season))
                 .context(context)
                 .build();
-        if (providerNorm != null
-                && errorLogRepository.findFirstByProviderAndCodeAndLayerAndLeagueCodeAndMessage(
-                providerNorm,
-                CODE_PROVIDER_FETCH_FAILED,
-                layerName,
-                leagueNorm,
-                toStoredMessage(entry)).isPresent()) {
-            return;
+        if (providerNorm != null) {
+            Optional<ErrorLog> existing = errorLogRepository.findFirstByProviderAndCodeAndLayerAndLeagueCodeAndMessage(
+                    providerNorm,
+                    CODE_PROVIDER_FETCH_FAILED,
+                    layerName,
+                    leagueNorm,
+                    toStoredMessage(entry));
+            if (reactivateIfArchived(existing)) {
+                return;
+            }
+            if (existing.isPresent()) {
+                return;
+            }
         }
         record(entry);
     }
@@ -422,14 +430,19 @@ public class ErrorLogService {
                 .season(blankToNull(season))
                 .context(context)
                 .build();
-        if (providerNorm != null
-                && errorLogRepository.findFirstByProviderAndCodeAndLayerAndLeagueCodeAndMessage(
-                providerNorm,
-                CODE_PROVIDER_FETCH_FAILED,
-                layerName,
-                leagueNorm,
-                toStoredMessage(entry)).isPresent()) {
-            return;
+        if (providerNorm != null) {
+            Optional<ErrorLog> existing = errorLogRepository.findFirstByProviderAndCodeAndLayerAndLeagueCodeAndMessage(
+                    providerNorm,
+                    CODE_PROVIDER_FETCH_FAILED,
+                    layerName,
+                    leagueNorm,
+                    toStoredMessage(entry));
+            if (reactivateIfArchived(existing)) {
+                return;
+            }
+            if (existing.isPresent()) {
+                return;
+            }
         }
         record(entry);
     }
@@ -643,6 +656,11 @@ public class ErrorLogService {
 
     @Transactional(readOnly = true)
     public List<ErrorLogDto> listRecent(int page, int size) {
+        return listRecent(page, size, false);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ErrorLogDto> listRecent(int page, int size, boolean includeArchived) {
         if (page < 0) {
             throw new BadRequestException("errorLogsInvalidPage");
         }
@@ -650,7 +668,10 @@ public class ErrorLogService {
             throw new BadRequestException("errorLogsInvalidPageSize");
         }
         int skip = page * size;
-        List<ErrorLogDto> dtos = ErrorLogDto.fromList(errorLogRepository.findRecent(skip, size));
+        List<ErrorLog> rows = includeArchived
+                ? errorLogRepository.findRecent(skip, size)
+                : errorLogRepository.findRecentActive(skip, size);
+        List<ErrorLogDto> dtos = ErrorLogDto.fromList(rows);
         enrichFromMatchSchedules(dtos);
         enrichMessages(dtos);
         return dtos;
@@ -820,25 +841,100 @@ public class ErrorLogService {
     }
 
     public long count() {
-        return errorLogRepository.count();
+        return countActive();
+    }
+
+    public long countActive() {
+        return errorLogRepository.count() - errorLogRepository.countByArchivedTrue();
+    }
+
+    public long countArchived() {
+        return errorLogRepository.countByArchivedTrue();
+    }
+
+    @Transactional
+    public void archiveById(String id) {
+        ErrorLog doc = requireById(id);
+        if (isArchived(doc)) {
+            return;
+        }
+        doc.setArchived(true);
+        doc.setArchivedAt(Instant.now());
+        errorLogRepository.save(doc);
+    }
+
+    @Transactional
+    public void unarchiveById(String id) {
+        ErrorLog doc = requireById(id);
+        if (!isArchived(doc)) {
+            return;
+        }
+        clearArchiveFlags(doc);
+        errorLogRepository.save(doc);
+    }
+
+    @Transactional
+    public long archiveAllActive() {
+        List<ErrorLog> active = errorLogRepository.findActive();
+        if (active.isEmpty()) {
+            return 0;
+        }
+        Instant now = Instant.now();
+        for (ErrorLog doc : active) {
+            doc.setArchived(true);
+            doc.setArchivedAt(now);
+        }
+        errorLogRepository.saveAll(active);
+        return active.size();
     }
 
     @Transactional
     public void deleteById(String id) {
+        ErrorLog doc = requireById(id);
+        if (isArchived(doc)) {
+            throw new ConflictException("errorLogDeleteArchivedForbidden");
+        }
+        errorLogRepository.deleteById(doc.getId());
+    }
+
+    /** Hard-delete active (non-archived) entries only. */
+    @Transactional
+    public long clearActive() {
+        return errorLogRepository.deleteActive();
+    }
+
+    /** Hard-delete archived entries only. */
+    @Transactional
+    public long clearArchived() {
+        return errorLogRepository.deleteByArchivedTrue();
+    }
+
+    private ErrorLog requireById(String id) {
         if (id == null || id.isBlank()) {
             throw new NotFoundException("ErrorLog", id);
         }
-        if (!errorLogRepository.existsById(id)) {
-            throw new NotFoundException("ErrorLog", id);
-        }
-        errorLogRepository.deleteById(id);
+        return errorLogRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("ErrorLog", id));
     }
 
-    @Transactional
-    public long clearAll() {
-        long count = errorLogRepository.count();
-        errorLogRepository.deleteAll();
-        return count;
+    private boolean reactivateIfArchived(Optional<ErrorLog> existing) {
+        if (existing.isEmpty() || !isArchived(existing.get())) {
+            return false;
+        }
+        ErrorLog doc = existing.get();
+        appendOccurrence(doc, Instant.now());
+        clearArchiveFlags(doc);
+        errorLogRepository.save(doc);
+        return true;
+    }
+
+    private static boolean isArchived(ErrorLog doc) {
+        return doc != null && Boolean.TRUE.equals(doc.getArchived());
+    }
+
+    private static void clearArchiveFlags(ErrorLog doc) {
+        doc.setArchived(false);
+        doc.setArchivedAt(null);
     }
 
     @Transactional
