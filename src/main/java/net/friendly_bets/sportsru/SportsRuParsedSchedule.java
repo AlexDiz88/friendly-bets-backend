@@ -32,6 +32,11 @@ public class SportsRuParsedSchedule {
         /** Relative path e.g. {@code /football/match/arsenal-vs-coventry-city-fc/}. */
         String matchPath;
         Instant utcKickoff;
+        /**
+         * True when {@link #utcKickoff} came from the calendar card {@code datetime}.
+         * False/null when filled from match-page fallback (must not clobber a good DB kickoff).
+         */
+        Boolean kickoffFromCalendar;
         String status;
     }
 

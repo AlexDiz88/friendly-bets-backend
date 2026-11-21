@@ -39,6 +39,8 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -306,15 +308,33 @@ public class SportsRuScheduleSyncService implements ScheduleProvider {
 
                 // Prefer Instant already on the calendar card (Z/offset). Match-page only if missing —
                 // never derive kickoff from FriendlyBets gameweek/calendar date ranges.
+                boolean fromCalendar = match.getUtcKickoff() != null;
                 Instant utcKickoff = match.getUtcKickoff();
                 if (utcKickoff == null) {
                     utcKickoff = fetchMatchKickoff(match.getMatchPath(), httpLogs);
+                }
+                if (utcKickoff != null && !isKickoffWithinSeasonWindow(season, utcKickoff)) {
+                    errorLogService.record(ErrorLogService.Entry.builder()
+                            .severity(ErrorLogService.SEVERITY_WARN)
+                            .layer(ExternalDataLayer.SCHEDULE.name())
+                            .provider(ExternalProviderIds.SPORTS_RU)
+                            .code("sportsRuKickoffOutsideSeason")
+                            .message("sportsRuKickoffOutsideSeason")
+                            .leagueCode(leagueCode.name())
+                            .season(externalSeason)
+                            .matchday(round.getNumber())
+                            .homeTeam(match.getHomeName())
+                            .awayTeam(match.getAwayName())
+                            .build());
+                    utcKickoff = null;
+                    fromCalendar = false;
                 }
                 SportsRuParsedSchedule.Match enriched = SportsRuParsedSchedule.Match.builder()
                         .homeName(match.getHomeName())
                         .awayName(match.getAwayName())
                         .matchPath(match.getMatchPath())
                         .utcKickoff(utcKickoff)
+                        .kickoffFromCalendar(fromCalendar)
                         .status(match.getStatus())
                         .build();
 
@@ -420,13 +440,44 @@ public class SportsRuScheduleSyncService implements ScheduleProvider {
         }
         existing.setSlotId(slotId);
         existing.setLeagueCode(league.getLeagueCode().name());
-        if (match.getUtcKickoff() != null) {
-            existing.setUtcKickoff(match.getUtcKickoff());
-        }
+        applyKickoffFromSync(existing, match);
         ScheduleStatusWriteSupport.applyFromSchedule(existing, match.getStatus());
         existing.setFetchedAt(fetchedAt);
         matchScheduleRepository.save(existing);
         oddsService.deleteIfFinalized(existing);
+    }
+
+    /**
+     * Calendar {@code datetime} may refresh kickoff. Match-page fallback must never overwrite
+     * an existing DB kickoff (hub pages embed historic H2H scheduledAt).
+     */
+    static void applyKickoffFromSync(MatchSchedule existing, SportsRuParsedSchedule.Match match) {
+        if (existing == null || match == null || match.getUtcKickoff() == null) {
+            return;
+        }
+        boolean fromCalendar = Boolean.TRUE.equals(match.getKickoffFromCalendar());
+        if (fromCalendar) {
+            existing.setUtcKickoff(match.getUtcKickoff());
+            return;
+        }
+        if (existing.getUtcKickoff() == null) {
+            existing.setUtcKickoff(match.getUtcKickoff());
+        }
+    }
+
+    /** Season calendar dates ±7 days grace (UTC day bounds). */
+    static boolean isKickoffWithinSeasonWindow(Season season, Instant kickoff) {
+        if (season == null || kickoff == null) {
+            return false;
+        }
+        LocalDate start = season.getStartDate();
+        LocalDate end = season.getEndDate();
+        if (start == null || end == null) {
+            return false;
+        }
+        Instant windowStart = start.minusDays(7).atStartOfDay(ZoneOffset.UTC).toInstant();
+        Instant windowEnd = end.plusDays(8).atStartOfDay(ZoneOffset.UTC).toInstant();
+        return !kickoff.isBefore(windowStart) && kickoff.isBefore(windowEnd);
     }
 
     private int resolvePlayingCurrentOrder(League league, TournamentFormat format, String externalSeason) {

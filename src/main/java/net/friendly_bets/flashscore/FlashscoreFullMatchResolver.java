@@ -60,8 +60,9 @@ public class FlashscoreFullMatchResolver {
         Team home = getEntityService.getTeamOrThrow(match.getHomeTeamId());
         Team away = getEntityService.getTeamOrThrow(match.getAwayTeamId());
 
+        // Strict kickoff window only — ODDS-style sides fallback would accept cup/H2H on wrong days.
         ProviderMatchResolveSupport.ResolveOutcome<FlashscoreParsedDayPage.Match> outcome =
-                ProviderMatchResolveSupport.resolveUniquePreferringKickoffWindow(
+                ProviderMatchResolveSupport.resolveUnique(
                         match,
                         candidates,
                         window,

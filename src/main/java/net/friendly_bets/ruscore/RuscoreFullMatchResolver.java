@@ -62,8 +62,9 @@ public class RuscoreFullMatchResolver {
         Team home = getEntityService.getTeamOrThrow(match.getHomeTeamId());
         Team away = getEntityService.getTeamOrThrow(match.getAwayTeamId());
 
+        // Strict kickoff window only — ODDS-style sides fallback would accept cup/H2H on wrong days.
         ProviderMatchResolveSupport.ResolveOutcome<RuscoreParsedDayPage.Match> outcome =
-                ProviderMatchResolveSupport.resolveUniquePreferringKickoffWindow(
+                ProviderMatchResolveSupport.resolveUnique(
                         match,
                         candidates,
                         window,

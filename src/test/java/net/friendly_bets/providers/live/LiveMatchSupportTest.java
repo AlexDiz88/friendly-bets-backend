@@ -98,14 +98,19 @@ class LiveMatchSupportTest {
 
     @Test
     void needsFull_onlyFinishedWithoutFullDetails() {
+        Instant recentKo = Instant.now().minusSeconds(3600);
         assertTrue(LiveMatchSupport.needsFullMatch(
+                MatchSchedule.builder().status("FINISHED").utcKickoff(recentKo).build()));
+        assertFalse(LiveMatchSupport.needsFullMatch(
+                MatchSchedule.builder().status("FINISHED").utcKickoff(recentKo).fullDetailsFetchedAt(NOW).build()));
+        assertFalse(LiveMatchSupport.needsFullMatch(
+                MatchSchedule.builder().status("LIVE").utcKickoff(recentKo).build()));
+        assertFalse(LiveMatchSupport.needsFullMatch(
+                MatchSchedule.builder().status("CANCELED").utcKickoff(recentKo).build()));
+        assertFalse(LiveMatchSupport.needsFullMatch(
                 MatchSchedule.builder().status("FINISHED").build()));
         assertFalse(LiveMatchSupport.needsFullMatch(
-                MatchSchedule.builder().status("FINISHED").fullDetailsFetchedAt(NOW).build()));
-        assertFalse(LiveMatchSupport.needsFullMatch(
-                MatchSchedule.builder().status("LIVE").build()));
-        assertFalse(LiveMatchSupport.needsFullMatch(
-                MatchSchedule.builder().status("CANCELED").build()));
+                MatchSchedule.builder().status("FINISHED").utcKickoff(Instant.now().minusSeconds(10 * 24 * 3600L)).build()));
     }
 
     @Test
