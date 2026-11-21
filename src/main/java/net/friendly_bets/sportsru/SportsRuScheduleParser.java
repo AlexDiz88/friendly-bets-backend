@@ -38,10 +38,23 @@ public class SportsRuScheduleParser {
 
     private static final Pattern ROUND_TITLE = Pattern.compile(
             "^\\s*(\\d+)\\s*тур\\s*$", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
-    private static final Pattern SCHEDULED_AT_Z = Pattern.compile(
-            "scheduledAt\"?\\s*:\\s*\"(\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z)\"");
-    private static final Pattern JSON_LD_START = Pattern.compile(
-            "\"startDate\"\\s*:\\s*\"([^\"]+)\"");
+    /**
+     * Pinia store of the page's own match. Sibling stores ({@code football-online-historic-games}:
+     * H2H / last games of both clubs) describe other matches and are never a kickoff source.
+     */
+    private static final Pattern PRIMARY_MATCH_STORE = Pattern.compile(
+            "(?<![\\w-])\"?football-online-match\"?\\s*:\\s*\\{");
+    /** Group 1 is set only for an inline literal with {@code Z} (not a hoisted payload variable). */
+    private static final Pattern SCHEDULED_AT_KEY = Pattern.compile(
+            "\"?scheduledAt\"?\\s*:\\s*(?:\"(\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z)\")?");
+    /**
+     * Hub payload {@code linkToHub:"/football/match/...",scheduledAt:"...Z"}.
+     * Historic H2H list items use {@code id}+{@code link:"/football/match/{numericId}/"} — not linkToHub.
+     */
+    private static final Pattern LINK_TO_HUB_SCHEDULED_AT = Pattern.compile(
+            "linkToHub\"?\\s*:\\s*\"(?:\\\\u002F|/)football(?:\\\\u002F|/)match[^\"]*\""
+                    + "\\s*,\\s*scheduledAt\"?\\s*:\\s*\"(\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z)\"");
+    private static final String SPORTS_EVENT_TYPE = "SportsEvent";
     private static final DateTimeFormatter ISO_OFFSET = DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 
     /**
@@ -211,6 +224,7 @@ public class SportsRuScheduleParser {
                 .awayName(awayName)
                 .matchPath(matchPath)
                 .utcKickoff(utcKickoff)
+                .kickoffFromCalendar(utcKickoff != null ? Boolean.TRUE : null)
                 .status(status)
                 .build());
     }
@@ -412,31 +426,148 @@ public class SportsRuScheduleParser {
     }
 
     /**
-     * Kickoff from match-page {@code scheduledAt} with {@code Z}, else JSON-LD {@code startDate} with offset.
+     * Kickoff of the <b>primary</b> match on a sports.ru match hub page.
      * Used only when the calendar card has no strict {@code datetime}. Display wall-clock is never used.
+     * <p>
+     * Hub pages also embed H2H / last games (cup, friendlies, earlier rounds) with their own
+     * {@code scheduledAt} — those are never read. Sources, in order:
+     * <ol>
+     *   <li>own {@code scheduledAt} (inline literal with {@code Z}) of the {@code football-online-match} store;</li>
+     *   <li>else hub {@code linkToHub}+{@code scheduledAt} (not historic numeric {@code link} rows);</li>
+     *   <li>else {@code startDate} (with offset) of JSON-LD {@code SportsEvent}.</li>
+     * </ol>
+     * A source yielding several different instants is ambiguous → {@code null}.
+     * Never scans the first global {@code scheduledAt} in the HTML.
      */
     public Instant parseUtcKickoffFromMatchHtml(String html) {
         if (html == null || html.isBlank()) {
             return null;
         }
-        Matcher scheduledAt = SCHEDULED_AT_Z.matcher(html);
-        if (scheduledAt.find()) {
+        Set<Instant> fromStore = parsePrimaryStoreKickoffs(html);
+        if (!fromStore.isEmpty()) {
+            return fromStore.size() == 1 ? fromStore.iterator().next() : null;
+        }
+        Instant fromHub = firstGroupInstant(LINK_TO_HUB_SCHEDULED_AT.matcher(html));
+        if (fromHub != null) {
+            return fromHub;
+        }
+        Set<Instant> fromJsonLd = parseSportsEventKickoffs(html);
+        return fromJsonLd.size() == 1 ? fromJsonLd.iterator().next() : null;
+    }
+
+    private static Instant firstGroupInstant(Matcher matcher) {
+        if (!matcher.find()) {
+            return null;
+        }
+        try {
+            return Instant.parse(matcher.group(1).trim());
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /**
+     * Walks each {@code football-online-match} object and reads only its own {@code scheduledAt} key:
+     * nested objects ({@code relatedMatch}) and everything after the closing brace are skipped.
+     */
+    private static Set<Instant> parsePrimaryStoreKickoffs(String html) {
+        Set<Instant> kickoffs = new LinkedHashSet<>();
+        Matcher store = PRIMARY_MATCH_STORE.matcher(html);
+        Matcher key = SCHEDULED_AT_KEY.matcher(html);
+        while (store.find()) {
+            int depth = 1;
+            boolean keyPosition = true;
+            int i = store.end();
+            while (i < html.length() && depth > 0) {
+                char c = html.charAt(i);
+                if (depth == 1 && keyPosition && key.region(i, html.length()).lookingAt()) {
+                    if (key.group(1) != null) {
+                        try {
+                            kickoffs.add(Instant.parse(key.group(1)));
+                        } catch (Exception ignored) {
+                            // not a valid instant — not a kickoff source
+                        }
+                    }
+                    keyPosition = false;
+                    i = key.end();
+                    continue;
+                }
+                if (c == '"') {
+                    keyPosition = false;
+                    i = endOfStringLiteral(html, i);
+                    continue;
+                }
+                if (c == '{' || c == '[') {
+                    depth++;
+                } else if (c == '}' || c == ']') {
+                    depth--;
+                }
+                if (!Character.isWhitespace(c)) {
+                    keyPosition = c == ',';
+                }
+                i++;
+            }
+        }
+        return kickoffs;
+    }
+
+    /** Index right after the closing quote of the string literal opened at {@code openQuote}. */
+    private static int endOfStringLiteral(String text, int openQuote) {
+        int i = openQuote + 1;
+        while (i < text.length()) {
+            char c = text.charAt(i);
+            if (c == '\\') {
+                i += 2;
+                continue;
+            }
+            if (c == '"') {
+                return i + 1;
+            }
+            i++;
+        }
+        return text.length();
+    }
+
+    private Set<Instant> parseSportsEventKickoffs(String html) {
+        Set<Instant> kickoffs = new LinkedHashSet<>();
+        for (Element script : Jsoup.parse(html).select("script[type=application/ld+json]")) {
+            String json = script.data();
+            if (json == null || json.isBlank()) {
+                continue;
+            }
             try {
-                return Instant.parse(scheduledAt.group(1).trim());
+                collectSportsEventKickoffs(objectMapper.readTree(json), kickoffs);
             } catch (Exception ignored) {
-                // fall through to startDate
+                // skip malformed blocks
             }
         }
-        Matcher startDate = JSON_LD_START.matcher(html);
-        if (startDate.find()) {
+        return kickoffs;
+    }
+
+    private static void collectSportsEventKickoffs(JsonNode node, Set<Instant> kickoffs) {
+        if (node == null || node.isNull()) {
+            return;
+        }
+        if (node.isArray()) {
+            for (JsonNode item : node) {
+                collectSportsEventKickoffs(item, kickoffs);
+            }
+            return;
+        }
+        if (!node.isObject()) {
+            return;
+        }
+        JsonNode typeNode = node.get("@type");
+        JsonNode startDate = node.get("startDate");
+        if (typeNode != null && SPORTS_EVENT_TYPE.equals(typeNode.asText())
+                && startDate != null && startDate.isTextual()) {
             try {
-                OffsetDateTime odt = OffsetDateTime.parse(startDate.group(1).trim(), ISO_OFFSET);
-                return odt.toInstant();
-            } catch (Exception e) {
-                return null;
+                kickoffs.add(OffsetDateTime.parse(startDate.asText().trim(), ISO_OFFSET).toInstant());
+            } catch (Exception ignored) {
+                // no Z / numeric offset — not a strict instant
             }
         }
-        return null;
+        node.fields().forEachRemaining(entry -> collectSportsEventKickoffs(entry.getValue(), kickoffs));
     }
 
     private Optional<Integer> parseRoundNumber(String title) {

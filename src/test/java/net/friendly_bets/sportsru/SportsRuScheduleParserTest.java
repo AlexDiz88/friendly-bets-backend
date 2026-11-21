@@ -160,10 +160,44 @@ class SportsRuScheduleParserTest {
     }
 
     @Test
-    void parseUtcKickoff_fallsBackToStartDateOffset() {
-        String html = "{\"startDate\":\"2026-08-21T22:00:00+03:00\"}";
+    void parseUtcKickoff_ignoresHistoricGamesScheduledAtBeforePrimary() {
+        String html = """
+                historic-games":{versus:{list:[{id:"102778946",scheduledAt:"2025-10-29T17:00:00Z",link:"/football/match/1906553/"}]}}
+                ,linkToHub:"/football/match/bayer-vs-paderborn/",scheduledAt:"2026-11-21T14:30:00Z",matchStatus:"CLOSED"
+                """;
+        Instant kickoff = parser.parseUtcKickoffFromMatchHtml(html);
+        assertEquals(Instant.parse("2026-11-21T14:30:00Z"), kickoff);
+    }
+
+    @Test
+    void parseUtcKickoff_returnsNullWhenOnlyHistoricScheduledAt() {
+        String html = """
+                historic-games":{versus:{list:[{id:"1",scheduledAt:"2022-07-02T13:00:00Z",link:"/football/match/1600470/"},
+                {id:"2",scheduledAt:"2009-08-01T13:30:00Z",link:"/football/match/1/"}]}}
+                """;
+        assertNull(parser.parseUtcKickoffFromMatchHtml(html));
+    }
+
+    @Test
+    void parseUtcKickoff_fallsBackToSportsEventStartDateOffset() {
+        String html = """
+                <script type="application/ld+json">
+                {"@type":"SportsEvent","name":"Bayer - Paderborn","startDate":"2026-08-21T22:00:00+03:00"}
+                </script>
+                """;
         Instant kickoff = parser.parseUtcKickoffFromMatchHtml(html);
         assertEquals(Instant.parse("2026-08-21T19:00:00Z"), kickoff);
+    }
+
+    @Test
+    void parseUtcKickoff_ignoresHoistedVariableThenReadsLiteralInStore() {
+        String html = """
+                {"football-online-match":{scheduledAt:d,matchStatus:"CLOSED",relatedMatch:{scheduledAt:"2025-10-29T17:00:00Z"}},
+                "football-online-historic-games":{versus:{list:[{scheduledAt:"2022-07-02T13:00:00Z"}]}}}
+                {"football-online-match":{scheduledAt:"2026-11-21T14:30:00Z",matchStatus:"CLOSED"}}
+                """;
+        Instant kickoff = parser.parseUtcKickoffFromMatchHtml(html);
+        assertEquals(Instant.parse("2026-11-21T14:30:00Z"), kickoff);
     }
 
     @Test

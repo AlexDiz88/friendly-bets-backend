@@ -2,6 +2,7 @@ package net.friendly_bets.providers.live;
 
 import net.friendly_bets.models.schedule.MatchSchedule;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Locale;
 import java.util.Set;
@@ -103,7 +104,17 @@ public final class LiveMatchSupport {
         if (schedule.getFullDetailsFetchedAt() != null) {
             return false;
         }
-        return FINISHED.contains(normalize(schedule.getStatus()));
+        if (!FINISHED.contains(normalize(schedule.getStatus()))) {
+            return false;
+        }
+        Instant kickoff = schedule.getUtcKickoff();
+        if (kickoff == null) {
+            return false;
+        }
+        // Bad SCHEDULE data (historic H2H kickoffs) must not trigger FULL on ancient dates.
+        Instant now = Instant.now();
+        return !kickoff.isBefore(now.minus(Duration.ofDays(7)))
+                && !kickoff.isAfter(now.plus(Duration.ofDays(2)));
     }
 
     /**
