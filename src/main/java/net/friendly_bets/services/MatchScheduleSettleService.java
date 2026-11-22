@@ -86,7 +86,10 @@ public class MatchScheduleSettleService {
         if (schedule.getFinalizedAt() == null) {
             return false;
         }
-        return GameScoreValidator.hasValidFullTime(schedule.getGameScore());
+        // Same HT+FT gate as BetUtils.checkGameScore — otherwise settle throws incorrectGameScore
+        // after FULL already persisted and the match drops out of needsFullMatch forever.
+        return GameScoreValidator.hasValidFullTime(schedule.getGameScore())
+                && GameScoreValidator.hasValidFirstTime(schedule.getGameScore());
     }
 
     private static Set<String> collectCalendarNodeIds(BetsPage betsPage) {

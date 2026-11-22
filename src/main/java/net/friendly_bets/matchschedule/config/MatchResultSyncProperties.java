@@ -23,4 +23,9 @@ public class MatchResultSyncProperties {
     private long fullMatchRetryDelayMs = 300_000L;
     /** Пауза после повторной неуспешной попытки FULL (и далее): раз в час. */
     private long fullMatchHourlyDelayMs = 3_600_000L;
+
+    /** Сколько подряд неудачных auto-settle, после чего включается блок. */
+    private int settleMaxFailures = 3;
+    /** Блок после {@link #settleMaxFailures} неудач (default 1 час). */
+    private long settleBlockAfterMaxMs = 3_600_000L;
 }

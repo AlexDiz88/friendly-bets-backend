@@ -256,6 +256,12 @@ public class LiveMatchWakeScheduler {
                 log.warn("FULL after LIVE failed: {}", fullEx.getMessage());
             }
         }
+        // FULL already done but OPENED bets remain (settle one-shot failed) — retry.
+        try {
+            matchFinalizeOrchestrator.settleOrphanFinalizedMatches(season.getId());
+        } catch (RuntimeException settleEx) {
+            log.warn("Orphan settle after LIVE failed: {}", settleEx.getMessage());
+        }
     }
 
     private LinkedHashSet<String> collectPendingFullMatchIds(List<MatchSchedule> schedules) {

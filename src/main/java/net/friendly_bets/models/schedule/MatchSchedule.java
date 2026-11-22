@@ -115,6 +115,17 @@ public class MatchSchedule {
     @Field(name = "full_match_not_ready_count")
     private Integer fullMatchNotReadyCount;
 
+    /**
+     * Consecutive auto-settle failures while OPENED bets remain.
+     * After {@code match-result-sync.settle-max-failures} → block until {@link #settleNextAttemptAt}.
+     */
+    @Field(name = "settle_fail_count")
+    private Integer settleFailCount;
+
+    /** Earliest Instant when orphan/auto settle may retry after max failures (UTC). */
+    @Field(name = "settle_next_attempt_at")
+    private Instant settleNextAttemptAt;
+
     @Field(name = "fetched_at")
     private Instant fetchedAt;
 }

@@ -58,6 +58,8 @@ public class ErrorLogService {
     public static final String CODE_LAYER_FAILED = "layerProviderFailed";
     public static final String CODE_FULL_MATCH_FAILED = "fullMatchFailed";
     public static final String CODE_FULL_MATCH_NOT_READY = "fullMatchNotReady";
+    public static final String CODE_AUTO_SETTLE_FAILED = "autoSettleFailed";
+    public static final String CODE_AUTO_SETTLE_SKIPPED_NO_ADMIN = "autoSettleSkippedNoAdmin";
     public static final String CODE_LIVE_MATCH_SYNC_STUCK = "liveMatchSyncStuck";
     public static final String CODE_LIVE_MATCH_NOT_IN_FEED = "liveMatchNotInFeed";
     public static final String CODE_LIVE_MATCH_AMBIGUOUS = "liveMatchAmbiguous";
@@ -643,6 +645,36 @@ public class ErrorLogService {
                 .message(providerStatus != null && !providerStatus.isBlank()
                         ? providerStatus.trim()
                         : CODE_FULL_MATCH_NOT_READY)
+                .leagueCode(match != null ? match.getLeagueCode() : null)
+                .season(match != null ? match.getSeasonId() : null)
+                .matchday(match != null ? match.getMatchday() : null)
+                .matchScheduleId(match != null ? match.getId() : null)
+                .dedupeByMatch(true)
+                .build());
+    }
+
+    public void recordAutoSettleFailure(MatchSchedule match, String message) {
+        record(Entry.builder()
+                .severity(SEVERITY_ERROR)
+                .layer(ExternalDataLayer.FULL_MATCH.name())
+                .provider("auto-settle")
+                .code(CODE_AUTO_SETTLE_FAILED)
+                .message(message != null && !message.isBlank() ? message.trim() : CODE_AUTO_SETTLE_FAILED)
+                .leagueCode(match != null ? match.getLeagueCode() : null)
+                .season(match != null ? match.getSeasonId() : null)
+                .matchday(match != null ? match.getMatchday() : null)
+                .matchScheduleId(match != null ? match.getId() : null)
+                .dedupeByMatch(true)
+                .build());
+    }
+
+    public void recordAutoSettleSkippedNoAdmin(MatchSchedule match) {
+        record(Entry.builder()
+                .severity(SEVERITY_WARN)
+                .layer(ExternalDataLayer.FULL_MATCH.name())
+                .provider("auto-settle")
+                .code(CODE_AUTO_SETTLE_SKIPPED_NO_ADMIN)
+                .message(CODE_AUTO_SETTLE_SKIPPED_NO_ADMIN)
                 .leagueCode(match != null ? match.getLeagueCode() : null)
                 .season(match != null ? match.getSeasonId() : null)
                 .matchday(match != null ? match.getMatchday() : null)

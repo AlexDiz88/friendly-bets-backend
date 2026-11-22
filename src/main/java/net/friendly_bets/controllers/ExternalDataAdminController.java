@@ -214,10 +214,11 @@ public class ExternalDataAdminController {
                 .orElseThrow(() -> new net.friendly_bets.exceptions.NotFoundException("MatchSchedule", matchScheduleId));
         ExternalApiMonitoringService.setTriggerOverride(ExternalApiMonitoringTrigger.ADMIN);
         try {
+            // Through orchestrator so auto-settle runs (raw provider persist left OPENED orphans).
             MatchSchedule updated = router.execute(
                     ExternalDataLayer.FULL_MATCH,
                     FullMatchProvider.class,
-                    p -> p.fetchAndPersistFullDetails(match)
+                    p -> matchFinalizeOrchestrator.finalizeFinishedMatchWithProvider(match, p)
             );
             return ResponseEntity.ok(updated);
         } finally {

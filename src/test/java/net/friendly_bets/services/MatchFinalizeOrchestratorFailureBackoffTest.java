@@ -6,6 +6,7 @@ import net.friendly_bets.models.schedule.MatchSchedule;
 import net.friendly_bets.providers.ExternalDataLayer;
 import net.friendly_bets.providers.FullMatchProvider;
 import net.friendly_bets.providers.LayerProviderRouter;
+import net.friendly_bets.repositories.BetsRepository;
 import net.friendly_bets.repositories.MatchScheduleRepository;
 import net.friendly_bets.repositories.UsersRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -36,6 +37,8 @@ class MatchFinalizeOrchestratorFailureBackoffTest {
     @Mock
     MatchScheduleRepository matchScheduleRepository;
     @Mock
+    BetsRepository betsRepository;
+    @Mock
     BetsService betsService;
     @Mock
     StatsService statsService;
@@ -63,6 +66,7 @@ class MatchFinalizeOrchestratorFailureBackoffTest {
         orchestrator = new MatchFinalizeOrchestrator(
                 router,
                 matchScheduleRepository,
+                betsRepository,
                 betsService,
                 statsService,
                 properties,
@@ -72,6 +76,7 @@ class MatchFinalizeOrchestratorFailureBackoffTest {
                 errorLogService,
                 standingsSyncOrchestrator
         );
+        orchestrator.setSelf(orchestrator);
     }
 
     @Test

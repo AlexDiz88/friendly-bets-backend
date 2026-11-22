@@ -2,27 +2,31 @@ package net.friendly_bets.services;
 
 import lombok.RequiredArgsConstructor;
 import net.friendly_bets.dto.BetsPage;
+import net.friendly_bets.dto.FullMatchSyncResultDto;
 import net.friendly_bets.exceptions.FullMatchNotReadyException;
 import net.friendly_bets.matchschedule.GameScoreValidator;
 import net.friendly_bets.matchschedule.config.MatchResultSyncProperties;
+import net.friendly_bets.models.Bet;
 import net.friendly_bets.models.GameResult;
+import net.friendly_bets.models.Season;
 import net.friendly_bets.models.User;
 import net.friendly_bets.models.monitoring.ExternalApiMonitoringCounters;
 import net.friendly_bets.models.monitoring.ExternalApiMonitoringRun;
 import net.friendly_bets.models.monitoring.ExternalApiMonitoringStatus;
 import net.friendly_bets.models.monitoring.ExternalApiMonitoringTrigger;
 import net.friendly_bets.models.schedule.MatchSchedule;
-import net.friendly_bets.dto.FullMatchSyncResultDto;
-import net.friendly_bets.models.Season;
 import net.friendly_bets.providers.ExternalDataLayer;
 import net.friendly_bets.providers.FullMatchAttemptSupport;
 import net.friendly_bets.providers.FullMatchProvider;
 import net.friendly_bets.providers.LayerProviderRouter;
 import net.friendly_bets.providers.live.LiveMatchSupport;
+import net.friendly_bets.repositories.BetsRepository;
 import net.friendly_bets.repositories.MatchScheduleRepository;
 import net.friendly_bets.repositories.UsersRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -43,9 +47,11 @@ import java.util.Set;
 public class MatchFinalizeOrchestrator {
 
     private static final Logger log = LoggerFactory.getLogger(MatchFinalizeOrchestrator.class);
+    private static final List<Bet.BetStatus> OPENED_ONLY = List.of(Bet.BetStatus.OPENED);
 
     private final LayerProviderRouter router;
     private final MatchScheduleRepository matchScheduleRepository;
+    private final BetsRepository betsRepository;
     private final BetsService betsService;
     private final StatsService statsService;
     private final MatchResultSyncProperties properties;
@@ -54,6 +60,14 @@ public class MatchFinalizeOrchestrator {
     private final ExternalApiMonitoringService monitoringService;
     private final ErrorLogService errorLogService;
     private final StandingsSyncOrchestrator standingsSyncOrchestrator;
+
+    /** Spring proxy — required so {@code @Transactional} on finalize applies from wake/admin loops. */
+    private MatchFinalizeOrchestrator self;
+
+    @Autowired
+    public void setSelf(@Lazy MatchFinalizeOrchestrator self) {
+        this.self = self;
+    }
 
     @Transactional
     public MatchSchedule finalizeFinishedMatch(MatchSchedule match) {
@@ -86,9 +100,7 @@ public class MatchFinalizeOrchestrator {
                 return handleUnsuccessfulAttempt(current, now, null);
             }
         }
-        if (properties.isAutoSettleEnabled() && MatchScheduleSettleService.isFinalizedForSettle(current)) {
-            settleMatch(current);
-        }
+        tryAutoSettle(current);
         if (!wasFinalized && MatchScheduleSettleService.isFinalizedForSettle(current)) {
             standingsSyncOrchestrator.syncLeagueAfterMatchFinalized(
                     current.getLeagueCode(),
@@ -121,9 +133,10 @@ public class MatchFinalizeOrchestrator {
         int succeeded = 0;
         int notReady = 0;
         int failed = 0;
+        MatchFinalizeOrchestrator target = proxy();
         for (MatchSchedule match : candidates) {
             try {
-                MatchSchedule updated = finalizeFinishedMatchWithProvider(match, provider);
+                MatchSchedule updated = target.finalizeFinishedMatchWithProvider(match, provider);
                 if (updated != null && updated.getFullDetailsFetchedAt() != null) {
                     succeeded++;
                 } else {
@@ -176,9 +189,7 @@ public class MatchFinalizeOrchestrator {
                 throw e;
             }
         }
-        if (properties.isAutoSettleEnabled() && MatchScheduleSettleService.isFinalizedForSettle(current)) {
-            settleMatch(current);
-        }
+        tryAutoSettle(current);
         if (!wasFinalized && MatchScheduleSettleService.isFinalizedForSettle(current)) {
             standingsSyncOrchestrator.syncLeagueAfterMatchFinalized(
                     current.getLeagueCode(),
@@ -248,14 +259,105 @@ public class MatchFinalizeOrchestrator {
         if (deferred > 0) {
             log.debug("FULL deferred (initial/retry delay): {} match(es)", deferred);
         }
+        MatchFinalizeOrchestrator target = proxy();
         for (MatchSchedule match : due) {
             try {
-                finalizeFinishedMatch(match);
+                target.finalizeFinishedMatch(match);
             } catch (FullMatchNotReadyException e) {
                 log.debug("FULL not ready for match {}: {}", match.getId(), e.getProviderStatus());
             } catch (RuntimeException e) {
                 log.warn("FULL/settle failed for match {}: {}", match.getId(), e.getMessage());
             }
+        }
+    }
+
+    /**
+     * Retry settle for finalized matches that still have OPENED bets (FULL already done).
+     * Called from LIVE wake so a one-shot settle failure cannot leave permanent orphans.
+     * Budget: {@code settle-max-failures} consecutive fails → block {@code settle-block-after-max-ms}.
+     */
+    public int settleOrphanFinalizedMatches(String seasonId) {
+        if (!properties.isAutoSettleEnabled() || seasonId == null || seasonId.isBlank()) {
+            return 0;
+        }
+        Instant now = Instant.now();
+        int settled = 0;
+        MatchFinalizeOrchestrator target = proxy();
+        for (MatchSchedule schedule : matchScheduleRepository.findBySeasonId(seasonId.trim())) {
+            if (!MatchScheduleSettleService.isFinalizedForSettle(schedule) || schedule.getId() == null) {
+                continue;
+            }
+            if (!SettleAttemptSupport.isAttemptDue(schedule, now)) {
+                continue;
+            }
+            List<Bet> opened = betsRepository.findAllByMatchScheduleIdAndBetStatusIn(
+                    schedule.getId(),
+                    OPENED_ONLY
+            );
+            if (opened == null || opened.isEmpty()) {
+                continue;
+            }
+            try {
+                if (target.settleFinalizedMatch(schedule)) {
+                    settled++;
+                } else {
+                    recordSettleFailure(schedule, now);
+                }
+            } catch (RuntimeException e) {
+                log.warn("Orphan settle failed for match {}: {}", schedule.getId(), e.getMessage());
+                errorLogService.recordAutoSettleFailure(schedule, e.getMessage());
+                recordSettleFailure(schedule, now);
+            }
+        }
+        if (settled > 0) {
+            log.info("Orphan settle processed {} finalized match(es) with OPENED bets", settled);
+        }
+        return settled;
+    }
+
+    /**
+     * Public settle entry for orphan retry / tests — runs in its own transaction via proxy.
+     *
+     * @return {@code true} if settle ran (admin found); {@code false} if skipped (e.g. no ADMIN)
+     */
+    @Transactional
+    public boolean settleFinalizedMatch(MatchSchedule schedule) {
+        return settleMatch(schedule);
+    }
+
+    private void tryAutoSettle(MatchSchedule current) {
+        if (!properties.isAutoSettleEnabled() || !MatchScheduleSettleService.isFinalizedForSettle(current)) {
+            return;
+        }
+        Instant now = Instant.now();
+        if (!SettleAttemptSupport.isAttemptDue(current, now)) {
+            return;
+        }
+        try {
+            if (!settleMatch(current)) {
+                recordSettleFailure(current, now);
+            }
+        } catch (RuntimeException e) {
+            log.warn("Auto-settle failed for match {}: {}", current.getId(), e.getMessage());
+            errorLogService.recordAutoSettleFailure(current, e.getMessage());
+            recordSettleFailure(current, now);
+        }
+    }
+
+    private void recordSettleFailure(MatchSchedule schedule, Instant now) {
+        if (schedule == null || schedule.getId() == null) {
+            return;
+        }
+        MatchSchedule current = matchScheduleRepository.findById(schedule.getId()).orElse(schedule);
+        SettleAttemptSupport.applyFailure(current, now, properties);
+        matchScheduleRepository.save(current);
+        if (current.getSettleNextAttemptAt() != null) {
+            log.warn(
+                    "Auto-settle blocked until {} for match {} after {} consecutive failures",
+                    current.getSettleNextAttemptAt(),
+                    current.getId(),
+                    properties.getSettleMaxFailures()
+            );
         }
     }
 
@@ -279,14 +381,18 @@ public class MatchFinalizeOrchestrator {
         return saved;
     }
 
-    private void settleMatch(MatchSchedule schedule) {
-        if (!GameScoreValidator.hasValidFullTime(schedule.getGameScore())) {
-            return;
+    /**
+     * @return {@code true} if settle executed; {@code false} if skipped (not ready / no ADMIN)
+     */
+    private boolean settleMatch(MatchSchedule schedule) {
+        if (!MatchScheduleSettleService.isFinalizedForSettle(schedule)) {
+            return false;
         }
         String moderatorId = resolveSystemModeratorId();
         if (moderatorId == null) {
             log.warn("Skip auto-settle: no ADMIN user for match {}", schedule.getId());
-            return;
+            errorLogService.recordAutoSettleSkippedNoAdmin(schedule);
+            return false;
         }
         GameResult gameResult = GameResult.builder()
                 .leagueId(schedule.getLeagueId())
@@ -304,6 +410,25 @@ public class MatchFinalizeOrchestrator {
                 statsService.recalculateGameweekStatsFromEarliest(schedule.getSeasonId(), nodeIds);
             }
         }
+        clearSettleAttemptState(schedule);
+        return true;
+    }
+
+    private void clearSettleAttemptState(MatchSchedule schedule) {
+        if (schedule == null || schedule.getId() == null) {
+            return;
+        }
+        MatchSchedule current = matchScheduleRepository.findById(schedule.getId()).orElse(null);
+        if (current == null
+                || (current.getSettleFailCount() == null && current.getSettleNextAttemptAt() == null)) {
+            return;
+        }
+        SettleAttemptSupport.clearAttemptState(current);
+        matchScheduleRepository.save(current);
+    }
+
+    private MatchFinalizeOrchestrator proxy() {
+        return self != null ? self : this;
     }
 
     private String resolveSystemModeratorId() {
