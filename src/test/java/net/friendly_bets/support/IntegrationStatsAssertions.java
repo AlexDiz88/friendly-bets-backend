@@ -19,7 +19,8 @@ public class IntegrationStatsAssertions {
                                                String seasonId,
                                                String leagueId,
                                                User user) {
-        assertTrue(repository.findBySeasonIdAndLeagueIdAndUser(seasonId, leagueId, user).isEmpty(),
+        assertTrue(
+                repository.findAllBySeasonIdAndLeagueIdAndUser_Id(seasonId, leagueId, user.getId()).isEmpty(),
                 "Expected no player stats for user " + user.getId() + " in league " + leagueId);
     }
 
@@ -32,8 +33,9 @@ public class IntegrationStatsAssertions {
                                          int expectedWonBetCount,
                                          double expectedSumOfOdds,
                                          double expectedActualBalance) {
-        PlayerStats stats = repository.findBySeasonIdAndLeagueIdAndUser(seasonId, leagueId, user)
-                .orElseThrow(() -> new AssertionError("PlayerStats not found for user " + user.getId()));
+        var rows = repository.findAllBySeasonIdAndLeagueIdAndUser_Id(seasonId, leagueId, user.getId());
+        assertFalse(rows.isEmpty(), "PlayerStats not found for user " + user.getId());
+        PlayerStats stats = rows.get(0);
 
         assertEquals(expectedTotalBets, stats.getTotalBets(), "totalBets");
         assertEquals(expectedBetCount, stats.getBetCount(), "betCount");
@@ -213,8 +215,9 @@ public class IntegrationStatsAssertions {
                                                  int expectedLostBetCount,
                                                  double expectedSumOfOdds,
                                                  double expectedActualBalance) {
-        PlayerStats stats = repository.findBySeasonIdAndLeagueIdAndUser(seasonId, leagueId, user)
-                .orElseThrow(() -> new AssertionError("PlayerStats not found for user " + user.getId()));
+        var rows = repository.findAllBySeasonIdAndLeagueIdAndUser_Id(seasonId, leagueId, user.getId());
+        assertFalse(rows.isEmpty(), "PlayerStats not found for user " + user.getId());
+        PlayerStats stats = rows.get(0);
 
         assertEquals(expectedTotalBets, stats.getTotalBets(), "totalBets");
         assertEquals(expectedBetCount, stats.getBetCount(), "betCount");

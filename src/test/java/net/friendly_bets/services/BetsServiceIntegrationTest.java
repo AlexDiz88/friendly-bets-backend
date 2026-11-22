@@ -207,14 +207,16 @@ class BetsServiceIntegrationTest extends AbstractMongoIntegrationTest {
     // ------------------------------------------------------------------------------------------------------ //
 
     private PlayerStats getLeaguePlayerStats(TestFixture fx) {
-        return playerStatsRepository
-                .findBySeasonIdAndLeagueIdAndUser(fx.getSeason().getId(), fx.getLeague().getId(), fx.getPlayer())
-                .orElseThrow();
+        var rows = playerStatsRepository.findAllBySeasonIdAndLeagueIdAndUser_Id(
+                fx.getSeason().getId(), fx.getLeague().getId(), fx.getPlayer().getId());
+        assertFalse(rows.isEmpty());
+        return rows.get(0);
     }
 
     private PlayerStats getTotalPlayerStats(TestFixture fx) {
-        return playerStatsRepository
-                .findBySeasonIdAndLeagueIdAndUser(fx.getSeason().getId(), TOTAL_ID, fx.getPlayer())
-                .orElseThrow();
+        var rows = playerStatsRepository.findAllBySeasonIdAndLeagueIdAndUser_Id(
+                fx.getSeason().getId(), TOTAL_ID, fx.getPlayer().getId());
+        assertFalse(rows.isEmpty());
+        return rows.get(0);
     }
 }

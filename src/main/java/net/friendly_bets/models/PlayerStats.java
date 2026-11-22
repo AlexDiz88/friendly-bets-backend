@@ -16,6 +16,8 @@ import org.springframework.data.mongodb.core.mapping.MongoId;
 @Data
 @EqualsAndHashCode(callSuper = false)
 @Document(collection = "player_stats")
+// Unique index seasonId+leagueId+user.$id is created only by admin script
+// POST /api/admin/scripts/dedupe-player-stats (after duplicates are removed).
 public class PlayerStats extends Stats {
 
     @MongoId

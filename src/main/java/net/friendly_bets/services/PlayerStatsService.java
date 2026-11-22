@@ -10,6 +10,8 @@ import net.friendly_bets.repositories.PlayerStatsRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
 import static net.friendly_bets.utils.Constants.COMPLETED_BET_STATUSES;
 import static net.friendly_bets.utils.Constants.TOTAL_ID;
 import static net.friendly_bets.utils.StatsUtils.*;
@@ -111,9 +113,11 @@ public class PlayerStatsService {
     // ------------------------------------------------------------------------------------------------------ //
 
     public PlayerStats getStatsOrCreateNew(String seasonId, String leagueId, User user) {
-        return playerStatsRepository
-                .findBySeasonIdAndLeagueIdAndUser(seasonId, leagueId, user)
-                .orElseGet(() -> createNewStats(seasonId, leagueId, user));
+        String userId = user != null ? user.getId() : null;
+        List<PlayerStats> existing = playerStatsRepository
+                .findAllBySeasonIdAndLeagueIdAndUser_Id(seasonId, leagueId, userId);
+        PlayerStats resolved = PlayerStatsDedupSupport.pickOne(existing, seasonId, leagueId, userId);
+        return resolved != null ? resolved : createNewStats(seasonId, leagueId, user);
     }
 
     // ------------------------------------------------------------------------------------------------------ //

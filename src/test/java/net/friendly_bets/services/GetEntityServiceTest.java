@@ -217,14 +217,16 @@ class GetEntityServiceTest {
     void getPlayerStatsOrNull_ShouldReturnPlayerStats_WhenExists() {
         // given
         User user = new User();
+        user.setId("user-1");
         PlayerStats expectedPlayerStats = PlayerStats.builder()
+                .id("ps-1")
                 .seasonId(seasonId)
                 .leagueId(leagueId)
                 .user(user)
                 .build();
 
-        when(playerStatsRepository.findBySeasonIdAndLeagueIdAndUser(seasonId, leagueId, user))
-                .thenReturn(Optional.of(expectedPlayerStats));
+        when(playerStatsRepository.findAllBySeasonIdAndLeagueIdAndUser_Id(seasonId, leagueId, user.getId()))
+                .thenReturn(List.of(expectedPlayerStats));
 
         // when
         PlayerStats actualPlayerStats = getEntityService.getPlayerStatsOrNull(seasonId, leagueId, user);
@@ -232,7 +234,8 @@ class GetEntityServiceTest {
         // then
         assertNotNull(actualPlayerStats);
         assertEquals(expectedPlayerStats, actualPlayerStats);
-        verify(playerStatsRepository, times(1)).findBySeasonIdAndLeagueIdAndUser(seasonId, leagueId, user);
+        verify(playerStatsRepository, times(1))
+                .findAllBySeasonIdAndLeagueIdAndUser_Id(seasonId, leagueId, user.getId());
     }
 
     @Test
@@ -240,15 +243,17 @@ class GetEntityServiceTest {
     void getPlayerStatsOrNull_ShouldReturnNull_WhenParametersAreInvalid() {
         // given
         User user = new User();
-        when(playerStatsRepository.findBySeasonIdAndLeagueIdAndUser(seasonId, leagueId, user))
-                .thenReturn(Optional.empty());
+        user.setId("user-1");
+        when(playerStatsRepository.findAllBySeasonIdAndLeagueIdAndUser_Id(seasonId, leagueId, user.getId()))
+                .thenReturn(List.of());
 
         // when
         PlayerStats actualResult = getEntityService.getPlayerStatsOrNull(seasonId, leagueId, user);
 
         // then
         assertNull(actualResult);
-        verify(playerStatsRepository, times(1)).findBySeasonIdAndLeagueIdAndUser(seasonId, leagueId, user);
+        verify(playerStatsRepository, times(1))
+                .findAllBySeasonIdAndLeagueIdAndUser_Id(seasonId, leagueId, user.getId());
     }
 
     // ------------------------------------------------------------------------------------------------------ //

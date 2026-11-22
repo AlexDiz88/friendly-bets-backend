@@ -90,14 +90,20 @@ public class GetEntityService {
     }
 
     public PlayerStats getTotalPlayerStatsOrThrow(String seasonId, String leagueId, String userId) {
-        return playerStatsRepository.findAllBySeasonIdAndLeagueIdAndUser_Id(seasonId, leagueId, userId)
-                .orElseThrow(() -> new BadRequestException("playerStatsForSeasonNotFound"));
+        List<PlayerStats> rows = playerStatsRepository.findAllBySeasonIdAndLeagueIdAndUser_Id(
+                seasonId, leagueId, userId);
+        PlayerStats resolved = PlayerStatsDedupSupport.pickOne(rows, seasonId, leagueId, userId);
+        if (resolved == null) {
+            throw new BadRequestException("playerStatsForSeasonNotFound");
+        }
+        return resolved;
     }
 
     public PlayerStats getPlayerStatsOrNull(String seasonId, String leagueId, User user) {
-        Optional<PlayerStats> playerStatsOptional =
-                playerStatsRepository.findBySeasonIdAndLeagueIdAndUser(seasonId, leagueId, user);
-        return playerStatsOptional.orElse(null);
+        String userId = user != null ? user.getId() : null;
+        List<PlayerStats> rows = playerStatsRepository.findAllBySeasonIdAndLeagueIdAndUser_Id(
+                seasonId, leagueId, userId);
+        return PlayerStatsDedupSupport.pickOne(rows, seasonId, leagueId, userId);
     }
 
     public PlayerStatsByTeams getPlayerStatsByTeamsOrThrow(String seasonId, String leagueId, String userId) {
