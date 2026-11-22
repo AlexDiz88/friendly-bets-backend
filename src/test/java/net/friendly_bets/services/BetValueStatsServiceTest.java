@@ -16,7 +16,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
-import java.util.Optional;
 
 import static net.friendly_bets.utils.Constants.TOTAL_ID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -42,10 +41,10 @@ class BetValueStatsServiceTest {
     @Test
     @DisplayName("Should update league and total documents in the matching odds range")
     void calculateStatsByBetValues_ShouldUpdateLeagueAndTotal() {
-        when(playerStatsByBetValuesRepository.findBySeasonIdAndLeagueIdAndUserId(seasonId, leagueId, userId))
-                .thenReturn(Optional.empty());
-        when(playerStatsByBetValuesRepository.findBySeasonIdAndLeagueIdAndUserId(seasonId, TOTAL_ID, userId))
-                .thenReturn(Optional.empty());
+        when(playerStatsByBetValuesRepository.findAllBySeasonIdAndLeagueIdAndUserId(seasonId, leagueId, userId))
+                .thenReturn(List.of());
+        when(playerStatsByBetValuesRepository.findAllBySeasonIdAndLeagueIdAndUserId(seasonId, TOTAL_ID, userId))
+                .thenReturn(List.of());
 
         Bet bet = Bet.builder()
                 .betStatus(Bet.BetStatus.WON)
@@ -77,8 +76,8 @@ class BetValueStatsServiceTest {
     @Test
     @DisplayName("Should reject settled bets without a positive odds value")
     void calculateStatsByBetValues_ShouldRejectMissingOdds() {
-        when(playerStatsByBetValuesRepository.findBySeasonIdAndLeagueIdAndUserId(seasonId, leagueId, userId))
-                .thenReturn(Optional.empty());
+        when(playerStatsByBetValuesRepository.findAllBySeasonIdAndLeagueIdAndUserId(seasonId, leagueId, userId))
+                .thenReturn(List.of());
 
         Bet bet = Bet.builder()
                 .betStatus(Bet.BetStatus.WON)

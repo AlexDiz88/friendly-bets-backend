@@ -162,6 +162,42 @@ public class MatchFinalizeOrchestrator {
     }
 
     /**
+     * Admin repair: clear FULL card / finalize stamps so the match is FULL-eligible again,
+     * then run {@link #finalizeFinishedMatchWithProvider} (FULL + auto-settle).
+     */
+    @Transactional
+    public MatchSchedule resetFullCardAndRerun(MatchSchedule match, FullMatchProvider provider) {
+        if (match == null || match.getId() == null || provider == null) {
+            return match;
+        }
+        MatchSchedule current = matchScheduleRepository.findById(match.getId()).orElse(match);
+        clearFullCardState(current);
+        if (current.getStatus() == null || current.getStatus().isBlank()) {
+            current.setStatus("FINISHED");
+        }
+        current = matchScheduleRepository.save(current);
+        return finalizeFinishedMatchWithProvider(current, provider);
+    }
+
+    static void clearFullCardState(MatchSchedule schedule) {
+        if (schedule == null) {
+            return;
+        }
+        schedule.setFullDetailsFetchedAt(null);
+        schedule.setFinalizedAt(null);
+        schedule.setFinalizedByProvider(null);
+        schedule.setGameScore(null);
+        schedule.setGoals(new ArrayList<>());
+        schedule.setStats(null);
+        schedule.setAddedTimeFirstHalf(null);
+        schedule.setAddedTimeSecondHalf(null);
+        schedule.setFullMatchNextAttemptAt(null);
+        schedule.setFullMatchNotReadyCount(null);
+        schedule.setSettleFailCount(null);
+        schedule.setSettleNextAttemptAt(null);
+    }
+
+    /**
      * Same as {@link #finalizeFinishedMatch} but uses a concrete provider (admin manual)
      * and skips attempt-due / layer-enabled gates.
      */

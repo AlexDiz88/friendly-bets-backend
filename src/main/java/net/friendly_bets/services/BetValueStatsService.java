@@ -88,9 +88,12 @@ public class BetValueStatsService {
             League.LeagueCode leagueCode,
             String userId
     ) {
-        return playerStatsByBetValuesRepository
-                .findBySeasonIdAndLeagueIdAndUserId(seasonId, leagueId, userId)
-                .orElseGet(() -> createNewStats(seasonId, leagueId, leagueCode, userId));
+        List<PlayerStatsByBetValues> rows = playerStatsByBetValuesRepository
+                .findAllBySeasonIdAndLeagueIdAndUserId(seasonId, leagueId, userId);
+        if (!rows.isEmpty()) {
+            return rows.get(0);
+        }
+        return createNewStats(seasonId, leagueId, leagueCode, userId);
     }
 
     private BetValueRangeStats findRangeStats(PlayerStatsByBetValues stats, BetValueRange range) {

@@ -227,6 +227,28 @@ public class ExternalDataAdminController {
         }
     }
 
+    /**
+     * Repair OPENED orphans after a skipped settle: wipe FULL card, re-fetch FULL, auto-settle.
+     */
+    @PostMapping("/full-match/{matchScheduleId}/rerun")
+    @PreAuthorize("hasAuthority('ADMIN')")
+    public ResponseEntity<MatchSchedule> rerunFullMatch(@PathVariable String matchScheduleId) {
+        MatchSchedule match = matchScheduleRepository.findById(matchScheduleId)
+                .orElseThrow(() -> new net.friendly_bets.exceptions.NotFoundException("MatchSchedule", matchScheduleId));
+        ExternalApiMonitoringService.setTriggerOverride(ExternalApiMonitoringTrigger.ADMIN);
+        try {
+            MatchSchedule updated = router.execute(
+                    ExternalDataLayer.FULL_MATCH,
+                    FullMatchProvider.class,
+                    p -> matchFinalizeOrchestrator.resetFullCardAndRerun(match, p)
+            );
+            return ResponseEntity.ok(updated);
+        } finally {
+            ExternalApiMonitoringService.clearTriggerOverride();
+            wakeLiveAutoPipeline();
+        }
+    }
+
     @PostMapping("/standings/sync")
     @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<StandingsSyncResultDto> syncStandings(@RequestParam String leagueCode) {
