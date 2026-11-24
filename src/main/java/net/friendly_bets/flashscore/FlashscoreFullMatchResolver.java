@@ -17,8 +17,10 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 @Component
@@ -56,6 +58,9 @@ public class FlashscoreFullMatchResolver {
                 }
             }
         }
+        // Same event appears on adjacent feed days around Almaty midnight (e.g. 20:00 UTC =
+        // 01:00 Asia/Almaty). Without dedupe, resolveUnique → fullMatchAmbiguous.
+        candidates = uniqueByEventId(candidates);
 
         Team home = getEntityService.getTeamOrThrow(match.getHomeTeamId());
         Team away = getEntityService.getTeamOrThrow(match.getAwayTeamId());
@@ -89,6 +94,20 @@ public class FlashscoreFullMatchResolver {
             days.add(d);
         }
         return new ArrayList<>(days);
+    }
+
+    static List<FlashscoreParsedDayPage.Match> uniqueByEventId(List<FlashscoreParsedDayPage.Match> candidates) {
+        if (candidates == null || candidates.isEmpty()) {
+            return candidates == null ? List.of() : candidates;
+        }
+        Map<String, FlashscoreParsedDayPage.Match> byId = new LinkedHashMap<>();
+        for (FlashscoreParsedDayPage.Match candidate : candidates) {
+            if (candidate == null || candidate.getEventId() == null || candidate.getEventId().isBlank()) {
+                continue;
+            }
+            byId.put(candidate.getEventId(), candidate);
+        }
+        return new ArrayList<>(byId.values());
     }
 
     private boolean sidesMatch(Team home, Team away, FlashscoreParsedDayPage.Match candidate) {
