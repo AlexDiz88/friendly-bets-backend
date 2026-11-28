@@ -88,7 +88,8 @@ public final class MarathonbetSelectionParsing {
         }
         String homeNorm = normalizeTeam(homeTeam);
         String awayNorm = normalizeTeam(awayTeam);
-        String prefix = trimmed.split("\\s+\\d")[0].trim();
+        // Prefix = text before the matched score digits (keeps "Байер 04", not split on team number).
+        String prefix = trimmed.substring(0, m.start(1)).trim();
         String prefixNorm = normalizeTeam(prefix);
         if (homeNorm != null && prefixNorm != null && prefixNorm.contains(homeNorm)) {
             return new int[] { g1, g2 };

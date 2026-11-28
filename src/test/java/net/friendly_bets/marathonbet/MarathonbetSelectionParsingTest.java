@@ -34,4 +34,36 @@ class MarathonbetSelectionParsingTest {
                 "Ничья 0 - 0", "Мексика", "ЮАР");
         assertArrayEquals(new int[] { 0, 0 }, draw);
     }
+
+    @Test
+    void parsesCorrectScoreAwayWinWhenAwayTeamNameContainsDigits() {
+        assertArrayEquals(
+                new int[] { 0, 1 },
+                MarathonbetSelectionParsing.parseCorrectScoreHomeAway(
+                        "Байер 04 1 - 0", "Боруссия Дортмунд", "Байер 04"));
+        assertArrayEquals(
+                new int[] { 1, 2 },
+                MarathonbetSelectionParsing.parseCorrectScoreHomeAway(
+                        "Майнц 05 2 - 1", "Аугсбург", "Майнц 05"));
+        assertArrayEquals(
+                new int[] { 0, 1 },
+                MarathonbetSelectionParsing.parseCorrectScoreHomeAway(
+                        "Падерборн 07 1 - 0", "Бавария", "Падерборн 07"));
+        assertArrayEquals(
+                new int[] { 0, 1 },
+                MarathonbetSelectionParsing.parseCorrectScoreHomeAway(
+                        "Шальке 04 1 - 0", "Падерборн 07", "Шальке 04"));
+    }
+
+    @Test
+    void parsesCorrectScoreHomeWinWhenHomeTeamNameContainsDigits() {
+        assertArrayEquals(
+                new int[] { 2, 1 },
+                MarathonbetSelectionParsing.parseCorrectScoreHomeAway(
+                        "Байер 04 2 - 1", "Байер 04", "Падерборн 07"));
+        assertArrayEquals(
+                new int[] { 1, 0 },
+                MarathonbetSelectionParsing.parseCorrectScoreHomeAway(
+                        "Падерборн 07 1 - 0", "Падерборн 07", "Шальке 04"));
+    }
 }
